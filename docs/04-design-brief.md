@@ -3,6 +3,8 @@
 > **Figma file:** [Journey — App Design (MVP)](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl) (in the drafts of "sai pavan's team"). Status is at the [end of this brief](#figma-file-status).
 >
 > Built from the [requirements](01-requirements.md). The Figma file follows this brief, so change the brief first.
+>
+> **New direction proposed on 7 Nov 2026:** [Journey Design 2.0](https://claude.ai/artifact/Hmc5sAXD5cRtgof87L354X) ([source](../design/preview-v2/)). It uses real photos, bold Plus Jakarta Sans, glass floating controls, light and dark themes, and a choice of three accents (Iris, Lagoon or Sun). Once you pick an accent and approve it, it replaces the visual direction below and the Figma file is rebuilt to match.
 
 ## Principles
 
