@@ -1,6 +1,6 @@
 # Journey — Design Brief (Figma)
 
-> **Figma file:** link added once the file is created.
+> **Figma file:** [Journey — App Design (MVP)](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl) (in the drafts of "sai pavan's team"). Status is at the [end of this brief](#figma-file-status).
 >
 > Built from the [requirements](01-requirements.md). The Figma file follows this brief, so change the brief first.
 
@@ -97,3 +97,20 @@ Fictional, and consistent across screens:
 - **Camino de Santiago** by @ana.walks · Travel · Completed · 34 days
 - **Couch to 10K** by @sam.runs · Fitness · Active · Week 5
 - **Building our tiny cabin** by @the.kims · Projects · Paused
+
+## Figma file status
+
+**Design system page**
+
+- **Variables:** `Color · Light` and `Color · Dark` (the same 19 token names, one collection per theme), `Spacing` (space/1–12) and `Radius` (sm, md, lg, xl, full). All have scopes and web code syntax set.
+- **Styles:** 14 text styles (Fraunces + Inter) and 2 shadow styles.
+- **Components:** 53 icons, Status bar, Home indicator, Button, Chip, Status pill, Avatar, Icon button, Map pin, Banner, Text field, Section header, Segmented control, Progress, Tab bar, Nav bar, Journey card, Timeline entry, Feed update, Notification row, List row, Template option, 8 illustrated covers and a base map.
+
+**Screens page:** screens 01–14 from the table above, built from those components and tokens. 05 Journey is drawn as one full-length scroll so the whole timeline is visible.
+
+**Limits and to-dos**
+
+- The free Figma Starter plan allows one variable mode per collection, which is why light and dark are two collections. On a Professional plan they can become one `Color` collection with Light and Dark modes.
+- Photos are illustrated stand-ins. Real photos (or AI-generated ones via Figma's image tool, which uses Figma AI credits) can be swapped in with the Cover / Photo properties.
+- **14 Home · dark is unfinished.** Text inside component instances still uses the light tokens. The fix is to rebind every `Color · Light` variable to its `Color · Dark` twin across the frame. It wasn't applied because the Figma MCP call limit for the Starter plan was reached.
+- Not started: a cover for the Cover page, a foundations specimen board, and a clickable prototype.

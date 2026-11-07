@@ -12,3 +12,4 @@ iOS and Android · Expo (React Native) + Supabase · Status: **Phase 0, requirem
 | [02 · Tech stack](docs/02-tech-stack.md) | Stack, architecture, data model, cloud workflow, costs |
 | [03 · Roadmap](docs/03-roadmap.md) | Phases, beta and launch plan, monetization |
 | [04 · Design brief](docs/04-design-brief.md) | Visual direction, screens, components, and the Figma file |
+| [Figma file](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl) | Design system and 14 MVP screens |
