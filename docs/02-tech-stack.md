@@ -40,7 +40,8 @@
 | Local state | Zustand |
 | Offline drafts and upload queue | expo-sqlite |
 | Forms and validation | React Hook Form + Zod (schemas shared with the backend) |
-| Photos | expo-image-picker and expo-image-manipulator (resize to about 2048 px and make a thumbnail on the phone), resumable uploads |
+| Photos and video | expo-image-picker (photos, and clips up to 60 s) and expo-image-manipulator (resize photos to about 2048 px and make a thumbnail on the phone); clips compressed on the phone (for example with react-native-compressor); resumable uploads |
+| Video playback | expo-video: streams the clip, shows a still frame and its length, plays when tapped |
 | Location and maps | expo-location (permission, place names), react-native-maps (Apple Maps on iOS, Google Maps on Android) |
 | Push notifications | expo-notifications with the Expo Push Service (APNs and FCM) |
 | Sign-in | Sign in with Apple, Google, and email one-time codes, all through Supabase Auth |
@@ -54,10 +55,11 @@
 | Database | Postgres with Row Level Security |
 | Sign-in | Supabase Auth |
 | Files | Supabase Storage with its CDN. The app uploads a full-size image and a thumbnail, so paid image transforms aren't needed. |
+| Video | **Mux** (Cloudflare Stream is the cheaper alternative). The phone uploads clips straight to it; it converts them for streaming, picks the right quality for each connection, and makes still frames. An Edge Function hands out upload links, and a webhook marks each clip ready. |
 | Server logic | SQL functions and triggers (counters, feed) plus **Edge Functions** in TypeScript (sending push notifications, moderation, share images) |
 | Scheduled jobs | pg_cron: auto-pause after 30 days, trending scores, reminder nudges |
 | Search | Postgres full-text search plus pg_trgm for fuzzy name matching; pgvector later for recommendations |
-| Moderation | An image moderation API (for example AWS Rekognition or Google Cloud Vision SafeSearch), called when a photo is uploaded |
+| Moderation | An image moderation API (for example AWS Rekognition or Google Cloud Vision SafeSearch), called when a photo is uploaded; for clips, it checks frames taken from the video |
 | Schema changes | SQL migrations in the repo (`supabase/migrations`), applied with the Supabase CLI |
 
 ### Web (share pages only)
@@ -88,6 +90,8 @@ flowchart LR
   end
   EF --> PUSH["Expo Push → APNs / FCM"]
   EF --> MOD["Image moderation API"]
+  DR -- "video upload" --> MUX["Mux: video processing and streaming"]
+  MUX -- "webhook (clip ready)" --> EF
   WEB["Share pages (Next.js on Vercel)"] --> API
 ```
 
@@ -98,7 +102,7 @@ flowchart LR
 | `profiles` | id (= the auth user), username (unique), display_name, avatar, bio, link, interests[] |
 | `journeys` | id, owner_id, title, slug, description, category, tags[], cover, visibility (public · unlisted · private), status (active · paused · completed), label_style (day · part), template, start_date, completed_at, closing_note, last_entry_at, entry_count, follower_count |
 | `entries` | id, journey_id, author_id, happened_at, body, place_name, lat, lng, location_precision (none · city · exact), is_milestone, like_count, comment_count, created_at, edited_at |
-| `entry_media` | id, entry_id, path, thumb_path, width, height, blurhash, position *(type = video in v1.1)* |
+| `entry_media` | id, entry_id, type (photo · video), path, thumb_path, width, height, blurhash, duration_s, video_id, status (processing · ready · failed), position |
 | `journey_follows` | user_id, journey_id, last_read_at (drives "new since your last visit"), notify |
 | `creator_follows` | follower_id, creator_id |
 | `likes` | user_id, entry_id |
@@ -115,6 +119,7 @@ The rules that matter:
 - **Visibility** is enforced by RLS. *Public* means everyone. *Unlisted* means anyone with the link, but it never appears in Discover, search or profile lists. *Private* means the owner only. Blocks apply both ways.
 - **Auto-pause:** a daily job moves active journeys with no entry in 30 days to *paused* and nudges the creator.
 - **Drafts live only on the phone** until they upload.
+- **Video limits:** at most 3 clips per entry, each up to 60 seconds. Followers see a clip only once the video service reports it ready.
 
 ## Repository layout (when we scaffold)
 
@@ -147,8 +152,8 @@ This repo has its own cloud environment called **Journey** (Node 22 and npm, wit
 
 What to add to the environment **when we scaffold the app** (there's nothing to install yet):
 
-- **Network:** Expo's EAS hosts (`api.expo.dev` and the hosts EAS uploads to), the Supabase project host (`<project-ref>.supabase.co`), and `api.supabase.com` for the CLI.
-- **Keys**, saved as environment secrets and never in the repo: an Expo access token and a Supabase access token.
+- **Network:** Expo's EAS hosts (`api.expo.dev` and the hosts EAS uploads to), the Supabase project host (`<project-ref>.supabase.co`), `api.supabase.com` for the CLI, and `api.mux.com` for video.
+- **Keys**, saved as environment secrets and never in the repo: an Expo access token, a Supabase access token and a Mux API token.
 - **Setup script:** install dependencies (`npm ci`) so every new session starts ready.
 
 ## Running costs (approximate; check current prices)
@@ -162,6 +167,7 @@ What to add to the environment **when we scaffold the app** (there's nothing to 
 | Vercel | Free for development; Pro is about US$20 a month for commercial use |
 | PostHog, Sentry | Free tiers cover an MVP |
 | Image moderation | About US$1 per 1,000 photos |
+| Video (Mux or Cloudflare Stream) | Pay as you go, by minutes stored and watched. As a guide, Cloudflare Stream charges about US$5 per 1,000 minutes stored and US$1 per 1,000 minutes watched. |
 | Domain | About US$15 a year |
 
-Expect roughly **US$50–100 a month** after launch, plus the store fees.
+Expect roughly **US$75–150 a month** soon after launch, plus the store fees. Video is the cost that grows fastest with use, which is why clips are capped at 60 seconds.

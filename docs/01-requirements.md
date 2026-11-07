@@ -1,8 +1,8 @@
 # Journey — Product Requirements (MVP)
 
-> **Status:** v1, ready for your review · **Updated:** 7 Nov 2026
+> **Status:** v1.1, decisions confirmed · **Updated:** 7 Nov 2026
 >
-> This pulls the earlier feedback from DeepSeek, Gemini and ChatGPT into one set of decisions. Where they disagreed, the decision and the reason are written down. The open questions for you are in [§9](#9-decisions-to-confirm).
+> This pulls the earlier feedback from DeepSeek, Gemini and ChatGPT into one set of decisions. Where they disagreed, the decision and the reason are written down. The decisions confirmed with you are in [§9](#9-decisions).
 
 ## 1. The idea in one line
 
@@ -14,13 +14,13 @@
 
 | | |
 |---|---|
-| **Launch audience** | Travelers documenting a trip (backpacking, road trips, study abroad, pilgrimages, family holidays) and the friends, family and fans who follow along. |
-| **Second bet** (in the MVP as a template) | People doing a challenge or transformation: 30-day fitness, learning a skill, a creative "100 days of…". |
+| **Launch audiences** (equal priority) | 1. **Travelers** documenting a trip (backpacking, road trips, study abroad, pilgrimages, family holidays) and the friends, family and fans who follow along. |
+| | 2. **Challenge-takers** doing a 30-day fitness challenge, learning a skill or a creative "100 days of…", and the people cheering them on. |
 | **Later** | Projects (DIY, renovation, building a startup) and life events (moving abroad, a wedding, a new baby). The data model supports any journey from day one; only templates and marketing change. |
 
-**Why travel first:** a trip has a clear start and end, strong photos, a natural map, and a built-in audience (family wants updates). All three AI reviews pointed there.
+**Why these two:** a trip has a clear start and end, strong photos, a natural map and a built-in audience (family wants updates). A challenge has a built-in arc (Day 1 to Day 30), daily posting and supporters who cheer, with far less direct competition. Launching with both shows the format works for any journey, and the beta tells us which group to double down on.
 
-**The catch:** [Polarsteps](https://www.polarsteps.com/news/polarsteps-hits-15-million-users-as-travelers-embrace-authentic-storytelling) (15M+ users) already owns *trip tracking*: automatic GPS routes, followers, printed travel books. Journey must not be a Polarsteps clone. It wins on three things:
+**The catch on the travel side:** [Polarsteps](https://www.polarsteps.com/news/polarsteps-hits-15-million-users-as-travelers-embrace-authentic-storytelling) (15M+ users) already owns *trip tracking*: automatic GPS routes, followers, printed travel books. Journey must not be a Polarsteps clone. It wins on three things:
 
 1. **Story over tracking:** entries, milestones, recaps and comments, not a GPS line.
 2. **Discovery:** you follow strangers' journeys found in Discover, not only friends'.
@@ -42,7 +42,7 @@ There are two roles, and everyone can be both:
 | **Milestone** | An entry the creator flags as a highlight ("Reached Ha Giang!"). Milestones form a **Highlights** strip for quick navigation. |
 | **Status** | **Active** → **Paused** (automatic after 30 days without entries) → **Completed** (the creator closes it, which unlocks the recap). |
 | **Follow** | Follow a **journey** to get its new entries. Follow a **creator** to auto-follow their future journeys. |
-| **Template** | A starting point with gentle prompts: Trip · 30-Day Challenge · Learn a Skill · Build Something · Open Journal. |
+| **Template** | A starting point with gentle prompts: Trip · 30-Day Challenge · Learn a Skill · Build Something · Open Journal. Trip and 30-Day Challenge are the two flagship templates. |
 | **Recap** | An automatic summary when a journey completes (days, entries, places, photos, top moments) as a card you can share. |
 
 ## 4. MVP features (must have at launch)
@@ -57,7 +57,7 @@ There are two roles, and everyone can be both:
 ### B. Creating a journey
 
 - **B1 Create a journey in under 60 seconds:** title, template, category, start date and visibility. The cover photo is optional (the first photo is used by default). Up to 5 tags.
-- **B2 Templates** (the five above) with prompts, for example Trip: "Where are you today? What surprised you?"
+- **B2 Templates** (the five above) with prompts. Trip and 30-Day Challenge come first. Trip: "Where are you today? What surprised you?" 30-Day Challenge: a "Day 12 of 30" progress bar and a daily check-in prompt.
 - **B3 Visibility per journey:**
   - **Public:** anyone; appears in Discover and search.
   - **Unlisted:** only people with the link (good for family).
@@ -67,9 +67,10 @@ There are two roles, and everyone can be both:
 
 ### C. Adding entries (the most important flow, so it must be fast)
 
-- **C1 Add an entry:** up to 10 photos and text (optional if there are photos). The date defaults to the photo's date or now and can be back-dated. The place is suggested from the photo or GPS and shown at city level unless you choose an exact pin.
+- **C1 Add an entry:** up to 10 photos and short video clips (at most 3 clips, each up to 60 seconds), plus text (optional if there is a photo or clip). The date defaults to the photo's date or now and can be back-dated. The place is suggested from the photo or GPS and shown at city level unless you choose an exact pin.
+- **C1b Video clips:** compressed on the phone, uploaded in the background, and streamed at a quality that suits the connection. In the app they show a still frame and their length, and play only when tapped (no autoplay).
 - **C2 Quick add:** the **+** button posts to your current active journey in two taps.
-- **C3 Offline drafts:** write entries with no signal; they upload automatically when you're back online, with progress and retry. *(Essential for travelers.)*
+- **C3 Offline drafts:** write entries (with photos and clips) with no signal; they upload automatically when you're back online, with progress and retry. *(Essential for travelers.)*
 - **C4 Milestone toggle** on any entry.
 - **C5 Edit or delete** entries at any time (edited ones are marked "edited").
 - **C6 Gentle reminders (opt-in):** "It's been 3 days since your last update to *Vietnam by motorbike*." Daily for challenges, and never more than one a day.
@@ -77,8 +78,8 @@ There are two roles, and everyone can be both:
 ### D. Reading a journey
 
 - **D1 Journey page:** cover, title, creator, status, dates, counts (days · entries · followers), a **Follow** button, the Highlights strip, then the timeline.
-- **D2 Timeline:** vertical and grouped by Day or Part, with sticky labels and swipeable photos. A **Jump to** sheet lists the days and milestones. New readers get **Start from the beginning**; followers get **Continue where you left off**.
-- **D3 Entry view:** full-screen photos, text, place, likes and comments.
+- **D2 Timeline:** vertical and grouped by Day or Part, with sticky labels and swipeable photos and clips. Challenge journeys show their "Day 12 of 30" progress at the top. A **Jump to** sheet lists the days and milestones. New readers get **Start from the beginning**; followers get **Continue where you left off**.
+- **D3 Entry view:** full-screen photos and video, text, place, likes and comments.
 - **D4 Map view:** entries that have a place appear as numbered pins, joined in order. Tap a pin to open the entry.
 - **D5 Catch up:** "3 new entries since your last visit" markers on the timeline and in the feed.
 
@@ -107,7 +108,7 @@ There are two roles, and everyone can be both:
 
 - **H1 Report** a journey, entry, comment or user.
 - **H2 Block** a user: they can't see, follow or comment on your content, and you don't see theirs.
-- **H3 Automatic screening** of uploaded photos (nudity, violence) and a profanity filter on comments. Flagged items are held for review.
+- **H3 Automatic screening** of uploaded photos and video clips (nudity, violence) and a profanity filter on comments. Flagged items are held for review.
 - **H4 Moderation queue** for the team (start with a simple internal page).
 - **H5 Account deletion** in the app, plus a web page for deletion requests (Google Play requires both).
 - **H6 Location privacy:** city level by default, exact pins only if you choose, GPS data stripped from photos on upload, no live location.
@@ -116,7 +117,7 @@ There are two roles, and everyone can be both:
 ### I. Quality bar
 
 - **I1** iOS and Android phones from one codebase; portrait; light and dark mode; dynamic text sizes; screen-reader labels; 44 pt touch targets; AA colour contrast.
-- **I2** A smooth 60 fps timeline. Photos load progressively with placeholders and are compressed on the phone before upload.
+- **I2** A smooth 60 fps timeline. Photos and video stills load progressively with placeholders. Photos and clips are compressed on the phone before upload.
 - **I3** Works on bad networks: retries, offline drafts, and recently viewed journeys readable offline.
 - **I4** Analytics and crash reporting from day one.
 - **I5** English at launch, with all text ready for translation.
@@ -126,7 +127,6 @@ There are two roles, and everyone can be both:
 | When | Feature | Why later |
 |---|---|---|
 | **v1.1** | **Polls on entries** ("Where should I go next?"), the simple version of "choose your own adventure" | A big engagement win, but it needs an audience first |
-| | **Short videos** (up to 60 s) | Transcoding and storage cost; use a managed video service |
 | | **Story cards** for Instagram and TikTok with a "Follow my journey" link | A growth loop, once the core works |
 | | **Creator stats** (views, followers over time) | |
 | | Scheduled entries and smarter reminders | |
@@ -134,6 +134,7 @@ There are two roles, and everyone can be both:
 | | Badges for completion and milestones: celebratory, never punishing | |
 | | Download whole journeys for offline reading | |
 | | **Journey+** subscription (see the [roadmap](03-roadmap.md#monetization-staged)) | |
+| | **Longer videos** (over 60 s), as a Journey+ perk | Storage and streaming cost |
 | | **Export** a completed journey as a PDF or a printed photo book | Proven revenue in travel |
 | | Optional AI help: draft a recap or caption, translate entries. The creator always edits and approves. | |
 | **v2** | Creator tips and paid "exclusive" journeys | Needs scale and payments work |
@@ -149,7 +150,7 @@ There are two roles, and everyone can be both:
 |---|---|
 | **Standalone posts outside a journey** | Every post belongs to a story; that *is* the product. Quick add and the Open Journal template keep posting easy. |
 | **24-hour stories or disappearing posts** | Journey is about keeping a story, not losing it. |
-| **An endless, algorithmic video feed** | Home is chronological from what you follow. Discover uses simple, explainable rules. |
+| **An endless, algorithmic or autoplaying video feed** | Home is chronological from what you follow. Discover uses simple, explainable rules. Clips play only when tapped. |
 | **Direct messages (in the MVP)** | The biggest moderation and safety burden. Comments cover conversation. Revisit after launch. |
 | **Automatic GPS route tracking or live location** | Safety and battery life, and it's Polarsteps' game. Places come from entries. |
 | **Live streaming, AR/VR, heavy photo or video editing** | Expensive and off-mission. The phone's own editor is enough. |
@@ -169,7 +170,7 @@ There are two roles, and everyone can be both:
 | Followers lose interest or miss updates | Batched push per new entry, "new since your last visit" markers, Continue reading, the Highlights strip |
 | Long journeys are hard to navigate | Day labels, milestones, the Jump to sheet, the map view |
 | Quality control | The Discover quality bar, simple ranking, reporting and moderation |
-| Video storage cost | Photos only in the MVP, compressed on the phone. Video in v1.1 through a managed service, with limits. |
+| Video storage cost | Clips only: at most 3 per entry, each up to 60 s, compressed on the phone, then transcoded and streamed by a managed video service. Longer videos come later as a Journey+ perk. |
 | Unclear monetization | A free MVP to prove retention, then a subscription, photo books, creator tips and labeled sponsorships ([roadmap](03-roadmap.md#monetization-staged)) |
 | Competition (Instagram, TikTok, Substack, Polarsteps) | Visual stories told in parts, for any journey, with followers and discovery (see §2) |
 | Single posts for casual users (ChatGPT's "hybrid" idea) | Rejected on purpose (see §6). The Open Journal template covers casual posting. |
@@ -185,15 +186,21 @@ There are two roles, and everyone can be both:
 | Completion | Journeys marked complete, or reaching their template's end | Track and improve |
 | Growth loop | Share-link views → installs → follows | Track and improve |
 
-## 9. Decisions to confirm
+Track every metric separately for travel journeys and challenge journeys. The beta decides which audience to double down on.
 
-These are my recommendations. Tell me what to change and I'll update the docs and the designs.
+## 9. Decisions
 
-1. **Launch audience:** travel first, with the 30-Day Challenge template as a second bet. *(The alternative is challenges first, which avoids Polarsteps.)*
-2. **Name:** "Journey" is already taken in the app stores by [Journey – Diary, Journal](https://apps.apple.com/app/id1300202543) (Two App Studio). Keep *Journey* as the working name and choose a store name before launch, after checking trademarks, both stores and the domain. Some unchecked ideas to start from: *Journeyline*, *Trailbook*, *Storytrail*.
-3. **Follow model:** follow journeys **and** creators.
-4. **Video:** v1.1, not the MVP.
-5. **Visibility:** Public, Unlisted or Private. No followers-only mode until v2.
-6. **Money:** a free MVP with no ads; a subscription and photo books later.
-7. **Market and language:** English first. Which countries do you want to launch in?
-8. **Team and budget:** solo with Claude Code, or with hired help? This changes the timeline in the [roadmap](03-roadmap.md).
+Confirmed with you on 7 Nov 2026:
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Launch audience | Travelers **and** challenge-takers, with equal priority. Trip and 30-Day Challenge are the flagship templates. |
+| 2 | Name | *Journey* is the working name. The store name is chosen before launch, because [Journey – Diary, Journal](https://apps.apple.com/app/id1300202543) (Two App Studio) already uses it; check trademarks, both stores and the domain. Unchecked ideas to start from: *Journeyline*, *Trailbook*, *Storytrail*. |
+| 3 | Follow model | Follow journeys **and** creators. |
+| 4 | Video | Short clips in the MVP: at most 3 per entry, each up to 60 seconds. |
+| 5 | Visibility | Public, Unlisted or Private. No followers-only mode until v2. |
+| 6 | Money | Free at launch with no ads. Journey+ and photo books come after the beta. |
+| 7 | Market | Worldwide, in English at launch. All text is ready for translation. |
+| 8 | Team | You, building with Claude Code. |
+
+Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)).

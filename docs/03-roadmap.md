@@ -10,32 +10,35 @@
 
 ## Phases
 
-Durations are rough, for one developer working with Claude Code (give or take 50%).
+Durations are rough, for you working with Claude Code (give or take 50%).
 
 ### Phase 0: Shape (1–2 weeks) ← we are here
 
-- [x] Requirements, tech stack and approach (these docs)
-- [ ] Figma: foundations, components and key screens (see the [design brief](04-design-brief.md))
-- [ ] A clickable prototype tested with 5–8 travelers and 2–3 people doing a challenge. Can they create a journey and add an entry without help? Would they share it?
-- [ ] Final name, domain and social handles (see [decision 2](01-requirements.md#9-decisions-to-confirm))
-- [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, PostHog, Sentry
+- [x] Requirements, tech stack and approach (these docs; decisions confirmed 7 Nov 2026)
+- [x] Figma: foundations, components and 14 key screens (see the [design brief](04-design-brief.md))
+- [ ] Figma: update the designs for the confirmed decisions (video clips, challenge journeys), fix the dark Home screen, and link a clickable prototype. This is waiting on Figma: the free Starter plan's edit allowance has run out.
+- [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
+- [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry
 
-### Phase 1: Build the MVP (about 10–12 weeks)
+### Phase 1: Build the MVP (about 13–15 weeks)
 
 Each milestone ends with a build on your phone.
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|
 | **M1 Foundations** | Repo scaffold, CI, design tokens, sign-in, profiles, onboarding shell, a development build on your phone, the environment setup script | 2 |
-| **M2 Create** | Create a journey with templates; add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete | 3 |
-| **M3 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers | 2 |
-| **M4 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
-| **M5 Finish and safety** | Map view, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |
+| **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete | 3 |
+| **M3 Video** | Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
+| **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers | 2 |
+| **M5 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
+| **M6 Finish and safety** | Map view, challenge progress, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |
 
 ### Phase 2: Private beta (4–6 weeks)
 
 - TestFlight (iOS) and a Google Play **closed test**.
-- Recruit **30–50 creators** who have a trip or challenge during the beta: friends, micro-influencers, travel communities. Give them a **starter kit** with templates, tips and their "Follow my journey" link. Their followers become the first readers.
+- Recruit **30–50 creators**, about half with a trip during the beta and half starting a 30-day challenge: friends, micro-influencers, and travel, fitness and learning communities. Give them a **starter kit** with templates, tips and their "Follow my journey" link. Their followers become the first readers.
+- Measure the two groups separately, then double down on the one that keeps posting and following.
+- Choose the store name, domain and social handles before the beta ends.
 - Ship updates weekly over the air, and interview 10 users.
 - **Suggested exit criteria:** at least 40% of beta creators post 5+ entries; at least 30% of new-entry notifications are opened; at least 99.5% of sessions are crash-free; D30 retention is heading toward 20%.
 
@@ -44,7 +47,7 @@ Each milestone ends with a build on your phone.
 ### Phase 3: Public launch
 
 - Release on the App Store and Google Play, with store screenshots made from the Figma screens.
-- Launch where travelers already are: creators' bios ("Follow my journey"), travel subreddits and forums (respect their self-promotion rules), Product Hunt.
+- Launch worldwide in English, where both audiences already are: creators' bios ("Follow my journey"), travel, fitness and learning communities on Reddit and in forums (respect their self-promotion rules), Product Hunt.
 - Watch the metrics daily for two weeks and fix friction fast.
 
 ### Phase 4: Grow and monetize
@@ -53,8 +56,8 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 
 ## Monetization (staged)
 
-1. **MVP:** free, with no ads. Earn retention first.
-2. **Journey+ subscription** (test around US$3–5 a month): longer videos, offline downloads, creator stats, themes, PDF export.
+1. **MVP (confirmed):** free, with no ads. Earn retention first.
+2. **Journey+ subscription** (test around US$3–5 a month): videos longer than 60 seconds, offline downloads, creator stats, themes, PDF export.
 3. **Printed photo books** of completed journeys through a print-on-demand partner. Polarsteps shows that travelers pay for this.
 4. **Creator earnings:** tips and paid exclusive journeys, with a platform fee.
 5. **Brands:** clearly labeled sponsored journeys, once there's an audience.
@@ -69,7 +72,7 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 
 ## Next steps
 
-1. Read the [requirements](01-requirements.md) and answer the [decisions](01-requirements.md#9-decisions-to-confirm).
-2. Review the Figma designs (the link is in the [design brief](04-design-brief.md)).
+1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
+2. Unlock Figma editing, by upgrading to a paid Figma seat or waiting for the Starter allowance to reset. Then I update the designs for video and challenges, fix dark Home and link a clickable prototype.
 3. Start the Apple Developer and Google Play accounts now. Verification can take days, and the Google Play rule above needs 14 days.
 4. Then scaffold the app (M1) and finish setting up the environment.

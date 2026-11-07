@@ -83,6 +83,8 @@ Fraunces (a warm editorial serif) for story titles, Inter for everything else. B
 | 12 | Activity | Notifications grouped by today and earlier |
 | 13 | Journey completed | Celebration, recap card, Share |
 | 14 | Home in dark mode | The same screen with the dark tokens |
+| 15 | Challenge journey *(to design)* | A 30-Day Challenge page: "Day 12 of 30" progress, daily check-ins, supporters' comments |
+| 16 | Video clip *(to design)* | Clip tile with its length in Add entry; play button and length on timeline entries and feed cards; full-screen tap-to-play player |
 
 ## Components
 
@@ -112,5 +114,6 @@ Fictional, and consistent across screens:
 
 - The free Figma Starter plan allows one variable mode per collection, which is why light and dark are two collections. On a Professional plan they can become one `Color` collection with Light and Dark modes.
 - Photos are illustrated stand-ins. Real photos (or AI-generated ones via Figma's image tool, which uses Figma AI credits) can be swapped in with the Cover / Photo properties.
+- **Design updates from the decisions confirmed on 7 Nov 2026 are pending:** screens 15 and 16 above, plus giving travel and challenge journeys equal weight in Welcome, Pick interests and Discover.
 - **14 Home · dark is unfinished.** Text inside component instances still uses the light tokens. The fix is to rebind every `Color · Light` variable to its `Color · Dark` twin across the frame. It wasn't applied because the Figma MCP call limit for the Starter plan was reached.
 - Not started: a cover for the Cover page, a foundations specimen board, and a clickable prototype.
