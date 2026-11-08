@@ -1,121 +1,82 @@
-# Journey — Design Brief (Figma)
+# Journey — Design Principles and Cues
 
-> **Figma file:** [Journey — App Design (MVP)](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl) (in the drafts of "sai pavan's team"). Status is at the [end of this brief](#figma-file-status).
+> **Status:** Design 2.0, proposed 7 Nov 2026 · **Updated:** 8 Nov 2026
 >
-> Built from the [requirements](01-requirements.md). The Figma file follows this brief, so change the brief first.
->
-> **New direction proposed on 7 Nov 2026:** [Journey Design 2.0](https://claude.ai/artifact/Hmc5sAXD5cRtgof87L354X) ([source](../design/preview-v2/)). It uses real photos, bold Plus Jakarta Sans, glass floating controls, light and dark themes, and a choice of three accents (Iris, Lagoon or Sun). Once you pick an accent and approve it, it replaces the visual direction below and the Figma file is rebuilt to match.
+> The design source of truth is the **Journey Hub** (`design/hub`): the screens, the design system and these cues. Every colour, font size and corner radius lives in `design/tokens.json`, which the hub and the app both read. We don't use Figma.
+
+## Direction
+
+Real photography, bold Plus Jakarta Sans, glass controls that float over the content, and light and dark themes designed together. The layouts borrow the clean, friendly feel of Airbnb (see [Inspiration](05-inspiration.md)). One accent colour carries the brand. It is still to be chosen: Iris (violet-blue), Lagoon (mint-teal) or Sun (golden yellow).
 
 ## Principles
 
-1. **Story first:** big photos, editorial titles, generous space. It should feel like a beautiful travel journal, not a dashboard.
-2. **Time is the spine:** the timeline line, its dots and the **DAY 5** labels are the signature element everywhere.
-3. **Posting is effortless:** **+** is always one tap away, and an entry fits on one screen.
-4. **Calm, not addictive:** few badges, no autoplay, and a clear "You're all caught up" ending.
-5. **Accessible by default:** AA contrast, 44 pt touch targets, dynamic type, and status never shown by colour alone.
+1. **Photos lead.** Real photos and clips, edge to edge. The interface stays quiet so the story shows.
+2. **Time is the spine.** Day labels, progress rings and the route line always show where a journey is.
+3. **One clear next step.** Each screen has one primary action in the accent colour: Follow, Post, Get started.
+4. **Calm, not addictive.** No autoplay, no streaks to lose, no red badges everywhere, and a clear "You're all caught up".
+5. **Friendly and plain.** Short words people already use. No jargon, no blame.
 
-## Foundations
+## Visual cues
 
-### Colour (semantic tokens, light and dark)
+| Cue | Rule |
+|---|---|
+| Photos | Full-bleed covers. 20 px rounded corners inside cards. A dark gradient under any text that sits on a photo. |
+| Type | Plus Jakarta Sans only. Titles in ExtraBold (800) with tight letter-spacing; body text in Medium (500). |
+| Colour | Neutral surfaces with a faint cool tint. The accent only for primary actions, progress and milestones. Pink-red only for likes. |
+| Glass | The tab bar, the Follow bar and buttons over photos use frosted glass (16–24 px blur). |
+| Shape | Cards 20 px, panels 24 px, sheets 30 px. Buttons, chips and pills fully round. |
+| Icons | 24 px line icons with 2 px rounded strokes. Category tabs use 3D-style icons (emoji for now). |
+| Depth | Soft shadows in light mode. Hairline borders instead of shadows in dark mode. |
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `bg` | #FAF7F2 | #15120F | App background ("paper") |
-| `surface` | #FFFFFF | #201C18 | Cards, sheets |
-| `surface-sunken` | #F2EDE6 | #2A2520 | Inputs, chips, image placeholders |
-| `border` | #E6DFD6 | #3A332C | Dividers, outlines |
-| `text` | #1F1B16 | #F3EEE7 | Primary text |
-| `text-muted` | #6B6259 | #B3A99E | Secondary text |
-| `accent` | #C9461F | #F07A52 | Primary buttons, active tab, timeline dots |
-| `on-accent` | #FFFFFF | #15120F | Text and icons on `accent` |
-| `accent-soft` | #FBE9E1 | #3A2219 | Tinted backgrounds |
-| `accent-text` | #A93A18 | #F07A52 | Accent-coloured text and links |
-| `route` | #1F6F6B | #5FBDB5 | Map routes, place labels |
-| `route-soft` | #E0F0EE | #17302E | Map and place backgrounds |
-| `status-active` / `-soft` | #276B43 / #E3F2E8 | #6FCF97 / #173326 | Active pill |
-| `status-paused` / `-soft` | #855900 / #FBF0D9 | #E8B04B / #3A2D12 | Paused pill |
-| `status-completed` / `-soft` | #3D4DB7 / #E6E9FA | #9AA6F5 / #232845 | Completed pill |
+## Interaction cues
 
-Text pairs meet WCAG AA (at least 4.5:1). For example: white on `accent` is 4.8:1, `text-muted` on `bg` is 5.6:1, and each status colour on its soft background is at least 5.4:1.
+- Video clips never autoplay: tap to play, swipe to the next part of the story.
+- Entries open as cards you swipe through, with the next one peeking in from the side.
+- The tab bar floats above the content, and the content scrolls underneath it.
+- The **+** button always creates: a new entry first, a new journey second.
+- Posting late or offline just works. Show what is waiting to upload, never an error.
+- A missed day in a challenge is a gap in the grid, never a lost streak.
+- Every screen ends somewhere: "You're all caught up", not an endless feed.
 
-### Type
+## Writing cues
 
-| Style | Font | Size / line height | Use |
-|---|---|---|---|
-| Display | Fraunces SemiBold | 32 / 38 | Journey title on the cover |
-| Title 1 | Fraunces SemiBold | 26 / 32 | Screen titles |
-| Title 2 | Fraunces SemiBold | 20 / 26 | Card titles |
-| Headline | Inter SemiBold | 17 / 22 | Section headers, names |
-| Body | Inter Regular | 16 / 24 | Entry text |
-| Callout | Inter Regular | 15 / 20 | Secondary text |
-| Caption | Inter Medium | 13 / 18 | Details (place · time) |
-| Label | Inter SemiBold, capitals, +0.6 spacing | 12 / 16 | DAY 5, section labels |
+| Do | Don't |
+|---|---|
+| Post today's check-in | Submit |
+| Follow journey | Subscribe to updates |
+| You're offline. This entry is saved and will post when you're back. | Network error 503 |
+| You're all caught up | No more items |
+| Day 14 · Hoi An | 14/03/2026 14:32 · Hội An Province |
+| 46 people cheering you on | 46 followers engaged |
 
-Fraunces (a warm editorial serif) for story titles, Inter for everything else. Both are free Google Fonts.
+## Accessibility
 
-### Space, shape, icons
+- Text contrast is at least 4.5:1, checked in both themes and with all three accents.
+- Touch targets are at least 44 pt.
+- Dynamic text sizes and screen readers are supported; status is never shown by colour alone (pills always carry a label).
+- Reduced motion is respected.
 
-- A 4-point spacing scale: 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40 · 48. Screen side margin: 16.
-- Corner radius: 8 for chips and inputs, 14 for cards, 20 for photos inside cards, 28 for sheets, fully round for avatars and pills.
-- Line icons at 24 px with a 2 px rounded stroke.
-- Photos: full-bleed covers with a dark gradient at the bottom so titles stay readable.
+## Screens
 
-## Layout
-
-- Base frame **393 × 852** (iPhone 15/16). Check layouts at 360 × 800 (a common Android size).
-- Safe areas: 54 pt at the top (status bar) and 34 pt at the bottom (home indicator).
-- **Tab bar:** Home · Discover · **+** · Activity · Profile.
-- Platform differences (back gesture, share sheet, date picker) are handled in code, not with separate designs.
-
-## Screens (MVP)
-
-| # | Screen | Shows |
+| # | Screen | Status |
 |---|---|---|
-| 1 | Welcome | Photo collage, tagline, Get started and Sign in |
-| 2 | Pick interests | Category chips, Continue |
-| 3 | Home (Following) | Your active journeys (quick add), new entries grouped by journey, "You're all caught up" |
-| 4 | Discover | Search, category chips, Trending now, New journeys, Recently completed |
-| 5 | Journey page | Cover, title, creator, status, counts, Follow, Highlights, timeline with DAY labels |
-| 6 | Entry | Photos, text, place, likes, comments |
-| 7 | Map | Numbered pins joined in order, entry cards |
-| 8 | New journey: template | Trip · 30-Day Challenge · Learn a Skill · Build Something · Open Journal |
-| 9 | New journey: details | Title, cover, category, start date, visibility |
-| 10 | Add entry | Photos, text, date, place, milestone toggle, journey picker, offline state |
-| 11 | Profile | Header, Follow, Active and Completed tabs |
-| 12 | Activity | Notifications grouped by today and earlier |
-| 13 | Journey completed | Celebration, recap card, Share |
-| 14 | Home in dark mode | The same screen with the dark tokens |
-| 15 | Challenge journey *(to design)* | A 30-Day Challenge page: "Day 12 of 30" progress, daily check-ins, supporters' comments |
-| 16 | Video clip *(to design)* | Clip tile with its length in Add entry; play button and length on timeline entries and feed cards; full-screen tap-to-play player |
+| 01 | Welcome | Designed |
+| 02 | Home | Designed |
+| 03 | Journey page | Designed |
+| 04 | Entry | Designed |
+| 05 | Video clip | Designed |
+| 06 | Challenge journey | Designed |
+| 07 | Map | Designed |
+| 08 | Add entry | Designed |
+| — | Discover, Profile, Activity, Create journey, Sign in, Settings, Journey completed | To design, in the same style |
 
-## Components
+## Open design questions
 
-Button (primary, secondary, ghost; large and medium) · Chip (default, selected) · Status pill (active, paused, completed) · Avatar · Day label · Timeline node (default, milestone) · Journey card (feature, compact) · Tab bar · Top bar · Text field · Toast and banner · List row
+1. Accent colour: Iris, Lagoon or Sun.
+2. Custom 3D category icons, or keep emoji.
+3. Real photos for the store listing and marketing. The current ones are Unsplash stand-ins.
 
-## Sample content
+## History
 
-Fictional, and consistent across screens:
-
-- **Vietnam by motorbike** by @maya.rides · Travel · Active · Day 14 · 23 entries · 1.2k followers
-- **30 days of guitar** by @leo.strums · Learning · Active · Day 12 of 30
-- **Camino de Santiago** by @ana.walks · Travel · Completed · 34 days
-- **Couch to 10K** by @sam.runs · Fitness · Active · Week 5
-- **Building our tiny cabin** by @the.kims · Projects · Paused
-
-## Figma file status
-
-**Design system page**
-
-- **Variables:** `Color · Light` and `Color · Dark` (the same 19 token names, one collection per theme), `Spacing` (space/1–12) and `Radius` (sm, md, lg, xl, full). All have scopes and web code syntax set.
-- **Styles:** 14 text styles (Fraunces + Inter) and 2 shadow styles.
-- **Components:** 53 icons, Status bar, Home indicator, Button, Chip, Status pill, Avatar, Icon button, Map pin, Banner, Text field, Section header, Segmented control, Progress, Tab bar, Nav bar, Journey card, Timeline entry, Feed update, Notification row, List row, Template option, 8 illustrated covers and a base map.
-
-**Screens page:** screens 01–14 from the table above, built from those components and tokens. 05 Journey is drawn as one full-length scroll so the whole timeline is visible.
-
-**Limits and to-dos**
-
-- The free Figma Starter plan allows one variable mode per collection, which is why light and dark are two collections. On a Professional plan they can become one `Color` collection with Light and Dark modes.
-- Photos are illustrated stand-ins. Real photos (or AI-generated ones via Figma's image tool, which uses Figma AI credits) can be swapped in with the Cover / Photo properties.
-- **Design updates from the decisions confirmed on 7 Nov 2026 are pending:** screens 15 and 16 above, plus giving travel and challenge journeys equal weight in Welcome, Pick interests and Discover.
-- **14 Home · dark is unfinished.** Text inside component instances still uses the light tokens. The fix is to rebind every `Color · Light` variable to its `Color · Dark` twin across the frame. It wasn't applied because the Figma MCP call limit for the Starter plan was reached.
-- Not started: a cover for the Cover page, a foundations specimen board, and a clickable prototype.
+- **v1, 7 Nov 2026:** a warm paper look with serif titles and drawn illustrations, built in Figma ([archive](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl)). Replaced by Design 2.0 after review; the Figma file is no longer updated.
+- **Design 2.0, 7 Nov 2026:** real photos, bold sans-serif type, glass controls, light and dark, three accent options.

@@ -1,0 +1,42 @@
+<figure class="arch" aria-labelledby="arch-cap">
+  <div class="arch-zones">
+    <div class="zone">
+      <p class="zone-h"><b>On the phone</b><span>The Journey app · Expo, React Native</span></p>
+      <ul>
+        <li>Screens</li>
+        <li>Data cache<span class="n">1</span><small>TanStack Query</small></li>
+        <li>Drafts and upload queue<span class="n">2</span><span class="n">3</span><small>SQLite, on the phone</small></li>
+      </ul>
+    </div>
+    <span class="arch-link" aria-hidden="true"><svg class="ic"><use href="#i-right"/></svg></span>
+    <div class="zone hl">
+      <p class="zone-h"><b>Supabase</b><span>The backend</span></p>
+      <ul>
+        <li>Sign-in and API<span class="n">1</span><span class="n">6</span><small>Supabase Auth, REST</small></li>
+        <li>Database<span class="n">1</span><span class="n">4</span><span class="n">5</span><small>Postgres with privacy rules (RLS)</small></li>
+        <li>Files<span class="n">2</span><small>Storage with a CDN</small></li>
+        <li>Edge Functions<span class="n">3</span><span class="n">4</span><small>push, moderation, share images</small></li>
+        <li>Scheduled jobs<span class="n">5</span><small>pg_cron</small></li>
+      </ul>
+    </div>
+    <span class="arch-link" aria-hidden="true"><svg class="ic"><use href="#i-right"/></svg></span>
+    <div class="zone">
+      <p class="zone-h"><b>Other services</b><span>Called by the app or the backend</span></p>
+      <ul>
+        <li>Video<span class="n">3</span><small>Mux: processing and streaming</small></li>
+        <li>Push notifications<span class="n">4</span><small>Expo Push to Apple (APNs) and Google (FCM)</small></li>
+        <li>Photo moderation<span class="n">4</span><small>an image moderation API</small></li>
+        <li>Share pages<span class="n">6</span><small>Next.js on Vercel</small></li>
+      </ul>
+    </div>
+  </div>
+  <ol class="arch-flows">
+    <li><span><b>Read and write.</b> The app talks to Supabase through supabase-js. The database checks every request against the privacy rules, so a private journey can't leak.</span></li>
+    <li><span><b>Photos.</b> The upload queue sends photos to Storage and resumes after a lost connection. The CDN serves them back quickly.</span></li>
+    <li><span><b>Clips.</b> The queue uploads clips straight to Mux. Mux tells an Edge Function by webhook when a clip is ready to play.</span></li>
+    <li><span><b>Notifications and safety.</b> A new entry starts Edge Functions that send push notifications and check photos with the moderation API.</span></li>
+    <li><span><b>Daily jobs.</b> pg_cron pauses journeys after 30 quiet days and updates the trending scores.</span></li>
+    <li><span><b>Sharing.</b> Share pages show public journeys to people without the app, and open the app for people who have it.</span></li>
+  </ol>
+  <figcaption id="arch-cap">How the pieces connect. A number on a part means it takes part in that numbered flow.</figcaption>
+</figure>

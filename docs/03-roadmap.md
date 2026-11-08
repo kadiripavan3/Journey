@@ -15,8 +15,8 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 ### Phase 0: Shape (1–2 weeks) ← we are here
 
 - [x] Requirements, tech stack and approach (these docs; decisions confirmed 7 Nov 2026)
-- [x] Figma: foundations, components and 14 key screens (see the [design brief](04-design-brief.md))
-- [ ] Figma: update the designs for the confirmed decisions (video clips, challenge journeys), fix the dark Home screen, and link a clickable prototype. This is waiting on Figma: the free Starter plan's edit allowance has run out.
+- [x] Design 2.0: eight key screens, the design system and design cues, kept in the Journey Hub (`design/hub`; see the [design principles and cues](04-design-brief.md))
+- [ ] Pick the accent colour and comment on anything to change in the hub
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
 - [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry
 
@@ -46,7 +46,7 @@ Each milestone ends with a build on your phone.
 
 ### Phase 3: Public launch
 
-- Release on the App Store and Google Play, with store screenshots made from the Figma screens.
+- Release on the App Store and Google Play, with store screenshots taken from the app itself.
 - Launch worldwide in English, where both audiences already are: creators' bios ("Follow my journey"), travel, fitness and learning communities on Reddit and in forums (respect their self-promotion rules), Product Hunt.
 - Watch the metrics daily for two weeks and fix friction fast.
 
@@ -73,6 +73,6 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 ## Next steps
 
 1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
-2. Unlock Figma editing, by upgrading to a paid Figma seat or waiting for the Starter allowance to reset. Then I update the designs for video and challenges, fix dark Home and link a clickable prototype.
+2. Pick the accent colour and leave comments in the Journey Hub. I update the hub, then design the remaining screens in the same style.
 3. Start the Apple Developer and Google Play accounts now. Verification can take days, and the Google Play rule above needs 14 days.
 4. Then scaffold the app (M1) and finish setting up the environment.

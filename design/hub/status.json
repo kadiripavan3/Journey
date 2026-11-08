@@ -1,0 +1,51 @@
+{
+  "phase": "Phase 0 · Shape",
+  "updated": "2026-11-08",
+  "summary": "Requirements are decided and the Design 2.0 screens are ready for your review. Next we pick the accent colour, then start building the app.",
+  "next": [
+    "Pick the accent colour: Iris, Lagoon or Sun (compare them on the Screens tab).",
+    "Comment on anything you want changed, on any screen or page of this hub.",
+    "Register the Apple Developer and Google Play accounts (verification takes days).",
+    "Then I set up the app project (milestone M1) and put a first build on your phone."
+  ],
+  "open": [
+    {
+      "q": "Accent colour",
+      "a": "Iris, Lagoon or Sun. Everything else in the design is decided."
+    },
+    {
+      "q": "Store name",
+      "a": "\"Journey\" is taken in the app stores. Needed before the beta ends."
+    },
+    {
+      "q": "Category icons",
+      "a": "Emoji for now; custom 3D icons can replace them later."
+    }
+  ],
+  "updates": [
+    {
+      "date": "2026-11-08",
+      "text": "**The Journey Hub** replaces Figma: screens, design system, cues, inspiration, requirements, roadmap and tech in one page, built from the repo. Comment buttons added."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "**Design 2.0**: real photos, bold type, glass controls, light and dark, three accent colours to choose from."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "**Requirements finalized** with your eight decisions: both audiences, short video clips, worldwide in English, free with no ads."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "First designs (v1) in Figma: a warm paper look. Replaced by Design 2.0 after your review."
+    },
+    {
+      "date": "2026-11-07",
+      "text": "Requirements, tech stack, roadmap and design brief written from your earlier AI discussions."
+    },
+    {
+      "date": "2026-11-06",
+      "text": "Project started, with its own cloud environment."
+    }
+  ]
+}

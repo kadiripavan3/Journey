@@ -1,0 +1,12 @@
+{
+  "name": "journey-hub",
+  "private": true,
+  "type": "module",
+  "description": "Builds the Journey Hub page from the repo's docs, design tokens and screens.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "marked": "12.0.2"
+  }
+}

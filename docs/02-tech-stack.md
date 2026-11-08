@@ -32,7 +32,7 @@
 |---|---|
 | Framework | **Expo**, the latest stable SDK when we scaffold ([SDK 57](https://releases.sh/collections/frontend-frameworks/digest/2026-06-29) at the time of writing; [58 is in beta](https://expo.dev/changelog/sdk-58-beta.md)), React Native, TypeScript (strict) |
 | Navigation and deep links | **Expo Router** (file-based routes; universal links and app links for share URLs) |
-| UI | Our own small component kit, matching the Figma components. Design tokens come from the Figma variables as a typed theme. |
+| UI | Our own small component kit, matching the screens and components in the Journey Hub (`design/hub`). Colours, type and shapes come from `design/tokens.json`, turned into a typed theme. |
 | Animation and gestures | Reanimated, Gesture Handler |
 | Long lists (feed, timeline) | FlashList |
 | Images | expo-image (caching, blurred placeholders) |

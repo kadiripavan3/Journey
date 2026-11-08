@@ -1,0 +1,207 @@
+<title>Journey Hub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Noto+Color+Emoji&display=swap">
+<style>
+{{TOKENS_CSS}}
+{{STYLES}}
+</style>
+{{ICONS}}
+<div class="app" data-screens="auto" data-accent="{{DEFAULT_ACCENT}}">
+
+  <header class="masthead">
+    <div class="wrap">
+      <a class="brand" href="#overview"><span class="mark"><svg class="ic"><use href="#i-route"/></svg></span>Journey<span class="ver">Hub</span></a>
+      <nav class="nav" aria-label="Hub sections">
+        <a href="#overview">Overview</a>
+        <a href="#screens">Screens</a>
+        <a href="#system">Design system</a>
+        <a href="#cues">Cues</a>
+        <a href="#inspiration">Inspiration</a>
+        <a href="#requirements">Requirements</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#tech">Tech</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="view" data-view="overview" id="view-overview">
+      <div class="ov-hero">
+        <div class="ov-text">
+          <p class="kicker">Project hub · {{STATUS_PHASE}}</p>
+          <h1>Journey</h1>
+          <p class="lead">A social app where every post is part of a story. People start a journey (a trip, a 30-day challenge, a build), add entries over time, and others follow along for the next chapter.</p>
+          <p class="status-line">{{STATUS_SUMMARY}}</p>
+          <div class="facts">
+            <span class="fact"><b>Audience</b>Travelers and challenge-takers</span>
+            <span class="fact"><b>Platforms</b>iOS and Android</span>
+            <span class="fact"><b>Stack</b>Expo + Supabase</span>
+            <span class="fact"><b>First version</b>About 13–15 weeks</span>
+            <span class="fact"><b>Team</b>You + Claude Code</span>
+          </div>
+        </div>
+        <div class="collage" aria-hidden="true"><div class="cl" style="background-image:url(img/scooters.jpg)"><span class="cl-tag">Day 14 · Hoi An</span></div><div class="cl" style="background-image:url(img/guitar.jpg)"><span class="cl-tag">Day 9 of 30</span></div><div class="cl" style="background-image:url(img/surf-video.jpg)"><span class="cl-tag"><svg class="ic f"><use href="#i-play"/></svg>0:42</span></div></div>
+      </div>
+
+      <div class="tiles">
+        <a class="tile big" href="#screens" style="--img: url(img/road.jpg)"><span class="tile-eyebrow">Design 2.0</span><b>Screens</b><span>Eight screens in light and dark. Try the three accent colours.</span></a>
+        <a class="tile" href="#system"><b>Design system</b><span>Colours, type, shapes and components, all from one tokens file.</span></a>
+        <a class="tile" href="#cues"><b>Cues</b><span>Principles, visual and writing rules, accessibility.</span></a>
+        <a class="tile" href="#inspiration"><b>Inspiration</b><span>Your five references and what we take from each.</span></a>
+        <a class="tile" href="#requirements"><b>Requirements</b><span>What we build, what we don't, and the decisions made.</span></a>
+        <a class="tile" href="#roadmap"><b>Roadmap</b><span>Phases, milestones, beta and launch.</span></a>
+        <a class="tile" href="#tech"><b>Tech</b><span>Stack, architecture, data model and running costs.</span></a>
+      </div>
+
+      <div class="duo">
+        <div class="panel"><h2 class="title2">Next steps</h2><ol class="steps">{{STATUS_NEXT}}</ol></div>
+        <div class="panel"><h2 class="title2">Open questions</h2><div class="qs">{{STATUS_OPEN}}</div></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="title2">How we work together</h2>
+        <ol class="flow">
+          <li><b>You comment</b><span>Tap Comment on any screen or page of this hub, or use comment mode in the toolbar. Say what you like and what to change.</span></li>
+          <li><b>I update</b><span>At the start of each session I read your comments, change the docs and screens, and republish this page at the same link.</span></li>
+          <li><b>We build</b><span>The app is built from the same files: the tokens, the screens and the requirements. What you see here is what ships.</span></li>
+        </ol>
+      </div>
+
+      <div class="ov-section">
+        <h2 class="title2">Decisions</h2>
+        <div class="doc">{{DECISIONS}}</div>
+      </div>
+
+      <div class="ov-section">
+        <h2 class="title2">Recent updates</h2>
+        <ul class="updates">{{UPDATES}}</ul>
+      </div>
+    </section>
+
+    <section class="view" data-view="screens" id="view-screens" hidden>
+      <div class="view-head">
+        <div>
+          <h1 class="vh">Screens</h1>
+          <p class="sub">Design 2.0: real photos, bold type and glass controls that float over the content. Switch the theme and try each accent; every screen updates.</p>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="ctl"><span class="label" id="lbl-theme">Theme</span>
+          <div class="seg" role="group" aria-labelledby="lbl-theme">
+            <button type="button" id="th-auto" data-set-screens="auto" aria-pressed="true">Auto</button>
+            <button type="button" id="th-light" data-set-screens="light" aria-pressed="false">Light</button>
+            <button type="button" id="th-dark" data-set-screens="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+        <div class="ctl"><span class="label" id="lbl-accent">Accent</span>
+          <div class="swatches" role="group" aria-labelledby="lbl-accent">{{ACCENT_SWATCHES}}</div>
+        </div>
+      </div>
+      <div class="gallery" id="gallery">
+{{SCREENS}}
+      </div>
+      <p class="hint">Swipe sideways to see all 8 screens.</p>
+    </section>
+
+    <section class="view" data-view="system" id="view-system" hidden>
+      <div class="view-head">
+        <div>
+          <h1 class="vh">Design system</h1>
+          <p class="sub">Generated from <code>design/tokens.json</code>. The same file becomes the app's theme, so the app looks exactly like the screens here.</p>
+        </div>
+        <button type="button" class="cbtn" data-comment-for="view-system" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button>
+      </div>
+      <div class="sys two">
+        <div class="panel">
+          <h3>Accent colour</h3>
+          <p>{{ACCENT_INTRO}}</p>
+          <div class="acc-list">{{SYS_ACCENTS}}</div>
+        </div>
+        <div class="panel">
+          <h3>Surfaces and status</h3>
+          <p>Neutral greys with a faint cool tint, so the photos stay the most colourful thing on screen.</p>
+          <div class="tok">{{SYS_LIGHT}}{{SYS_DARK}}</div>
+        </div>
+        <div class="panel">
+          <h3>Type</h3>
+          <p>One family, Plus Jakarta Sans, in five weights. Titles are set tight in ExtraBold.</p>
+          <div class="type-spec">{{SYS_TYPE}}</div>
+        </div>
+        <div class="panel">
+          <h3>Shape and spacing</h3>
+          <p>Corner radius by role, and a 4-point spacing scale.</p>
+          <ul class="radius" aria-label="Corner radius">{{SYS_RADIUS}}</ul>
+          <ul class="space" aria-label="Spacing scale">{{SYS_SPACE}}</ul>
+        </div>
+        <div class="panel wide">
+          <h3>Components</h3>
+          <p>Rendered with the live tokens. They follow the theme switch on the Screens tab.</p>
+          <div class="comp-board ph">
+            <div class="row-wrap"><span class="btn">Follow</span><span class="btn btn-soft">Share</span><span class="btn btn-sm">Post</span><span class="spill"><i style="background:var(--ok)"></i>Active</span><span class="spill"><i style="background:var(--warn)"></i>Paused</span><span class="spill"><i style="background:var(--done)"></i>Completed</span><span class="chip"><span class="em">✨</span>Prompt</span></div>
+            <div class="comp-row">
+              <div class="jc"><div class="pic" style="background-image:url(img/van.jpg)"><span class="pill">2 new</span><svg class="fav on"><use href="#i-heart"/></svg></div><b>Van life, the slow way</b><span>Week 3 · Portugal</span><span>Noah · 1h ago</span></div>
+              <div class="pic" style="height:232px; background-image:url(img/cappadocia.jpg)"><span class="btn btn-sm btn-glass" style="position:absolute; left:12px; bottom:12px">Glass on a photo</span><span class="gbtn" style="position:absolute; right:12px; top:12px"><svg class="ic"><use href="#i-share"/></svg></span></div>
+            </div>
+            <div class="tabbar static">
+              <span class="tab on"><svg class="ic"><use href="#i-home"/></svg>Home</span>
+              <span class="tab"><svg class="ic"><use href="#i-compass"/></svg>Discover</span>
+              <span class="tab-plus"><svg class="ic"><use href="#i-plus"/></svg></span>
+              <span class="tab"><svg class="ic"><use href="#i-bell"/></svg>Activity<i class="dot"></i></span>
+              <span class="tab"><img src="img/av-me.jpg" alt="">You</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" data-view="cues" id="view-cues" hidden>
+      <div class="doc-head"><span class="src">docs/04-design-brief.md</span><button type="button" class="cbtn" data-comment-for="view-cues" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button></div>
+      <div class="doc-layout">
+        <article class="doc">{{DOC_CUES}}</article>
+        <nav class="toc" aria-label="On this page">{{TOC_CUES}}</nav>
+      </div>
+    </section>
+
+    <section class="view" data-view="inspiration" id="view-inspiration" hidden>
+      <div class="doc-head"><span class="src">docs/05-inspiration.md</span><button type="button" class="cbtn" data-comment-for="view-inspiration" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button></div>
+      <div class="doc-layout">
+        <article class="doc">{{DOC_INSPIRATION}}</article>
+        <nav class="toc" aria-label="On this page">{{TOC_INSPIRATION}}</nav>
+      </div>
+    </section>
+
+    <section class="view" data-view="requirements" id="view-requirements" hidden>
+      <div class="doc-head"><span class="src">docs/01-requirements.md</span><button type="button" class="cbtn" data-comment-for="view-requirements" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button></div>
+      <div class="doc-layout">
+        <article class="doc">{{DOC_REQUIREMENTS}}</article>
+        <nav class="toc" aria-label="On this page">{{TOC_REQUIREMENTS}}</nav>
+      </div>
+    </section>
+
+    <section class="view" data-view="roadmap" id="view-roadmap" hidden>
+      <div class="doc-head"><span class="src">docs/03-roadmap.md</span><button type="button" class="cbtn" data-comment-for="view-roadmap" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button></div>
+      <div class="doc-layout">
+        <article class="doc">{{DOC_ROADMAP}}</article>
+        <nav class="toc" aria-label="On this page">{{TOC_ROADMAP}}</nav>
+      </div>
+    </section>
+
+    <section class="view" data-view="tech" id="view-tech" hidden>
+      <div class="doc-head"><span class="src">docs/02-tech-stack.md</span><button type="button" class="cbtn" data-comment-for="view-tech" hidden><svg class="ic"><use href="#i-msg"/></svg>Comment on this page</button></div>
+      <div class="doc-layout">
+        <article class="doc">{{DOC_TECH}}</article>
+        <nav class="toc" aria-label="On this page">{{TOC_TECH}}</nav>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="wrap"><p class="credits">Built {{BUILT_AT}} from the Journey repo (<code>design/hub</code>). Photos from Unsplash via Lorem Picsum, by Alex Talmon, Alexander Shustov, Benjamin Combs, Daniela Cuevas, Harman Abiwardani, Harvey Enrile, Jordan McQueen, Joschko Hammermann, Joshua Earle, Kyle Szegedi, Lechon Kirb, Linh Nguyen, Lucas Boesche, Léa Dubedout, Monika Majkowska, Paulo Simões Mendes, Rafael Leão, Roksolana Zasiadko, Steven Lewis and Todd Quackenbush. Inspiration screenshots are Airbnb's, kept as private references. People, names and stories in the screens are made up.</p></footer>
+</div>
+
+<script>
+{{APP_JS}}
+</script>

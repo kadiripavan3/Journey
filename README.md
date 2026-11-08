@@ -4,12 +4,17 @@
 
 iOS and Android · Expo (React Native) + Supabase · Status: **Phase 0: requirements confirmed, design in progress**
 
-## Docs
+## Start here
 
-| Doc | What's in it |
+**[Journey Hub](https://claude.ai/artifact/Hmc5sAXD5cRtgof87L354X)** is one page with everything: the screens, design system, design cues, inspiration, requirements, roadmap and tech plan. It is built from the files below, so the repo is the source of truth. See [design/hub/README.md](design/hub/README.md) for how it is rebuilt.
+
+| File | What's in it |
 |---|---|
-| [01 · Requirements](docs/01-requirements.md) | What we build, what we don't, and the decisions to confirm |
-| [02 · Tech stack](docs/02-tech-stack.md) | Stack, architecture, data model, cloud workflow, costs |
-| [03 · Roadmap](docs/03-roadmap.md) | Phases, beta and launch plan, monetization |
-| [04 · Design brief](docs/04-design-brief.md) | Visual direction, screens, components, and the Figma file |
-| [Figma file](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl) | Design system and 14 MVP screens |
+| [docs/01-requirements.md](docs/01-requirements.md) | What we build, what we don't, and the decisions made |
+| [docs/02-tech-stack.md](docs/02-tech-stack.md) | Stack, architecture, data model, cloud workflow, costs |
+| [docs/03-roadmap.md](docs/03-roadmap.md) | Phases, beta and launch plan, monetization |
+| [docs/04-design-brief.md](docs/04-design-brief.md) | Design principles and cues |
+| [docs/05-inspiration.md](docs/05-inspiration.md) | References and what we take from each |
+| [design/tokens.json](design/tokens.json) | Colours, type, shapes: the single source for the hub and the app |
+| [design/hub/](design/hub/) | The hub's source: screens, styles, status and build script |
+| [CLAUDE.md](CLAUDE.md) | How Claude picks up the work in every session |
