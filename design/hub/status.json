@@ -1,17 +1,17 @@
 {
   "phase": "Phase 0 · Shape",
   "updated": "2026-11-08",
-  "summary": "Requirements are decided and the Design 2.0 screens are ready for your review. Next we pick the accent colour, then start building the app.",
+  "summary": "All 59 screens are designed, end to end, in 12 groups. Sun is the accent for now. Next you review the screens and comment, then we start building the app.",
   "next": [
-    "Pick the accent colour: Iris, Lagoon or Sun (compare them on the Screens tab).",
-    "Comment on anything you want changed, on any screen or page of this hub.",
+    "Review the 59 screens on the Screens page and comment on anything to change.",
+    "Confirm the accent colour once the screens are reviewed (Sun for now).",
     "Register the Apple Developer and Google Play accounts (verification takes days).",
     "Then I set up the app project (milestone M1) and put a first build on your phone."
   ],
   "open": [
     {
       "q": "Accent colour",
-      "a": "Iris, Lagoon or Sun. Everything else in the design is decided."
+      "a": "Sun for now. Iris and Lagoon stay switchable until you have reviewed every screen."
     },
     {
       "q": "Store name",
@@ -23,6 +23,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-08",
+      "text": "**59 screens in 12 groups**, from sign-in to deleting an account: login, registration, feed, discover, story line, posts, create, activity, profile, settings, safety and states. **Sun** chosen as the accent."
+    },
     {
       "date": "2026-11-08",
       "text": "**The Journey Hub** replaces Figma: screens, design system, cues, inspiration, requirements, roadmap and tech in one page, built from the repo. Comment buttons added."

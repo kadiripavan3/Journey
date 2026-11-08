@@ -138,7 +138,7 @@ const accentIntro = ACC.chosen
   : 'Pick one. Buttons, the + tab, progress rings and milestones use it.';
 
 const SWATCHES = [['bg', 'Background'], ['surface', 'Surface'], ['fill', 'Fill'], ['line', 'Line'], ['muted', 'Muted text'], ['text', 'Text'],
-  ['like', 'Like'], ['ok', 'Active'], ['warn', 'Paused'], ['done', 'Completed']];
+  ['like', 'Like'], ['ok', 'Active'], ['warn', 'Paused'], ['done', 'Completed'], ['danger', 'Danger']];
 const swatches = (mode, label) => `<div><span class="label">${label}</span><ul aria-label="${label} theme">${SWATCHES.map(([k, name]) => {
   const v = tokens.color[mode][k];
   if (!v) throw new Error(`tokens.json: color.${mode}.${k} is missing`);
@@ -153,13 +153,96 @@ const radii = Object.entries(tokens.radius).map(([k, v]) =>
   `<li><i style="--r:${Math.min(v, 60)}px"></i>${cap(k)}<code>${v >= 999 ? 'full' : `${v}px`}</code></li>`).join('');
 const spaces = tokens.space.map((s) => `<li><code>${s}</code><i style="--s:${s}"></i></li>`).join('');
 
+/* ---------- screens: one file per group, in the order of src/screens/index.json ----------
+   Each screen is written as <screen id title note [theme="dark"] [home="photo"] [class] [label]> ... </screen>.
+   Inside it: <sb> or <sb photo> (status bar), [[icon classes]] (an icon from icons.svg),
+   <kb>, <kb email> or <kb num> (keyboard), <tabbar active="home|discover|activity|you" [dot]>.
+   The build adds the device frame, the camera island, the home indicator, the number and the caption. */
+const ICONS = new Set([...src('icons.svg').matchAll(/<symbol id="i-([a-z0-9-]+)"/g)].map((m) => m[1]));
+const icon = (name, classes = '') => {
+  if (!ICONS.has(name)) throw new Error(`Unknown icon "${name}" (add it to src/icons.svg)`);
+  return `<svg class="ic${classes}"><use href="#i-${name}"/></svg>`;
+};
+const statusBar = (photo) => `<div class="sb${photo ? ' photo' : ''}"><span>9:41</span><svg width="73" height="13"><use href="#sbi"/></svg></div>`;
+function keyboard(kind) {
+  const key = (k, cls) => `<i${cls ? ` class="${cls}"` : ''}>${k}</i>`;
+  const row = (s) => [...s].map((c) => key(c)).join('');
+  if (kind === 'num') {
+    const keys = [['1', ''], ['2', 'ABC'], ['3', 'DEF'], ['4', 'GHI'], ['5', 'JKL'], ['6', 'MNO'], ['7', 'PQRS'], ['8', 'TUV'], ['9', 'WXYZ']];
+    return `<div class="kb num" aria-hidden="true"><div class="kpad">${keys.map(([d, l]) => `<i><b>${d}</b><small>${l}</small></i>`).join('')}<i class="blank"></i><i><b>0</b></i><i class="blank">${icon('backspace')}</i></div></div>`;
+  }
+  const bottom = kind === 'email'
+    ? key('123', 'mod') + key('space', 'space') + key('@', 'mod sm') + key('.', 'mod sm') + key('go', 'mod go')
+    : key('123', 'mod') + key(icon('smile'), 'mod sm') + key('space', 'space') + key('return', 'mod go');
+  return `<div class="kb" aria-hidden="true"><div class="kr">${row('qwertyuiop')}</div><div class="kr k2">${row('asdfghjkl')}</div>`
+    + `<div class="kr k3">${key(icon('shift'), 'mod')}${row('zxcvbnm')}${key(icon('backspace'), 'mod')}</div><div class="kr k4">${bottom}</div>`
+    + `<div class="kb-foot">${icon('globe')}${icon('mic')}</div></div>`;
+}
+function tabbar(active, dot) {
+  const tab = (id, label, name) => `<span class="tab${active === id ? ' on' : ''}">${icon(name)}${label}${id === 'activity' && dot ? '<i class="dot"></i>' : ''}</span>`;
+  return `<div class="tabbar">${tab('home', 'Home', 'home')}${tab('discover', 'Discover', 'compass')}<span class="tab-plus">${icon('plus')}</span>`
+    + `${tab('activity', 'Activity', 'bell')}<span class="tab${active === 'you' ? ' on' : ''}"><img src="img/av-me.jpg" alt="">You</span></div>`;
+}
+const expand = (body, where) => {
+  const out = body
+    .replace(/<sb( photo)?>/g, (m, p) => statusBar(!!p))
+    .replace(/<kb(?: (email|num))?>/g, (m, k) => keyboard(k))
+    .replace(/<tabbar active="([a-z]*)"( dot)?>/g, (m, a, d) => tabbar(a, !!d))
+    .replace(/\[\[([a-z0-9-]+)((?: [a-z0-9-]+)*)\]\]/g, (m, n, c) => icon(n, c));
+  const left = out.match(/\[\[|<sb\b|<kb\b|<tabbar\b/);
+  if (left) throw new Error(`${where}: shorthand not understood near "${out.slice(left.index, left.index + 40)}"`);
+  return out;
+};
+const SCREEN_RE = /<screen\s+([^>]*)>([\s\S]*?)<\/screen>/g;
+const attrsOf = (s) => Object.fromEntries([...s.matchAll(/([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+const screenIds = new Set();
+function renderScreen(a, body, num, where) {
+  for (const k of ['id', 'title', 'note']) if (!a[k]) throw new Error(`${where}: a <screen> has no ${k}`);
+  if (!/^[a-z0-9-]+$/.test(a.id)) throw new Error(`${where}: screen id "${a.id}" must be lowercase letters, digits and hyphens`);
+  if (screenIds.has(a.id)) throw new Error(`${where}: screen id "${a.id}" is used twice`);
+  screenIds.add(a.id);
+  const classes = ['screen', 'ph', a.theme === 'dark' ? 'always-dark' : '', a.class || ''].filter(Boolean).join(' ');
+  const label = a.label || `${a.title} screen. ${a.note}`;
+  return `<figure class="shot">
+<div class="device" id="shot-${a.id}" data-comment-target role="img" aria-label="${label}">
+<div class="${classes}">
+<div class="island"></div>
+${expand(body.trim(), `${where} #${a.id}`)}
+<div class="home${a.home === 'photo' ? ' photo' : ''}"></div>
+</div>
+</div>
+<figcaption><b><span class="n">${num}</span>${a.title}</b><span>${a.note}</span><button type="button" class="cbtn" data-comment-for="shot-${a.id}" hidden>${icon('msg')}Comment on this screen</button></figcaption>
+</figure>`;
+}
+const screenGroups = JSON.parse(src('screens/index.json')).groups.map((g, gi) => {
+  const where = `screens/${g.file}`;
+  if (process.env.HUB_ALLOW_MISSING && !existsSync(join(HUB, 'src', where))) { console.warn(`(skipping ${where}: not written yet)`); return null; }
+  const file = src(where);
+  const shots = [...file.matchAll(SCREEN_RE)].map((m, si) => renderScreen(attrsOf(m[1]), m[2], `${gi + 1}.${si + 1}`, where));
+  const stray = file.replace(SCREEN_RE, '').replace(/<!--[\s\S]*?-->/g, '').trim();
+  if (stray) throw new Error(`${where}: text outside <screen> blocks: "${stray.slice(0, 60)}"`);
+  if (!shots.length) throw new Error(`${where}: no screens`);
+  return { ...g, n: gi + 1, shots };
+}).filter(Boolean);
+const screenTotal = screenGroups.reduce((n, g) => n + g.shots.length, 0);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const screenSections = screenGroups.map((g) => `<section class="sg" id="screens-${g.id}" aria-labelledby="screens-${g.id}-h">
+<div class="sg-head"><span class="sg-n">${g.n}</span><div><h2 id="screens-${g.id}-h">${esc(g.title)}</h2><p>${esc(g.intro)}</p></div><span class="sg-count">${plural(g.shots.length, 'screen')}</span></div>
+<div class="gallery">
+${g.shots.join('\n')}
+</div>
+</section>`).join('\n');
+const screenNav = screenGroups.map((g) => `<a href="#screens-${g.id}">${esc(g.title)}<span>${g.shots.length}</span></a>`).join('');
+
 /* ---------- assemble ---------- */
 const vars = {
   TOKENS_CSS: tokensCss(),
-  STYLES: src('styles.css'),
+  STYLES: `${src('styles.css')}\n${src('phone.css')}`,
   ICONS: src('icons.svg'),
   APP_JS: src('app.js'),
-  SCREENS: src('screens.html'),
+  SCREEN_SECTIONS: screenSections,
+  SCREEN_NAV: screenNav,
+  SCREEN_SUMMARY: `${plural(screenTotal, 'screen')} in ${plural(screenGroups.length, 'group')}`,
   DEFAULT_ACCENT: base,
   ACCENT_SWATCHES: accentButtons,
   ACCENT_INTRO: accentIntro,
@@ -195,4 +278,4 @@ if (missing.length) throw new Error(`Missing images: ${missing.join(', ')}`);
 const unshown = ASSET_DIRS.flatMap((d) => readdirSync(join(HUB, d)).map((f) => `${d}/${f}`)).filter((f) => !refs.has(f));
 
 writeFileSync(join(HUB, 'index.html'), out);
-console.log(`Built design/hub/index.html: ${(out.length / 1024).toFixed(0)} KB, ${refs.size} images${unshown.length ? `; not shown anywhere: ${unshown.join(', ')}` : ''}`);
+console.log(`Built design/hub/index.html: ${(out.length / 1024).toFixed(0)} KB, ${plural(screenTotal, 'screen')} in ${screenGroups.length} groups, ${refs.size} images${unshown.length ? `; not shown anywhere: ${unshown.join(', ')}` : ''}`);

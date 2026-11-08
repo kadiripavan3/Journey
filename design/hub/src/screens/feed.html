@@ -1,0 +1,93 @@
+<screen id="home" title="Home" class="s-home" note="Airbnb-style search pill and 3D icon tabs. Your own challenge comes first, then big photo cards from journeys you follow." label="Home screen: search pill, category tabs with 3D icons, a Day 12 of your guitar challenge card, and photo cards of followed journeys above a floating glass tab bar.">
+  <sb>
+  <div class="scroll">
+    <div class="search"><svg class="ic"><use href="#i-search"/></svg><div class="q"><b>Find a journey</b><span>Anywhere · Any kind · Live now</span></div><span class="round"><svg class="ic"><use href="#i-sliders"/></svg></span></div>
+    <div class="cats">
+      <div class="cat on"><span class="em">🧭</span>For you</div>
+      <div class="cat"><span class="em">🏝️</span>Trips</div>
+      <div class="cat"><span class="em">🔥</span>Challenges<span class="new">NEW</span></div>
+      <div class="cat"><span class="em">📚</span>Learning</div>
+      <div class="cat"><span class="em">🛠️</span>Projects</div>
+    </div>
+    <div class="ctx">
+      <div><b>Day 12 of your guitar challenge</b><span>Post today's check-in · 46 cheering you on</span></div>
+      <div class="ring" style="--p:40"><span class="em">🎸</span></div>
+    </div>
+    <div class="sec"><h3>New from journeys you follow</h3><svg class="ic"><use href="#i-right"/></svg></div>
+    <div class="rail">
+      <div class="jc"><div class="pic" style="background-image:url(img/scooters.jpg)"><span class="pill">3 new</span><svg class="fav on"><use href="#i-heart"/></svg></div><b>Southeast Asia by motorbike</b><span>Day 14 · Hoi An, Vietnam</span><span>Maya · 2h ago</span></div>
+      <div class="jc"><div class="pic" style="background-image:url(img/el-nido.jpg)"><span class="pill">1 new</span><svg class="fav on"><use href="#i-heart"/></svg></div><b>Island hopping, Philippines</b><span>Day 9 · El Nido</span><span>Lena · 5h ago</span></div>
+    </div>
+    <div class="sec"><h3>Trending challenges</h3><svg class="ic"><use href="#i-right"/></svg></div>
+    <div class="rail">
+      <div class="jc sm"><div class="pic" style="background-image:url(img/runner.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>Couch to 10K</b><span>Week 5 · 2.1k following</span></div>
+      <div class="jc sm"><div class="pic" style="background-image:url(img/swimmer.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>Open-water swim</b><span>Day 21 of 30</span></div>
+      <div class="jc sm"><div class="pic" style="background-image:url(img/surfboard.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>Learn to surf</b><span>Day 6 · Bali</span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <span class="tab on"><svg class="ic"><use href="#i-home"/></svg>Home</span>
+    <span class="tab"><svg class="ic"><use href="#i-compass"/></svg>Discover</span>
+    <span class="tab-plus"><svg class="ic"><use href="#i-plus"/></svg></span>
+    <span class="tab"><svg class="ic"><use href="#i-bell"/></svg>Activity<i class="dot"></i></span>
+    <span class="tab"><img src="img/av-me.jpg" alt="">You</span>
+  </div>
+</screen>
+
+<screen id="following" title="Following feed" note="The full Home feed: newest first and grouped per journey (“3 new”), so one busy traveller never buries everyone else.">
+  <sb>
+  <div class="pg">
+    <div class="appbar"><span class="soft-round">[[left]]</span><span class="t">Following</span><span class="soft-round">[[sliders]]</span></div>
+    <div class="fchips"><span class="fchip on">All</span><span class="fchip"><span class="em">🏝️</span>Trips</span><span class="fchip"><span class="em">🔥</span>Challenges</span><span class="fchip"><span class="em">📚</span>Learning</span></div>
+    <div class="gap16"></div>
+    <div class="fgroup">
+      <div class="fhead"><img src="img/av-maya.jpg" alt=""><div class="tx"><b>Southeast Asia by motorbike</b><small>Maya Rivera · since yesterday</small></div><span class="newpill">3 new</span></div>
+      <div class="fpost">
+        <div class="pic" style="background-image:url(img/bromo.jpg)"><span class="pill acc">[[star f]]Milestone</span></div>
+        <span class="eyebrow">Day 22 · Mount Bromo</span>
+        <b>Sunrise over Mount Bromo</b>
+        <p>Left the guesthouse at 3am, rode up in the dark and watched the crater turn pink.</p>
+        <div class="react sm"><span class="liked">[[heart f]]318</span><span>[[msg]]44</span><span class="sp"></span><span class="more-new">2 more entries[[right]]</span></div>
+      </div>
+    </div>
+    <div class="fgroup">
+      <div class="fhead"><img src="img/av-lea.jpg" alt=""><div class="tx"><b>30 days of guitar</b><small>Lea Martin · 2h ago</small></div><span class="newpill">1 new</span></div>
+      <div class="frow"><div class="pic" style="background-image:url(img/guitar-neck.jpg)"></div><div class="tx"><span class="eyebrow">Day 12 of 30</span><b>Finally nailed the G chord</b><p>Slow, clean and only slightly buzzy.</p></div></div>
+    </div>
+  </div>
+  <tabbar active="home" dot>
+</screen>
+
+<screen id="caught-up" title="All caught up" note="The feed ends. “You're all caught up” replaces endless scrolling, with an easy way to find more if you want it.">
+  <sb>
+  <div class="pg">
+    <div class="appbar"><span class="soft-round">[[left]]</span><span class="t">Following</span><span class="soft-round">[[sliders]]</span></div>
+    <div class="fgroup">
+      <div class="fhead"><img src="img/av-lena.jpg" alt=""><div class="tx"><b>Island hopping, Philippines</b><small>Lena Park · 5h ago</small></div><span class="newpill">1 new</span></div>
+      <div class="frow"><div class="pic" style="background-image:url(img/el-nido.jpg)"></div><div class="tx"><span class="eyebrow">Day 9 · El Nido</span><b>Seven lagoons in one day</b><p>The boatman knew every hidden beach.</p></div></div>
+    </div>
+    <div class="fgroup">
+      <div class="fhead"><img src="img/av-kai.jpg" alt=""><div class="tx"><b>Learn to surf</b><small>Kai Nakamura · yesterday</small></div><span class="newpill">1 new</span></div>
+      <div class="frow"><div class="pic" style="background-image:url(img/surfboard.jpg)"></div><div class="tx"><span class="eyebrow">Day 6 of 30 · Bali</span><b>Stood up for four whole seconds</b><p>A 42-second clip, tap to play.</p></div></div>
+    </div>
+    <div class="caught"><span class="donec">[[check]]</span><b>You're all caught up</b><p>That's every new entry from the 6 journeys you follow.</p><span class="btn btn-line">Find more in Discover</span></div>
+    <div class="earlier">Seen before</div>
+    <div class="jrow faded"><div class="pic" style="background-image:url(img/terraces.jpg)"></div><div class="tx"><b>Roads that look like rivers</b><small>Southeast Asia by motorbike · Day 12</small></div></div>
+  </div>
+  <tabbar active="home">
+</screen>
+
+<screen id="home-empty" title="Home, before following" note="A new account never sees a blank page: an invitation to follow, then what's trending this week.">
+  <sb>
+  <div class="scroll">
+    <div class="search">[[search]]<div class="q"><b>Find a journey</b><span>Anywhere · Any kind · Live now</span></div><span class="round">[[sliders]]</span></div>
+    <div class="empty he"><span class="blob">🧭</span><b>Your Home is quiet</b><p>Follow a journey and its new entries land here, newest first.</p><span class="btn">Explore journeys</span></div>
+    <div class="sec"><h3>Trending this week</h3>[[right]]</div>
+    <div class="rail">
+      <div class="jc sm"><div class="pic" style="background-image:url(img/cappadocia.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>Cappadocia by balloon</b><span>Day 3 · 860 following</span></div>
+      <div class="jc sm"><div class="pic" style="background-image:url(img/piano.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>100 days of piano</b><span>Day 41 of 100</span></div>
+      <div class="jc sm"><div class="pic" style="background-image:url(img/cooking.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>My grandmother's recipes</b><span>Part 18 · 1.1k following</span></div>
+    </div>
+  </div>
+  <tabbar active="home">
+</screen>

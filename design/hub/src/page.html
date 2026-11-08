@@ -47,7 +47,7 @@
       </div>
 
       <div class="tiles">
-        <a class="tile big" href="#screens" style="--img: url(img/road.jpg)"><span class="tile-eyebrow">Design 2.0</span><b>Screens</b><span>Eight screens in light and dark. Try the three accent colours.</span></a>
+        <a class="tile big" href="#screens" style="--img: url(img/road.jpg)"><span class="tile-eyebrow">Design 2.0</span><b>Screens</b><span>{{SCREEN_SUMMARY}}, in light and dark, from sign-in to settings.</span></a>
         <a class="tile" href="#system"><b>Design system</b><span>Colours, type, shapes and components, all from one tokens file.</span></a>
         <a class="tile" href="#cues"><b>Cues</b><span>Principles, visual and writing rules, accessibility.</span></a>
         <a class="tile" href="#inspiration"><b>Inspiration</b><span>Your five references and what we take from each.</span></a>
@@ -85,25 +85,26 @@
       <div class="view-head">
         <div>
           <h1 class="vh">Screens</h1>
-          <p class="sub">Design 2.0: real photos, bold type and glass controls that float over the content. Switch the theme and try each accent; every screen updates.</p>
+          <p class="sub">{{SCREEN_SUMMARY}}, from the first sign-in to deleting an account. Switch the theme and try each accent: every screen updates. Tap Comment under any screen to tell me what to change.</p>
         </div>
       </div>
-      <div class="controls">
-        <div class="ctl"><span class="label" id="lbl-theme">Theme</span>
-          <div class="seg" role="group" aria-labelledby="lbl-theme">
-            <button type="button" id="th-auto" data-set-screens="auto" aria-pressed="true">Auto</button>
-            <button type="button" id="th-light" data-set-screens="light" aria-pressed="false">Light</button>
-            <button type="button" id="th-dark" data-set-screens="dark" aria-pressed="false">Dark</button>
+      <div class="sg-bar">
+        <div class="controls">
+          <div class="ctl"><span class="label" id="lbl-theme">Theme</span>
+            <div class="seg" role="group" aria-labelledby="lbl-theme">
+              <button type="button" id="th-auto" data-set-screens="auto" aria-pressed="true">Auto</button>
+              <button type="button" id="th-light" data-set-screens="light" aria-pressed="false">Light</button>
+              <button type="button" id="th-dark" data-set-screens="dark" aria-pressed="false">Dark</button>
+            </div>
+          </div>
+          <div class="ctl"><span class="label" id="lbl-accent">Accent</span>
+            <div class="swatches" role="group" aria-labelledby="lbl-accent">{{ACCENT_SWATCHES}}</div>
           </div>
         </div>
-        <div class="ctl"><span class="label" id="lbl-accent">Accent</span>
-          <div class="swatches" role="group" aria-labelledby="lbl-accent">{{ACCENT_SWATCHES}}</div>
-        </div>
+        <nav class="sg-nav" aria-label="Screen groups">{{SCREEN_NAV}}</nav>
       </div>
-      <div class="gallery" id="gallery">
-{{SCREENS}}
-      </div>
-      <p class="hint">Swipe sideways to see all 8 screens.</p>
+      <p class="hint">Swipe each row sideways to see every screen in a group.</p>
+{{SCREEN_SECTIONS}}
     </section>
 
     <section class="view" data-view="system" id="view-system" hidden>
@@ -199,7 +200,7 @@
 
   </main>
 
-  <footer class="wrap"><p class="credits">Built {{BUILT_AT}} from the Journey repo (<code>design/hub</code>). Photos from Unsplash via Lorem Picsum, by Alex Talmon, Alexander Shustov, Benjamin Combs, Daniela Cuevas, Harman Abiwardani, Harvey Enrile, Jordan McQueen, Joschko Hammermann, Joshua Earle, Kyle Szegedi, Lechon Kirb, Linh Nguyen, Lucas Boesche, Léa Dubedout, Monika Majkowska, Paulo Simões Mendes, Rafael Leão, Roksolana Zasiadko, Steven Lewis and Todd Quackenbush. Inspiration screenshots are Airbnb's, kept as private references. People, names and stories in the screens are made up.</p></footer>
+  <footer class="wrap"><p class="credits">Built {{BUILT_AT}} from the Journey repo (<code>design/hub</code>). Photos from Unsplash via Lorem Picsum, by Alex Talmon, Alexander Shustov, Benjamin Combs, Daniela Cuevas, Harman Abiwardani, Harvey Enrile, Jared Erondu, John Kutcher, Jordan McQueen, Joschko Hammermann, Joshua Earle, Kyle Szegedi, Lechon Kirb, Linh Nguyen, Lucas Boesche, Lukas Budimaier, Léa Dubedout, Monika Majkowska, Paulo Simões Mendes, Rafael Leão, Roksolana Zasiadko, Stefan Kunze, Stephy Pariande, Steven Lewis, Sylwia Bartyzel, Todd Quackenbush and Webvilla. Inspiration screenshots are Airbnb's, kept as private references. People, names and stories in the screens are made up.</p></footer>
 </div>
 
 <script>

@@ -12,7 +12,7 @@ Journey is a social app for iOS and Android where every post is part of a story:
    - `docs/03-roadmap.md`: phases and milestones
    - `docs/04-design-brief.md`: design principles and cues
    - `docs/05-inspiration.md`: references
-4. For any UI work, open `design/hub/src/screens.html` and `design/tokens.json` first. The app must look like the screens and use only the tokens.
+4. For any UI work, open the screens in `design/hub/src/screens/` (one file per group, order in `index.json`), their styles in `design/hub/src/phone.css`, and `design/tokens.json`. The app must look like the screens and use only the tokens.
 
 ## Sources of truth
 
@@ -20,7 +20,7 @@ Journey is a social app for iOS and Android where every post is part of a story:
 |---|---|
 | Requirements and decisions | `docs/01-requirements.md` |
 | Colours, type, radius, spacing | `design/tokens.json` |
-| Screen designs | `design/hub/src/screens.html` (photos in `design/hub/img/`) |
+| Screen designs | `design/hub/src/screens/` (one file per group) and `design/hub/src/phone.css`; photos in `design/hub/img/` |
 | Design principles and cues | `docs/04-design-brief.md` |
 | Status, next steps, open questions, update log | `design/hub/status.json` |
 | The hub page | built from all of the above; see `design/hub/README.md` |

@@ -1,0 +1,17 @@
+{
+  "about": "The screen groups of the Journey Hub, in the order a person meets them. Each group's screens live in its file, in the order shown. See design/hub/README.md for the <screen> format.",
+  "groups": [
+    { "id": "login", "file": "login.html", "title": "Login", "intro": "Sign in with Apple, Google or a one-time code by email. Nobody has a password to remember." },
+    { "id": "registration", "file": "registration.html", "title": "Registration", "intro": "From sign-in to a full Home in about a minute: a profile, a few interests, journeys to follow and a choice about notifications." },
+    { "id": "feed", "file": "feed.html", "title": "Feed", "intro": "Home is chronological and it ends: new chapters from what you follow, then “You're all caught up”." },
+    { "id": "discover", "file": "discover.html", "title": "Discover and search", "intro": "Find journeys by category, place, person or tag. The ranking is simple and easy to explain." },
+    { "id": "story", "file": "story.html", "title": "Story line", "intro": "A journey reads as a story: the cover and highlights first, then a timeline in the order things happened, from the first day to the recap." },
+    { "id": "posts", "file": "posts.html", "title": "Posts", "intro": "Posts are entries: photos, clips and words, always part of a journey. Likes and comments stay with the entry." },
+    { "id": "create", "file": "create.html", "title": "Create", "intro": "The + button always creates: a new entry first, a new journey second. Both work with no signal." },
+    { "id": "activity", "file": "activity.html", "title": "Activity", "intro": "One calm inbox. New entries are grouped per journey, likes are batched, and every type can be switched off." },
+    { "id": "profile", "file": "profile.html", "title": "Profile", "intro": "A profile is a shelf of journeys, active and completed. Your own also shows drafts and private journeys, only to you." },
+    { "id": "settings", "file": "settings.html", "title": "Settings", "intro": "Plain controls for notifications, privacy, appearance and your account, including deleting it." },
+    { "id": "safety", "file": "safety.html", "title": "Safety", "intro": "Report and block are always two taps away. Anything flagged is hidden until a person reviews it." },
+    { "id": "states", "file": "states.html", "title": "States", "intro": "Slow, offline or broken: every state says what's happening and what you can do next." }
+  ]
+}

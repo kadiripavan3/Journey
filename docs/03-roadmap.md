@@ -15,8 +15,10 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 ### Phase 0: Shape (1–2 weeks) ← we are here
 
 - [x] Requirements, tech stack and approach (these docs; decisions confirmed 7 Nov 2026)
-- [x] Design 2.0: eight key screens, the design system and design cues, kept in the Journey Hub (`design/hub`; see the [design principles and cues](04-design-brief.md))
-- [ ] Pick the accent colour and comment on anything to change in the hub
+- [x] Design 2.0: the design system and design cues, kept in the Journey Hub (`design/hub`; see the [design principles and cues](04-design-brief.md))
+- [x] Accent colour: Sun (8 Nov 2026)
+- [x] All 59 screens, end to end, in 12 groups (Design 2.1)
+- [ ] Review the screens and comment on anything to change in the hub
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
 - [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry
 
@@ -73,6 +75,6 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 ## Next steps
 
 1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
-2. Pick the accent colour and leave comments in the Journey Hub. I update the hub, then design the remaining screens in the same style.
+2. Review all 59 screens and leave comments in the Journey Hub. I update the screens, then we confirm the accent colour (Sun for now).
 3. Start the Apple Developer and Google Play accounts now. Verification can take days, and the Google Play rule above needs 14 days.
 4. Then scaffold the app (M1) and finish setting up the environment.

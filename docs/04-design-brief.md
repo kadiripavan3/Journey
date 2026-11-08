@@ -1,12 +1,12 @@
 # Journey — Design Principles and Cues
 
-> **Status:** Design 2.0, proposed 7 Nov 2026 · **Updated:** 8 Nov 2026
+> **Status:** Design 2.1, 59 screens · **Updated:** 8 Nov 2026
 >
 > The design source of truth is the **Journey Hub** (`design/hub`): the screens, the design system and these cues. Every colour, font size and corner radius lives in `design/tokens.json`, which the hub and the app both read. We don't use Figma.
 
 ## Direction
 
-Real photography, bold Plus Jakarta Sans, glass controls that float over the content, and light and dark themes designed together. The layouts borrow the clean, friendly feel of Airbnb (see [Inspiration](05-inspiration.md)). One accent colour carries the brand. It is still to be chosen: Iris (violet-blue), Lagoon (mint-teal) or Sun (golden yellow).
+Real photography, bold Plus Jakarta Sans, glass controls that float over the content, and light and dark themes designed together. The layouts borrow the clean, friendly feel of Airbnb (see [Inspiration](05-inspiration.md)). One accent colour carries the brand: **Sun** (golden yellow), chosen on 8 Nov 2026. Iris (violet-blue) and Lagoon (mint-teal) stay in the hub for comparison until all screens are reviewed.
 
 ## Principles
 
@@ -58,21 +58,28 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 
 ## Screens
 
-| # | Screen | Status |
+59 screens in 12 groups, all designed in light and dark. They live in the hub's Screens page, one file per group in `design/hub/src/screens/`. The numbers match the hub.
+
+| # | Group | Screens |
 |---|---|---|
-| 01 | Welcome | Designed |
-| 02 | Home | Designed |
-| 03 | Journey page | Designed |
-| 04 | Entry | Designed |
-| 05 | Video clip | Designed |
-| 06 | Challenge journey | Designed |
-| 07 | Map | Designed |
-| 08 | Add entry | Designed |
-| — | Discover, Profile, Activity, Create journey, Sign in, Settings, Journey completed | To design, in the same style |
+| 1 | Login | Welcome · How it works · Log in or sign up · Email · Email code |
+| 2 | Registration | Create your profile · Interests · Journeys to follow · Notifications · All set |
+| 3 | Feed | Home · Following feed · All caught up · Home, before following |
+| 4 | Discover and search | Discover · Search · Search results · Category |
+| 5 | Story line | Journey · Story line · Jump to · Map · Challenge · Paused journey · Complete a journey · Recap |
+| 6 | Posts | Entry · Video clip · Photo viewer · Comments · Entry options · Share |
+| 7 | Create | The + button · New entry · Pick photos and clips · Choose a template · Journey details · Who can see it · Journey is live · Drafts and uploads |
+| 8 | Activity | Activity · Push notifications |
+| 9 | Profile | Your profile · Creator profile · Edit profile · Followers |
+| 10 | Settings | Settings · Notification settings · Privacy and safety · Appearance · Account · Delete account · Blocked accounts |
+| 11 | Safety | Report · Block · Held for review |
+| 12 | States | Loading · Offline · Something went wrong |
+
+The people in the screens are made up. Nora Lind is the person using the app from sign-up onwards; Maya, Lea, Kai, Ana and the others are creators she follows.
 
 ## Open design questions
 
-1. Accent colour: Iris, Lagoon or Sun.
+1. Accent colour: Sun is chosen. Final check once you've reviewed all the screens.
 2. Custom 3D category icons, or keep emoji.
 3. Real photos for the store listing and marketing. The current ones are Unsplash stand-ins.
 
@@ -80,3 +87,4 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 
 - **v1, 7 Nov 2026:** a warm paper look with serif titles and drawn illustrations, built in Figma ([archive](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl)). Replaced by Design 2.0 after review; the Figma file is no longer updated.
 - **Design 2.0, 7 Nov 2026:** real photos, bold sans-serif type, glass controls, light and dark, three accent options.
+- **Design 2.1, 8 Nov 2026:** Sun chosen as the accent; the eight key screens grew to 59 end-to-end screens in 12 groups, built from one set of shared components.

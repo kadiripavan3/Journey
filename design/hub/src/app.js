@@ -5,6 +5,11 @@
   function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function save(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
   function each(sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); }
+  // Scroll a horizontal strip so the given item sits in its middle.
+  function center(strip, item) {
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    strip.scrollLeft += item.getBoundingClientRect().left - strip.getBoundingClientRect().left - (strip.clientWidth - item.offsetWidth) / 2;
+  }
 
   /* ---------- screen theme (Auto follows the viewer's own setting) ---------- */
   function setScreens(v) {
@@ -31,14 +36,14 @@
   setAccent(load(accentKey) || baseAccent);
 
   /* ---------- phone sizes: 4 or 2 columns on wide screens, a swipeable row on phones ---------- */
-  var gallery = document.getElementById('gallery');
+  // Every group's gallery has the same width, so one measurement sizes all of them.
   function fit() {
-    var w = gallery.clientWidth, z, cols;
+    var gallery = document.querySelector('#view-screens .gallery'), w = gallery ? gallery.clientWidth : 0, z, cols;
     if (!w) return;
     if (w <= 720) { cols = 1; z = Math.min(0.9, (w - 24) / 410); }
     else { cols = w >= 1180 ? 4 : 2; z = Math.min(0.8, ((w - (cols - 1) * 28) / cols) / 410); }
     app.style.setProperty('--z', z.toFixed(3));
-    gallery.style.setProperty('--cols', String(cols));
+    app.style.setProperty('--cols', String(cols));
   }
 
   /* ---------- views: #overview, #screens ... or the id of anything inside a view ---------- */
@@ -61,11 +66,28 @@
     if (target) target.scrollIntoView();
     else if (changed) window.scrollTo(0, 0);
     var on = nav && nav.querySelector('[aria-current]');
-    if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2;
+    if (on) center(nav, on);
   }
   window.addEventListener('hashchange', route);
   window.addEventListener('resize', function () { if (current === 'screens') fit(); });
   route();
+
+  /* ---------- Screens page: highlight the group being read in the sticky group bar ---------- */
+  var sgNav = document.querySelector('.sg-nav'), sgLinks = {}, seen = {};
+  each('.sg-nav a', function (a) { sgLinks[a.getAttribute('href').slice(1)] = a; });
+  if (sgNav && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var first = null;
+      each('.sg', function (s) { if (!first && seen[s.id]) first = s.id; });
+      Object.keys(sgLinks).forEach(function (k) {
+        if (k === first) sgLinks[k].setAttribute('aria-current', 'true'); else sgLinks[k].removeAttribute('aria-current');
+      });
+      var on = first && sgLinks[first];
+      if (on) center(sgNav, on);
+    }, { rootMargin: '-130px 0px -55% 0px' });
+    each('.sg', function (s) { io.observe(s); });
+  }
 
   /* ---------- comment buttons: open claude.ai's own comment box on a screen or page ---------- */
   // Shown only where this view can comment (the owner, and people the hub is shared with to comment).

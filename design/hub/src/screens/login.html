@@ -1,0 +1,73 @@
+<screen id="welcome" title="Welcome" theme="dark" home="photo" class="s-welcome" note="One full-bleed photo, one bold promise and a live count of journeys in progress. Always dark, so the photo leads." label="Welcome screen: full-screen photo of a person jumping on a summit at sunset, the headline Follow the journey, not just the moment, and Get started buttons.">
+  <sb photo>
+  <img class="bgimg" src="img/welcome.jpg" alt="">
+  <div class="shade"></div>
+  <div class="w-top"><span class="mark"><svg class="ic"><use href="#i-route"/></svg></span>Journey</div>
+  <div class="w-bottom">
+    <div class="live"><span class="stack"><img src="img/av-maya.jpg" alt=""><img src="img/av-lea.jpg" alt=""><img src="img/av-ana.jpg" alt=""></span><span><b>12,480</b> journeys happening now</span></div>
+    <h2 class="w-title">Follow the journey, not just the moment.</h2>
+    <p class="w-sub">Trips, challenges and everything in between, told day by day.</p>
+    <span class="btn btn-lg btn-block">Get started</span>
+    <span class="btn btn-lg btn-block btn-glass">I already have an account</span>
+    <p class="w-legal">By continuing you agree to the Terms and Privacy Policy.</p>
+  </div>
+</screen>
+
+<screen id="how-it-works" title="How it works" class="s-how" note="The first of at most three intro cards. One picture explains the idea: a journey is a stack of days that people follow.">
+  <sb>
+  <div class="pg">
+    <div class="appbar"><span class="sp"></span><span class="t"></span><span class="lnk off">Skip</span></div>
+    <div class="how-stack">
+      <div class="hcard c3" style="background-image:url(img/bromo.jpg)"><span class="pill">Day 22 · Mount Bromo</span></div>
+      <div class="hcard c2" style="background-image:url(img/market.jpg)"><span class="pill">Day 14 · Hoi An</span></div>
+      <div class="hcard c1" style="background-image:url(img/scooters.jpg)"><span class="pill">Day 1 · Hanoi</span></div>
+      <div class="how-follow"><span class="stack sm"><img src="img/av-lena.jpg" alt=""><img src="img/av-kai.jpg" alt=""><img src="img/av-ana.jpg" alt=""></span><b>1.2k</b> following along</div>
+    </div>
+    <h2 class="xl center">A story, told day by day</h2>
+    <p class="lead-t center">Start a journey, add entries as it happens, and people follow along for the next chapter.</p>
+    <div class="foot">
+      <div class="dots"><i class="on"></i><i></i><i></i></div>
+      <span class="btn btn-lg btn-block">Next</span>
+    </div>
+  </div>
+</screen>
+
+<screen id="sign-in" title="Log in or sign up" class="s-signin" note="One screen for both. Apple, Google or an email code: no passwords. Apple comes first, as the App Store asks when Google is offered.">
+  <div class="si-hero" style="background-image:url(img/sea-cave.jpg)"><sb photo><span class="gbtn photo">[[x]]</span></div>
+  <div class="si-body">
+    <span class="si-mark">[[route]]</span>
+    <h2 class="xl">Log in or sign up</h2>
+    <p class="lead-t">Use an account you already have. There's no password to remember.</p>
+    <div class="si-btns">
+      <span class="btn btn-lg btn-block btn-ink">[[apple logo]]Continue with Apple</span>
+      <span class="btn btn-lg btn-block btn-line">[[google logo]]Continue with Google</span>
+      <span class="btn btn-lg btn-block btn-line">[[mail]]Continue with email</span>
+    </div>
+    <p class="fine">By continuing you agree to the <b>Terms</b> and <b>Privacy Policy</b>, and confirm you're 13 or older.</p>
+  </div>
+</screen>
+
+<screen id="email" title="Email" class="s-email" note="Email sign-in asks for one thing. The code is sent at once; the keyboard opens ready for an address.">
+  <sb>
+  <div class="pg">
+    <div class="appbar"><span class="soft-round">[[left]]</span><span class="t"></span><span class="sp"></span></div>
+    <h2 class="xl">What's your email?</h2>
+    <p class="lead-t">We'll send a 6-digit code to sign you in. No password needed.</p>
+    <div class="gap24"></div>
+    <div class="fields"><div class="fld on"><small>Email</small><span>nora@example.com<i class="caret"></i></span></div></div>
+  </div>
+  <div class="above-kb"><span class="btn btn-lg btn-block">Send code</span></div>
+  <kb email>
+</screen>
+
+<screen id="code" title="Email code" class="s-code" note="Six boxes, filled as you type or straight from the email. If it doesn't arrive, resend after a short wait.">
+  <sb>
+  <div class="pg">
+    <div class="appbar"><span class="soft-round">[[left]]</span><span class="t"></span><span class="sp"></span></div>
+    <h2 class="xl">Check your email</h2>
+    <p class="lead-t">Enter the code we sent to <b>nora@example.com</b>.</p>
+    <div class="otp"><i>4</i><i>8</i><i>2</i><i>7</i><i class="on"><i class="caret"></i></i><i></i></div>
+    <p class="code-help"><span>Resend code in 0:24</span><span class="link">Open Mail</span></p>
+  </div>
+  <kb num>
+</screen>

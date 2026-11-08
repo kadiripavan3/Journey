@@ -1,6 +1,6 @@
 # Journey — Product Requirements (MVP)
 
-> **Status:** v1.1, decisions confirmed · **Updated:** 7 Nov 2026
+> **Status:** v1.1, decisions confirmed · **Updated:** 8 Nov 2026
 >
 > This pulls the earlier feedback from DeepSeek, Gemini and ChatGPT into one set of decisions. Where they disagreed, the decision and the reason are written down. The decisions confirmed with you are in [§9](#9-decisions).
 
@@ -190,7 +190,7 @@ Track every metric separately for travel journeys and challenge journeys. The be
 
 ## 9. Decisions
 
-Confirmed with you on 7 Nov 2026:
+Confirmed with you on 7 and 8 Nov 2026:
 
 | # | Topic | Decision |
 |---|---|---|
@@ -202,5 +202,6 @@ Confirmed with you on 7 Nov 2026:
 | 6 | Money | Free at launch with no ads. Journey+ and photo books come after the beta. |
 | 7 | Market | Worldwide, in English at launch. All text is ready for translation. |
 | 8 | Team | You, building with Claude Code. |
+| 9 | Accent colour | **Sun** (golden yellow), chosen 8 Nov 2026. Iris and Lagoon stay in the hub for comparison until all screens are reviewed. |
 
 Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)).

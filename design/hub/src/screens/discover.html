@@ -1,0 +1,67 @@
+<screen id="discover" title="Discover" note="Category chips, then Trending now and Recently completed. Only public journeys with a cover and 3+ entries appear here.">
+  <sb>
+  <div class="scroll">
+    <div class="disc-head"><h2>Discover</h2><span class="round">[[sliders]]</span></div>
+    <div class="search sm">[[search]]<div class="q"><b>Search journeys, places, people</b></div></div>
+    <div class="fchips"><span class="fchip on"><span class="em">✈️</span>Travel</span><span class="fchip"><span class="em">💪</span>Fitness</span><span class="fchip"><span class="em">📚</span>Learning</span><span class="fchip"><span class="em">🍜</span>Food</span><span class="fchip"><span class="em">🎨</span>Creative</span></div>
+    <div class="sec"><h3>Trending now</h3>[[right]]</div>
+    <div class="rail">
+      <div class="jc"><div class="pic" style="background-image:url(img/cappadocia.jpg)"><span class="pill">[[flame]]Trending</span><svg class="fav"><use href="#i-heart"/></svg></div><b>Cappadocia by balloon</b><span>Day 3 · Turkey</span><span>Jonas Weber · 860 following</span></div>
+      <div class="jc"><div class="pic" style="background-image:url(img/machu-picchu.jpg)"><svg class="fav"><use href="#i-heart"/></svg></div><b>Four days on the Inca Trail</b><span>Day 4 · Peru</span><span>Ana Costa · 640 following</span></div>
+    </div>
+    <div class="sec"><h3>Recently completed</h3>[[right]]</div>
+    <div class="rail">
+      <div class="jc sm"><div class="pic" style="background-image:url(img/sea-cave.jpg)"><span class="pill">[[check]]Completed</span></div><b>Mallorca by kayak</b><span>9 days · Spain</span></div>
+      <div class="jc sm"><div class="pic" style="background-image:url(img/runner.jpg)"><span class="pill">[[check]]Completed</span></div><b>Couch to 10K</b><span>9 weeks · Fitness</span></div>
+    </div>
+  </div>
+  <tabbar active="discover">
+</screen>
+
+<screen id="search-start" title="Search" note="Before you type: recent searches and popular tags, so search is useful from the first tap. It finds journeys, places, people and tags.">
+  <sb>
+  <div class="pg">
+    <div class="sbar"><div class="sfield on">[[search]]<span class="ph-t">Journeys, places, people, #tags</span></div><span class="cancel">Cancel</span></div>
+    <div class="glabel">Recent</div>
+    <div class="srow">[[clock]]<span>vietnam motorbike</span>[[x x]]</div>
+    <div class="srow">[[clock]]<span>30 day challenge</span>[[x x]]</div>
+    <div class="srow">[[clock]]<span>@maya.rides</span>[[x x]]</div>
+    <div class="glabel">Popular tags</div>
+    <div class="tags"><span>#solotravel</span><span>#30days</span><span>#roadtrip</span><span>#vanlife</span><span>#learnguitar</span><span>#hiking</span></div>
+  </div>
+  <kb>
+</screen>
+
+<screen id="search" title="Search results" note="Results for “peru”. Tabs split journeys, people, tags and places; every journey shows whether it's still going.">
+  <sb>
+  <div class="pg">
+    <div class="sbar"><div class="sfield">[[search]]<span>peru</span><span class="clr">[[x]]</span></div><span class="cancel">Cancel</span></div>
+    <div class="ttabs"><span class="on">Journeys<small>96</small></span><span>People<small>12</small></span><span>Tags</span><span>Places</span></div>
+    <div class="sres">
+      <div class="pic" style="background-image:url(img/machu-picchu.jpg)"><span class="pill">[[pin]]Cusco, Peru</span><svg class="fav"><use href="#i-heart"/></svg></div>
+      <b>Four days on the Inca Trail</b>
+      <small><span class="st"><i style="background:var(--ok)"></i>Active</span> · Day 4 · Ana Costa · 640 following</small>
+    </div>
+    <div class="jrow"><div class="pic" style="background-image:url(img/terraces.jpg)"></div><div class="tx"><b>Peru and Bolivia on a budget</b><small><span class="st"><i style="background:var(--ok)"></i>Active</span> · Day 17 · Sam Ortiz</small></div></div>
+    <div class="jrow"><div class="pic" style="background-image:url(img/road.jpg)"></div><div class="tx"><b>Lima to Cusco by bus</b><small><span class="st"><i style="background:var(--done)"></i>Completed</span> · 18 days · Theo Brandt</small></div></div>
+    <div class="jrow"><div class="pic" style="background-image:url(img/map-hands.jpg)"></div><div class="tx"><b>Spanish in Cusco, 30 days</b><small><span class="st"><i style="background:var(--warn)"></i>Paused</span> · Day 23 of 30 · Mia Chen</small></div></div>
+  </div>
+</screen>
+
+<screen id="category" title="Category" class="s-cat" note="A category page, here challenges. A friendly header, quick filters, and cards that show how far along each one is.">
+  <div class="cat-hero">
+    <sb>
+    <span class="gbtn cat-back">[[left]]</span>
+    <span class="cat-em">🔥</span>
+    <h2>Challenges</h2>
+    <p>1,284 in progress · 312 finished this month</p>
+  </div>
+  <div class="gap16"></div>
+  <div class="fchips"><span class="fchip on">30 days</span><span class="fchip">100 days</span><span class="fchip"><span class="em">💪</span>Fitness</span><span class="fchip"><span class="em">🎸</span>Music</span><span class="fchip"><span class="em">🗣️</span>Languages</span></div>
+  <div class="cgrid">
+    <div class="ccard"><div class="pic" style="background-image:url(img/swimmer.jpg)"></div><b>Open-water swim</b><div class="pbar"><b style="width:70%"></b></div><small>Day 21 of 30 · 1.8k following</small></div>
+    <div class="ccard"><div class="pic" style="background-image:url(img/guitar.jpg)"></div><b>30 days of guitar</b><div class="pbar"><b style="width:40%"></b></div><small>Day 12 of 30 · 46 cheering</small></div>
+    <div class="ccard"><div class="pic" style="background-image:url(img/surfboard.jpg)"></div><b>Learn to surf</b><div class="pbar"><b style="width:20%"></b></div><small>Day 6 of 30 · 2.4k following</small></div>
+    <div class="ccard"><div class="pic" style="background-image:url(img/piano.jpg)"></div><b>30 days of piano scales</b><div class="pbar"><b style="width:90%"></b></div><small>Day 27 of 30 · 310 following</small></div>
+  </div>
+</screen>

@@ -7,7 +7,7 @@ One page with everything about Journey: the screens, design system, design cues,
 | Hub page | Source |
 |---|---|
 | Overview | [`status.json`](status.json) (phase, next steps, open questions, updates) and §9 Decisions of [`docs/01-requirements.md`](../../docs/01-requirements.md) |
-| Screens | [`src/screens.html`](src/screens.html) and the photos in [`img/`](img/) |
+| Screens | [`src/screens/`](src/screens/): one file per group, in the order of [`src/screens/index.json`](src/screens/index.json); styles in [`src/phone.css`](src/phone.css); photos in [`img/`](img/) |
 | Design system | [`design/tokens.json`](../tokens.json) |
 | Cues | [`docs/04-design-brief.md`](../../docs/04-design-brief.md) |
 | Inspiration | [`docs/05-inspiration.md`](../../docs/05-inspiration.md) and [`inspiration/`](inspiration/) |
@@ -15,7 +15,25 @@ One page with everything about Journey: the screens, design system, design cues,
 | Roadmap | [`docs/03-roadmap.md`](../../docs/03-roadmap.md) |
 | Tech | [`docs/02-tech-stack.md`](../../docs/02-tech-stack.md); [`src/architecture.html`](src/architecture.html) replaces its mermaid chart |
 
-The page shell is [`src/page.html`](src/page.html), with styles in [`src/styles.css`](src/styles.css), behaviour in [`src/app.js`](src/app.js) and icons in [`src/icons.svg`](src/icons.svg). [`build.mjs`](build.mjs) fills the shell's `{{PLACEHOLDERS}}`.
+The page shell is [`src/page.html`](src/page.html), with the hub's styles in [`src/styles.css`](src/styles.css), the phone screens' styles in [`src/phone.css`](src/phone.css), behaviour in [`src/app.js`](src/app.js) and icons in [`src/icons.svg`](src/icons.svg). [`build.mjs`](build.mjs) fills the shell's `{{PLACEHOLDERS}}`.
+
+## Writing a screen
+
+Each group file holds `<screen>` blocks. The build adds the phone frame, the camera island, the home indicator, the number (group.position, like 5.2) and the caption with its Comment button.
+
+```html
+<screen id="sign-in" title="Log in or sign up" note="The caption under the phone." [theme="dark"] [home="photo"] [class="s-signin"] [label="Screen-reader description"]>
+  <sb>                         status bar (<sb photo> for white text on a photo)
+  [[route]] [[star f]]         an icon from src/icons.svg, with extra classes after the name
+  <kb> <kb email> <kb num>     the phone's keyboard
+  <tabbar active="home" dot>   the tab bar: home, discover, activity or you; dot marks Activity
+  ...the screen's own HTML, using the shared components in src/phone.css...
+</screen>
+```
+
+Rules the build checks: ids are unique and use lowercase letters, digits and hyphens; every icon exists; nothing sits outside a `<screen>` block. While a new group is half written, `HUB_ALLOW_MISSING=1 node design/hub/build.mjs` skips group files that don't exist yet.
+
+Class names in `phone.css` and `styles.css` share one page, so a new class must not reuse a name the other file already has (`.q`, `.next`, `.new` and `.m` have each broken a screen before). Add new components to the shared section of `phone.css`, and anything for one screen under its group's heading.
 
 ## Build
 
