@@ -36,6 +36,7 @@ const DOCS = [
   { file: 'docs/04-design-brief.md', view: 'cues' },
   { file: 'docs/05-inspiration.md', view: 'inspiration' },
   { file: 'docs/01-requirements.md', view: 'requirements' },
+  { file: 'docs/06-engagement.md', view: 'engagement' },
   { file: 'docs/03-roadmap.md', view: 'roadmap' },
   { file: 'docs/02-tech-stack.md', view: 'tech' },
 ];
@@ -227,7 +228,7 @@ const screenGroups = JSON.parse(src('screens/index.json')).groups.map((g, gi) =>
 const screenTotal = screenGroups.reduce((n, g) => n + g.shots.length, 0);
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const screenSections = screenGroups.map((g) => `<section class="sg" id="screens-${g.id}" aria-labelledby="screens-${g.id}-h">
-<div class="sg-head"><span class="sg-n">${g.n}</span><div><h2 id="screens-${g.id}-h">${esc(g.title)}</h2><p>${esc(g.intro)}</p></div><span class="sg-count">${plural(g.shots.length, 'screen')}</span></div>
+<div class="sg-head"><span class="sg-n">${g.n}</span><div><h2 id="screens-${g.id}-h">${esc(g.title)}${g.tag ? ` <span class="sg-tag">${esc(g.tag)}</span>` : ''}</h2><p>${esc(g.intro)}</p></div><span class="sg-count">${plural(g.shots.length, 'screen')}</span></div>
 <div class="gallery">
 ${g.shots.join('\n')}
 </div>

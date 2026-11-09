@@ -130,7 +130,7 @@ There are two roles, and everyone can be both:
 | | **Story cards** for Instagram and TikTok with a "Follow my journey" link | A growth loop, once the core works |
 | | **Creator stats** (views, followers over time) | |
 | | Scheduled entries and smarter reminders | |
-| **v1.2** | **Co-authors** (up to 4 people on one journey) | Permissions are complex |
+| **v1.2** | **Shared journeys** (co-authors, up to 4 people on one journey). Designed on 9 Nov 2026 and proposed for the first version: see the [engagement plan](06-engagement.md#shared-journeys-how-it-works). | Waiting for your decision |
 | | Badges for completion and milestones: celebratory, never punishing | |
 | | Download whole journeys for offline reading | |
 | | **Journey+** subscription (see the [roadmap](03-roadmap.md#monetization-staged)) | |

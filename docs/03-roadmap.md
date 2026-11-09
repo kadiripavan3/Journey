@@ -19,6 +19,7 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 - [x] Accent colour: Sun (8 Nov 2026)
 - [x] All 59 screens, end to end, in 12 groups (Design 2.1)
 - [ ] Review the screens and comment on anything to change in the hub
+- [ ] Decide on shared journeys and the weekly digest (the four decisions in the [engagement plan](06-engagement.md#decisions-for-you))
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
 - [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry
 

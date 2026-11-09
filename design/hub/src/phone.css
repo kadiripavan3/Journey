@@ -874,3 +874,35 @@
 .empty.er { margin-top: 120px; }
 .empty.er .blob { width: 132px; height: 132px; font-size: 62px; }
 @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+
+/* ---------- 8 shared journeys (proposed) ---------- */
+.sj-lead { margin-top: 0; font-size: 14.5px; }
+.sj-search { padding-top: 14px; }
+.prow .btn .ic { width: 15px; height: 15px; }
+.sj-link { margin-top: 0; }
+.sj-link > .ic { width: 18px; height: 18px; flex: none; color: var(--muted); }
+.sj-note { margin-top: 14px; }
+.inv-from { margin-bottom: 2px; }
+.inv-from img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+.inv-list { list-style: none; display: grid; gap: 11px; margin: 4px 0 12px; padding: 0; }
+.inv-list li { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; }
+.inv-list .ic { width: 20px; height: 20px; opacity: .85; }
+.sheet-av2 { position: absolute; top: -38px; left: 50%; translate: -50% 0; display: flex; }
+.sheet-av2 img { width: 76px; height: 76px; border-radius: 50%; object-fit: cover; border: 4px solid var(--bg); box-shadow: 0 6px 16px rgba(0, 0, 0, .16); }
+.sheet-av2 img + img { margin-left: -22px; }
+.sj-tag { margin: 10px 0 0; }
+.spill .ic { width: 13px; height: 13px; }
+.aut-s { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.aut-s img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.tl-who { position: absolute; z-index: 5; top: 122px; left: 0; right: 0; }
+.fchip img { width: 22px; height: 22px; margin: -3px 0 -3px -6px; border-radius: 50%; object-fit: cover; }
+.fchip small { font-size: 12px; font-weight: 600; opacity: .6; }
+.tl.low { top: 164px; }
+.tl.low .tl-entry .pic { height: 150px; }
+.aut { display: flex; align-items: center; gap: 8px; margin: 0 2px 8px; }
+.aut img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.aut b { font-size: 13.5px; font-weight: 800; }
+.aut small { font-size: 12px; color: var(--muted); }
+.pf-btns.one { grid-template-columns: minmax(0, 1fr); }
+.pjc-av { position: absolute; left: 10px; bottom: 10px; }
+.pjc-av img { width: 26px; height: 26px; border-color: var(--on-photo); }

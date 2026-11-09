@@ -1,14 +1,19 @@
 {
   "phase": "Phase 0 · Shape",
-  "updated": "2026-11-08",
-  "summary": "All 59 screens are designed, end to end, in 12 groups. Sun is the accent for now. Next you review the screens and comment, then we start building the app.",
+  "updated": "2026-11-09",
+  "summary": "65 screens are designed in 13 groups, six of them a proposal for shared journeys. There is a new engagement plan with four decisions for you. Then we start building the app.",
   "next": [
-    "Review the 59 screens on the Screens page and comment on anything to change.",
+    "Decide on shared journeys and the weekly digest: the four decisions at the end of the Engagement page.",
+    "Review the screens on the Screens page and comment on anything to change.",
     "Confirm the accent colour once the screens are reviewed (Sun for now).",
     "Register the Apple Developer and Google Play accounts (verification takes days).",
     "Then I set up the app project (milestone M1) and put a first build on your phone."
   ],
   "open": [
+    {
+      "q": "Shared journeys and the weekly digest",
+      "a": "In the first version (about 2 weeks more) or in the first update? See the Engagement page."
+    },
     {
       "q": "Accent colour",
       "a": "Sun for now. Iris and Lagoon stay switchable until you have reviewed every screen."
@@ -23,6 +28,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-09",
+      "text": "**Shared journeys** designed as a proposal (6 screens): friends add to one journey, and it shows on each profile. New **Engagement** page: what brings people back, what to add and when."
+    },
     {
       "date": "2026-11-08",
       "text": "**59 screens in 12 groups**, from sign-in to deleting an account: login, registration, feed, discover, story line, posts, create, activity, profile, settings, safety and states. **Sun** chosen as the accent."

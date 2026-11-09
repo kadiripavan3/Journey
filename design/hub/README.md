@@ -1,6 +1,6 @@
 # Journey Hub
 
-One page with everything about Journey: the screens, design system, design cues, inspiration, requirements, roadmap and tech plan. It is published at **https://claude.ai/artifact/Hmc5sAXD5cRtgof87L354X** and built from the files in this repo. The repo is the record; the page is a view of it.
+One page with everything about Journey: the screens, design system, design cues, inspiration, requirements, engagement plan, roadmap and tech plan. It is published at **https://claude.ai/artifact/Hmc5sAXD5cRtgof87L354X** and built from the files in this repo. The repo is the record; the page is a view of it.
 
 ## What each page is built from
 
@@ -12,6 +12,7 @@ One page with everything about Journey: the screens, design system, design cues,
 | Cues | [`docs/04-design-brief.md`](../../docs/04-design-brief.md) |
 | Inspiration | [`docs/05-inspiration.md`](../../docs/05-inspiration.md) and [`inspiration/`](inspiration/) |
 | Requirements | [`docs/01-requirements.md`](../../docs/01-requirements.md) |
+| Engagement | [`docs/06-engagement.md`](../../docs/06-engagement.md) |
 | Roadmap | [`docs/03-roadmap.md`](../../docs/03-roadmap.md) |
 | Tech | [`docs/02-tech-stack.md`](../../docs/02-tech-stack.md); [`src/architecture.html`](src/architecture.html) replaces its mermaid chart |
 
