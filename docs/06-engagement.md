@@ -72,7 +72,7 @@ One person starts a journey and invites friends to add to it. The screens are in
 
 **Not in the first version of sharing:** separate progress for each person in a shared 30-day challenge (that comes with idea 9), approving a friend's entry before it shows, and more than 4 authors.
 
-**Building it:** every entry already records its author, so the data model was made for this. It needs one new table for a journey's members, one new privacy rule, and the six screens. It is built with the Create and Follow milestones.
+**Building it:** every entry already records its author, so the data model was made for this. It needs one new table for a journey's members, a few new rules in the API, and the six screens. It is built with the Create and Follow milestones.
 
 ## How we'll know it works
 
@@ -95,4 +95,4 @@ Decided with you on 9 Nov 2026 and recorded in the [requirements](01-requirement
 | 3 | Search-friendly journey pages and featured journeys during the beta? No delay. | Yes |
 | 4 | Ideas 5 to 9 wait for the beta's numbers? | Yes |
 
-The first version now takes about 15 to 17 weeks instead of 13 to 15.
+With these two, the first version grew from 13–15 weeks to 15–17. The Java backend, decided the same day, makes it about 17 to 20 ([tech page](02-tech-stack.md#the-backend-decision-java)).

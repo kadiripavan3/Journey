@@ -1,12 +1,13 @@
 {
   "phase": "Phase 0 · Shape",
   "updated": "2026-11-09",
-  "summary": "Shared journeys and a weekly digest are now part of the first version, which takes about 15 to 17 weeks. All 66 screens are designed. Next you review the screens, then we start building the app.",
+  "summary": "The tech stack is final: an Expo app, a Java (Spring Boot) backend you can debug, and managed services around them. Building can start now without the store accounts. The first version takes about 17 to 20 weeks.",
   "next": [
+    "I scaffold the app and the Java API (milestone M1). This needs no accounts.",
+    "Enrol in the Apple Developer Program now (US$99 a year). It can take weeks and is needed from the Video milestone.",
+    "For the first test on your iPhone: create three free accounts (Expo, Supabase, Fly.io) and install Expo Go.",
     "Review the 66 screens on the Screens page and comment on anything to change.",
-    "Confirm the accent colour once the screens are reviewed (Sun for now).",
-    "Register the Apple Developer and Google Play accounts (verification takes days).",
-    "Then I set up the app project (milestone M1) and put a first build on your phone."
+    "Confirm the accent colour once the screens are reviewed (Sun for now)."
   ],
   "open": [
     {
@@ -23,6 +24,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-09",
+      "text": "**Tech stack final.** The backend is Java (Spring Boot), so you can debug it; Supabase supplies the database and sign-in. Every choice was checked against current versions and prices. New on the Tech page: how we test without the store accounts, and which account is needed when."
+    },
     {
       "date": "2026-11-09",
       "text": "**Decided:** shared journeys and a weekly digest join the first version (about 15 to 17 weeks). Search-friendly pages and featured journeys come during the beta; the other ideas wait for its numbers. New screen: the weekly digest."

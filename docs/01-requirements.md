@@ -1,6 +1,6 @@
 # Journey — Product Requirements (MVP)
 
-> **Status:** v1.2, decisions confirmed · **Updated:** 9 Nov 2026
+> **Status:** v1.3, decisions confirmed · **Updated:** 9 Nov 2026
 >
 > This pulls the earlier feedback from DeepSeek, Gemini and ChatGPT into one set of decisions. Where they disagreed, the decision and the reason are written down. The decisions confirmed with you are in [§9](#9-decisions).
 
@@ -214,5 +214,6 @@ Confirmed with you between 7 and 9 Nov 2026:
 | 11 | Weekly digest | In the first version, by push, and by email for people who opt in (9 Nov 2026). |
 | 12 | Growth during the beta | Search-friendly journey pages and hand-picked featured journeys are added while the beta runs. |
 | 13 | Other engagement ideas | Story cards, polls, a creator summary, "What's next?" and challenges you can join wait for the beta's numbers. See the [engagement plan](06-engagement.md). |
+| 14 | Tech stack | An Expo (React Native) app, a Java (Spring Boot) API, and PostgreSQL and sign-in on Supabase. The backend is Java so that you can debug it; it adds 2 to 3 weeks. Final on 9 Nov 2026: see the [tech page](02-tech-stack.md). |
 
 Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)).

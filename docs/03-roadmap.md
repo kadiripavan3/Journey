@@ -14,25 +14,26 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 
 ### Phase 0: Shape (1–2 weeks) ← we are here
 
-- [x] Requirements, tech stack and approach (these docs; decisions confirmed 7 Nov 2026)
+- [x] Requirements and approach (these docs; decisions confirmed 7 Nov 2026)
+- [x] Tech stack final (9 Nov 2026): an Expo app, a Java (Spring Boot) API, PostgreSQL and sign-in on Supabase ([tech page](02-tech-stack.md))
 - [x] Design 2.0: the design system and design cues, kept in the Journey Hub (`design/hub`; see the [design principles and cues](04-design-brief.md))
 - [x] Accent colour: Sun (8 Nov 2026)
 - [x] All 66 screens, end to end, in 13 groups (Design 2.1)
 - [ ] Review the screens and comment on anything to change in the hub
 - [x] Engagement plan decided (9 Nov 2026): shared journeys and a weekly digest join the first version ([engagement plan](06-engagement.md#decisions))
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
-- [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry, an email service
+- [ ] Accounts, each when it is first needed ([the list](02-tech-stack.md#accounts-and-when-each-is-needed)). Enrol in the Apple Developer Program now: it can take weeks.
 
-### Phase 1: Build the MVP (about 15–17 weeks)
+### Phase 1: Build the MVP (about 17–20 weeks)
 
-Each milestone ends with a build on your phone.
+Each milestone ends with something you can try on your phone: in Expo Go for the first two, then in a development build ([how we test](02-tech-stack.md#testing-without-the-store-accounts)).
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|
-| **M1 Foundations** | Repo scaffold, CI, design tokens, sign-in, profiles, onboarding shell, a development build on your phone, the environment setup script | 2 |
-| **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete; shared journeys (invite friends, join, who can do what) | 4 |
-| **M3 Video** | Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
-| **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers; shared journeys in the feed and on profiles; the weekly digest | 3 |
+| **M1 Foundations** | Repo scaffold (app and API), CI, design tokens as a theme, the API skeleton with its database and deploy, the generated API client, sign-in, profiles, onboarding shell, the app in Expo Go on your phone, the environment setup script | 3 |
+| **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete; shared journeys (invite friends, join, who can do what) | 5 |
+| **M3 Video** | The first development build on your iPhone (needs the Apple Developer Program). Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
+| **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers; shared journeys in the feed and on profiles; the weekly digest | 3–4 |
 | **M5 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
 | **M6 Finish and safety** | Map view, challenge progress, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |
 
@@ -72,6 +73,7 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 ## How we'll work together
 
 - Each milestone is a set of pull requests on this repo, built by Claude Code in the **Journey** cloud environment. You try each one on your phone, then merge.
+- The backend is Java, so you can read, debug and change it yourself. Every API change comes with tests.
 - These docs are the source of truth. When a decision changes, the doc changes in the same pull request.
 - **Done means:** it works on iOS and Android, in light and dark mode, with screen-reader labels, an analytics event, and tests for the logic.
 
@@ -79,5 +81,5 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 
 1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
 2. Review all 66 screens and leave comments in the Journey Hub. I update the screens, then we confirm the accent colour (Sun for now).
-3. Start the Apple Developer and Google Play accounts now. Verification can take days, and the Google Play rule above needs 14 days.
-4. Then scaffold the app (M1) and finish setting up the environment.
+3. Enrol in the Apple Developer Program now. Apple says up to 48 hours, but it can take weeks, and we need it from the Video milestone. Google Play can wait until shortly before the beta; its rule above needs 14 days.
+4. I scaffold the app and the API (M1). This needs no accounts. For the first test on your iPhone you create three free accounts: Expo, Supabase and Fly.io.

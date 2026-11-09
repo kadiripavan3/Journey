@@ -1,6 +1,6 @@
 # Journey: notes for Claude
 
-Journey is a social app for iOS and Android where every post is part of a story: people start a journey (a trip, a 30-day challenge, a build), add entries over time, and others follow along. The owner builds it with Claude Code. Stack: Expo (React Native, TypeScript) + Supabase.
+Journey is a social app for iOS and Android where every post is part of a story: people start a journey (a trip, a 30-day challenge, a build), add entries over time, and others follow along. The owner builds it with Claude Code. Stack: an Expo (React Native, TypeScript) app, a Spring Boot (Java) API that holds all the rules, and PostgreSQL and sign-in on Supabase. The owner knows Java well and wants to be able to debug the API.
 
 ## At the start of every session
 
@@ -47,6 +47,8 @@ node design/hub/build.mjs --files    # the image list for the publish call
 ## Working rules
 
 - Work on the branch the session names. Don't push to `main` or open a pull request unless the owner asks.
-- Never commit secrets. API keys (Expo, Supabase, Mux) go into the cloud environment's secrets.
+- Never commit secrets. API keys (Expo, Supabase, Fly.io, Cloudflare, Mux, Resend and the rest) go into the cloud environment's secrets.
+- The stack is final (`docs/02-tech-stack.md`). Check a library's current version and Expo SDK support before adding it, and ask the owner before swapping a chosen service.
+- API tests need the local PostgreSQL: start it with `pg_ctlcluster 16 main start`.
 - Write user-facing text in plain, friendly English (see the writing cues in `docs/04-design-brief.md`).
 - Ask the owner before changing a product decision; record the answer in the docs.
