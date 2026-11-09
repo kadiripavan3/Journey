@@ -1,6 +1,6 @@
 # Journey — Engagement and Growth
 
-> **Status:** proposal, 9 Nov 2026. Nothing here changes the first version until you decide. The decisions are at the [end](#decisions-for-you).
+> **Status:** decided on 9 Nov 2026. Shared journeys and the weekly digest are in the first version; the [decisions](#decisions) are at the end.
 
 ## The short answer
 
@@ -26,7 +26,7 @@ If one loop is weak, the others stall. Followers have nothing to return to witho
 - **For followers:** grouped push notifications, the chronological Home feed, "new since your last visit" markers, Continue where you left off, likes and comments.
 - **For growth:** share links with a web page for people without the app, rich link previews, the "Follow my journey" link for social bios, journeys to follow during sign-up.
 
-## What I'd add, in order
+## What we add, and when
 
 Effort is my estimate for building with Claude Code, on the same basis as the roadmap.
 
@@ -72,7 +72,7 @@ One person starts a journey and invites friends to add to it. The screens are in
 
 **Not in the first version of sharing:** separate progress for each person in a shared 30-day challenge (that comes with idea 9), approving a friend's entry before it shows, and more than 4 authors.
 
-**Building it:** every entry already records its author, so the data model was made for this. It needs one new table for a journey's members, one new privacy rule, and the six screens. If you say yes, it is built with the Create and Follow milestones.
+**Building it:** every entry already records its author, so the data model was made for this. It needs one new table for a journey's members, one new privacy rule, and the six screens. It is built with the Create and Follow milestones.
 
 ## How we'll know it works
 
@@ -84,13 +84,15 @@ The beta measures the loops, on top of the [success metrics](01-requirements.md#
 | Followers come back | New-entry notifications that get opened; people active again after 7 and 30 days |
 | New people arrive | Share-link views → installs → follows; invitations sent → accepted |
 
-## Decisions for you
+## Decisions
 
-| # | Decision | My recommendation |
+Decided with you on 9 Nov 2026 and recorded in the [requirements](01-requirements.md#9-decisions):
+
+| # | Decision | Answer |
 |---|---|---|
 | 1 | Shared journeys in the first version? It adds 1 to 1.5 weeks. | Yes |
 | 2 | Weekly digest in the first version? It adds about 3 days. | Yes |
 | 3 | Search-friendly journey pages and featured journeys during the beta? No delay. | Yes |
 | 4 | Ideas 5 to 9 wait for the beta's numbers? | Yes |
 
-With 1 and 2, the first version takes about 15 to 17 weeks instead of 13 to 15.
+The first version now takes about 15 to 17 weeks instead of 13 to 15.

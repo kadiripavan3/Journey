@@ -17,22 +17,22 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 - [x] Requirements, tech stack and approach (these docs; decisions confirmed 7 Nov 2026)
 - [x] Design 2.0: the design system and design cues, kept in the Journey Hub (`design/hub`; see the [design principles and cues](04-design-brief.md))
 - [x] Accent colour: Sun (8 Nov 2026)
-- [x] All 59 screens, end to end, in 12 groups (Design 2.1)
+- [x] All 66 screens, end to end, in 13 groups (Design 2.1)
 - [ ] Review the screens and comment on anything to change in the hub
-- [ ] Decide on shared journeys and the weekly digest (the four decisions in the [engagement plan](06-engagement.md#decisions-for-you))
+- [x] Engagement plan decided (9 Nov 2026): shared journeys and a weekly digest join the first version ([engagement plan](06-engagement.md#decisions))
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
-- [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry
+- [ ] Accounts: Apple Developer, Google Play Console, Expo, Supabase, Mux, PostHog, Sentry, an email service
 
-### Phase 1: Build the MVP (about 13–15 weeks)
+### Phase 1: Build the MVP (about 15–17 weeks)
 
 Each milestone ends with a build on your phone.
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|
 | **M1 Foundations** | Repo scaffold, CI, design tokens, sign-in, profiles, onboarding shell, a development build on your phone, the environment setup script | 2 |
-| **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete | 3 |
+| **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete; shared journeys (invite friends, join, who can do what) | 4 |
 | **M3 Video** | Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
-| **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers | 2 |
+| **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers; shared journeys in the feed and on profiles; the weekly digest | 3 |
 | **M5 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
 | **M6 Finish and safety** | Map view, challenge progress, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |
 
@@ -43,6 +43,8 @@ Each milestone ends with a build on your phone.
 - Measure the two groups separately, then double down on the one that keeps posting and following.
 - Choose the store name, domain and social handles before the beta ends.
 - Ship updates weekly over the air, and interview 10 users.
+- Add two growth pieces while the beta runs: journey pages that search engines can find, and hand-picked featured journeys in Discover.
+- Count invitations to shared journeys: how many are sent and how many accepted.
 - **Suggested exit criteria:** at least 40% of beta creators post 5+ entries; at least 30% of new-entry notifications are opened; at least 99.5% of sessions are crash-free; D30 retention is heading toward 20%.
 
 > **Google Play rule to plan for:** a *personal* developer account created after 13 Nov 2023 must run a closed test with **at least 12 testers opted in for 14 days in a row** before it can publish to production ([Google's help page](https://support.google.com/googleplay/android-developer/answer/14151465)). An *organization* account doesn't need this, but it needs a D-U-N-S number, which can take weeks to get. Plan the beta around it.
@@ -55,7 +57,7 @@ Each milestone ends with a build on your phone.
 
 ### Phase 4: Grow and monetize
 
-v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-later-not-in-the-mvp), in the order the data supports.
+v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-later-not-in-the-mvp), in the order the data supports. The [engagement plan](06-engagement.md) ranks the ideas: story cards, polls, a creator summary and "What's next?" first, then challenges you can join if challenge-takers turn out to be the stronger audience.
 
 ## Monetization (staged)
 
@@ -76,6 +78,6 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 ## Next steps
 
 1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
-2. Review all 59 screens and leave comments in the Journey Hub. I update the screens, then we confirm the accent colour (Sun for now).
+2. Review all 66 screens and leave comments in the Journey Hub. I update the screens, then we confirm the accent colour (Sun for now).
 3. Start the Apple Developer and Google Play accounts now. Verification can take days, and the Google Play rule above needs 14 days.
 4. Then scaffold the app (M1) and finish setting up the environment.

@@ -57,14 +57,15 @@
 | Files | Supabase Storage with its CDN. The app uploads a full-size image and a thumbnail, so paid image transforms aren't needed. |
 | Video | **Mux** (Cloudflare Stream is the cheaper alternative). The phone uploads clips straight to it; it converts them for streaming, picks the right quality for each connection, and makes still frames. An Edge Function hands out upload links, and a webhook marks each clip ready. |
 | Server logic | SQL functions and triggers (counters, feed) plus **Edge Functions** in TypeScript (sending push notifications, moderation, share images) |
-| Scheduled jobs | pg_cron: auto-pause after 30 days, trending scores, reminder nudges |
+| Scheduled jobs | pg_cron: auto-pause after 30 days, trending scores, reminder nudges, the weekly digest |
+| Email | A transactional email service (for example Resend), used for sign-in codes and for the weekly digest by email |
 | Search | Postgres full-text search plus pg_trgm for fuzzy name matching; pgvector later for recommendations |
 | Moderation | An image moderation API (for example AWS Rekognition or Google Cloud Vision SafeSearch), called when a photo is uploaded; for clips, it checks frames taken from the video |
 | Schema changes | SQL migrations in the repo (`supabase/migrations`), applied with the Supabase CLI |
 
 ### Web (share pages only)
 
-**Next.js on Vercel.** Public, read-only journey and entry pages with link-preview images, "Open in app / Get the app", the files that make universal links work, and the terms and privacy pages. It's added at the *Discover and share* milestone.
+**Next.js on Vercel.** Public, read-only journey and entry pages with link-preview images, "Open in app / Get the app", the files that make universal links work, and the terms and privacy pages. It's added at the *Discover and share* milestone. During the beta these pages also get a sitemap and search-friendly titles and descriptions, so public journeys can be found through search engines.
 
 ### Delivery
 
@@ -84,12 +85,13 @@ flowchart LR
     API["Auth + REST API"] --> DB[("Postgres + RLS")]
     ST["Storage + CDN"]
     EF["Edge Functions: push, moderation, share images"]
-    CR["pg_cron: auto-pause, trending"]
+    CR["pg_cron: auto-pause, trending, weekly digest"]
     DB --> EF
     CR --> DB
   end
   EF --> PUSH["Expo Push → APNs / FCM"]
   EF --> MOD["Image moderation API"]
+  EF --> MAIL["Email service: weekly digest, sign-in codes"]
   DR -- "video upload" --> MUX["Mux: video processing and streaming"]
   MUX -- "webhook (clip ready)" --> EF
   WEB["Share pages (Next.js on Vercel)"] --> API
@@ -103,12 +105,15 @@ flowchart LR
 | `journeys` | id, owner_id, title, slug, description, category, tags[], cover, visibility (public · unlisted · private), status (active · paused · completed), label_style (day · part), template, start_date, completed_at, closing_note, last_entry_at, entry_count, follower_count |
 | `entries` | id, journey_id, author_id, happened_at, body, place_name, lat, lng, location_precision (none · city · exact), is_milestone, like_count, comment_count, created_at, edited_at |
 | `entry_media` | id, entry_id, type (photo · video), path, thumb_path, width, height, blurhash, duration_s, video_id, status (processing · ready · failed), position |
+| `journey_members` | journey_id, user_id, role (owner · contributor), status (invited · active · left · removed), invited_by, joined_at |
+| `journey_invites` | code, journey_id, created_by, expires_at, used_by (one-time links for friends who aren't on Journey yet) |
 | `journey_follows` | user_id, journey_id, last_read_at (drives "new since your last visit"), notify |
 | `creator_follows` | follower_id, creator_id |
 | `likes` | user_id, entry_id |
 | `comments` | id, entry_id, author_id, parent_id (one level of replies), body, created_at, deleted_at |
 | `notifications` | id, user_id, type, actor_id, journey_id, entry_id, created_at, read_at |
 | `push_tokens` | user_id, token, platform |
+| `notification_prefs` | user_id, one switch for each type (new entries, completed journeys, comments, followers and invitations, likes, reminders), digest_push, digest_email, checkin_time |
 | `reports`, `blocks` | reporter, target, reason, status · blocker_id, blocked_id |
 | `templates` | id, name, category, label_style, prompts (JSON) |
 
@@ -118,6 +123,8 @@ The rules that matter:
 - **Home feed order** is `created_at` (when it was posted), so a back-dated entry still shows up as new.
 - **Visibility** is enforced by RLS. *Public* means everyone. *Unlisted* means anyone with the link, but it never appears in Discover, search or profile lists. *Private* means the owner only. Blocks apply both ways.
 - **Auto-pause:** a daily job moves active journeys with no entry in 30 days to *paused* and nudges the creator.
+- **Shared journeys:** a journey has one owner and up to 3 contributors. Active members can add entries and change their own; only the owner changes the journey or its members. RLS enforces both. Every entry keeps its `author_id`, and a profile lists the journeys a person owns or is an active member of.
+- **Weekly digest:** a weekly job gathers, for each person, the new entries in the journeys they follow. It sends one push, plus one email to people who opted in, and nothing when there is nothing new.
 - **Drafts live only on the phone** until they upload.
 - **Video limits:** at most 3 clips per entry, each up to 60 seconds. Followers see a clip only once the video service reports it ready.
 
@@ -153,7 +160,7 @@ This repo has its own cloud environment called **Journey** (Node 22 and npm, wit
 What to add to the environment **when we scaffold the app** (there's nothing to install yet):
 
 - **Network:** Expo's EAS hosts (`api.expo.dev` and the hosts EAS uploads to), the Supabase project host (`<project-ref>.supabase.co`), `api.supabase.com` for the CLI, and `api.mux.com` for video.
-- **Keys**, saved as environment secrets and never in the repo: an Expo access token, a Supabase access token and a Mux API token.
+- **Keys**, saved as environment secrets and never in the repo: an Expo access token, a Supabase access token, a Mux API token and the email service's API key.
 - **Setup script:** install dependencies (`npm ci`) so every new session starts ready.
 
 ## Running costs (approximate; check current prices)
@@ -166,6 +173,7 @@ What to add to the environment **when we scaffold the app** (there's nothing to 
 | Expo EAS | Free tier to start; a paid plan only for more or faster builds |
 | Vercel | Free for development; Pro is about US$20 a month for commercial use |
 | PostHog, Sentry | Free tiers cover an MVP |
+| Email service | Free tier to start; check current limits |
 | Image moderation | About US$1 per 1,000 photos |
 | Video (Mux or Cloudflare Stream) | Pay as you go, by minutes stored and watched. As a guide, Cloudflare Stream charges about US$5 per 1,000 minutes stored and US$1 per 1,000 minutes watched. |
 | Domain | About US$15 a year |

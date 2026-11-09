@@ -1,6 +1,6 @@
 # Journey — Design Principles and Cues
 
-> **Status:** Design 2.1, 65 screens (6 of them proposed) · **Updated:** 9 Nov 2026
+> **Status:** Design 2.1, 66 screens · **Updated:** 9 Nov 2026
 >
 > The design source of truth is the **Journey Hub** (`design/hub`): the screens, the design system and these cues. Every colour, font size and corner radius lives in `design/tokens.json`, which the hub and the app both read. We don't use Figma.
 
@@ -58,7 +58,7 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 
 ## Screens
 
-65 screens in 13 groups, all designed in light and dark. Group 8 is a proposal, waiting for your decision. They live in the hub's Screens page, one file per group in `design/hub/src/screens/`. The numbers match the hub.
+66 screens in 13 groups, all designed in light and dark. They live in the hub's Screens page, one file per group in `design/hub/src/screens/`. The numbers match the hub.
 
 | # | Group | Screens |
 |---|---|---|
@@ -69,8 +69,8 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 | 5 | Story line | Journey · Story line · Jump to · Map · Challenge · Paused journey · Complete a journey · Recap |
 | 6 | Posts | Entry · Video clip · Photo viewer · Comments · Entry options · Share |
 | 7 | Create | The + button · New entry · Pick photos and clips · Choose a template · Journey details · Who can see it · Journey is live · Drafts and uploads |
-| 8 | Shared journeys *(proposed)* | Add people · Invitation · Shared journey · Shared story line · On both profiles · People on this journey |
-| 9 | Activity | Activity · Push notifications |
+| 8 | Shared journeys | Add people · Invitation · Shared journey · Shared story line · On both profiles · People on this journey |
+| 9 | Activity | Activity · Push notifications · Weekly digest |
 | 10 | Profile | Your profile · Creator profile · Edit profile · Followers |
 | 11 | Settings | Settings · Notification settings · Privacy and safety · Appearance · Account · Delete account · Blocked accounts |
 | 12 | Safety | Report · Block · Held for review |
@@ -83,10 +83,11 @@ The people in the screens are made up. Nora Lind is the person using the app fro
 1. Accent colour: Sun is chosen. Final check once you've reviewed all the screens.
 2. Custom 3D category icons, or keep emoji.
 3. Real photos for the store listing and marketing. The current ones are Unsplash stand-ins.
+4. Still to design, when we build them during the beta: the "Journey of the week" and themed collections in Discover.
 
 ## History
 
 - **v1, 7 Nov 2026:** a warm paper look with serif titles and drawn illustrations, built in Figma ([archive](https://www.figma.com/design/ilasSskZONkRkg8FL7JqLl)). Replaced by Design 2.0 after review; the Figma file is no longer updated.
 - **Design 2.0, 7 Nov 2026:** real photos, bold sans-serif type, glass controls, light and dark, three accent options.
 - **Design 2.1, 8 Nov 2026:** Sun chosen as the accent; the eight key screens grew to 59 end-to-end screens in 12 groups, built from one set of shared components.
-- **9 Nov 2026:** six screens for shared journeys added as a proposal (see the [engagement plan](06-engagement.md)).
+- **9 Nov 2026:** shared journeys (six screens) and the weekly digest added, after the decisions in the [engagement plan](06-engagement.md).

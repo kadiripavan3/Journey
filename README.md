@@ -2,7 +2,7 @@
 
 **A social app where every post is part of a story.** People start a journey (a trip, a 30-day challenge, a build), add entries to it over time, and others follow along for the next chapter.
 
-iOS and Android · Expo (React Native) + Supabase · Status: **Phase 0: requirements confirmed, 65 screens designed and ready for review**
+iOS and Android · Expo (React Native) + Supabase · Status: **Phase 0: requirements confirmed, 66 screens designed and ready for review**
 
 ## Start here
 

@@ -1,6 +1,6 @@
 # Journey — Product Requirements (MVP)
 
-> **Status:** v1.1, decisions confirmed · **Updated:** 8 Nov 2026
+> **Status:** v1.2, decisions confirmed · **Updated:** 9 Nov 2026
 >
 > This pulls the earlier feedback from DeepSeek, Gemini and ChatGPT into one set of decisions. Where they disagreed, the decision and the reason are written down. The decisions confirmed with you are in [§9](#9-decisions).
 
@@ -35,7 +35,8 @@ There are two roles, and everyone can be both:
 
 | Concept | Definition |
 |---|---|
-| **Journey** | A story with a title, cover, category, start date, visibility and status. Owned by one creator. |
+| **Journey** | A story with a title, cover, category, start date, visibility and status. Owned by one creator, who can share it with friends. |
+| **Shared journey** | A journey with up to 4 authors. The owner invites friends, everyone's entries flow into one timeline, and the journey shows on each author's profile. |
 | **Entry** | One update in a journey: photos, text, an optional place, and the date it happened. |
 | **Timeline** | Entries always show in the order they *happened*, not the order they were posted. You can post Day 3 after Day 4 and the story stays right. |
 | **Day / Part label** | An automatic label on each entry: "Day 5" for dated journeys (trips, challenges), "Part 5" for the rest. |
@@ -64,6 +65,7 @@ There are two roles, and everyone can be both:
   - **Private:** only you (a personal journal you can publish later).
 - **B4 Manage:** edit details, change the cover, pause or resume, delete.
 - **B5 Complete a journey:** closing note → celebration → automatic **recap card** to share.
+- **B6 Shared journeys:** the owner invites up to 3 friends (4 authors in all), in the app or with a one-time link for a friend who isn't on Journey yet. Friends join only if they accept, and in the app only people you follow can invite you. Friends add entries and edit or delete their own. Only the owner changes the journey, completes it, or removes people and entries. A friend can leave at any time; their entries stay unless they delete them.
 
 ### C. Adding entries (the most important flow, so it must be fast)
 
@@ -82,15 +84,17 @@ There are two roles, and everyone can be both:
 - **D3 Entry view:** full-screen photos and video, text, place, likes and comments.
 - **D4 Map view:** entries that have a place appear as numbered pins, joined in order. Tap a pin to open the entry.
 - **D5 Catch up:** "3 new entries since your last visit" markers on the timeline and in the feed.
+- **D6 Shared journeys read as one story:** the journey page shows every author, each entry shows who posted it, and readers can filter the timeline by person.
 
 ### E. Social
 
-- **E1 Follow** journeys and creators.
+- **E1 Follow** journeys and creators. One Follow on a shared journey brings every author's entries.
 - **E2 Like** entries (one heart).
 - **E3 Comment** on entries, with one level of replies. Creators can delete comments on their own journeys.
 - **E4 Home feed (Following):** new entries from journeys you follow, newest first, grouped per journey ("*Vietnam by motorbike* · 3 new entries"), ending with "You're all caught up". It is **chronological, not algorithmic**, so followers can trust they won't miss a chapter.
-- **E5 Notifications** (push and an in-app inbox): a new entry in a followed journey (batched per journey), a journey completed, a new follower, comments and replies, likes (batched). Each type can be switched off.
+- **E5 Notifications** (push and an in-app inbox): a new entry in a followed journey (batched per journey), a journey completed, a new follower, an invitation to a shared journey, comments and replies, likes (batched). Each type can be switched off.
 - **E6 Share:** the phone's share sheet for a journey or an entry. Links open the app if it's installed, otherwise a **public web page** (the journey, read-only, with "Follow in the app"). Links show rich previews on WhatsApp, Instagram and X. Plus a **"Follow my journey"** link for social bios.
+- **E7 Weekly digest:** one message a week, "This week in the journeys you follow", by push, and by email for people who opt in. It opens a page that ends like the feed does. Nothing is sent in a week with nothing new, and it can be switched off.
 
 ### F. Discovery
 
@@ -101,13 +105,13 @@ There are two roles, and everyone can be both:
 
 ### G. Profiles
 
-- **G1 Profile:** photo, bio, counts, a **Follow** button for the creator, and **Active** and **Completed** tabs of journeys.
+- **G1 Profile:** photo, bio, counts, a **Follow** button for the creator, and **Active** and **Completed** tabs of journeys. A shared journey appears on every author's profile with a **Shared** label.
 - **G2 Your own profile** also shows your drafts and private journeys (only to you).
 
 ### H. Trust, safety and store rules (needed for App Store and Google Play approval)
 
 - **H1 Report** a journey, entry, comment or user.
-- **H2 Block** a user: they can't see, follow or comment on your content, and you don't see theirs.
+- **H2 Block** a user: they can't see, follow, comment on or invite you to anything, and you don't see their content.
 - **H3 Automatic screening** of uploaded photos and video clips (nudity, violence) and a profanity filter on comments. Flagged items are held for review.
 - **H4 Moderation queue** for the team (start with a simple internal page).
 - **H5 Account deletion** in the app, plus a web page for deletion requests (Google Play requires both).
@@ -126,12 +130,15 @@ There are two roles, and everyone can be both:
 
 | When | Feature | Why later |
 |---|---|---|
+| **During the beta** | Journey pages that search engines can find | Added while the beta runs, so the first version isn't delayed |
+| | Hand-picked **featured journeys** in Discover ("Journey of the week", small themed collections) | Needs real journeys to feature |
 | **v1.1** | **Polls on entries** ("Where should I go next?"), the simple version of "choose your own adventure" | A big engagement win, but it needs an audience first |
 | | **Story cards** for Instagram and TikTok with a "Follow my journey" link | A growth loop, once the core works |
-| | **Creator stats** (views, followers over time) | |
+| | **Creator stats** (views, followers over time) and a weekly summary for creators | |
+| | **"What's next?"** when a journey completes: a next journey for the creator, similar journeys for readers | |
 | | Scheduled entries and smarter reminders | |
-| **v1.2** | **Shared journeys** (co-authors, up to 4 people on one journey). Designed on 9 Nov 2026 and proposed for the first version: see the [engagement plan](06-engagement.md#shared-journeys-how-it-works). | Waiting for your decision |
-| | Badges for completion and milestones: celebratory, never punishing | |
+| **v1.2** | Badges for completion and milestones: celebratory, never punishing | |
+| | **Challenges you can join:** many people do the same 30-day challenge at once, each on their own journey, with a shared page and separate progress for each person | The biggest lever for challenge-takers; the beta shows if they are the stronger audience |
 | | Download whole journeys for offline reading | |
 | | **Journey+** subscription (see the [roadmap](03-roadmap.md#monetization-staged)) | |
 | | **Longer videos** (over 60 s), as a Journey+ perk | Storage and streaming cost |
@@ -184,13 +191,13 @@ There are two roles, and everyone can be both:
 | Follower engagement | New-entry notifications that get opened | ≥ 30% |
 | Retention | Users active again on day 7 and day 30 | D30 ≥ 20% |
 | Completion | Journeys marked complete, or reaching their template's end | Track and improve |
-| Growth loop | Share-link views → installs → follows | Track and improve |
+| Growth loop | Share-link views → installs → follows; invitations sent → accepted | Track and improve |
 
 Track every metric separately for travel journeys and challenge journeys. The beta decides which audience to double down on.
 
 ## 9. Decisions
 
-Confirmed with you on 7 and 8 Nov 2026:
+Confirmed with you between 7 and 9 Nov 2026:
 
 | # | Topic | Decision |
 |---|---|---|
@@ -203,5 +210,9 @@ Confirmed with you on 7 and 8 Nov 2026:
 | 7 | Market | Worldwide, in English at launch. All text is ready for translation. |
 | 8 | Team | You, building with Claude Code. |
 | 9 | Accent colour | **Sun** (golden yellow), chosen 8 Nov 2026. Iris and Lagoon stay in the hub for comparison until all screens are reviewed. |
+| 10 | Shared journeys | In the first version: up to 4 authors on one journey (9 Nov 2026). |
+| 11 | Weekly digest | In the first version, by push, and by email for people who opt in (9 Nov 2026). |
+| 12 | Growth during the beta | Search-friendly journey pages and hand-picked featured journeys are added while the beta runs. |
+| 13 | Other engagement ideas | Story cards, polls, a creator summary, "What's next?" and challenges you can join wait for the beta's numbers. See the [engagement plan](06-engagement.md). |
 
 Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)).
