@@ -1,6 +1,7 @@
 package app.journey.api.moderation;
 
 import app.journey.api.account.ReportTarget;
+import app.journey.api.comment.CommentAdded;
 import app.journey.api.common.ApiProblem;
 import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaReady;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -53,13 +55,19 @@ public class ModerationService {
     private final ObjectProvider<MediaScreening> screening;
     private final MediaStorage storage;
     private final MediaService media;
+    private final ApplicationEventPublisher events;
 
     ModerationService(
-            ModerationStore store, ObjectProvider<MediaScreening> screening, MediaStorage storage, MediaService media) {
+            ModerationStore store,
+            ObjectProvider<MediaScreening> screening,
+            MediaStorage storage,
+            MediaService media,
+            ApplicationEventPublisher events) {
         this.store = store;
         this.screening = screening;
         this.storage = storage;
         this.media = media;
+        this.events = events;
     }
 
     // ---- the automatic check ----
@@ -202,10 +210,12 @@ public class ModerationService {
         }
     }
 
+    /** A comment that is let through is, for everyone else, a comment that was just added: they hear about it now. */
     @Transactional
     public void releaseComment(UUID commentId, String reviewer) {
         if (store.releaseComment(commentId)) {
             store.log(reviewer, "released a comment", "comment", commentId.toString(), "");
+            events.publishEvent(new CommentAdded(commentId));
         }
     }
 

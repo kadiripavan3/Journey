@@ -34,7 +34,9 @@ public class AccountService {
             @Schema(description = "Also send the weekly digest by email")
             boolean digestEmail,
 
-            @Schema(description = "Gentle reminders to add an entry, at most one a day")
+            @Schema(
+                    description =
+                            "Gentle reminders to add an entry, at most one a day. Off until the person asks for them.")
             boolean reminders,
 
             @Schema(description = "What new journeys start as")
@@ -56,7 +58,7 @@ public class AccountService {
 
     /** What someone has until they change anything: everything on except email, and new journeys public. */
     public static final SettingsResponse DEFAULTS =
-            new SettingsResponse(true, true, true, true, true, true, false, true, Visibility.PUBLIC, 19);
+            new SettingsResponse(true, true, true, true, true, true, false, false, Visibility.PUBLIC, 19);
 
     private final AccountStore accounts;
     private final PeopleService people;

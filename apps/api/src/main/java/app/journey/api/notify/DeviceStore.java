@@ -114,12 +114,12 @@ public class DeviceStore {
                 .update();
     }
 
-    /** Everyone who can get a push and hasn't switched reminders off, with where they are and when they want them. */
+    /** Everyone who can get a push and asked for reminders, with where they are and when they want them. */
     public List<Reminded> wantingReminders() {
         return jdbc.sql("""
             select distinct on (d.user_id) d.user_id, d.time_zone, coalesce(s.reminder_hour, 19) as reminder_hour
             from devices d left join settings s on s.user_id = d.user_id
-            where coalesce(s.reminders, true)
+            where coalesce(s.reminders, false)
             order by d.user_id, d.seen_at desc
             """)
                 .query((rs, n) -> new Reminded(

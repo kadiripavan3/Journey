@@ -1,5 +1,6 @@
 package app.journey.api.catalog;
 
+import app.journey.api.media.VideoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +29,20 @@ class CatalogController {
             List<String> prompts) {}
 
     record CatalogResponse(
-            List<CategoryResponse> categories, List<InterestResponse> interests, List<TemplateResponse> templates) {}
+            List<CategoryResponse> categories,
+            List<InterestResponse> interests,
+            List<TemplateResponse> templates,
+
+            @Schema(
+                    description =
+                            "Whether short clips can be added to entries. False until the video service is connected.")
+            boolean clips) {}
+
+    private final VideoService video;
+
+    CatalogController(VideoService video) {
+        this.video = video;
+    }
 
     @GetMapping
     @Operation(operationId = "getCatalog", summary = "Interests, categories and journey templates")
@@ -50,6 +64,7 @@ class CatalogController {
                                 t.labelStyle(),
                                 t.targetDays(),
                                 t.prompts()))
-                        .toList());
+                        .toList(),
+                video.available());
     }
 }

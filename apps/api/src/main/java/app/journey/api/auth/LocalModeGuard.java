@@ -2,6 +2,8 @@ package app.journey.api.auth;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
@@ -11,6 +13,9 @@ import org.springframework.core.env.Profiles;
  * The stand-ins (sign in with any email and a fixed code, files on this computer's disk, sample people) are
  * for building and testing. One setting must never be enough to switch them on where real people are: they
  * work only together with the {@code local} or {@code test} profile, and the API refuses to start otherwise.
+ *
+ * <p>It also refuses a switch set to a word it doesn't know ({@code journey.video.mode=muxx}): otherwise that part
+ * of the API would quietly not exist.
  *
  * <p>It runs as soon as the settings are known, before anything connects to the database (it is listed in
  * {@code META-INF/spring.factories}).
@@ -22,7 +27,28 @@ public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmen
         check(event.getEnvironment());
     }
 
+    /** Every switch and the words it understands. A word it doesn't know is a typing mistake, not "off". */
+    private static final Map<String, List<String>> MODES = Map.of(
+            "journey.auth.mode", List.of("supabase", "local"),
+            "journey.media.mode", List.of("r2", "local"),
+            "journey.video.mode", List.of("mux", "off", "local"),
+            "journey.places.mode", List.of("device", "local"),
+            "journey.push.mode", List.of("expo", "off", "local"),
+            "journey.email.mode", List.of("resend", "off", "local"),
+            "journey.moderation.mode", List.of("rekognition", "off", "local"));
+
     static void check(Environment environment) {
+        List<String> unknown = new ArrayList<>();
+        new TreeMap<>(MODES).forEach((setting, words) -> {
+            String value = environment.getProperty(setting);
+            if (value != null && !words.contains(value)) {
+                unknown.add("%s=%s (it can be: %s)".formatted(setting, value, String.join(", ", words)));
+            }
+        });
+        if (!unknown.isEmpty()) {
+            throw new IllegalStateException(
+                    "These settings have a value the API doesn't know: " + String.join("; ", unknown) + ".");
+        }
         if (environment.acceptsProfiles(Profiles.of("local", "test"))) {
             return;
         }

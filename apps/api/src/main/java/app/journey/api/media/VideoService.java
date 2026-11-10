@@ -22,6 +22,11 @@ public interface VideoService {
      */
     record ClipState(MediaStatus status, Long bytes, String assetId, String playbackId, Integer durationSeconds) {}
 
+    /** False when clips are switched off: the app is told not to offer them. */
+    default boolean available() {
+        return true;
+    }
+
     ClipUpload startUpload(UUID mediaId, String storageKey, String contentType);
 
     /** The phone says the clip is sent. Refuses a clip that didn't arrive or is too big to be one. */

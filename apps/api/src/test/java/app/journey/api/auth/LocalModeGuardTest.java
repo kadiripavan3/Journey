@@ -49,4 +49,21 @@ class LocalModeGuardTest {
                 .withProperty("journey.media.mode", "r2");
         assertThatCode(() -> LocalModeGuard.check(real)).doesNotThrowAnyException();
     }
+
+    @Test
+    void aSwitchSetToAWordNobodyKnowsStopsTheApiFromStartingAndSaysWhatItCanBe() {
+        MockEnvironment typo = new MockEnvironment().withProperty("journey.video.mode", "muxx");
+        typo.setActiveProfiles("local");
+        assertThatThrownBy(() -> LocalModeGuard.check(typo))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("journey.video.mode=muxx")
+                .hasMessageContaining("mux, off, local");
+        // Switched off is a word it knows, with or without the local profile.
+        MockEnvironment later = new MockEnvironment()
+                .withProperty("journey.video.mode", "off")
+                .withProperty("journey.push.mode", "off")
+                .withProperty("journey.email.mode", "off")
+                .withProperty("journey.moderation.mode", "off");
+        assertThatCode(() -> LocalModeGuard.check(later)).doesNotThrowAnyException();
+    }
 }

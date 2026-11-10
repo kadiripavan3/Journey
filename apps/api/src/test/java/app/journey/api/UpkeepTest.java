@@ -59,10 +59,17 @@ class UpkeepTest extends ApiTest {
     }
 
     @Test
-    void aChallengeIsNudgedOnceADayAtThePersonsOwnEveningAndOnlyIfTheyWantIt() throws Exception {
+    void aChallengeIsNudgedOnceADayAtThePersonsOwnEveningAndOnlyIfTheyAskedForIt() throws Exception {
         String nora = person("nora");
         device(nora, "ExponentPushToken[nora]", "Asia/Tokyo");
         String challenge = challenge(nora, "30 days of guitar", 3);
+        Instant tokyoEveningBefore = LocalDate.now(ZoneId.of("Asia/Tokyo"))
+                .atTime(19, 5)
+                .atZone(ZoneId.of("Asia/Tokyo"))
+                .toInstant();
+        // Reminders are off until someone asks for them.
+        assertThat(reminders.remindAt(tokyoEveningBefore)).isZero();
+        wantsReminders(nora);
         entry(nora, challenge, "First chord", 2);
         // Seven in the evening in Tokyo is ten in the morning in UTC.
         Instant tokyoEvening = LocalDate.now(ZoneId.of("Asia/Tokyo"))
@@ -90,6 +97,7 @@ class UpkeepTest extends ApiTest {
         String later = person("later");
         for (String token : new String[] {done, off, paused, later}) {
             device(token, "ExponentPushToken[" + token.substring(token.length() - 6) + "]", "UTC");
+            wantsReminders(token);
         }
         Instant evening = LocalDate.now(ZoneOffset.UTC).atTime(19, 0).toInstant(ZoneOffset.UTC);
         entry(done, challenge(done, "Checked in today", 3), "Today's check-in", 0);
@@ -132,6 +140,7 @@ class UpkeepTest extends ApiTest {
     void aJourneyWithoutADayCountIsNudgedAfterThreeQuietDaysAndThenLeftAlone() throws Exception {
         String nora = person("nora");
         device(nora, "ExponentPushToken[nora]", "UTC");
+        wantsReminders(nora);
         String trip = journey(nora, "Iceland ring road", "public", 9);
         entry(nora, trip, "Reykjavik", 3);
         Instant evening = LocalDate.now(ZoneOffset.UTC).atTime(19, 0).toInstant(ZoneOffset.UTC);
@@ -345,6 +354,20 @@ class UpkeepTest extends ApiTest {
         org.hamcrest.MatcherAssert.assertThat(
                 inbox.sent().get(0).html(), containsString("Tom &amp; Jerry &lt;script&gt;"));
         assertThat(inbox.sent().get(0).html()).startsWith("<!doctype html>").doesNotContain("<script>");
+    }
+
+    private void wantsReminders(String token) throws Exception {
+        String settings = mvc.perform(get("/v1/me/settings").header("Authorization", token))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(settings).contains("\"reminders\":false");
+        mvc.perform(put("/v1/me/settings")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(settings.replace("\"reminders\":false", "\"reminders\":true")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reminders").value(true));
     }
 
     private void device(String token, String pushToken, String zone) throws Exception {

@@ -1994,7 +1994,7 @@
           },
           "reminders" : {
             "type" : "boolean",
-            "description" : "Gentle reminders to add an entry, at most one a day"
+            "description" : "Gentle reminders to add an entry, at most one a day. Off until the person asks for them."
           },
           "defaultVisibility" : {
             "$ref" : "#/components/schemas/Visibility",
@@ -3504,9 +3504,13 @@
             "items" : {
               "$ref" : "#/components/schemas/TemplateResponse"
             }
+          },
+          "clips" : {
+            "type" : "boolean",
+            "description" : "Whether short clips can be added to entries. False until the video service is connected."
           }
         },
-        "required" : [ "categories", "interests", "templates" ]
+        "required" : [ "categories", "clips", "interests", "templates" ]
       },
       "CategoryResponse" : {
         "type" : "object",

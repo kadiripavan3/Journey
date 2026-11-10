@@ -154,6 +154,11 @@ class ModerationTest extends ApiTest {
         String nora = person("nora");
         String kai = person("kai");
         String entry = entry(maya, journey(maya, "Southeast Asia", "public", 3), "Hoi An", 0);
+        mvc.perform(put("/v1/me/devices")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"ExponentPushToken[maya]\",\"platform\":\"ios\"}"))
+                .andExpect(status().isNoContent());
 
         String held = JsonPath.read(
                 mvc.perform(comment(nora, entry, "You absolute B.I.T.C.H"))
@@ -188,7 +193,13 @@ class ModerationTest extends ApiTest {
         mvc.perform(get("/admin").with(httpBasic("ada", "review")))
                 .andExpect(content().string(containsString("You absolute B.I.T.C.H")))
                 .andExpect(content().string(containsString("By @nora, on Southeast Asia")));
+        // Until then Maya's phone heard of one comment (Kai's); once it is let through, of Nora's too.
+        assertThat(pushesAboutComments()).isEqualTo(1);
         mvc.perform(reviewer(post("/admin/comments/" + held + "/release"))).andExpect(redirectedUrl("/admin"));
+        assertThat(pushesAboutComments()).isEqualTo(2);
+        // Letting it through twice changes nothing.
+        mvc.perform(reviewer(post("/admin/comments/" + held + "/release"))).andExpect(redirectedUrl("/admin"));
+        assertThat(pushesAboutComments()).isEqualTo(2);
 
         mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", maya))
                 .andExpect(jsonPath("$.items", hasSize(2)));
@@ -401,5 +412,11 @@ class ModerationTest extends ApiTest {
         mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", token))
                 .andExpect(status().isNoContent());
         return id;
+    }
+
+    private int pushesAboutComments() {
+        return jdbc.sql("select count(*) from notifications where kind = 'comment'")
+                .query(Integer.class)
+                .single();
     }
 }

@@ -219,7 +219,7 @@ public class OutboxStore {
                       when 'likes' then coalesce(s.notify_likes, true)
                       when 'comment' then coalesce(s.notify_comments, true)
                       when 'reply' then coalesce(s.notify_comments, true)
-                      when 'reminder' then coalesce(s.reminders, true)
+                      when 'reminder' then coalesce(s.reminders, false)
                       when 'weekly_digest' then coalesce(s.weekly_digest, true)
                       when 'journey_paused' then true
                       else coalesce(s.notify_followers, true) end
