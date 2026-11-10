@@ -2,6 +2,7 @@ package app.journey.api.seed;
 
 import app.journey.api.entry.EntryAdded;
 import app.journey.api.entry.EntryStore;
+import app.journey.api.journey.FriendInvited;
 import app.journey.api.media.LocalDiskStorage;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -291,6 +292,30 @@ public class LocalSeed implements ApplicationRunner {
       jdbc.sql("insert into profile_follows (follower_id, followee_id) values (:follower, :followee) on conflict do nothing")
           .param("follower", first).param("followee", added.authorId()).update();
     }
+  }
+
+  /** So that one person testing alone can try a shared journey: an invited sample creator says yes and adds an entry. */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void sampleCreatorJoins(FriendInvited invited) {
+    if (!enabled || !samplePeople().contains(invited.friendId())) {
+      return;
+    }
+    jdbc.sql("update journey_members set status = 'joined', joined_at = now() where journey_id = :journey and user_id = :friend")
+        .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
+    jdbc.sql("insert into journey_follows (user_id, journey_id, auto) values (:friend, :journey, true) on conflict do nothing")
+        .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
+    jdbc.sql(
+            """
+            insert into entries (journey_id, author_id, happened_at, happened_on, title, body)
+            select j.id, :friend, now(), greatest(j.start_date, (now() at time zone 'UTC')::date), 'Along for the ride',
+                   'Thanks for the invitation. I''ll add my side of the story here.'
+            from journeys j where j.id = :journey
+            """)
+        .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
+    entries.refreshJourneyCounters(invited.journeyId(), true);
+    jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
+        .param("id", invited.journeyId()).update();
   }
 
   private List<UUID> samplePeople() {

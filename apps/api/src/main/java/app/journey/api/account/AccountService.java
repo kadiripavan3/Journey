@@ -107,6 +107,12 @@ public class AccountService {
     jdbc.sql("insert into blocks (blocker_id, blocked_id) values (:me, :them) on conflict do nothing").param("me", me).param("them", them).update();
     jdbc.sql("delete from profile_follows where (follower_id = :me and followee_id = :them) or (follower_id = :them and followee_id = :me)")
         .param("me", me).param("them", them).update();
+    jdbc.sql(
+            """
+            delete from journey_members m using journeys j
+            where j.id = m.journey_id and ((m.user_id = :them and j.owner_id = :me) or (m.user_id = :me and j.owner_id = :them))
+            """)
+        .param("me", me).param("them", them).update();
     List<UUID> unfollowed = jdbc.sql(
             """
             delete from journey_follows f using journeys j

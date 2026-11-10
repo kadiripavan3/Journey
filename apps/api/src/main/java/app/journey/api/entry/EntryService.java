@@ -65,7 +65,7 @@ public class EntryService {
     JourneyRow journey = journeys.require(journeyId, author);
     if (!journeys.canAddEntry(journey, author)) {
       throw new ApiProblem(HttpStatus.FORBIDDEN, "cannot_add_entry",
-          "completed".equals(journey.status()) ? "This journey is completed, so it takes no new entries." : "Only the owner can add entries to this journey.");
+          "completed".equals(journey.status()) ? "This journey is completed, so it takes no new entries." : "Only the people on this journey can add entries to it.");
     }
     Content content = check(journey, author, title, body, happenedAt, happenedOn, placeName, mediaIds);
     UUID id = entries.insert(journeyId, author, content.happenedAt, content.happenedOn, content.title, content.body, content.placeName, milestone);

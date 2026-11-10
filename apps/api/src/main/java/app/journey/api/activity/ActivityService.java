@@ -35,7 +35,7 @@ public class ActivityService {
 
   public record ActivityItemResponse(
       @Schema(description = "Stable for the same line, so the app can keep its place in a list") String id,
-      @Schema(description = "new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow") String kind,
+      @Schema(description = "new_entries, journey_completed, likes, comment, reply, journey_follow, profile_follow, invitation or friend_joined") String kind,
       Instant at,
       @Schema(description = "True when it happened after the person last opened Activity") boolean isNew,
       @Schema(description = "Who did it, most recent first; at most two") List<PersonResponse> actors,
@@ -74,6 +74,7 @@ public class ActivityService {
     lines.addAll(comments(me));
     lines.addAll(journeyFollows(me));
     lines.addAll(profileFollows(me));
+    lines.addAll(sharedJourneys(me));
     lines.sort(Comparator.comparing(Line::at).reversed());
     List<Line> shown = lines.subList(0, Math.min(lines.size(), TOTAL));
 
@@ -209,6 +210,26 @@ public class ActivityService {
         .query((rs, n) -> new Line(
             "pfollow:" + rs.getString("follower_id"), "profile_follow", Sql.instant(rs, "created_at"), List.of(rs.getObject("follower_id", UUID.class)), 1, 0,
             null, null, null, null, null, rs.getBoolean("follows_back")))
+        .list();
+  }
+
+  /** "Nora invited you to add to Iceland ring road", and for an owner, "Alex joined Iceland ring road". */
+  private List<Line> sharedJourneys(UUID me) {
+    return jdbc.sql(
+            """
+            select m.journey_id, j.title, m.status, m.user_id, m.invited_by, coalesce(m.joined_at, m.created_at) as at
+            from journey_members m join journeys j on j.id = m.journey_id
+            where ((m.user_id = :me and m.status = 'invited') or (j.owner_id = :me and m.status = 'joined')) and coalesce(m.joined_at, m.created_at) > %s
+            order by at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> {
+          boolean invitation = "invited".equals(rs.getString("status"));
+          return new Line(
+              (invitation ? "invite:" : "joined:") + rs.getString("journey_id") + ":" + rs.getString("user_id"), invitation ? "invitation" : "friend_joined",
+              Sql.instant(rs, "at"), List.of(rs.getObject(invitation ? "invited_by" : "user_id", UUID.class)), 1, 0,
+              rs.getObject("journey_id", UUID.class), rs.getString("title"), null, null, null, false);
+        })
         .list();
   }
 

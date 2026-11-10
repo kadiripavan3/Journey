@@ -18,7 +18,7 @@ public class JourneyStore {
   public record JourneyRow(
       UUID id, UUID ownerId, String title, String description, String category, String template, String labelStyle, String visibility, String status,
       List<String> tags, LocalDate startDate, Integer targetDays, Instant completedAt, String closingNote, Instant lastEntryAt, int entryCount,
-      int followerCount, Instant createdAt, String ownerUsername, String ownerName, String ownerAvatarKey, String coverKey, LocalDate latestOn, boolean following, Instant lastReadAt) {}
+      int followerCount, Instant createdAt, String ownerUsername, String ownerName, String ownerAvatarKey, String coverKey, LocalDate latestOn, boolean following, Instant lastReadAt, boolean member, int memberCount) {}
 
   /** Every journey with its owner, its cover (the chosen one, or else the first photo), and whether and since when the viewer follows it. */
   private static final String SELECT =
@@ -33,7 +33,9 @@ public class JourneyStore {
                where e.journey_id = j.id and m.kind = 'photo'
                order by e.happened_at, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
-             vf.user_id is not null as following, vf.last_read_at
+             vf.user_id is not null as following, vf.last_read_at,
+             exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
+             (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count
       from journeys j
       join profiles p on p.id = j.owner_id
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
@@ -49,12 +51,33 @@ public class JourneyStore {
           Sql.instant(rs, "completed_at"), rs.getString("closing_note"), Sql.instant(rs, "last_entry_at"), rs.getInt("entry_count"),
           rs.getInt("follower_count"), Sql.instant(rs, "created_at"), rs.getString("owner_username"), rs.getString("owner_name"),
           rs.getString("owner_avatar_key"), rs.getString("cover_key"), rs.getObject("latest_on", LocalDate.class), rs.getBoolean("following"),
-          Sql.instant(rs, "last_read_at"));
+          Sql.instant(rs, "last_read_at"), rs.getBoolean("member"), rs.getInt("member_count"));
 
   private final JdbcClient jdbc;
 
   JourneyStore(JdbcClient jdbc) {
     this.jdbc = jdbc;
+  }
+
+  /** A person who writes in a journey: its owner, or a friend who joined. */
+  public record AuthorRow(UUID journeyId, UUID id, String username, String displayName, String avatarKey) {}
+
+  /** The friends who joined each of these journeys, in the order they joined. */
+  public Map<UUID, List<AuthorRow>> membersOf(List<UUID> journeyIds) {
+    if (journeyIds.isEmpty()) {
+      return Map.of();
+    }
+    return jdbc.sql(
+            """
+            select m.journey_id, p.id, p.username, p.display_name, a.storage_key as avatar_key
+            from journey_members m join profiles p on p.id = m.user_id left join media a on a.id = p.avatar_media_id
+            where m.journey_id in (:ids) and m.status = 'joined'
+            order by m.joined_at
+            """)
+        .param("ids", journeyIds)
+        .query((rs, n) -> new AuthorRow(rs.getObject("journey_id", UUID.class), rs.getObject("id", UUID.class), rs.getString("username"),
+            rs.getString("display_name"), rs.getString("avatar_key")))
+        .list().stream().collect(java.util.stream.Collectors.groupingBy(AuthorRow::journeyId));
   }
 
   /** Blocking hides journeys both ways: from the person blocked, and their own from the person who blocked them. */

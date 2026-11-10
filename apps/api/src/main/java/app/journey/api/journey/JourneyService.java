@@ -27,6 +27,7 @@ public class JourneyService {
 
   public record JourneyViewerResponse(
       boolean isOwner, boolean isFollowing, boolean canAddEntry,
+      @Schema(description = "True when the viewer is a friend who joined this shared journey") boolean isMember,
       @Schema(nullable = true, description = "When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it.")
       Instant lastReadAt) {}
 
@@ -45,7 +46,9 @@ public class JourneyService {
       @Schema(nullable = true) Instant lastEntryAt,
       @Schema(nullable = true) Instant completedAt,
       @Schema(nullable = true) String closingNote,
-      PersonResponse owner, JourneyViewerResponse viewer) {}
+      PersonResponse owner,
+      @Schema(description = "Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared.") List<PersonResponse> authors,
+      JourneyViewerResponse viewer) {}
 
   private final JourneyStore journeys;
   private final MediaService media;
@@ -55,10 +58,10 @@ public class JourneyService {
     this.media = media;
   }
 
-  /** The journey, if this person may see it. A private journey looks exactly like one that doesn't exist. */
+  /** The journey, if this person may see it. A private journey looks exactly like one that doesn't exist, except to its authors. */
   public JourneyRow require(UUID id, UUID viewer) {
     return journeys.find(id, viewer)
-        .filter(j -> !"private".equals(j.visibility()) || j.ownerId().equals(viewer))
+        .filter(j -> !"private".equals(j.visibility()) || j.ownerId().equals(viewer) || j.member())
         .orElseThrow(() -> new ApiProblem(HttpStatus.NOT_FOUND, "journey_not_found", "This journey isn't available."));
   }
 
@@ -71,7 +74,7 @@ public class JourneyService {
   }
 
   public boolean canAddEntry(JourneyRow journey, UUID viewer) {
-    return journey.ownerId().equals(viewer) && !"completed".equals(journey.status());
+    return (journey.ownerId().equals(viewer) || journey.member()) && !"completed".equals(journey.status());
   }
 
   @Transactional
@@ -176,7 +179,11 @@ public class JourneyService {
 
   /** The viewer's own journeys, of every visibility, newest activity first. */
   public List<JourneyResponse> mine(UUID viewer) {
-    return views(journeys.list("j.owner_id = :owner", Map.of("owner", viewer), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer), viewer);
+    return views(
+        journeys.list(
+            "j.owner_id = :owner or exists (select 1 from journey_members mm where mm.journey_id = j.id and mm.user_id = :owner and mm.status = 'joined')",
+            Map.of("owner", viewer), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
+        viewer);
   }
 
   /** Journeys the viewer follows, newest activity first. */
@@ -188,10 +195,17 @@ public class JourneyService {
         viewer);
   }
 
-  /** Someone's public journeys, for their profile. */
+  /** Someone's public journeys, for their profile: the ones they own and the shared ones they write in. */
   public List<JourneyResponse> publicBy(String username, UUID viewer) {
-    return views(journeys.list("p.username = :username and j.visibility = 'public'", Map.of("username", username),
-        "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer), viewer);
+    return views(
+        journeys.list(
+            """
+            j.visibility = 'public' and (p.username = :username or exists (
+              select 1 from journey_members pm join profiles mp on mp.id = pm.user_id
+              where pm.journey_id = j.id and pm.status = 'joined' and mp.username = :username))
+            """,
+            Map.of("username", username), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
+        viewer);
   }
 
   public record DiscoverResponse(List<JourneyResponse> trending, List<JourneyResponse> fresh, List<JourneyResponse> completed) {}
@@ -251,17 +265,25 @@ public class JourneyService {
   }
 
   public List<JourneyResponse> views(List<JourneyRow> rows, UUID viewer) {
-    return rows.stream().map(row -> view(row, viewer)).toList();
+    Map<UUID, List<JourneyStore.AuthorRow>> members = journeys.membersOf(rows.stream().filter(j -> j.memberCount() > 0).map(JourneyRow::id).toList());
+    return rows.stream().map(row -> view(row, viewer, members.getOrDefault(row.id(), List.of()))).toList();
   }
 
   public JourneyResponse view(JourneyRow j, UUID viewer) {
+    return views(List.of(j), viewer).get(0);
+  }
+
+  private JourneyResponse view(JourneyRow j, UUID viewer, List<JourneyStore.AuthorRow> members) {
+    PersonResponse owner = new PersonResponse(j.ownerId(), j.ownerUsername(), j.ownerName(), media.urlFor(j.ownerAvatarKey()));
+    List<PersonResponse> authors = new java.util.ArrayList<>(List.of(owner));
+    members.forEach(m -> authors.add(new PersonResponse(m.id(), m.username(), m.displayName(), media.urlFor(m.avatarKey()))));
     int latest = latestNumber(j);
     return new JourneyResponse(
         j.id(), j.title(), j.description(), j.category(), j.template(), j.labelStyle(), j.visibility(), j.status(), j.tags(),
         media.urlFor(j.coverKey()), j.startDate(), j.targetDays(), latest, progressLabel(j, latest), j.entryCount(), j.followerCount(),
         j.lastEntryAt(), j.completedAt(), j.closingNote(),
-        new PersonResponse(j.ownerId(), j.ownerUsername(), j.ownerName(), media.urlFor(j.ownerAvatarKey())),
-        new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.lastReadAt()));
+        owner, authors,
+        new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.member(), j.lastReadAt()));
   }
 
   private static int latestNumber(JourneyRow j) {

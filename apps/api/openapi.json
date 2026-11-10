@@ -563,6 +563,98 @@
         }
       }
     },
+    "/v1/journeys/{id}/members" : {
+      "get" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Who writes in a journey, and how many more friends can be invited",
+        "operationId" : "getMembers",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MembersResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Invite a follower to add entries to the journey. They join only if they accept.",
+        "operationId" : "inviteMember",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InviteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MembersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/invitation/accept" : {
+      "post" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Join a shared journey you were invited to",
+        "operationId" : "acceptInvitation",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/complete" : {
       "post" : {
         "tags" : [ "journeys" ],
@@ -1038,6 +1130,28 @@
         }
       }
     },
+    "/v1/me/invitations" : {
+      "get" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Invitations to shared journeys that are waiting for your answer",
+        "operationId" : "getInvitations",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/InvitationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/following" : {
       "get" : {
         "tags" : [ "journeys" ],
@@ -1103,6 +1217,37 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/RecapResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/invitable" : {
+      "get" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "The owner's followers who can still be invited",
+        "operationId" : "getInvitable",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PersonResponse"
+                  }
                 }
               }
             }
@@ -1222,6 +1367,34 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/members/{username}" : {
+      "delete" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "The owner removes someone or takes an invitation back; a friend leaves or declines. Entries stay.",
+        "operationId" : "removeMember",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
           }
         }
       }
@@ -1509,11 +1682,18 @@
           "owner" : {
             "$ref" : "#/components/schemas/PersonResponse"
           },
+          "authors" : {
+            "type" : "array",
+            "description" : "Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared.",
+            "items" : {
+              "$ref" : "#/components/schemas/PersonResponse"
+            }
+          },
           "viewer" : {
             "$ref" : "#/components/schemas/JourneyViewerResponse"
           }
         },
-        "required" : [ "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
+        "required" : [ "authors", "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
       },
       "JourneyViewerResponse" : {
         "type" : "object",
@@ -1527,13 +1707,17 @@
           "canAddEntry" : {
             "type" : "boolean"
           },
+          "isMember" : {
+            "type" : "boolean",
+            "description" : "True when the viewer is a friend who joined this shared journey"
+          },
           "lastReadAt" : {
             "type" : [ "string", "null" ],
             "format" : "date-time",
             "description" : "When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it."
           }
         },
-        "required" : [ "canAddEntry", "isFollowing", "isOwner", "lastReadAt" ]
+        "required" : [ "canAddEntry", "isFollowing", "isMember", "isOwner", "lastReadAt" ]
       },
       "PersonResponse" : {
         "type" : "object",
@@ -1833,6 +2017,63 @@
         },
         "required" : [ "startDate", "template", "title", "visibility" ]
       },
+      "InviteRequest" : {
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "username" ]
+      },
+      "MemberResponse" : {
+        "type" : "object",
+        "properties" : {
+          "person" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "role" : {
+            "type" : "string",
+            "description" : "owner or friend"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "joined or invited"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "since" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When they were invited or, once joined, when they joined"
+          }
+        },
+        "required" : [ "entryCount", "person", "role", "since", "status" ]
+      },
+      "MembersResponse" : {
+        "type" : "object",
+        "properties" : {
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MemberResponse"
+            }
+          },
+          "spotsLeft" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many more friends can be invited"
+          },
+          "viewerRole" : {
+            "type" : "string",
+            "description" : "owner, friend, invited or none"
+          }
+        },
+        "required" : [ "members", "spotsLeft", "viewerRole" ]
+      },
       "CompleteJourneyRequest" : {
         "type" : "object",
         "properties" : {
@@ -2098,6 +2339,22 @@
         },
         "required" : [ "email", "id", "profile" ]
       },
+      "InvitationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "journey" : {
+            "$ref" : "#/components/schemas/JourneyResponse"
+          },
+          "invitedBy" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "invitedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "invitedAt", "invitedBy", "journey" ]
+      },
       "BlockedPersonResponse" : {
         "type" : "object",
         "properties" : {
@@ -2325,7 +2582,7 @@
           },
           "kind" : {
             "type" : "string",
-            "description" : "new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow"
+            "description" : "new_entries, journey_completed, likes, comment, reply, journey_follow, profile_follow, invitation or friend_joined"
           },
           "at" : {
             "type" : "string",

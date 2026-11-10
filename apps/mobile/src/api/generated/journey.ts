@@ -153,6 +153,8 @@ export interface JourneyViewerResponse {
   isOwner: boolean;
   isFollowing: boolean;
   canAddEntry: boolean;
+  /** True when the viewer is a friend who joined this shared journey */
+  isMember: boolean;
   /**
      * When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it.
      * @nullable
@@ -188,6 +190,8 @@ export interface JourneyResponse {
   /** @nullable */
   closingNote: string | null;
   owner: PersonResponse;
+  /** Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared. */
+  authors: PersonResponse[];
   viewer: JourneyViewerResponse;
 }
 
@@ -372,6 +376,30 @@ export interface CreateJourneyRequest {
   coverMediaId?: string;
 }
 
+export interface InviteRequest {
+  /** @minLength 1 */
+  username: string;
+}
+
+export interface MemberResponse {
+  person: PersonResponse;
+  /** owner or friend */
+  role: string;
+  /** joined or invited */
+  status: string;
+  entryCount: number;
+  /** When they were invited or, once joined, when they joined */
+  since: string;
+}
+
+export interface MembersResponse {
+  members: MemberResponse[];
+  /** How many more friends can be invited */
+  spotsLeft: number;
+  /** owner, friend, invited or none */
+  viewerRole: string;
+}
+
 export interface CompleteJourneyRequest {
   /**
      * @minLength 0
@@ -533,6 +561,12 @@ export interface MeResponse {
   profile: ProfileResponse | null;
 }
 
+export interface InvitationResponse {
+  journey: JourneyResponse;
+  invitedBy: PersonResponse;
+  invitedAt: string;
+}
+
 export interface BlockedPersonResponse {
   id: string;
   username: string;
@@ -609,7 +643,7 @@ export interface CatalogResponse {
 export interface ActivityItemResponse {
   /** Stable for the same line, so the app can keep its place in a list */
   id: string;
-  /** new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow */
+  /** new_entries, journey_completed, likes, comment, reply, journey_follow, profile_follow, invitation or friend_joined */
   kind: string;
   at: string;
   /** True when it happened after the person last opened Activity */
@@ -2306,6 +2340,266 @@ export const useMarkJourneyRead = <TError = unknown,
       return useMutation(getMarkJourneyReadMutationOptions(options), queryClient);
     }
 
+export const getGetMembersUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/members`
+}
+
+/**
+ * @summary Who writes in a journey, and how many more friends can be invited
+ */
+export const getMembers = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<MembersResponse> => {
+
+  return apiFetch<MembersResponse>(getGetMembersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMembersQueryKey = (id: string,) => {
+    return [
+    `/v1/journeys/${id}/members`
+    ] as const;
+    }
+
+
+export const getGetMembersQueryOptions = <TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMembersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMembers>>> = ({ signal }) => getMembers(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMembersQueryResult = NonNullable<Awaited<ReturnType<typeof getMembers>>>
+export type GetMembersQueryError = unknown
+
+
+/** @summary Who writes in a journey, and how many more friends can be invited */
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Who writes in a journey, and how many more friends can be invited */
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMembers>>,
+          TError,
+          Awaited<ReturnType<typeof getMembers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Who writes in a journey, and how many more friends can be invited */
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Who writes in a journey, and how many more friends can be invited */
+export function useGetMembers<TData = Awaited<ReturnType<typeof getMembers>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMembers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMembersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInviteMemberUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/members`
+}
+
+/**
+ * @summary Invite a follower to add entries to the journey. They join only if they accept.
+ */
+export const inviteMember = async (id: string,
+    inviteRequest: InviteRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MembersResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<MembersResponse>(getInviteMemberUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(inviteRequest)
+  }
+);}
+
+
+
+
+
+export const getInviteMemberMutationKey = () => ['inviteMember'] as const;
+
+export const getInviteMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteMember>>, TError,InviteMemberMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof inviteMember>>, TError,InviteMemberMutationVariables, TContext> => {
+
+const mutationKey = getInviteMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof inviteMember>>, InviteMemberMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  inviteMember(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InviteMemberMutationResult = NonNullable<Awaited<ReturnType<typeof inviteMember>>>
+    export type InviteMemberMutationBody = InviteRequest
+    export type InviteMemberMutationError = unknown
+    export type InviteMemberMutationVariables = {id: string;data: InviteRequest}
+
+    /** @summary Invite a follower to add entries to the journey. They join only if they accept. */
+export const useInviteMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof inviteMember>>, TError,InviteMemberMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof inviteMember>>,
+        TError,
+        InviteMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getInviteMemberMutationOptions(options), queryClient);
+    }
+
+export const getAcceptInvitationUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/invitation/accept`
+}
+
+/**
+ * @summary Join a shared journey you were invited to
+ */
+export const acceptInvitation = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+  return apiFetch<JourneyResponse>(getAcceptInvitationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptInvitationMutationKey = () => ['acceptInvitation'] as const;
+
+export const getAcceptInvitationMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext> => {
+
+const mutationKey = getAcceptInvitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptInvitation>>, AcceptInvitationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  acceptInvitation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof acceptInvitation>>>
+
+    export type AcceptInvitationMutationError = unknown
+    export type AcceptInvitationMutationVariables = {id: string}
+
+    /** @summary Join a shared journey you were invited to */
+export const useAcceptInvitation = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError,AcceptInvitationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof acceptInvitation>>,
+        TError,
+        AcceptInvitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcceptInvitationMutationOptions(options), queryClient);
+    }
+
 export const getCompleteJourneyUrl = (id: string,) => {
 
 
@@ -3972,6 +4266,107 @@ export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys
 
 
 
+export const getGetInvitationsUrl = () => {
+
+
+
+
+  return `/v1/me/invitations`
+}
+
+/**
+ * @summary Invitations to shared journeys that are waiting for your answer
+ */
+export const getInvitations = async ( options?: Parameters<typeof apiFetch>[1]): Promise<InvitationResponse[]> => {
+
+  return apiFetch<InvitationResponse[]>(getGetInvitationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvitationsQueryKey = () => {
+    return [
+    `/v1/me/invitations`
+    ] as const;
+    }
+
+
+export const getGetInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitations>>> = ({ signal }) => getInvitations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitationsQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitations>>>
+export type GetInvitationsQueryError = unknown
+
+
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitations>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitations>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitationsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetFollowedJourneysUrl = () => {
 
 
@@ -4263,6 +4658,107 @@ export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetRecapQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetInvitableUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/invitable`
+}
+
+/**
+ * @summary The owner's followers who can still be invited
+ */
+export const getInvitable = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<PersonResponse[]> => {
+
+  return apiFetch<PersonResponse[]>(getGetInvitableUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvitableQueryKey = (id: string,) => {
+    return [
+    `/v1/journeys/${id}/invitable`
+    ] as const;
+    }
+
+
+export const getGetInvitableQueryOptions = <TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitableQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitable>>> = ({ signal }) => getInvitable(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitableQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitable>>>
+export type GetInvitableQueryError = unknown
+
+
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitable>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitable>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitable>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitable>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitableQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4793,6 +5289,80 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
 
 
 
+
+export const getRemoveMemberUrl = (id: string,
+    username: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/members/${username}`
+}
+
+/**
+ * @summary The owner removes someone or takes an invitation back; a friend leaves or declines. Entries stay.
+ */
+export const removeMember = async (id: string,
+    username: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getRemoveMemberUrl(id,username),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveMemberMutationKey = () => ['removeMember'] as const;
+
+export const getRemoveMemberMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext> => {
+
+const mutationKey = getRemoveMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeMember>>, RemoveMemberMutationVariables> = (props) => {
+          const {id,username} = props ?? {};
+
+          return  removeMember(id,username,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeMember>>>
+
+    export type RemoveMemberMutationError = unknown
+    export type RemoveMemberMutationVariables = {id: string;username: string}
+
+    /** @summary The owner removes someone or takes an invitation back; a friend leaves or declines. Entries stay. */
+export const useRemoveMember = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeMember>>, TError,RemoveMemberMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeMember>>,
+        TError,
+        RemoveMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveMemberMutationOptions(options), queryClient);
+    }
 
 export const getDeleteCommentUrl = (id: string,) => {
 
