@@ -2,19 +2,22 @@
 
 > Everything runs on your computer: the database, the Java API and the app. The only account you need is a free Expo login, so that Expo Go on your iPhone will open the app.
 >
-> **Status:** 10 Nov 2026. I built and tested this in the cloud, including the whole sign-in flow in a browser. I could not try it on a real iPhone from there, so your first run is that test. If a step fails, tell me what you saw.
+> **Status:** 10 Nov 2026. I built this in the cloud and checked it in a browser: a walk-through signs up a new person and uses every screen below, in light and dark. I could not try it on a real iPhone from there, so your first run is that test. If a step fails, tell me what you saw.
 
 ## What works today
 
-Milestone M1, step 1:
+The app opens with **ten sample creators and their journeys**, so there is something to read and follow from the first minute.
 
-- Welcome, "Log in or sign up", email and code screens
-- Sign-in with any email and the test code **123456** (no email is sent)
-- Creating your profile, with the username checked as you type
-- The tab bar with Home, Discover, Activity and You, and signing out
+- **Sign-up:** Welcome, how it works, sign-in with any email and the test code **123456** (no email is sent), your profile, your interests, journeys to follow
+- **Reading:** Home with what's new from the journeys you follow, the Following feed that ends with "You're all caught up", Discover with category filters, a journey's page and its story line (with quiet days and "new since your last visit"), and entries you swipe through
+- **Creating:** the + button, starting a journey in three steps (template, details with a cover, who can see it), adding an entry with photos, a place and a milestone, editing and deleting entries, pausing and deleting a journey
+- **People:** like and comment on entries (with replies), creator profiles, following people, followers and following, and Activity with a dot on its tab
+- **You:** your profile with your journeys, and editing it (photo, name, username, bio, link, interests)
 - Light and dark mode, following your phone
 
-Apple and Google sign-in, photos and everything else come in the next steps.
+**Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. That is only so you can see likes, comments and Activity work with one phone.
+
+Not built yet: search, settings, report and block, completing a journey, shared journeys, the map, clips, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
 
 ## One-time setup
 
@@ -86,10 +89,11 @@ We build local first (decided on 10 Nov 2026). Each outside service has a stand-
 | Real service, connected later | Stand-in today |
 |---|---|
 | Sign-in with Apple, Google or an email code | Any email with the test code |
-| Photo storage | Arrives with the Create milestone: photos saved on the API's own disk |
+| Photo storage | Photos are saved in a folder next to the API (`apps/api/.dev/media`) and served by it |
 | Video | Arrives with the Video milestone: clips stored and played as plain files |
-| Push notifications | Arrives with the Follow milestone: shown in the Activity inbox only |
+| Push notifications | Shown in the Activity inbox only |
 | Email | Written to the API's log |
+| Other people | Ten sample creators, added to an empty database. They react when you post, as described above |
 
 Switching a stand-in for the real service is a setting in the API. The app and the rest of the API don't change.
 

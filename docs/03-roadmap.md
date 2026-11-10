@@ -30,8 +30,10 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 
 Progress:
 
-- [x] **M1, step 1** (10 Nov 2026): the app and the Java API side by side, sign-in with a test code, creating a profile, the tab bar, automatic checks
-- [ ] M1, step 2: the rest of sign-up (how it works, interests, journeys to follow, notifications, all set) and editing your profile
+- [x] **M1 Foundations** (10 Nov 2026): the app and the Java API side by side, sign-in with a test code, the sign-up flow (how it works, profile, interests, journeys to follow, all set), profiles with a photo, the tab bar, automatic checks
+- [x] **The core loop** (10 Nov 2026; from M2, M4 and M5): start a journey from a template, add and edit entries with photos, the journey page and story line, follow journeys, the Home feed that ends with "You're all caught up", Discover with categories
+- [x] **Likes, comments, following people and Activity** (10 Nov 2026; from M4), with creator profiles and the lists of followers
+- [ ] Still to build, in this order: search and tags; settings, privacy and deleting your account; report and block; challenge progress, completing a journey and its recap; changing a journey's details; shared journeys; the map; the weekly digest; share pages; short clips; offline drafts and the upload queue; asking for notifications (with push)
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|
