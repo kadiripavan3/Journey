@@ -131,6 +131,15 @@ Component tests use React Native Testing Library (`render` and presses are await
 
 The walk-through reads `API_URL` and `WEB_URL` when the API and the web build are not on 8080 and 8081; build the web app with `EXPO_PUBLIC_API_URL` set to the same API address.
 
+## Places, the map, clips and drafts
+
+- **A place** on an entry is stored exactly and shown coarsely: other people get a city-level point unless the author chose the exact spot. The rule is `Place.shownTo(author)` in the API; never send `lat` and `lng` to a reader any other way. In the app a place is a `PickedPlace` (`features/places/place.ts`), saved with `placeFields()`.
+- **A clip** goes through `VideoService` in the API (`journey.video.mode`: `mux`, or `local` for the stand-in). On a `MediaResponse`, `url` and `thumbUrl` are always pictures (a clip's still frame); `playbackUrl` plays it. In the app, show a clip with `ClipPlayer` or mark it with `ClipBadge`. Clips never play by themselves.
+- **A new entry goes through the outbox** (`features/drafts`): the composer calls `useOutbox().save(input, 'post')` and closes; the entry goes up in the background with its `clientId`, or waits on the phone without a connection. Don't call `addEntry` from a screen. Changing a posted entry is saved directly.
+- **Phone and browser twins:** `features/map/JourneyMap`, `features/places/lookup`, `features/drafts/store`, `features/media/compress` and `api/transfer` each have a `.web` twin, because maps, the phone's place search, SQLite and file transfers only exist on phones. Keep the twins in step, and import `react-native-maps`, `expo-location`, `expo-sqlite` and `expo-file-system` nowhere else.
+- **Without a connection** the data layer waits instead of failing (`api/online.ts`), so what was loaded stays on screen.
+- **The web preview** searches places in the API's short local list (`journey.places.mode=local`), shows the map as a list of stops, and keeps drafts in the browser's storage.
+
 ## Working rules
 
 - Work on the branch the session names. Don't push to `main` or open a pull request unless the owner asks.

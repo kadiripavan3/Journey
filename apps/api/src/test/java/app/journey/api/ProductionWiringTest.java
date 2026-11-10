@@ -37,6 +37,11 @@ import org.springframework.test.web.servlet.MockMvc;
             "journey.email.mode=resend",
             "journey.email.resend.api-key=resend-key",
             "journey.push.mode=expo",
+            "journey.video.mode=mux",
+            "journey.video.mux.token-id=mux-id",
+            "journey.video.mux.token-secret=mux-secret",
+            "journey.video.mux.webhook-secret=mux-webhook-secret",
+            "journey.places.mode=device",
             "journey.seed.enabled=false",
             "springdoc.api-docs.enabled=false",
             // The test database is shared with the other tests, which use the stand-in tables.

@@ -239,6 +239,15 @@ export interface JourneyResponse {
   pausedAutomatically: boolean;
 }
 
+export type LocationPrecision = typeof LocationPrecision[keyof typeof LocationPrecision];
+
+
+export const LocationPrecision = {
+  none: 'none',
+  city: 'city',
+  exact: 'exact',
+} as const;
+
 export interface SaveEntryRequest {
   /**
      * @minLength 0
@@ -257,6 +266,11 @@ export interface SaveEntryRequest {
      * @maxLength 80
      */
   placeName?: string;
+  /** Where the place is on the map. Send both numbers or neither. */
+  lat?: number;
+  lng?: number;
+  /** city (the default when there is a point) or exact. Other people see a city-level point unless it is exact. */
+  locationPrecision?: LocationPrecision;
   isMilestone?: boolean;
   /**
      * @minItems 0
@@ -275,20 +289,38 @@ export const MediaKind = {
   video: 'video',
 } as const;
 
+export type MediaStatus = typeof MediaStatus[keyof typeof MediaStatus];
+
+
+export const MediaStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  ready: 'ready',
+  failed: 'failed',
+} as const;
+
 export interface MediaResponse {
   id: string;
   kind: MediaKind;
+  /** ready, or for a clip that its author still sees: processing (being converted) or failed. Other people only ever get ready ones. */
+  status: MediaStatus;
+  /** A picture to show: the photo itself, or a clip's still frame */
   url: string;
+  /** A smaller version of that picture, for lists and grids */
+  thumbUrl: string;
   /**
-     * A smaller version of a photo, for lists and grids. Null for clips.
+     * For a clip that is ready: the address to play it from. Null for photos.
      * @nullable
      */
-  thumbUrl: string | null;
+  playbackUrl: string | null;
   /** @nullable */
   width: number | null;
   /** @nullable */
   height: number | null;
-  /** @nullable */
+  /**
+     * A clip's length
+     * @nullable
+     */
   durationSeconds: number | null;
 }
 
@@ -314,6 +346,14 @@ export interface EntryResponse {
   body: string;
   /** @nullable */
   placeName: string | null;
+  /**
+     * Where it is on the map. Other people get a city-level point unless the author chose the exact spot.
+     * @nullable
+     */
+  lat: number | null;
+  /** @nullable */
+  lng: number | null;
+  locationPrecision: LocationPrecision;
   isMilestone: boolean;
   media: MediaResponse[];
   likeCount: number;
@@ -364,6 +404,8 @@ export interface StartUploadRequest {
   kind: MediaKind;
   /** @minLength 1 */
   contentType: string;
+  /** For a clip: how long it is, in whole seconds. At most 60. */
+  durationSeconds?: number;
 }
 
 export type UploadResponseHeaders = {[key: string]: string};
@@ -620,6 +662,12 @@ export interface PageBlockedPersonResponse {
   nextCursor: string | null;
 }
 
+export interface PlaceResponse {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export interface MilestoneResponse {
   entryId: string;
   title: string;
@@ -646,6 +694,34 @@ export interface JourneySummaryResponse {
      * @nullable
      */
   firstNewEntryId: string | null;
+}
+
+export interface MapPinResponse {
+  entryId: string;
+  /** "Day 14" or "Part 3" */
+  label: string;
+  title: string;
+  placeName: string;
+  lat: number;
+  lng: number;
+  isMilestone: boolean;
+  happenedOn: string;
+  /**
+     * A small picture of the entry's first photo
+     * @nullable
+     */
+  thumbUrl: string | null;
+}
+
+export interface JourneyMapResponse {
+  /** The entries that have a place, in story order */
+  pins: MapPinResponse[];
+  /** How many entries have a place; more than the pins when the map is capped */
+  pinCount: number;
+  /** How many different places they are in */
+  placeCount: number;
+  /** True when the journey has more places than a map shows at once */
+  capped: boolean;
 }
 
 export interface TimelinePageResponse {
@@ -838,6 +914,8 @@ export type GetTimelineParams = {
   limit?: number;
   /** An entry id: start with the page that holds it */
   around?: string;
+  /** A username: only what this person wrote, on a shared journey */
+  author?: string;
 };
 
 export type GetCommentsParams = {
@@ -882,6 +960,10 @@ export type GetFollowedJourneysParams = {
 export type GetBlockedParams = {
   cursor?: string;
   limit?: number;
+};
+
+export type SearchLocalPlacesParams = {
+  q: string;
 };
 
 export type GetInvitableParams = {
@@ -5804,6 +5886,114 @@ export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TE
 
 
 
+export const getSearchLocalPlacesUrl = (params: SearchLocalPlacesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/local/places?${stringifiedParams}` : `/v1/local/places`
+}
+
+/**
+ * @summary Places from a bundled list whose name matches the words typed
+ */
+export const searchLocalPlaces = async (params: SearchLocalPlacesParams, options?: Parameters<typeof apiFetch>[1]): Promise<PlaceResponse[]> => {
+
+  return apiFetch<PlaceResponse[]>(getSearchLocalPlacesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchLocalPlacesQueryKey = (params?: SearchLocalPlacesParams,) => {
+    return [
+    `/v1/local/places`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchLocalPlacesQueryOptions = <TData = Awaited<ReturnType<typeof searchLocalPlaces>>, TError = unknown>(params: SearchLocalPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchLocalPlacesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchLocalPlaces>>> = ({ signal }) => searchLocalPlaces(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SearchLocalPlacesQueryResult = NonNullable<Awaited<ReturnType<typeof searchLocalPlaces>>>
+export type SearchLocalPlacesQueryError = unknown
+
+
+/** @summary Places from a bundled list whose name matches the words typed */
+export function useSearchLocalPlaces<TData = Awaited<ReturnType<typeof searchLocalPlaces>>, TError = unknown>(
+ params: SearchLocalPlacesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchLocalPlaces>>,
+          TError,
+          Awaited<ReturnType<typeof searchLocalPlaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Places from a bundled list whose name matches the words typed */
+export function useSearchLocalPlaces<TData = Awaited<ReturnType<typeof searchLocalPlaces>>, TError = unknown>(
+ params: SearchLocalPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchLocalPlaces>>,
+          TError,
+          Awaited<ReturnType<typeof searchLocalPlaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Places from a bundled list whose name matches the words typed */
+export function useSearchLocalPlaces<TData = Awaited<ReturnType<typeof searchLocalPlaces>>, TError = unknown>(
+ params: SearchLocalPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Places from a bundled list whose name matches the words typed */
+export function useSearchLocalPlaces<TData = Awaited<ReturnType<typeof searchLocalPlaces>>, TError = unknown>(
+ params: SearchLocalPlacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof searchLocalPlaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSearchLocalPlacesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetJourneySummaryUrl = (journeyId: string,) => {
 
 
@@ -5893,6 +6083,107 @@ export function useGetJourneySummary<TData = Awaited<ReturnType<typeof getJourne
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetJourneySummaryQueryOptions(journeyId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetJourneyMapUrl = (journeyId: string,) => {
+
+
+
+
+  return `/v1/journeys/${journeyId}/map`
+}
+
+/**
+ * @summary The journey on a map: its entries that have a place, in story order, 300 at most
+ */
+export const getJourneyMap = async (journeyId: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyMapResponse> => {
+
+  return apiFetch<JourneyMapResponse>(getGetJourneyMapUrl(journeyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneyMapQueryKey = (journeyId: string,) => {
+    return [
+    `/v1/journeys/${journeyId}/map`
+    ] as const;
+    }
+
+
+export const getGetJourneyMapQueryOptions = <TData = Awaited<ReturnType<typeof getJourneyMap>>, TError = unknown>(journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneyMapQueryKey(journeyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneyMap>>> = ({ signal }) => getJourneyMap(journeyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJourneyMapQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneyMap>>>
+export type GetJourneyMapQueryError = unknown
+
+
+/** @summary The journey on a map: its entries that have a place, in story order, 300 at most */
+export function useGetJourneyMap<TData = Awaited<ReturnType<typeof getJourneyMap>>, TError = unknown>(
+ journeyId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneyMap>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneyMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journey on a map: its entries that have a place, in story order, 300 at most */
+export function useGetJourneyMap<TData = Awaited<ReturnType<typeof getJourneyMap>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneyMap>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneyMap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journey on a map: its entries that have a place, in story order, 300 at most */
+export function useGetJourneyMap<TData = Awaited<ReturnType<typeof getJourneyMap>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journey on a map: its entries that have a place, in story order, 300 at most */
+export function useGetJourneyMap<TData = Awaited<ReturnType<typeof getJourneyMap>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneyMap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJourneyMapQueryOptions(journeyId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -4,6 +4,7 @@ import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.journey.LabelStyle;
 import app.journey.api.media.MediaKind;
+import app.journey.api.media.MediaStatus;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -36,6 +37,9 @@ public class EntryStore {
             String title,
             String body,
             String placeName,
+            Double lat,
+            Double lng,
+            LocationPrecision precision,
             boolean milestone,
             int likeCount,
             int commentCount,
@@ -47,7 +51,9 @@ public class EntryStore {
             UUID entryId,
             UUID mediaId,
             MediaKind kind,
+            MediaStatus status,
             String storageKey,
+            String playbackId,
             Integer width,
             Integer height,
             Integer durationS) {}
@@ -70,7 +76,7 @@ public class EntryStore {
       e.happened_at, e.happened_on, (e.happened_on - j.start_date + 1) as day_number,
       (select count(*) from entries x where x.journey_id = e.journey_id
         and (x.happened_at, x.created_at, x.id) <= (e.happened_at, e.created_at, e.id)) as position,
-      e.title, e.body, e.place_name, e.is_milestone, e.like_count, e.comment_count, e.created_at, e.edited_at,
+      e.title, e.body, e.place_name, e.lat, e.lng, e.location_precision, e.is_milestone, e.like_count, e.comment_count, e.created_at, e.edited_at,
       exists (select 1 from entry_likes l where l.entry_id = e.id and l.user_id = :viewer) as liked
       """;
 
@@ -103,6 +109,9 @@ public class EntryStore {
             rs.getString("title"),
             rs.getString("body"),
             rs.getString("place_name"),
+            (Double) rs.getObject("lat"),
+            (Double) rs.getObject("lng"),
+            LocationPrecision.read(rs.getString("location_precision")),
             rs.getBoolean("is_milestone"),
             rs.getInt("like_count"),
             rs.getInt("comment_count"),
@@ -145,16 +154,48 @@ public class EntryStore {
                 .optional();
     }
 
-    /** Part of a journey's story, in the order things happened. */
-    public List<EntryRow> timeline(UUID journeyId, UUID viewer, int limit, int offset) {
-        return jdbc.sql(SELECT + " where e.journey_id = :journey" + NOT_BLOCKED + " order by " + STORY_ORDER
+    /** Only one author's part of a shared story; everyone's when no author is given. */
+    private static final String BY_AUTHOR =
+            " and (cast(:author as uuid) is null or e.author_id = cast(:author as uuid))";
+
+    private static String text(UUID id) {
+        return id == null ? null : id.toString();
+    }
+
+    /** Part of a journey's story, in the order things happened. With an author, only what that person wrote. */
+    public List<EntryRow> timeline(UUID journeyId, UUID viewer, UUID author, int limit, int offset) {
+        return jdbc.sql(SELECT + " where e.journey_id = :journey" + BY_AUTHOR + NOT_BLOCKED + " order by " + STORY_ORDER
                         + " limit :limit offset :offset")
                 .param("journey", journeyId)
                 .param("viewer", viewer)
+                .param("author", text(author))
                 .param("limit", limit)
                 .param("offset", offset)
                 .query(ROW)
                 .list();
+    }
+
+    /** The entries that have a place on the map, in story order. */
+    public List<EntryRow> onMap(UUID journeyId, UUID viewer, int limit) {
+        return jdbc.sql(SELECT + " where e.journey_id = :journey and e.lat is not null" + NOT_BLOCKED + " order by "
+                        + STORY_ORDER + " limit :limit")
+                .param("journey", journeyId)
+                .param("viewer", viewer)
+                .param("limit", limit)
+                .query(ROW)
+                .list();
+    }
+
+    /** How many entries are on the map, and in how many different places. */
+    public record MapTotals(int pins, int places) {}
+
+    public MapTotals mapTotals(UUID journeyId, UUID viewer) {
+        return jdbc.sql("select count(*) as pins, count(distinct lower(e.place_name)) as places from entries e"
+                        + " where e.journey_id = :journey and e.lat is not null" + NOT_BLOCKED)
+                .param("journey", journeyId)
+                .param("viewer", viewer)
+                .query((rs, n) -> new MapTotals(rs.getInt("pins"), rs.getInt("places")))
+                .single();
     }
 
     /** The newest part of the story, newest first. */
@@ -168,24 +209,26 @@ public class EntryStore {
                 .list();
     }
 
-    /** How many entries of a journey this viewer can read. */
-    public int count(UUID journeyId, UUID viewer) {
-        return jdbc.sql("select count(*) from entries e where e.journey_id = :journey" + NOT_BLOCKED)
+    /** How many entries of a journey this viewer can read; with an author, how many of theirs. */
+    public int count(UUID journeyId, UUID viewer, UUID author) {
+        return jdbc.sql("select count(*) from entries e where e.journey_id = :journey" + BY_AUTHOR + NOT_BLOCKED)
                 .param("journey", journeyId)
                 .param("viewer", viewer)
+                .param("author", text(author))
                 .query(Integer.class)
                 .single();
     }
 
     /** How many entries come before this one in the story, as this viewer reads it. */
-    public int countBefore(UUID journeyId, UUID entryId, UUID viewer) {
+    public int countBefore(UUID journeyId, UUID entryId, UUID viewer, UUID author) {
         return jdbc.sql("""
             select count(*) from entries e, entries t
             where t.id = :entry and e.journey_id = :journey and (e.happened_at, e.created_at, e.id) < (t.happened_at, t.created_at, t.id)
-            """ + NOT_BLOCKED)
+            """ + BY_AUTHOR + NOT_BLOCKED)
                 .param("journey", journeyId)
                 .param("entry", entryId)
                 .param("viewer", viewer)
+                .param("author", text(author))
                 .query(Integer.class)
                 .single();
     }
@@ -228,7 +271,7 @@ public class EntryStore {
     /** The story's first photos, in story order. */
     public List<EntryMediaRow> photos(UUID journeyId, UUID viewer, int limit) {
         return jdbc.sql("""
-            select em.entry_id, m.id, m.kind, m.storage_key, m.width, m.height, m.duration_s
+            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s
             from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
             """ + NOT_BLOCKED + " order by " + STORY_ORDER + ", em.position limit :limit")
@@ -287,7 +330,9 @@ public class EntryStore {
             rs.getObject("entry_id", UUID.class),
             rs.getObject("id", UUID.class),
             MediaKind.read(rs.getString("kind")),
+            MediaStatus.read(rs.getString("status")),
             rs.getString("storage_key"),
+            rs.getString("playback_id"),
             (Integer) rs.getObject("width"),
             (Integer) rs.getObject("height"),
             (Integer) rs.getObject("duration_s"));
@@ -297,7 +342,7 @@ public class EntryStore {
             return Map.of();
         }
         return jdbc.sql("""
-            select em.entry_id, m.id, m.kind, m.storage_key, m.width, m.height, m.duration_s
+            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s
             from entry_media em join media m on m.id = em.media_id
             where em.entry_id in (:ids)
             order by em.entry_id, em.position
@@ -314,11 +359,13 @@ public class EntryStore {
             LocalDate happenedOn,
             String title,
             String body,
-            String placeName,
+            Place place,
             boolean milestone) {
         return jdbc.sql("""
-            insert into entries (journey_id, author_id, client_id, happened_at, happened_on, title, body, place_name, is_milestone)
-            values (:journey, :author, cast(:client as uuid), :happenedAt, :happenedOn, :title, :body, :place, :milestone)
+            insert into entries (journey_id, author_id, client_id, happened_at, happened_on, title, body, place_name, lat, lng,
+              location_precision, is_milestone)
+            values (:journey, :author, cast(:client as uuid), :happenedAt, :happenedOn, :title, :body, :place, :lat, :lng,
+              :precision, :milestone)
             on conflict (author_id, client_id) where client_id is not null do nothing
             returning id
             """)
@@ -329,7 +376,10 @@ public class EntryStore {
                 .param("happenedOn", happenedOn)
                 .param("title", title)
                 .param("body", body)
-                .param("place", placeName)
+                .param("place", place.name())
+                .param("lat", place.lat())
+                .param("lng", place.lng())
+                .param("precision", place.precision().code())
                 .param("milestone", milestone)
                 .query(UUID.class)
                 .optional();
@@ -341,18 +391,21 @@ public class EntryStore {
             LocalDate happenedOn,
             String title,
             String body,
-            String placeName,
+            Place place,
             boolean milestone) {
         jdbc.sql("""
             update entries set happened_at = :happenedAt, happened_on = :happenedOn, title = :title, body = :body, place_name = :place,
-              is_milestone = :milestone, edited_at = now()
+              lat = :lat, lng = :lng, location_precision = :precision, is_milestone = :milestone, edited_at = now()
             where id = :id
             """)
                 .param("happenedAt", Sql.timestamp(happenedAt))
                 .param("happenedOn", happenedOn)
                 .param("title", title)
                 .param("body", body)
-                .param("place", placeName)
+                .param("place", place.name())
+                .param("lat", place.lat())
+                .param("lng", place.lng())
+                .param("precision", place.precision().code())
                 .param("milestone", milestone)
                 .param("id", id)
                 .update();

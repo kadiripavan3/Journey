@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useGetMe, useGetProfile } from '@/api/generated/journey';
+import { OutboxLink } from '@/features/drafts/PostingBanner';
 import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { visibility } from '@/features/journeys/visibility';
@@ -94,6 +95,8 @@ export default function You() {
           <Button label="Edit profile" variant="soft" onPress={() => router.push('/edit-profile')} style={{ flex: 1, height: 40 }} />
           <Button label="New journey" variant="soft" onPress={() => router.push('/new')} style={{ flex: 1, height: 40 }} />
         </View>
+
+        <OutboxLink />
 
         <WordTabs
           tabs={[

@@ -110,6 +110,10 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 | Scheduled jobs | A job writes a row to `job_runs` first; with several copies of the API running, only the copy that gets the row does the work. |
 | Links that leave the app | Built from `JOURNEY_PUBLIC_URL` when it is set, otherwise from the request. Behind a proxy, set `JOURNEY_FORWARD_HEADERS=framework`. |
 | The API's description | `/v3/api-docs` and the try-it-out page are on in local mode and off everywhere else. |
+| Places | An entry can have a point on the map (`lat`, `lng`) and a `locationPrecision`: `city` (the default) or `exact`. The exact point is stored. Other people are sent the middle of a square about 10 km wide unless the author chose `exact`; the author always gets their own point back (`entry/Place.java`). Search also finds a journey by the places of its entries. |
+| The map | `GET /v1/journeys/{id}/map` gives the entries that have a point, in the order of the story (300 at most), and how many there are in all. |
+| One person's part of a story | `GET /v1/journeys/{id}/entries?author=<username>` pages through what one author wrote. Positions and totals count within that part. |
+| Clips | The same three steps as photos, but the file goes to the video service (`media/VideoService.java`): Mux, or a local stand-in that keeps the file as it is. A clip is `processing` until the service says it is ready (`POST /webhooks/mux`, signed and checked), and until then only its author sees it. On a clip, `url` and `thumbUrl` are its still frame and `playbackUrl` plays it. Three clips an entry, 60 seconds each. |
 
 ### Notifications, reminders and what is trending
 

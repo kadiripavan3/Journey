@@ -11,7 +11,9 @@ import app.journey.api.journey.LabelStyle;
 import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaService.MediaResponse;
+import app.journey.api.media.MediaStatus;
 import app.journey.api.media.MediaStore.MediaRow;
+import app.journey.api.people.PeopleService;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -61,6 +63,15 @@ public class EntryService {
             String title,
             String body,
             @Schema(nullable = true) String placeName,
+
+            @Schema(
+                    nullable = true,
+                    description =
+                            "Where it is on the map. Other people get a city-level point unless the author chose the exact spot.")
+            Double lat,
+
+            @Schema(nullable = true) Double lng,
+            LocationPrecision locationPrecision,
             boolean isMilestone,
             List<MediaResponse> media,
             int likeCount,
@@ -72,14 +83,53 @@ public class EntryService {
     private final EntryStore entries;
     private final JourneyService journeys;
     private final MediaService media;
+    private final PeopleService people;
     private final ApplicationEventPublisher events;
 
-    EntryService(EntryStore entries, JourneyService journeys, MediaService media, ApplicationEventPublisher events) {
+    EntryService(
+            EntryStore entries,
+            JourneyService journeys,
+            MediaService media,
+            PeopleService people,
+            ApplicationEventPublisher events) {
         this.entries = entries;
         this.journeys = journeys;
         this.media = media;
+        this.people = people;
         this.events = events;
     }
+
+    /** How many pins a map shows at most. A journey with more says so. */
+    static final int MAP_PINS = 300;
+
+    public record MapPinResponse(
+            UUID entryId,
+
+            @Schema(description = "\"Day 14\" or \"Part 3\"")
+            String label,
+
+            String title,
+            String placeName,
+            double lat,
+            double lng,
+            boolean isMilestone,
+            LocalDate happenedOn,
+
+            @Schema(nullable = true, description = "A small picture of the entry's first photo")
+            String thumbUrl) {}
+
+    public record JourneyMapResponse(
+            @Schema(description = "The entries that have a place, in story order")
+            List<MapPinResponse> pins,
+
+            @Schema(description = "How many entries have a place; more than the pins when the map is capped")
+            int pinCount,
+
+            @Schema(description = "How many different places they are in")
+            int placeCount,
+
+            @Schema(description = "True when the journey has more places than a map shows at once")
+            boolean capped) {}
 
     /**
      * A page of a story. Unlike other lists a story is read from the middle too (from the first new entry, or
@@ -140,16 +190,19 @@ public class EntryService {
      * A page of a journey's story, in the order things happened. With {@code around}, the page that holds that
      * entry; pages are cut at fixed places, so the ones before and after never overlap it.
      */
-    public TimelinePageResponse timeline(UUID journeyId, UUID viewer, String cursor, Integer limit, UUID around) {
+    public TimelinePageResponse timeline(
+            UUID journeyId, UUID viewer, String cursor, Integer limit, UUID around, String authorUsername) {
         journeys.require(journeyId, viewer);
+        // On a shared journey a reader can ask for one person's part of the story.
+        UUID author = authorUsername == null || authorUsername.isBlank() ? null : people.idOf(authorUsername, viewer);
         PageRequest page = PageRequest.of(cursor, limit, PAGE);
         int offset = page.offset();
         if (around != null && (cursor == null || cursor.isBlank())) {
             require(around, viewer);
-            offset = entries.countBefore(journeyId, around, viewer) / page.limit() * page.limit();
+            offset = entries.countBefore(journeyId, around, viewer, author) / page.limit() * page.limit();
         }
-        int total = entries.count(journeyId, viewer);
-        List<EntryResponse> items = views(entries.timeline(journeyId, viewer, page.limit(), offset), viewer);
+        int total = entries.count(journeyId, viewer, author);
+        List<EntryResponse> items = views(entries.timeline(journeyId, viewer, author, page.limit(), offset), viewer);
         return new TimelinePageResponse(
                 items,
                 offset + page.limit() < total ? PageRequest.cursor(offset + page.limit()) : null,
@@ -157,11 +210,39 @@ public class EntryService {
                 total);
     }
 
+    /** The journey on a map: its entries that have a place, in story order, each where its reader may see it. */
+    public JourneyMapResponse map(UUID journeyId, UUID viewer) {
+        journeys.require(journeyId, viewer);
+        List<EntryResponse> shown = views(entries.onMap(journeyId, viewer, MAP_PINS), viewer);
+        EntryStore.MapTotals totals = entries.mapTotals(journeyId, viewer);
+        List<MapPinResponse> pins = shown.stream()
+                .map(e -> new MapPinResponse(
+                        e.id(),
+                        e.label(),
+                        e.title().isEmpty() ? firstWords(e.body()) : e.title(),
+                        e.placeName(),
+                        e.lat(),
+                        e.lng(),
+                        e.isMilestone(),
+                        e.happenedOn(),
+                        e.media().stream()
+                                .map(MediaResponse::thumbUrl)
+                                .filter(java.util.Objects::nonNull)
+                                .findFirst()
+                                .orElse(null)))
+                .toList();
+        return new JourneyMapResponse(pins, totals.pins(), totals.places(), totals.pins() > pins.size());
+    }
+
+    private static String firstWords(String text) {
+        return text.length() <= 60 ? text : text.substring(0, 60).trim() + "…";
+    }
+
     public JourneySummaryResponse summary(UUID journeyId, UUID viewer) {
         JourneyRow journey = journeys.require(journeyId, viewer);
         List<EntryRow> rows = new java.util.ArrayList<>(entries.latest(journeyId, viewer, 3));
         int latestCount = rows.size();
-        rows.addAll(entries.timeline(journeyId, viewer, 1, 0));
+        rows.addAll(entries.timeline(journeyId, viewer, null, 1, 0));
         List<EntryResponse> shown = views(rows, viewer);
         boolean day = journey.labelStyle() == LabelStyle.DAY;
         EntryStore.NewEntries fresh = journey.lastReadAt() == null
@@ -171,8 +252,7 @@ public class EntryService {
                 shown.size() > latestCount ? shown.get(latestCount) : null,
                 shown.subList(0, latestCount),
                 entries.photos(journeyId, viewer, SUMMARY_PHOTOS).stream()
-                        .map(m ->
-                                media.view(m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS()))
+                        .map(this::view)
                         .toList(),
                 entries.photoCount(journeyId, viewer),
                 journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
@@ -201,7 +281,7 @@ public class EntryService {
             String body,
             Instant happenedAt,
             LocalDate happenedOn,
-            String placeName,
+            Place place,
             boolean milestone,
             List<UUID> mediaIds) {
         if (clientId != null) {
@@ -219,7 +299,7 @@ public class EntryService {
                             ? "This journey is completed, so it takes no new entries."
                             : "Only the people on this journey can add entries to it.");
         }
-        Content content = check(journey, author, title, body, happenedAt, happenedOn, placeName, mediaIds);
+        Content content = check(journey, author, title, body, happenedAt, happenedOn, place, mediaIds);
         Optional<UUID> added = entries.insert(
                 journeyId,
                 author,
@@ -228,7 +308,7 @@ public class EntryService {
                 content.happenedOn,
                 content.title,
                 content.body,
-                content.placeName,
+                content.place,
                 milestone);
         if (added.isEmpty()) {
             // The same draft arrived twice at the same moment and the other request saved it first.
@@ -249,7 +329,7 @@ public class EntryService {
             String body,
             Instant happenedAt,
             LocalDate happenedOn,
-            String placeName,
+            Place place,
             boolean milestone,
             List<UUID> mediaIds) {
         EntryRow entry = require(id, viewer);
@@ -265,10 +345,10 @@ public class EntryService {
                 body,
                 happenedAt == null ? entry.happenedAt() : happenedAt,
                 happenedOn,
-                placeName,
+                place,
                 mediaIds);
         entries.update(
-                id, content.happenedAt, content.happenedOn, content.title, content.body, content.placeName, milestone);
+                id, content.happenedAt, content.happenedOn, content.title, content.body, content.place, milestone);
         entries.replaceMedia(id, content.mediaIds);
         return get(id, viewer);
     }
@@ -335,12 +415,7 @@ public class EntryService {
     }
 
     private record Content(
-            String title,
-            String body,
-            Instant happenedAt,
-            LocalDate happenedOn,
-            String placeName,
-            List<UUID> mediaIds) {}
+            String title, String body, Instant happenedAt, LocalDate happenedOn, Place place, List<UUID> mediaIds) {}
 
     private Content check(
             JourneyRow journey,
@@ -349,7 +424,7 @@ public class EntryService {
             String body,
             Instant happenedAt,
             LocalDate happenedOn,
-            String placeName,
+            Place place,
             List<UUID> mediaIds) {
         List<UUID> ids =
                 mediaIds == null ? List.of() : mediaIds.stream().distinct().toList();
@@ -381,8 +456,19 @@ public class EntryService {
             throw ApiProblem.badRequest(
                     "before_start", "This is before the journey's start date. Change the start date first.");
         }
-        String place = placeName == null || placeName.isBlank() ? null : placeName.trim();
-        return new Content(cleanTitle, cleanBody, at, on, place, ids);
+        return new Content(cleanTitle, cleanBody, at, on, place == null ? Place.NONE : place, ids);
+    }
+
+    private MediaResponse view(EntryMediaRow m) {
+        return media.view(
+                m.mediaId(),
+                m.kind(),
+                m.status(),
+                m.storageKey(),
+                m.playbackId(),
+                m.width(),
+                m.height(),
+                m.durationS());
     }
 
     public List<EntryResponse> views(List<EntryRow> rows, UUID viewer) {
@@ -392,9 +478,13 @@ public class EntryService {
                 .map(e -> {
                     boolean day = e.labelStyle() == LabelStyle.DAY;
                     int number = day ? e.dayNumber() : e.position();
+                    Place place = new Place(e.placeName(), e.lat(), e.lng(), e.precision())
+                            .shownTo(e.authorId().equals(viewer));
+                    boolean own = e.authorId().equals(viewer);
+                    // A clip that isn't ready (still being converted, or failed) is shown only to its author.
                     List<MediaResponse> files = mediaByEntry.getOrDefault(e.id(), List.of()).stream()
-                            .map(m -> media.view(
-                                    m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS()))
+                            .filter(m -> own || m.status() == MediaStatus.READY)
+                            .map(this::view)
                             .toList();
                     return new EntryResponse(
                             e.id(),
@@ -408,7 +498,10 @@ public class EntryService {
                             e.position(),
                             e.title(),
                             e.body(),
-                            e.placeName(),
+                            place.name(),
+                            place.lat(),
+                            place.lng(),
+                            place.precision(),
                             e.milestone(),
                             files,
                             e.likeCount(),

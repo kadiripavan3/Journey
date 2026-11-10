@@ -5,6 +5,8 @@ import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
 import { Txt } from '@/ui/Txt';
 
+import { ClipBadge } from '@/features/media/ClipPlayer';
+
 import { entryEyebrow, entryHeadline } from './labels';
 import { MilestonePill } from './MilestonePill';
 import { ReactionCounts } from './Reactions';
@@ -18,6 +20,7 @@ export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryRespon
         <Photo uri={cover.thumbUrl ?? cover.url} style={{ height, marginBottom: 12 }}>
           {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
           {entry.media.length > 1 ? <Pill label={`1 / ${entry.media.length}`} style={{ position: 'absolute', top: 12, right: 12 }} /> : null}
+          {cover.kind === 'video' ? <ClipBadge seconds={cover.durationSeconds} style={{ position: 'absolute', left: 12, bottom: 12 }} /> : null}
         </Photo>
       ) : null}
       <Eyebrow>{entryEyebrow(entry)}</Eyebrow>

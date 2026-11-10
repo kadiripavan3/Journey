@@ -51,6 +51,19 @@
         {
           "color": "#FFC21A"
         }
+      ],
+      "expo-sqlite",
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Journey uses your location, only when you ask, to suggest the place for an entry you are writing.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
     "experiments": {

@@ -78,6 +78,28 @@
       <artifactId>bucket4j_jdk17-postgresql</artifactId>
       <version>8.22.0</version>
     </dependency>
+    <!-- Mux: the video service that converts and streams clips (stream A). -->
+    <dependency>
+      <groupId>com.mux</groupId>
+      <artifactId>mux-sdk-java</artifactId>
+      <version>2.0.1</version>
+      <!-- The SDK asks for a 2020 version of the HTTP library that Resend's library also uses, in a newer version.
+           Only one can be on the class path, so both use the newer one (below). -->
+      <exclusions>
+        <exclusion>
+          <groupId>com.squareup.okhttp3</groupId>
+          <artifactId>okhttp</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okhttp3</groupId>
+          <artifactId>logging-interceptor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okio</groupId>
+          <artifactId>okio</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Sends the weekly digest by email (the tech plan's choice). Used only with journey.email.mode=resend. -->
     <dependency>
       <groupId>com.resend</groupId>
@@ -90,6 +112,12 @@
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp-jvm</artifactId>
       <version>5.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>logging-interceptor</artifactId>
+      <version>5.4.0</version>
+      <scope>runtime</scope>
     </dependency>
     <!-- Cloudflare R2 speaks the S3 language; this is the official S3 client. -->
     <dependency>
@@ -127,7 +155,9 @@
         <configuration>
           <showWarnings>true</showWarnings>
           <compilerArgs>
-            <arg>-Xlint:all,-processing,-serial</arg>
+            <!-- "classfile" is off because of the Mux SDK: its classes carry annotations (gson, old swagger)
+                 that are only on the classpath when the API runs, and the compiler warns about each one. -->
+            <arg>-Xlint:all,-processing,-serial,-classfile</arg>
             <arg>-Werror</arg>
           </compilerArgs>
         </configuration>

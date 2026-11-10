@@ -31,7 +31,10 @@ class MediaController {
 
     record StartUploadRequest(
             @NotNull(message = "Choose a photo or a clip.") MediaKind kind,
-            @NotBlank String contentType) {}
+            @NotBlank String contentType,
+
+            @Schema(description = "For a clip: how long it is, in whole seconds. At most 60.")
+            Integer durationSeconds) {}
 
     record UploadResponse(
             @Schema(description = "Use this id when saving the entry, journey or profile")
@@ -46,7 +49,7 @@ class MediaController {
     @PostMapping("/uploads")
     @Operation(operationId = "startUpload", summary = "Get a place to upload one photo or clip")
     UploadResponse startUpload(@Me UUID me, @Valid @RequestBody StartUploadRequest request) {
-        NewUpload upload = media.startUpload(me, request.kind(), request.contentType());
+        NewUpload upload = media.startUpload(me, request.kind(), request.contentType(), request.durationSeconds());
         return new UploadResponse(
                 upload.mediaId(),
                 upload.target().url(),
