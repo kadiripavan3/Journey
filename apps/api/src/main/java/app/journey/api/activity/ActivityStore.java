@@ -157,10 +157,15 @@ public class ActivityStore {
             join entries e on e.id = c.entry_id
             join journeys j on j.id = e.journey_id
             left join comments pc on pc.id = c.parent_id
-            where %s and c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s and %s
-              and not c.held
+            where %s and c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s
+              and %s and %s and %s
             order by c.created_at desc limit :limit
-            """.formatted(VISIBLE, RECENT, Rules.notBlocked("c.author_id", ":me")))
+            """.formatted(
+                                VISIBLE,
+                                RECENT,
+                                Rules.commentBy("c", ":me"),
+                                Rules.entryBy("e", ":me"),
+                                Rules.shownComment("c", ":me")))
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -279,17 +284,18 @@ public class ActivityStore {
         return keys;
     }
 
-    /** The first photo of each journey. */
-    public Map<UUID, String> journeyThumbs(List<UUID> journeyIds) {
+    /** The first photo of each journey that this person may see: never one by someone they have blocked. */
+    public Map<UUID, String> journeyThumbs(List<UUID> journeyIds, UUID me) {
         Map<UUID, String> keys = new HashMap<>();
         if (!journeyIds.isEmpty()) {
             jdbc.sql("""
               select distinct on (e.journey_id) e.journey_id as id, m.storage_key
               from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id
-              where e.journey_id in (:ids) and m.kind = 'photo' and %s
+              where e.journey_id in (:ids) and m.kind = 'photo' and %s and %s
               order by e.journey_id, e.happened_at, em.position
-              """.formatted(Rules.publicMedia("m")))
+              """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":me")))
                     .param("ids", journeyIds)
+                    .param("me", me)
                     .query((rs, n) -> keys.put(rs.getObject("id", UUID.class), rs.getString("storage_key")))
                     .list();
         }

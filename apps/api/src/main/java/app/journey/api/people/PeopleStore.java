@@ -46,6 +46,9 @@ public class PeopleStore {
             boolean following,
             Instant since) {}
 
+    /** A person's profile picture, left out while it is being held (see {@link Rules#chosenPhoto}). */
+    private static final String AVATAR = Rules.chosenPhoto("a", "p.avatar_media_id");
+
     private static final RowMapper<PersonRow> PERSON = (rs, n) -> new PersonRow(
             rs.getObject("id", UUID.class),
             rs.getString("username"),
@@ -75,7 +78,7 @@ public class PeopleStore {
                    exists (select 1 from profile_follows f where f.follower_id = :viewer and f.followee_id = p.id) as following,
                    exists (select 1 from profile_follows f where f.follower_id = p.id and f.followee_id = :viewer) as follows_viewer,
                    exists (select 1 from blocks b where b.blocker_id = :viewer and b.blocked_id = p.id) as blocked_by_viewer
-            from profiles p left join media a on a.id = p.avatar_media_id
+            from profiles p""" + AVATAR + """
             where p.username = :username
               and not exists (select 1 from blocks b where b.blocker_id = p.id and b.blocked_id = :viewer)
             """)
@@ -134,11 +137,11 @@ public class PeopleStore {
                    exists (select 1 from profile_follows v where v.follower_id = :viewer and v.followee_id = p.id) as following
             from profile_follows f
             join profiles p on p.id = %s
-            left join media a on a.id = p.avatar_media_id
+            %s
             where %s = :person and %s
             order by f.created_at desc, p.id
             limit :limit offset :offset
-            """.formatted(other, self, Rules.notBlocked("p.id", ":viewer")))
+            """.formatted(other, AVATAR, self, Rules.notBlocked("p.id", ":viewer")))
                 .param("person", personId)
                 .param("viewer", viewer)
                 .param("limit", page.fetch())
@@ -161,7 +164,7 @@ public class PeopleStore {
             select p.id, p.username, p.display_name, a.storage_key as avatar_key, p.created_at as since,
                    (select j.title from journeys j where j.owner_id = p.id and j.visibility = 'public' order by j.created_at desc limit 1) as latest_journey,
                    exists (select 1 from profile_follows v where v.follower_id = :viewer and v.followee_id = p.id) as following
-            from profiles p left join media a on a.id = p.avatar_media_id
+            from profiles p""" + AVATAR + """
             where (p.username ilike :q or p.display_name ilike :q) and %s
             order by (select count(*) from profile_follows f where f.followee_id = p.id) desc, p.username
             limit :limit
@@ -187,7 +190,7 @@ public class PeopleStore {
         }
         return jdbc.sql("""
             select p.id, p.username, p.display_name, a.storage_key as avatar_key
-            from profiles p left join media a on a.id = p.avatar_media_id
+            from profiles p""" + AVATAR + """
             where p.id in (:ids)
             """).param("ids", ids).query(PERSON).list().stream()
                 .collect(Collectors.toMap(PersonRow::id, Function.identity()));

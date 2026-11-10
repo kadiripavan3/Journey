@@ -85,8 +85,7 @@ public class EntryStore {
       from entries e
       join journeys j on j.id = e.journey_id
       join profiles p on p.id = e.author_id
-      left join media pa on pa.id = p.avatar_media_id
-      """;
+      """ + Rules.chosenPhoto("pa", "p.avatar_media_id");
 
     private static final String SELECT = "select " + COLUMNS + FROM;
 

@@ -48,7 +48,11 @@ public class JourneyStore {
             int memberCount,
             Instant autoPausedAt) {}
 
-    /** Every journey with its owner, its cover (the chosen one, or else the first photo), and whether and since when the viewer follows it. */
+    /**
+     * Every journey with its owner, its cover (the chosen one, or else the first photo the viewer may see), and
+     * whether and since when the viewer follows it. A photo by someone the viewer has blocked never stands in
+     * as the cover, and a chosen cover or a profile picture that is being held is left out (see {@link Rules}).
+     */
     private static final String SELECT = """
       select j.id, j.owner_id, j.title, j.description, j.category, j.template, j.label_style, j.visibility, j.status, j.tags,
              j.start_date, j.target_days, j.completed_at, j.closing_note, j.last_entry_at, j.entry_count, j.follower_count, j.created_at,
@@ -57,7 +61,7 @@ public class JourneyStore {
                select m.storage_key from entries e
                join entry_media em on em.entry_id = e.id
                join media m on m.id = em.media_id
-               where e.journey_id = j.id and m.kind = 'photo' and %s
+               where e.journey_id = j.id and m.kind = 'photo' and %s and %s
                order by e.happened_at, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
@@ -67,9 +71,9 @@ public class JourneyStore {
       from journeys j
       join profiles p on p.id = j.owner_id
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
-      left join media pa on pa.id = p.avatar_media_id
-      left join media cm on cm.id = j.cover_media_id
-      """.formatted(Rules.publicMedia("m"));
+      """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":viewer"))
+            + Rules.chosenPhoto("pa", "p.avatar_media_id")
+            + Rules.chosenPhoto("cm", "j.cover_media_id");
 
     private static final RowMapper<JourneyRow> ROW = (rs, n) -> new JourneyRow(
             rs.getObject("id", UUID.class),
@@ -110,19 +114,22 @@ public class JourneyStore {
     /** A person who writes in a journey: its owner, or a friend who joined. */
     public record AuthorRow(UUID journeyId, UUID id, String username, String displayName, String avatarKey) {}
 
-    /** The friends who joined each of these journeys, in the order they joined. */
-    public Map<UUID, List<AuthorRow>> membersOf(List<UUID> journeyIds) {
+    /**
+     * The friends who joined each of these journeys, in the order they joined, as this viewer may see them:
+     * a friend the viewer has blocked, or who has blocked the viewer, is left out of the list of authors.
+     */
+    public Map<UUID, List<AuthorRow>> membersOf(List<UUID> journeyIds, UUID viewer) {
         if (journeyIds.isEmpty()) {
             return Map.of();
         }
         return jdbc
-                .sql("""
-            select m.journey_id, p.id, p.username, p.display_name, a.storage_key as avatar_key
-            from journey_members m join profiles p on p.id = m.user_id left join media a on a.id = p.avatar_media_id
-            where m.journey_id in (:ids) and m.status = 'joined'
-            order by m.joined_at
-            """)
+                .sql("select m.journey_id, p.id, p.username, p.display_name, a.storage_key as avatar_key"
+                        + " from journey_members m join profiles p on p.id = m.user_id"
+                        + Rules.chosenPhoto("a", "p.avatar_media_id")
+                        + " where m.journey_id in (:ids) and m.status = 'joined' and "
+                        + Rules.notBlocked("p.id", ":viewer") + " order by m.joined_at")
                 .param("ids", journeyIds)
+                .param("viewer", viewer)
                 .query((rs, n) -> new AuthorRow(
                         rs.getObject("journey_id", UUID.class),
                         rs.getObject("id", UUID.class),
@@ -378,15 +385,18 @@ public class JourneyStore {
     /** What a finished (or unfinished) journey adds up to. */
     public record Totals(int entries, int places, int photos, int likes, LocalDate firstDay, LocalDate lastDay) {}
 
-    public Totals totals(UUID journeyId) {
+    /** The journey added up as this viewer reads it: what someone they have blocked wrote in it is not counted. */
+    public Totals totals(UUID journeyId, UUID viewer) {
         return jdbc.sql("""
             select count(*) as entries, count(distinct nullif(e.place_name, '')) as places, coalesce(sum(e.like_count), 0) as likes,
                    min(e.happened_on) as first_day, max(e.happened_on) as last_day,
                    (select count(*) from entry_media em join entries x on x.id = em.entry_id join media m on m.id = em.media_id
-                     where x.journey_id = :id and m.kind = 'photo' and %s) as photos
-            from entries e where e.journey_id = :id
-            """.formatted(Rules.publicMedia("m")))
+                     where x.journey_id = :id and m.kind = 'photo' and %s and %s) as photos
+            from entries e where e.journey_id = :id and %s
+            """.formatted(
+                                Rules.publicMedia("m"), Rules.entryBy("x", ":viewer"), Rules.entryBy("e", ":viewer")))
                 .param("id", journeyId)
+                .param("viewer", viewer)
                 .query((rs, n) -> new Totals(
                         rs.getInt("entries"),
                         rs.getInt("places"),
@@ -397,17 +407,18 @@ public class JourneyStore {
                 .single();
     }
 
-    /** The photos of a journey's best moments: milestones first, then the most liked. */
-    public List<String> momentKeys(UUID journeyId, int limit) {
+    /** The photos of a journey's best moments as this viewer may see them: milestones first, then the most liked. */
+    public List<String> momentKeys(UUID journeyId, UUID viewer, int limit) {
         return jdbc.sql("""
             select m.storage_key from entries e
             join entry_media em on em.entry_id = e.id and em.position = 0
             join media m on m.id = em.media_id and m.kind = 'photo' and %s
-            where e.journey_id = :id
+            where e.journey_id = :id and %s
             order by e.is_milestone desc, e.like_count desc, e.happened_at
             limit :limit
-            """.formatted(Rules.publicMedia("m")))
+            """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":viewer")))
                 .param("id", journeyId)
+                .param("viewer", viewer)
                 .param("limit", limit)
                 .query(String.class)
                 .list();

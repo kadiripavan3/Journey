@@ -114,12 +114,14 @@ public class ActivityService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
-        Map<UUID, String> journeyThumbs = activity.journeyThumbs(shown.stream()
-                .filter(l -> l.entryId() == null)
-                .map(Line::journeyId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList());
+        Map<UUID, String> journeyThumbs = activity.journeyThumbs(
+                shown.stream()
+                        .filter(l -> l.entryId() == null)
+                        .map(Line::journeyId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList(),
+                me);
 
         List<ActivityItemResponse> items = shown.stream()
                 .map(l -> new ActivityItemResponse(

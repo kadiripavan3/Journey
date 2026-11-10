@@ -32,8 +32,7 @@ public class CommentStore {
       select c.id, c.entry_id, c.parent_id, c.author_id, p.username, p.display_name, a.storage_key as avatar_key, c.body, c.created_at, c.held
       from comments c
       join profiles p on p.id = c.author_id
-      left join media a on a.id = p.avatar_media_id
-      """;
+      """ + Rules.chosenPhoto("a", "p.avatar_media_id");
 
     private static final RowMapper<CommentRow> ROW = (rs, n) -> new CommentRow(
             rs.getObject("id", UUID.class),
@@ -68,12 +67,13 @@ public class CommentStore {
 
     /**
      * An entry's comments: threads in the order they were started, each comment followed by its replies, so a
-     * page never shows a reply before the comment it answers. Comments by people blocked either way are left out.
+     * page never shows a reply before the comment it answers. Comments by people blocked either way are left
+     * out, except under the viewer's own entry or in their own journey (see {@link Rules#commentBy}).
      */
     public Page<CommentRow> page(UUID entryId, UUID viewer, PageRequest page) {
         List<CommentRow> rows = jdbc.sql(
                         SELECT + " left join comments pc on pc.id = c.parent_id where c.entry_id = :entry and "
-                                + Rules.notBlocked("c.author_id", ":viewer")
+                                + Rules.commentBy("c", ":viewer")
                                 + " and " + Rules.shownComment("c", ":viewer")
                                 + " order by coalesce(pc.created_at, c.created_at), coalesce(c.parent_id, c.id), c.parent_id is not null, c.created_at, c.id"
                                 + " limit :limit offset :offset")

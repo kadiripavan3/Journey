@@ -9,6 +9,7 @@ import app.journey.api.common.Rules;
 import app.journey.api.journey.JourneyStore.JourneyRow;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
+import app.journey.api.people.PeopleService;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -102,13 +103,20 @@ public class JourneyService {
 
     private final JourneyStore journeys;
     private final MediaService media;
+    private final PeopleService people;
     private final PublicUrls urls;
 
     private final ApplicationEventPublisher events;
 
-    JourneyService(JourneyStore journeys, MediaService media, PublicUrls urls, ApplicationEventPublisher events) {
+    JourneyService(
+            JourneyStore journeys,
+            MediaService media,
+            PeopleService people,
+            PublicUrls urls,
+            ApplicationEventPublisher events) {
         this.journeys = journeys;
         this.media = media;
+        this.people = people;
         this.urls = urls;
         this.events = events;
     }
@@ -315,13 +323,23 @@ public class JourneyService {
                 .map(rows -> views(rows, viewer));
     }
 
-    /** Someone's public journeys, for their profile: the ones they own and the shared ones they write in. */
+    /**
+     * Someone's public journeys, for their profile: the ones they own and the shared ones they write in.
+     * "Not found" when there is no such person for this viewer (they don't exist, or they have blocked the
+     * viewer), and nothing at all when the viewer has blocked them.
+     */
     public Page<JourneyResponse> publicBy(String username, UUID viewer, PageRequest page) {
-        return journeys.page("""
-            j.visibility = 'public' and (p.username = :username or exists (
-              select 1 from journey_members pm join profiles mp on mp.id = pm.user_id
-              where pm.journey_id = j.id and pm.status = 'joined' and mp.username = :username))
-            """, Map.of("username", username), NEWEST_ACTIVITY, page, viewer)
+        UUID person = people.idOf(username, viewer);
+        return journeys.page(
+                        """
+            j.visibility = 'public' and (j.owner_id = :person or exists (
+              select 1 from journey_members pm
+              where pm.journey_id = j.id and pm.status = 'joined' and pm.user_id = :person))
+            and\s""" + Rules.notBlocked(":person", ":viewer"),
+                        Map.of("person", person),
+                        NEWEST_ACTIVITY,
+                        page,
+                        viewer)
                 .map(rows -> views(rows, viewer));
     }
 
@@ -347,7 +365,7 @@ public class JourneyService {
     /** What a journey adds up to: for the recap of a completed journey, and for the step that completes one. */
     public RecapResponse recap(UUID id, UUID viewer) {
         JourneyRow journey = require(id, viewer);
-        JourneyStore.Totals totals = journeys.totals(id);
+        JourneyStore.Totals totals = journeys.totals(id, viewer);
         int days =
                 totals.lastDay() == null ? 0 : (int) ChronoUnit.DAYS.between(journey.startDate(), totals.lastDay()) + 1;
         return new RecapResponse(
@@ -359,7 +377,7 @@ public class JourneyService {
                 totals.likes(),
                 totals.firstDay(),
                 totals.lastDay(),
-                journeys.momentKeys(id, 3).stream().map(media::urlFor).toList());
+                journeys.momentKeys(id, viewer, 3).stream().map(media::urlFor).toList());
     }
 
     /** Public journeys whose title, description, tags, creator or places (where its entries happened) match the words typed. */
@@ -442,10 +460,12 @@ public class JourneyService {
     }
 
     public List<JourneyResponse> views(List<JourneyRow> rows, UUID viewer) {
-        Map<UUID, List<JourneyStore.AuthorRow>> members = journeys.membersOf(rows.stream()
-                .filter(j -> j.memberCount() > 0)
-                .map(JourneyRow::id)
-                .toList());
+        Map<UUID, List<JourneyStore.AuthorRow>> members = journeys.membersOf(
+                rows.stream()
+                        .filter(j -> j.memberCount() > 0)
+                        .map(JourneyRow::id)
+                        .toList(),
+                viewer);
         return rows.stream()
                 .map(row -> view(row, viewer, members.getOrDefault(row.id(), List.of())))
                 .toList();
