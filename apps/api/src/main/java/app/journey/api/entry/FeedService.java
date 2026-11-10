@@ -23,42 +23,56 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FeedService {
 
-  static final int PAGE = 20;
-  static final int ENTRIES_PER_JOURNEY = 3;
+    static final int PAGE = 20;
+    static final int ENTRIES_PER_JOURNEY = 3;
 
-  public record FeedGroupResponse(
-      JourneyResponse journey, @Schema(description = "How many entries are new to the reader") int newCount,
-      @Schema(description = "The newest of them, newest first; at most three") List<EntryResponse> entries) {}
+    public record FeedGroupResponse(
+            JourneyResponse journey,
 
-  public record FeedResponse(
-      List<FeedGroupResponse> groups,
-      @Schema(description = "How many journeys the reader follows, for the empty state") int followingCount,
-      @Schema(nullable = true, description = "Send as `cursor` for more journeys with news. Null when there are no more.") String nextCursor) {}
+            @Schema(description = "How many entries are new to the reader")
+            int newCount,
 
-  private final JourneyStore journeyStore;
-  private final JourneyService journeys;
-  private final EntryService entries;
+            @Schema(description = "The newest of them, newest first; at most three")
+            List<EntryResponse> entries) {}
 
-  FeedService(JourneyStore journeyStore, JourneyService journeys, EntryService entries) {
-    this.journeyStore = journeyStore;
-    this.journeys = journeys;
-    this.entries = entries;
-  }
+    public record FeedResponse(
+            List<FeedGroupResponse> groups,
 
-  @Transactional(readOnly = true)
-  public FeedResponse feed(UUID reader, PageRequest request) {
-    Page<NewInJourney> found = journeyStore.journeysWithNewEntries(reader, request);
-    List<UUID> ids = found.items().stream().map(NewInJourney::journeyId).toList();
-    Map<UUID, JourneyResponse> byId = journeys.views(journeyStore.findAll(ids, reader), reader).stream()
-        .collect(Collectors.toMap(JourneyResponse::id, Function.identity()));
-    Map<UUID, List<EntryResponse>> latest = entries.latestByOthers(ids, reader, ENTRIES_PER_JOURNEY);
-    List<FeedGroupResponse> groups = found.items().stream()
-        .filter(group -> byId.containsKey(group.journeyId())) // gone between two statements: leave it out
-        .map(group -> {
-          List<EntryResponse> newest = latest.getOrDefault(group.journeyId(), List.of());
-          return new FeedGroupResponse(byId.get(group.journeyId()), group.newCount(), newest.subList(0, Math.min(newest.size(), group.newCount())));
-        })
-        .toList();
-    return new FeedResponse(groups, journeyStore.followingCount(reader), found.nextCursor());
-  }
+            @Schema(description = "How many journeys the reader follows, for the empty state")
+            int followingCount,
+
+            @Schema(
+                    nullable = true,
+                    description = "Send as `cursor` for more journeys with news. Null when there are no more.")
+            String nextCursor) {}
+
+    private final JourneyStore journeyStore;
+    private final JourneyService journeys;
+    private final EntryService entries;
+
+    FeedService(JourneyStore journeyStore, JourneyService journeys, EntryService entries) {
+        this.journeyStore = journeyStore;
+        this.journeys = journeys;
+        this.entries = entries;
+    }
+
+    @Transactional(readOnly = true)
+    public FeedResponse feed(UUID reader, PageRequest request) {
+        Page<NewInJourney> found = journeyStore.journeysWithNewEntries(reader, request);
+        List<UUID> ids = found.items().stream().map(NewInJourney::journeyId).toList();
+        Map<UUID, JourneyResponse> byId = journeys.views(journeyStore.findAll(ids, reader), reader).stream()
+                .collect(Collectors.toMap(JourneyResponse::id, Function.identity()));
+        Map<UUID, List<EntryResponse>> latest = entries.latestByOthers(ids, reader, ENTRIES_PER_JOURNEY);
+        List<FeedGroupResponse> groups = found.items().stream()
+                .filter(group -> byId.containsKey(group.journeyId())) // gone between two statements: leave it out
+                .map(group -> {
+                    List<EntryResponse> newest = latest.getOrDefault(group.journeyId(), List.of());
+                    return new FeedGroupResponse(
+                            byId.get(group.journeyId()),
+                            group.newCount(),
+                            newest.subList(0, Math.min(newest.size(), group.newCount())));
+                })
+                .toList();
+        return new FeedResponse(groups, journeyStore.followingCount(reader), found.nextCursor());
+    }
 }

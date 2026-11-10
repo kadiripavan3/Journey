@@ -40,101 +40,101 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 class SecurityConfig {
 
-  static final String LOCAL_ISSUER = "journey-local";
-  static final String AUDIENCE = "authenticated";
+    static final String LOCAL_ISSUER = "journey-local";
+    static final String AUDIENCE = "authenticated";
 
-  @Bean
-  SecurityFilterChain security(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults())
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(
-            requests ->
-                requests
-                    .dispatcherTypeMatchers(DispatcherType.ERROR)
-                    .permitAll() // so a failure outside a controller is reported as what it is, not as "forbidden"
-                    .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-                    .permitAll()
-                    .requestMatchers("/j/**", "/share/**")
-                    .permitAll() // the public web pages behind shared links, and their stylesheet
-                    .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
-                    .permitAll() // these controllers only exist in local mode; uploads carry their own token
-                    .requestMatchers("/v1/**")
-                    .authenticated()
-                    .anyRequest()
-                    .denyAll())
-        .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()).authenticationEntryPoint(signedOut()))
-        .exceptionHandling(failures -> failures
-            .authenticationEntryPoint(signedOut())
-            .accessDeniedHandler((request, response, denied) ->
-                write(response, HttpStatus.NOT_FOUND, "not_found", "We couldn't find that.")));
-    return http.build();
-  }
-
-  /** A missing, expired or damaged token: the usual 401 and header, plus a body in the API's own shape. */
-  private static AuthenticationEntryPoint signedOut() {
-    BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
-    return (request, response, failure) -> {
-      bearer.commence(request, response, failure);
-      write(response, HttpStatus.UNAUTHORIZED, "signed_out", "Please sign in again.");
-    };
-  }
-
-  /** Writes a problem by hand: this runs before Spring MVC, so ProblemHandler is not in reach. The texts are fixed, never input. */
-  private static void write(HttpServletResponse response, HttpStatus status, String code, String message) throws IOException {
-    response.setStatus(status.value());
-    response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-    response.setCharacterEncoding("UTF-8");
-    response.getWriter().write(
-        "{\"type\":\"about:blank\",\"title\":\"%s\",\"status\":%d,\"detail\":\"%s\",\"code\":\"%s\"}"
-            .formatted(status.getReasonPhrase(), status.value(), message, code));
-  }
-
-  /** Browsers (the web preview) need CORS. Phones don't, so the list is empty outside local mode. */
-  @Bean
-  CorsConfigurationSource corsConfigurationSource(
-      @Value("${journey.cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    List<String> patterns =
-        Arrays.stream(allowedOriginPatterns.split(",")).map(String::trim).filter(p -> !p.isEmpty()).toList();
-    if (!patterns.isEmpty()) {
-      CorsConfiguration cors = new CorsConfiguration();
-      cors.setAllowedOriginPatterns(patterns);
-      cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-      cors.setAllowedHeaders(List.of("*"));
-      cors.setMaxAge(3600L);
-      source.registerCorsConfiguration("/**", cors);
+    @Bean
+    SecurityFilterChain security(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(requests -> requests.dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll() // so a failure outside a controller is reported as what it is, not as "forbidden"
+                        .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .permitAll()
+                        .requestMatchers("/j/**", "/share/**")
+                        .permitAll() // the public web pages behind shared links, and their stylesheet
+                        .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
+                        .permitAll() // these controllers only exist in local mode; uploads carry their own token
+                        .requestMatchers("/v1/**")
+                        .authenticated()
+                        .anyRequest()
+                        .denyAll())
+                .oauth2ResourceServer(
+                        server -> server.jwt(Customizer.withDefaults()).authenticationEntryPoint(signedOut()))
+                .exceptionHandling(failures -> failures.authenticationEntryPoint(signedOut())
+                        .accessDeniedHandler((request, response, denied) ->
+                                write(response, HttpStatus.NOT_FOUND, "not_found", "We couldn't find that.")));
+        return http.build();
     }
-    return source;
-  }
 
-  @Bean
-  JwtDecoder jwtDecoder(AuthProperties auth) {
-    if (!auth.isLocal()) {
-      throw new IllegalStateException(
-          "journey.auth.mode is '" + auth.mode() + "'. Only 'local' exists so far: run with the 'local' profile. "
-              + "Supabase sign-in is connected in a later step.");
+    /** A missing, expired or damaged token: the usual 401 and header, plus a body in the API's own shape. */
+    private static AuthenticationEntryPoint signedOut() {
+        BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
+        return (request, response, failure) -> {
+            bearer.commence(request, response, failure);
+            write(response, HttpStatus.UNAUTHORIZED, "signed_out", "Please sign in again.");
+        };
     }
-    NimbusJwtDecoder decoder =
-        NimbusJwtDecoder.withSecretKey(localKey(auth)).macAlgorithm(MacAlgorithm.HS256).build();
-    decoder.setJwtValidator(
-        new DelegatingOAuth2TokenValidator<Jwt>(
-            JwtValidators.createDefaultWithIssuer(LOCAL_ISSUER),
-            new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(AUDIENCE))));
-    return decoder;
-  }
 
-  @Bean
-  @ConditionalOnProperty(name = "journey.auth.mode", havingValue = "local")
-  JwtEncoder localJwtEncoder(AuthProperties auth) {
-    return new NimbusJwtEncoder(new ImmutableSecret<>(localKey(auth)));
-  }
-
-  private static SecretKey localKey(AuthProperties auth) {
-    byte[] secret = auth.local().secret().getBytes(StandardCharsets.UTF_8);
-    if (secret.length < 32) {
-      throw new IllegalStateException("journey.auth.local.secret must be at least 32 characters.");
+    /** Writes a problem by hand: this runs before Spring MVC, so ProblemHandler is not in reach. The texts are fixed, never input. */
+    private static void write(HttpServletResponse response, HttpStatus status, String code, String message)
+            throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter()
+                .write("{\"type\":\"about:blank\",\"title\":\"%s\",\"status\":%d,\"detail\":\"%s\",\"code\":\"%s\"}"
+                        .formatted(status.getReasonPhrase(), status.value(), message, code));
     }
-    return new SecretKeySpec(secret, "HmacSHA256");
-  }
+
+    /** Browsers (the web preview) need CORS. Phones don't, so the list is empty outside local mode. */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(
+            @Value("${journey.cors.allowed-origin-patterns:}") String allowedOriginPatterns) {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        List<String> patterns = Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(p -> !p.isEmpty())
+                .toList();
+        if (!patterns.isEmpty()) {
+            CorsConfiguration cors = new CorsConfiguration();
+            cors.setAllowedOriginPatterns(patterns);
+            cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+            cors.setAllowedHeaders(List.of("*"));
+            cors.setMaxAge(3600L);
+            source.registerCorsConfiguration("/**", cors);
+        }
+        return source;
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(AuthProperties auth) {
+        if (!auth.isLocal()) {
+            throw new IllegalStateException("journey.auth.mode is '" + auth.mode()
+                    + "'. Only 'local' exists so far: run with the 'local' profile. "
+                    + "Supabase sign-in is connected in a later step.");
+        }
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(localKey(auth))
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<Jwt>(
+                JwtValidators.createDefaultWithIssuer(LOCAL_ISSUER),
+                new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(AUDIENCE))));
+        return decoder;
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "journey.auth.mode", havingValue = "local")
+    JwtEncoder localJwtEncoder(AuthProperties auth) {
+        return new NimbusJwtEncoder(new ImmutableSecret<>(localKey(auth)));
+    }
+
+    private static SecretKey localKey(AuthProperties auth) {
+        byte[] secret = auth.local().secret().getBytes(StandardCharsets.UTF_8);
+        if (secret.length < 32) {
+            throw new IllegalStateException("journey.auth.local.secret must be at least 32 characters.");
+        }
+        return new SecretKeySpec(secret, "HmacSHA256");
+    }
 }

@@ -20,26 +20,34 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "media", description = "Uploading photos and clips")
 class MediaController {
 
-  private final MediaService media;
+    private final MediaService media;
 
-  MediaController(MediaService media) {
-    this.media = media;
-  }
+    MediaController(MediaService media) {
+        this.media = media;
+    }
 
-  record StartUploadRequest(
-      @NotNull(message = "Choose a photo or a clip.") MediaKind kind,
-      @NotBlank String contentType) {}
+    record StartUploadRequest(
+            @NotNull(message = "Choose a photo or a clip.") MediaKind kind,
+            @NotBlank String contentType) {}
 
-  record UploadResponse(
-      @Schema(description = "Use this id when saving the entry, journey or profile") UUID mediaId,
-      @Schema(description = "Send the file's bytes here") String uploadUrl,
-      String method,
-      Map<String, String> headers) {}
+    record UploadResponse(
+            @Schema(description = "Use this id when saving the entry, journey or profile")
+            UUID mediaId,
 
-  @PostMapping("/uploads")
-  @Operation(operationId = "startUpload", summary = "Get a place to upload one photo or clip")
-  UploadResponse startUpload(@Me UUID me, @Valid @RequestBody StartUploadRequest request) {
-    NewUpload upload = media.startUpload(me, request.kind(), request.contentType());
-    return new UploadResponse(upload.mediaId(), upload.target().url(), upload.target().method(), upload.target().headers());
-  }
+            @Schema(description = "Send the file's bytes here")
+            String uploadUrl,
+
+            String method,
+            Map<String, String> headers) {}
+
+    @PostMapping("/uploads")
+    @Operation(operationId = "startUpload", summary = "Get a place to upload one photo or clip")
+    UploadResponse startUpload(@Me UUID me, @Valid @RequestBody StartUploadRequest request) {
+        NewUpload upload = media.startUpload(me, request.kind(), request.contentType());
+        return new UploadResponse(
+                upload.mediaId(),
+                upload.target().url(),
+                upload.target().method(),
+                upload.target().headers());
+    }
 }

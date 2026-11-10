@@ -36,74 +36,84 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnProperty(name = "journey.media.mode", havingValue = "local")
 class LocalMediaController {
 
-  private final LocalDiskStorage storage;
-  private final MediaStore media;
+    private final LocalDiskStorage storage;
+    private final MediaStore media;
 
-  LocalMediaController(LocalDiskStorage storage, MediaStore media) {
-    this.storage = storage;
-    this.media = media;
-  }
+    LocalMediaController(LocalDiskStorage storage, MediaStore media) {
+        this.storage = storage;
+        this.media = media;
+    }
 
-  @PutMapping("/local-media/{id}")
-  ResponseEntity<Void> receive(@PathVariable UUID id, @RequestParam String token, HttpServletRequest request) throws IOException {
-    MediaRow row = media.find(id).orElse(null);
-    if (row == null || !storage.tokenMatches(id, token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    @PutMapping("/local-media/{id}")
+    ResponseEntity<Void> receive(@PathVariable UUID id, @RequestParam String token, HttpServletRequest request)
+            throws IOException {
+        MediaRow row = media.find(id).orElse(null);
+        if (row == null || !storage.tokenMatches(id, token)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean clip = row.kind() == MediaKind.VIDEO;
+        long limit = clip ? MediaService.MAX_CLIP_BYTES : MediaService.MAX_PHOTO_BYTES;
+        long bytes;
+        try {
+            bytes = storage.store(row.storageKey(), request.getInputStream(), limit);
+        } catch (LocalDiskStorage.TooLargeException e) {
+            throw new ApiProblem(
+                    HttpStatus.CONTENT_TOO_LARGE,
+                    "too_large",
+                    clip ? "That clip is too big. Keep clips under 60 seconds." : "That photo is too big.");
+        }
+        if (bytes == 0) {
+            throw ApiProblem.badRequest("empty_file", "The file arrived empty. Try again.");
+        }
+        int[] size = clip ? null : dimensions(storage.resolve(row.storageKey()));
+        media.markReady(id, bytes, size == null ? null : size[0], size == null ? null : size[1]);
+        return ResponseEntity.noContent().build();
     }
-    boolean clip = row.kind() == MediaKind.VIDEO;
-    long limit = clip ? MediaService.MAX_CLIP_BYTES : MediaService.MAX_PHOTO_BYTES;
-    long bytes;
-    try {
-      bytes = storage.store(row.storageKey(), request.getInputStream(), limit);
-    } catch (LocalDiskStorage.TooLargeException e) {
-      throw new ApiProblem(HttpStatus.CONTENT_TOO_LARGE, "too_large", clip ? "That clip is too big. Keep clips under 60 seconds." : "That photo is too big.");
-    }
-    if (bytes == 0) {
-      throw ApiProblem.badRequest("empty_file", "The file arrived empty. Try again.");
-    }
-    int[] size = clip ? null : dimensions(storage.resolve(row.storageKey()));
-    media.markReady(id, bytes, size == null ? null : size[0], size == null ? null : size[1]);
-    return ResponseEntity.noContent().build();
-  }
 
-  @GetMapping("/media/{year}/{month}/{file}")
-  ResponseEntity<Resource> serve(
-      @PathVariable String year, @PathVariable String month, @PathVariable String file, @RequestParam(name = "w", required = false) Integer width) {
-    String key = year + "/" + month + "/" + file;
-    Path path;
-    try {
-      path = storage.resolve(key);
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.notFound().build();
+    @GetMapping("/media/{year}/{month}/{file}")
+    ResponseEntity<Resource> serve(
+            @PathVariable String year,
+            @PathVariable String month,
+            @PathVariable String file,
+            @RequestParam(name = "w", required = false) Integer width) {
+        String key = year + "/" + month + "/" + file;
+        Path path;
+        try {
+            path = storage.resolve(key);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        // Only the sizes the API itself hands out; any other number gets the original.
+        path = MediaSize.ofWidth(width)
+                .map(size -> storage.resolveSized(key, size))
+                .orElse(path);
+        Resource resource = new FileSystemResource(path);
+        return ResponseEntity.ok()
+                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .cacheControl(
+                        CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
+                .body(resource);
     }
-    if (!Files.isRegularFile(path)) {
-      return ResponseEntity.notFound().build();
-    }
-    // Only the sizes the API itself hands out; any other number gets the original.
-    path = MediaSize.ofWidth(width).map(size -> storage.resolveSized(key, size)).orElse(path);
-    Resource resource = new FileSystemResource(path);
-    return ResponseEntity.ok()
-        .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
-        .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
-        .body(resource);
-  }
 
-  /** Width and height of an image, read from its header. Null when the format isn't one Java can read. */
-  private static int[] dimensions(Path file) {
-    try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
-      Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
-      if (readers == null || !readers.hasNext()) {
-        return null;
-      }
-      ImageReader reader = readers.next();
-      try {
-        reader.setInput(in);
-        return new int[] {reader.getWidth(0), reader.getHeight(0)};
-      } finally {
-        reader.dispose();
-      }
-    } catch (IOException | RuntimeException e) {
-      return null;
+    /** Width and height of an image, read from its header. Null when the format isn't one Java can read. */
+    private static int[] dimensions(Path file) {
+        try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
+            Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
+            if (readers == null || !readers.hasNext()) {
+                return null;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(in);
+                return new int[] {reader.getWidth(0), reader.getHeight(0)};
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
-  }
 }

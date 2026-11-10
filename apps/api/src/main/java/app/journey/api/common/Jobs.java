@@ -10,15 +10,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class Jobs {
 
-  private final JdbcClient jdbc;
+    private final JdbcClient jdbc;
 
-  Jobs(JdbcClient jdbc) {
-    this.jdbc = jdbc;
-  }
+    Jobs(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
 
-  /** True for the one caller that gets to run this job for this period ("2026-W46", "2026-11-10"). */
-  public boolean claim(String job, String period) {
-    return jdbc.sql("insert into job_runs (job, period) values (:job, :period) on conflict do nothing")
-        .param("job", job).param("period", period).update() > 0;
-  }
+    /** True for the one caller that gets to run this job for this period ("2026-W46", "2026-11-10"). */
+    public boolean claim(String job, String period) {
+        return jdbc.sql("insert into job_runs (job, period) values (:job, :period) on conflict do nothing")
+                        .param("job", job)
+                        .param("period", period)
+                        .update()
+                > 0;
+    }
 }

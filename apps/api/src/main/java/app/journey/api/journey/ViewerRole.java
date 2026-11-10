@@ -5,10 +5,13 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** What the person looking is to a shared journey. */
 public enum ViewerRole {
-  OWNER, FRIEND, INVITED, NONE;
+    OWNER,
+    FRIEND,
+    INVITED,
+    NONE;
 
-  @JsonValue
-  public String code() {
-    return Codes.of(this);
-  }
+    @JsonValue
+    public String code() {
+        return Codes.of(this);
+    }
 }

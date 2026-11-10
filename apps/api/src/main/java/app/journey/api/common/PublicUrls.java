@@ -13,20 +13,20 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @Component
 public class PublicUrls {
 
-  private final String base;
+    private final String base;
 
-  PublicUrls(@Value("${journey.public-url:}") String base) {
-    this.base = base == null ? "" : base.trim().replaceAll("/+$", "");
-  }
+    PublicUrls(@Value("${journey.public-url:}") String base) {
+        this.base = base == null ? "" : base.trim().replaceAll("/+$", "");
+    }
 
-  /** The full address for a path that starts with a slash. */
-  public String to(String path) {
-    if (!base.isEmpty()) {
-      return base + path;
+    /** The full address for a path that starts with a slash. */
+    public String to(String path) {
+        if (!base.isEmpty()) {
+            return base + path;
+        }
+        if (RequestContextHolder.getRequestAttributes() == null) {
+            return path; // a job with no request and no configured address: a relative link is the honest answer
+        }
+        return ServletUriComponentsBuilder.fromCurrentContextPath().path(path).toUriString();
     }
-    if (RequestContextHolder.getRequestAttributes() == null) {
-      return path; // a job with no request and no configured address: a relative link is the honest answer
-    }
-    return ServletUriComponentsBuilder.fromCurrentContextPath().path(path).toUriString();
-  }
 }

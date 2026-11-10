@@ -76,6 +76,9 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Counts** (followers, entries, likes, comments) are kept by the database (triggers in `V6__rules_and_counters.sql`). Java never writes them.
 - **Authors follow their own journeys:** the owner and friends who joined have a `journey_follows` row marked `author`. It gives them "new since your last visit"; they are not counted as followers.
 - **A rule that once went wrong gets a test** in `RulesTest`.
+- **How the API is put together** is a table in `docs/02-tech-stack.md`. In short: controller (takes `@Me UUID me`) → service (the rules) → `Store` (all the SQL, with `JdbcClient`; there is no JPA). Fixed sets of words are enums. A list that can grow is a `Page` with `cursor` and `limit`. Creating something takes a `clientId`. Photos have a small version. `ShapeTest` keeps these true.
+- **Format the API code** with `./mvnw spotless:apply` before committing; `./mvnw verify` (what CI runs) fails on unformatted code and on compiler warnings.
+- **The stand-ins need the `local` profile.** The API refuses to start with local sign-in, local files or sample data switched on without it.
 
 ## Working rules
 

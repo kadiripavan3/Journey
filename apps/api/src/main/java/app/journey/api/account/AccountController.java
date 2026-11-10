@@ -7,12 +7,10 @@ import app.journey.api.auth.Me;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,62 +29,73 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Account and safety")
 class AccountController {
 
-  record ReportRequest(
-      @NotNull(message = "Choose what you're reporting.") ReportTarget targetType,
-      @NotNull(message = "Choose what you're reporting.") UUID targetId,
-      @NotNull(message = "Choose a reason.") ReportReason reason,
-      @Size(max = 500, message = "Keep the note to 500 characters or fewer.") String note) {}
+    record ReportRequest(
+            @NotNull(message = "Choose what you're reporting.")
+            ReportTarget targetType,
 
-  private final AccountService account;
+            @NotNull(message = "Choose what you're reporting.")
+            UUID targetId,
 
-  AccountController(AccountService account) {
-    this.account = account;
-  }
+            @NotNull(message = "Choose a reason.") ReportReason reason,
 
-  @GetMapping("/me/settings")
-  @Operation(operationId = "getSettings", summary = "Your notification choices and what new journeys start as")
-  SettingsResponse settings(@Me UUID me) {
-    return account.settings(me);
-  }
+            @Size(max = 500, message = "Keep the note to 500 characters or fewer.")
+            String note) {}
 
-  @PutMapping("/me/settings")
-  @Operation(operationId = "saveSettings", summary = "Change your settings. Send all of them.")
-  SettingsResponse save(@Me UUID me, @RequestBody SettingsResponse settings) {
-    return account.save(me, settings);
-  }
+    private final AccountService account;
 
-  @DeleteMapping("/me")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(operationId = "deleteAccount", summary = "Delete your account and everything in it, for good")
-  void delete(@Me UUID me) {
-    account.delete(me);
-  }
+    AccountController(AccountService account) {
+        this.account = account;
+    }
 
-  @GetMapping("/me/blocks")
-  @Operation(operationId = "getBlocked", summary = "The people you have blocked, most recent first")
-  Page<BlockedPersonResponse> blocked(@Me UUID me, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-    return account.blocked(me, PageRequest.of(cursor, limit, 50));
-  }
+    @GetMapping("/me/settings")
+    @Operation(operationId = "getSettings", summary = "Your notification choices and what new journeys start as")
+    SettingsResponse settings(@Me UUID me) {
+        return account.settings(me);
+    }
 
-  @PutMapping("/profiles/{username}/block")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(operationId = "blockProfile", summary = "Block someone. Neither of you sees the other's journeys, entries or comments, and they aren't told.")
-  void block(@Me UUID me, @PathVariable String username) {
-    account.block(me, username);
-  }
+    @PutMapping("/me/settings")
+    @Operation(operationId = "saveSettings", summary = "Change your settings. Send all of them.")
+    SettingsResponse save(@Me UUID me, @RequestBody SettingsResponse settings) {
+        return account.save(me, settings);
+    }
 
-  @DeleteMapping("/profiles/{username}/block")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(operationId = "unblockProfile", summary = "Unblock someone")
-  void unblock(@Me UUID me, @PathVariable String username) {
-    account.unblock(me, username);
-  }
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "deleteAccount", summary = "Delete your account and everything in it, for good")
+    void delete(@Me UUID me) {
+        account.delete(me);
+    }
 
-  @PostMapping("/reports")
-  @ResponseStatus(HttpStatus.CREATED)
-  @Operation(operationId = "report", summary = "Report a journey, an entry, a comment or a person. Reports are private.")
-  ReportResponse report(@Me UUID me, @Valid @RequestBody ReportRequest r) {
-    return account.report(me, r.targetType(), r.targetId(), r.reason(), r.note());
-  }
+    @GetMapping("/me/blocks")
+    @Operation(operationId = "getBlocked", summary = "The people you have blocked, most recent first")
+    Page<BlockedPersonResponse> blocked(
+            @Me UUID me, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
+        return account.blocked(me, PageRequest.of(cursor, limit, 50));
+    }
 
+    @PutMapping("/profiles/{username}/block")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            operationId = "blockProfile",
+            summary =
+                    "Block someone. Neither of you sees the other's journeys, entries or comments, and they aren't told.")
+    void block(@Me UUID me, @PathVariable String username) {
+        account.block(me, username);
+    }
+
+    @DeleteMapping("/profiles/{username}/block")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "unblockProfile", summary = "Unblock someone")
+    void unblock(@Me UUID me, @PathVariable String username) {
+        account.unblock(me, username);
+    }
+
+    @PostMapping("/reports")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            operationId = "report",
+            summary = "Report a journey, an entry, a comment or a person. Reports are private.")
+    ReportResponse report(@Me UUID me, @Valid @RequestBody ReportRequest r) {
+        return account.report(me, r.targetType(), r.targetId(), r.reason(), r.note());
+    }
 }

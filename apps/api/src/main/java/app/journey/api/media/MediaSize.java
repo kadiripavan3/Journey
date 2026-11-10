@@ -8,21 +8,23 @@ import java.util.Optional;
  * full-size pictures. Small is for profile pictures and little squares; medium for cards and grids.
  */
 public enum MediaSize {
-  SMALL(320),
-  MEDIUM(800);
+    SMALL(320),
+    MEDIUM(800);
 
-  private final int width;
+    private final int width;
 
-  MediaSize(int width) {
-    this.width = width;
-  }
+    MediaSize(int width) {
+        this.width = width;
+    }
 
-  /** The longest side, in pixels. */
-  public int width() {
-    return width;
-  }
+    /** The longest side, in pixels. */
+    public int width() {
+        return width;
+    }
 
-  public static Optional<MediaSize> ofWidth(Integer width) {
-    return Arrays.stream(values()).filter(size -> width != null && size.width == width).findFirst();
-  }
+    public static Optional<MediaSize> ofWidth(Integer width) {
+        return Arrays.stream(values())
+                .filter(size -> width != null && size.width == width)
+                .findFirst();
+    }
 }

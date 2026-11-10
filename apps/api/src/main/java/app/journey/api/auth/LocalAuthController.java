@@ -39,60 +39,63 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirements
 class LocalAuthController {
 
-  private static final Logger log = LoggerFactory.getLogger(LocalAuthController.class);
+    private static final Logger log = LoggerFactory.getLogger(LocalAuthController.class);
 
-  private final AuthProperties auth;
-  private final JwtEncoder encoder;
-  private final LocalUsers users;
+    private final AuthProperties auth;
+    private final JwtEncoder encoder;
+    private final LocalUsers users;
 
-  LocalAuthController(AuthProperties auth, JwtEncoder encoder, LocalUsers users) {
-    this.auth = auth;
-    this.encoder = encoder;
-    this.users = users;
-  }
-
-  record CodeRequest(@NotBlank @Email @Size(max = 254) String email) {}
-
-  record TokenRequest(@NotBlank @Email @Size(max = 254) String email, @NotBlank String code) {}
-
-  record TokenResponse(String accessToken, Instant expiresAt, UUID userId, String email) {}
-
-  @PostMapping("/code")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(operationId = "requestLocalCode", summary = "Ask for a sign-in code (it is written to the API's log)")
-  void requestCode(@Valid @RequestBody CodeRequest request) {
-    log.info("Local sign-in code for {}: {}", normalize(request.email()), auth.local().code());
-  }
-
-  @PostMapping("/token")
-  @Operation(operationId = "createLocalToken", summary = "Swap an email and the test code for a sign-in token")
-  TokenResponse createToken(@Valid @RequestBody TokenRequest request) {
-    if (!auth.local().code().equals(request.code().trim())) {
-      throw ApiProblem.unauthorized("wrong_code", "That code isn't right. Check it and try again.");
+    LocalAuthController(AuthProperties auth, JwtEncoder encoder, LocalUsers users) {
+        this.auth = auth;
+        this.encoder = encoder;
+        this.users = users;
     }
-    String email = normalize(request.email());
-    UUID userId = users.idFor(email);
 
-    Instant now = Instant.now();
-    Instant expiresAt = now.plus(auth.local().tokenTtl());
-    JwtClaimsSet claims =
-        JwtClaimsSet.builder()
-            .issuer(SecurityConfig.LOCAL_ISSUER)
-            .subject(userId.toString())
-            .audience(List.of(SecurityConfig.AUDIENCE))
-            .issuedAt(now)
-            .expiresAt(expiresAt)
-            .claim("email", email)
-            .claim("role", "authenticated")
-            .build();
-    String token =
-        encoder
-            .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
-            .getTokenValue();
-    return new TokenResponse(token, expiresAt, userId, email);
-  }
+    record CodeRequest(@NotBlank @Email @Size(max = 254) String email) {}
 
-  private static String normalize(String email) {
-    return email.trim().toLowerCase(Locale.ROOT);
-  }
+    record TokenRequest(
+            @NotBlank @Email @Size(max = 254) String email,
+            @NotBlank String code) {}
+
+    record TokenResponse(String accessToken, Instant expiresAt, UUID userId, String email) {}
+
+    @PostMapping("/code")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "requestLocalCode", summary = "Ask for a sign-in code (it is written to the API's log)")
+    void requestCode(@Valid @RequestBody CodeRequest request) {
+        log.info(
+                "Local sign-in code for {}: {}",
+                normalize(request.email()),
+                auth.local().code());
+    }
+
+    @PostMapping("/token")
+    @Operation(operationId = "createLocalToken", summary = "Swap an email and the test code for a sign-in token")
+    TokenResponse createToken(@Valid @RequestBody TokenRequest request) {
+        if (!auth.local().code().equals(request.code().trim())) {
+            throw ApiProblem.unauthorized("wrong_code", "That code isn't right. Check it and try again.");
+        }
+        String email = normalize(request.email());
+        UUID userId = users.idFor(email);
+
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(auth.local().tokenTtl());
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(SecurityConfig.LOCAL_ISSUER)
+                .subject(userId.toString())
+                .audience(List.of(SecurityConfig.AUDIENCE))
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .claim("email", email)
+                .claim("role", "authenticated")
+                .build();
+        String token = encoder.encode(JwtEncoderParameters.from(
+                        JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+        return new TokenResponse(token, expiresAt, userId, email);
+    }
+
+    private static String normalize(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 }

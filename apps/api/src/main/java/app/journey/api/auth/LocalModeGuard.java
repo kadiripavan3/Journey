@@ -17,29 +17,30 @@ import org.springframework.core.env.Profiles;
  */
 public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
-  @Override
-  public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
-    check(event.getEnvironment());
-  }
+    @Override
+    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
+        check(event.getEnvironment());
+    }
 
-  static void check(Environment environment) {
-    if (environment.acceptsProfiles(Profiles.of("local", "test"))) {
-      return;
+    static void check(Environment environment) {
+        if (environment.acceptsProfiles(Profiles.of("local", "test"))) {
+            return;
+        }
+        List<String> on = new ArrayList<>();
+        if ("local".equals(environment.getProperty("journey.auth.mode"))) {
+            on.add("journey.auth.mode=local (anyone can sign in as anyone)");
+        }
+        if ("local".equals(environment.getProperty("journey.media.mode"))) {
+            on.add("journey.media.mode=local (uploads on this computer's disk)");
+        }
+        if (environment.getProperty("journey.seed.enabled", Boolean.class, false)) {
+            on.add("journey.seed.enabled=true (sample people and journeys)");
+        }
+        if (!on.isEmpty()) {
+            throw new IllegalStateException(
+                    "These settings are for building and testing only and need the 'local' profile: "
+                            + String.join("; ", on)
+                            + ". Start with -Dspring.profiles.active=local on your own computer, or remove them here.");
+        }
     }
-    List<String> on = new ArrayList<>();
-    if ("local".equals(environment.getProperty("journey.auth.mode"))) {
-      on.add("journey.auth.mode=local (anyone can sign in as anyone)");
-    }
-    if ("local".equals(environment.getProperty("journey.media.mode"))) {
-      on.add("journey.media.mode=local (uploads on this computer's disk)");
-    }
-    if (environment.getProperty("journey.seed.enabled", Boolean.class, false)) {
-      on.add("journey.seed.enabled=true (sample people and journeys)");
-    }
-    if (!on.isEmpty()) {
-      throw new IllegalStateException(
-          "These settings are for building and testing only and need the 'local' profile: " + String.join("; ", on)
-              + ". Start with -Dspring.profiles.active=local on your own computer, or remove them here.");
-    }
-  }
 }

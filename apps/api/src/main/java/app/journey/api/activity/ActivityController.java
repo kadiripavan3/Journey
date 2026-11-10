@@ -17,22 +17,25 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Activity")
 class ActivityController {
 
-  private final ActivityService activity;
+    private final ActivityService activity;
 
-  ActivityController(ActivityService activity) {
-    this.activity = activity;
-  }
+    ActivityController(ActivityService activity) {
+        this.activity = activity;
+    }
 
-  @GetMapping
-  @Operation(operationId = "getActivity", summary = "The inbox: new entries per journey, likes batched per entry, comments, replies and new followers")
-  ActivityResponse inbox(@Me UUID me) {
-    return activity.inbox(me);
-  }
+    @GetMapping
+    @Operation(
+            operationId = "getActivity",
+            summary =
+                    "The inbox: new entries per journey, likes batched per entry, comments, replies and new followers")
+    ActivityResponse inbox(@Me UUID me) {
+        return activity.inbox(me);
+    }
 
-  @PostMapping("/seen")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(operationId = "markActivitySeen", summary = "Everything in Activity so far has been seen")
-  void seen(@Me UUID me) {
-    activity.markSeen(me);
-  }
+    @PostMapping("/seen")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "markActivitySeen", summary = "Everything in Activity so far has been seen")
+    void seen(@Me UUID me) {
+        activity.markSeen(me);
+    }
 }

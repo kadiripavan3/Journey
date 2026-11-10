@@ -14,15 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Weekly digest")
 class DigestController {
 
-  private final DigestService digest;
+    private final DigestService digest;
 
-  DigestController(DigestService digest) {
-    this.digest = digest;
-  }
+    DigestController(DigestService digest) {
+        this.digest = digest;
+    }
 
-  @GetMapping
-  @Operation(operationId = "getDigest", summary = "This week in the journeys you follow")
-  DigestResponse thisWeek(@Me UUID me) {
-    return digest.thisWeek(me);
-  }
+    @GetMapping
+    @Operation(operationId = "getDigest", summary = "This week in the journeys you follow")
+    DigestResponse thisWeek(@Me UUID me) {
+        return digest.thisWeek(me);
+    }
 }

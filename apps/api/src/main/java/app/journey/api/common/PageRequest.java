@@ -10,32 +10,32 @@ import java.util.Base64;
  */
 public record PageRequest(int offset, int limit) {
 
-  public static final int MAX_LIMIT = 100;
+    public static final int MAX_LIMIT = 100;
 
-  public static PageRequest of(String cursor, Integer limit, int defaultLimit) {
-    int size = limit == null ? defaultLimit : Math.clamp(limit, 1, MAX_LIMIT);
-    return new PageRequest(cursor == null || cursor.isBlank() ? 0 : offsetIn(cursor), size);
-  }
-
-  /** How many rows to ask the database for: one more than the page, to learn whether another page follows. */
-  public int fetch() {
-    return limit + 1;
-  }
-
-  public static String cursor(int offset) {
-    return Base64.getUrlEncoder().withoutPadding().encodeToString(("o" + offset).getBytes(StandardCharsets.UTF_8));
-  }
-
-  private static int offsetIn(String cursor) {
-    try {
-      String text = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-      int offset = Integer.parseInt(text.substring(1));
-      if (text.charAt(0) == 'o' && offset >= 0) {
-        return offset;
-      }
-    } catch (RuntimeException notACursor) {
-      // falls through to the same answer
+    public static PageRequest of(String cursor, Integer limit, int defaultLimit) {
+        int size = limit == null ? defaultLimit : Math.clamp(limit, 1, MAX_LIMIT);
+        return new PageRequest(cursor == null || cursor.isBlank() ? 0 : offsetIn(cursor), size);
     }
-    throw ApiProblem.badRequest("bad_cursor", "That list has changed. Pull to refresh.");
-  }
+
+    /** How many rows to ask the database for: one more than the page, to learn whether another page follows. */
+    public int fetch() {
+        return limit + 1;
+    }
+
+    public static String cursor(int offset) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(("o" + offset).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static int offsetIn(String cursor) {
+        try {
+            String text = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+            int offset = Integer.parseInt(text.substring(1));
+            if (text.charAt(0) == 'o' && offset >= 0) {
+                return offset;
+            }
+        } catch (RuntimeException notACursor) {
+            // falls through to the same answer
+        }
+        throw ApiProblem.badRequest("bad_cursor", "That list has changed. Pull to refresh.");
+    }
 }

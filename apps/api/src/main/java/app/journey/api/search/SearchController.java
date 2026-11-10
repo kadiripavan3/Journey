@@ -21,30 +21,34 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Search")
 class SearchController {
 
-  static final int LIMIT = 30;
+    static final int LIMIT = 30;
 
-  record SearchResponse(
-      String query,
-      @Schema(description = "The best matches, most followed first; at most 30") List<JourneyResponse> journeys,
-      @Schema(description = "The best matches, most followed first; at most 30") List<ListedPersonResponse> people) {}
+    record SearchResponse(
+            String query,
 
-  private final JourneyService journeys;
-  private final PeopleService people;
+            @Schema(description = "The best matches, most followed first; at most 30")
+            List<JourneyResponse> journeys,
 
-  SearchController(JourneyService journeys, PeopleService people) {
-    this.journeys = journeys;
-    this.people = people;
-  }
+            @Schema(description = "The best matches, most followed first; at most 30")
+            List<ListedPersonResponse> people) {}
 
-  @GetMapping
-  @Operation(operationId = "search", summary = "Find public journeys and people. A leading # or @ is ignored.")
-  SearchResponse search(@Me UUID me, @RequestParam("q") String q) {
-    String words = q.trim().replaceFirst("^[#@]", "");
-    if (words.length() < 2) {
-      return new SearchResponse(words, List.of(), List.of());
+    private final JourneyService journeys;
+    private final PeopleService people;
+
+    SearchController(JourneyService journeys, PeopleService people) {
+        this.journeys = journeys;
+        this.people = people;
     }
-    // The person's words are matched as they are: % and _ mean themselves, not "anything".
-    String pattern = "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-    return new SearchResponse(words, journeys.search(pattern, me, LIMIT), people.search(pattern, me, LIMIT));
-  }
+
+    @GetMapping
+    @Operation(operationId = "search", summary = "Find public journeys and people. A leading # or @ is ignored.")
+    SearchResponse search(@Me UUID me, @RequestParam("q") String q) {
+        String words = q.trim().replaceFirst("^[#@]", "");
+        if (words.length() < 2) {
+            return new SearchResponse(words, List.of(), List.of());
+        }
+        // The person's words are matched as they are: % and _ mean themselves, not "anything".
+        String pattern = "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        return new SearchResponse(words, journeys.search(pattern, me, LIMIT), people.search(pattern, me, LIMIT));
+    }
 }

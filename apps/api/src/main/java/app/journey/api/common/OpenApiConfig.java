@@ -19,60 +19,69 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class OpenApiConfig {
 
-  static {
-    // The signed-in person comes from the token, not from the caller, so it is not part of the description.
-    SpringDocUtils.getConfig().addAnnotationsToIgnore(Me.class);
-  }
-
-  @Bean
-  OpenAPI journeyOpenApi() {
-    return new OpenAPI()
-        .info(new Info().title("Journey API").version("v1").description("Backend of the Journey app."))
-        .components(
-            new Components()
-                .addSecuritySchemes(
-                    "bearer", new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")))
-        .addSecurityItem(new SecurityRequirement().addList("bearer"));
-  }
-
-  /**
-   * In everything the API sends back, a field is always present unless it is declared nullable. Saying
-   * so in the description gives the app exact types instead of "maybe undefined" everywhere.
-   */
-  @Bean
-  OpenApiCustomizer responseFieldsAreRequired() {
-    return openApi -> {
-      if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
-        return;
-      }
-      openApi.getComponents().getSchemas().forEach((name, schema) -> {
-        if (name.endsWith("Response") && schema.getProperties() != null) {
-          @SuppressWarnings("unchecked")
-          Map<String, Schema<?>> properties = (Map<String, Schema<?>>) (Map<String, ?>) schema.getProperties();
-          List<String> required = new ArrayList<>(properties.keySet());
-          schema.setRequired(required);
-          properties.replaceAll((property, value) -> nullableReference(value));
-        }
-      });
-    };
-  }
-
-  /**
-   * "Another object, or null" must be written as a choice between the two. Left alone, the generator
-   * writes it in a way that reads as "always null".
-   */
-  private static Schema<?> nullableReference(Schema<?> property) {
-    boolean nullable = property.getTypes() != null && property.getTypes().contains("null");
-    if (property.get$ref() == null || !nullable) {
-      return property;
+    static {
+        // The signed-in person comes from the token, not from the caller, so it is not part of the description.
+        SpringDocUtils.getConfig().addAnnotationsToIgnore(Me.class);
     }
-    Schema<Object> reference = new Schema<>();
-    reference.set$ref(property.get$ref());
-    Schema<Object> nothing = new Schema<>();
-    nothing.addType("null");
-    Schema<Object> choice = new Schema<>();
-    choice.setDescription(property.getDescription());
-    choice.setOneOf(List.of(reference, nothing));
-    return choice;
-  }
+
+    @Bean
+    OpenAPI journeyOpenApi() {
+        return new OpenAPI()
+                .info(new Info().title("Journey API").version("v1").description("Backend of the Journey app."))
+                .components(new Components()
+                        .addSecuritySchemes(
+                                "bearer",
+                                new SecurityScheme()
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")))
+                .addSecurityItem(new SecurityRequirement().addList("bearer"));
+    }
+
+    /**
+     * In everything the API sends back, a field is always present unless it is declared nullable. Saying
+     * so in the description gives the app exact types instead of "maybe undefined" everywhere.
+     */
+    @Bean
+    OpenApiCustomizer responseFieldsAreRequired() {
+        return openApi -> {
+            if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
+                return;
+            }
+            openApi.getComponents().getSchemas().forEach((name, schema) -> {
+                if (name.endsWith("Response")) {
+                    requireEveryField(schema);
+                }
+            });
+        };
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"}) // the library hands out its Schema type without its type parameter
+    private static void requireEveryField(Schema schema) {
+        if (schema.getProperties() == null) {
+            return;
+        }
+        Map<String, Schema<?>> properties = (Map<String, Schema<?>>) schema.getProperties();
+        schema.setRequired(new ArrayList<>(properties.keySet()));
+        properties.replaceAll((property, value) -> nullableReference(value));
+    }
+
+    /**
+     * "Another object, or null" must be written as a choice between the two. Left alone, the generator
+     * writes it in a way that reads as "always null".
+     */
+    private static Schema<?> nullableReference(Schema<?> property) {
+        boolean nullable = property.getTypes() != null && property.getTypes().contains("null");
+        if (property.get$ref() == null || !nullable) {
+            return property;
+        }
+        Schema<Object> reference = new Schema<>();
+        reference.set$ref(property.get$ref());
+        Schema<Object> nothing = new Schema<>();
+        nothing.addType("null");
+        Schema<Object> choice = new Schema<>();
+        choice.setDescription(property.getDescription());
+        choice.setOneOf(List.of(reference, nothing));
+        return choice;
+    }
 }

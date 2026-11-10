@@ -15,9 +15,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("journey.auth")
 public record AuthProperties(String mode, Local local) {
 
-  public record Local(String secret, String code, Duration tokenTtl) {}
+    public record Local(String secret, String code, Duration tokenTtl) {}
 
-  public boolean isLocal() {
-    return "local".equals(mode);
-  }
+    public boolean isLocal() {
+        return "local".equals(mode);
+    }
 }

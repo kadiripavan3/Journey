@@ -7,7 +7,6 @@ import app.journey.api.people.PeopleService.ListedPersonResponse;
 import app.journey.api.people.PeopleService.PublicProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,42 +21,51 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "People")
 class PeopleController {
 
-  private final PeopleService people;
+    private final PeopleService people;
 
-  PeopleController(PeopleService people) {
-    this.people = people;
-  }
+    PeopleController(PeopleService people) {
+        this.people = people;
+    }
 
-  @GetMapping
-  @Operation(operationId = "getProfile", summary = "Someone's profile, with their counts and whether you follow them")
-  PublicProfileResponse profile(@Me UUID me, @PathVariable String username) {
-    return people.profile(username, me);
-  }
+    @GetMapping
+    @Operation(operationId = "getProfile", summary = "Someone's profile, with their counts and whether you follow them")
+    PublicProfileResponse profile(@Me UUID me, @PathVariable String username) {
+        return people.profile(username, me);
+    }
 
-  @PutMapping("/follow")
-  @Operation(operationId = "followProfile", summary = "Follow a person. Their future public journeys are followed for you.")
-  PublicProfileResponse follow(@Me UUID me, @PathVariable String username) {
-    return people.follow(username, me);
-  }
+    @PutMapping("/follow")
+    @Operation(
+            operationId = "followProfile",
+            summary = "Follow a person. Their future public journeys are followed for you.")
+    PublicProfileResponse follow(@Me UUID me, @PathVariable String username) {
+        return people.follow(username, me);
+    }
 
-  @DeleteMapping("/follow")
-  @Operation(operationId = "unfollowProfile", summary = "Stop following a person. Journeys you already follow stay followed.")
-  PublicProfileResponse unfollow(@Me UUID me, @PathVariable String username) {
-    return people.unfollow(username, me);
-  }
+    @DeleteMapping("/follow")
+    @Operation(
+            operationId = "unfollowProfile",
+            summary = "Stop following a person. Journeys you already follow stay followed.")
+    PublicProfileResponse unfollow(@Me UUID me, @PathVariable String username) {
+        return people.unfollow(username, me);
+    }
 
-  @GetMapping("/followers")
-  @Operation(operationId = "getFollowers", summary = "The people who follow someone, newest first")
-  Page<ListedPersonResponse> followers(
-      @Me UUID me, @PathVariable String username, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-    return people.listed(username, true, me, PageRequest.of(cursor, limit, 30));
-  }
+    @GetMapping("/followers")
+    @Operation(operationId = "getFollowers", summary = "The people who follow someone, newest first")
+    Page<ListedPersonResponse> followers(
+            @Me UUID me,
+            @PathVariable String username,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        return people.listed(username, true, me, PageRequest.of(cursor, limit, 30));
+    }
 
-  @GetMapping("/following")
-  @Operation(operationId = "getFollowing", summary = "The people someone follows, newest first")
-  Page<ListedPersonResponse> following(
-      @Me UUID me, @PathVariable String username, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-    return people.listed(username, false, me, PageRequest.of(cursor, limit, 30));
-  }
-
+    @GetMapping("/following")
+    @Operation(operationId = "getFollowing", summary = "The people someone follows, newest first")
+    Page<ListedPersonResponse> following(
+            @Me UUID me,
+            @PathVariable String username,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        return people.listed(username, false, me, PageRequest.of(cursor, limit, 30));
+    }
 }

@@ -10,18 +10,18 @@ import org.springframework.stereotype.Component;
 @Component
 class MediaCleanup {
 
-  private final MediaService media;
-  private final Jobs jobs;
+    private final MediaService media;
+    private final Jobs jobs;
 
-  MediaCleanup(MediaService media, Jobs jobs) {
-    this.media = media;
-    this.jobs = jobs;
-  }
-
-  @Scheduled(cron = "${journey.media.cleanup-cron:0 30 3 * * *}", zone = "UTC")
-  void nightly() {
-    if (jobs.claim("media_cleanup", LocalDate.now(ZoneOffset.UTC).toString())) {
-      media.removeAbandoned();
+    MediaCleanup(MediaService media, Jobs jobs) {
+        this.media = media;
+        this.jobs = jobs;
     }
-  }
+
+    @Scheduled(cron = "${journey.media.cleanup-cron:0 30 3 * * *}", zone = "UTC")
+    void nightly() {
+        if (jobs.claim("media_cleanup", LocalDate.now(ZoneOffset.UTC).toString())) {
+            media.removeAbandoned();
+        }
+    }
 }

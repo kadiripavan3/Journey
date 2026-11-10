@@ -9,23 +9,23 @@ import java.util.function.Supplier;
  */
 public final class Codes {
 
-  private Codes() {}
+    private Codes() {}
 
-  public static String of(Enum<?> value) {
-    return value.name().toLowerCase(Locale.ROOT);
-  }
-
-  /** The constant for a word from the database, where an unknown word would be a bug. */
-  public static <E extends Enum<E>> E read(Class<E> type, String code) {
-    return code == null ? null : Enum.valueOf(type, code.toUpperCase(Locale.ROOT));
-  }
-
-  /** The constant for a word sent by the app; an unknown word gets the given answer. */
-  public static <E extends Enum<E>> E parse(Class<E> type, String code, Supplier<ApiProblem> unknown) {
-    try {
-      return Enum.valueOf(type, code.trim().toUpperCase(Locale.ROOT));
-    } catch (RuntimeException e) {
-      throw unknown.get();
+    public static String of(Enum<?> value) {
+        return value.name().toLowerCase(Locale.ROOT);
     }
-  }
+
+    /** The constant for a word from the database, where an unknown word would be a bug. */
+    public static <E extends Enum<E>> E read(Class<E> type, String code) {
+        return code == null ? null : Enum.valueOf(type, code.toUpperCase(Locale.ROOT));
+    }
+
+    /** The constant for a word sent by the app; an unknown word gets the given answer. */
+    public static <E extends Enum<E>> E parse(Class<E> type, String code, Supplier<ApiProblem> unknown) {
+        try {
+            return Enum.valueOf(type, code.trim().toUpperCase(Locale.ROOT));
+        } catch (RuntimeException e) {
+            throw unknown.get();
+        }
+    }
 }

@@ -10,19 +10,22 @@ import org.springframework.stereotype.Repository;
 @ConditionalOnProperty(name = "journey.auth.mode", havingValue = "local")
 public class LocalUsers {
 
-  private final JdbcClient jdbc;
+    private final JdbcClient jdbc;
 
-  LocalUsers(JdbcClient jdbc) {
-    this.jdbc = jdbc;
-  }
+    LocalUsers(JdbcClient jdbc) {
+        this.jdbc = jdbc;
+    }
 
-  /** The id for an email, made the first time the email signs in. */
-  public UUID idFor(String email) {
-    return jdbc.sql("insert into local_users (email) values (:email) on conflict (email) do update set email = excluded.email returning id")
-        .param("email", email).query(UUID.class).single();
-  }
+    /** The id for an email, made the first time the email signs in. */
+    public UUID idFor(String email) {
+        return jdbc.sql(
+                        "insert into local_users (email) values (:email) on conflict (email) do update set email = excluded.email returning id")
+                .param("email", email)
+                .query(UUID.class)
+                .single();
+    }
 
-  public void remove(UUID userId) {
-    jdbc.sql("delete from local_users where id = :id").param("id", userId).update();
-  }
+    public void remove(UUID userId) {
+        jdbc.sql("delete from local_users where id = :id").param("id", userId).update();
+    }
 }

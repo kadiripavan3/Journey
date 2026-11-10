@@ -11,17 +11,17 @@ import java.util.UUID;
  */
 public interface MediaStorage {
 
-  /** Where and how the phone uploads one file. */
-  record UploadTarget(String url, String method, Map<String, String> headers) {}
+    /** Where and how the phone uploads one file. */
+    record UploadTarget(String url, String method, Map<String, String> headers) {}
 
-  UploadTarget uploadTarget(UUID mediaId, String contentType);
+    UploadTarget uploadTarget(UUID mediaId, String contentType);
 
-  /** The address the file is served from once uploaded. */
-  String publicUrl(String storageKey);
+    /** The address the file is served from once uploaded. */
+    String publicUrl(String storageKey);
 
-  /** The address of a smaller version of a photo. The storage makes it when it is first asked for. */
-  String publicUrl(String storageKey, MediaSize size);
+    /** The address of a smaller version of a photo. The storage makes it when it is first asked for. */
+    String publicUrl(String storageKey, MediaSize size);
 
-  /** Removes the file for good. Nothing happens if it is already gone. */
-  void delete(String storageKey);
+    /** Removes the file for good. Nothing happens if it is already gone. */
+    void delete(String storageKey);
 }

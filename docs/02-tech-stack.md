@@ -62,7 +62,7 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Animation and gestures | **Reanimated 4**, **Gesture Handler** | The standard pair, included with Expo |
 | Long lists | **FlashList 2** | Smooth feeds and timelines |
 | Images | **expo-image** | Caching and blurred placeholders |
-| Photos | **expo-image-picker**, **expo-image-manipulator** | Resize to about 2048 px and make a thumbnail on the phone before upload |
+| Photos | **expo-image-picker**, **expo-image-manipulator** | Resize to about 2048 px on the phone before upload. The smaller versions for lists are made by the storage side when first asked for (see below). |
 | Video | **expo-video** to play; **react-native-compressor** to shrink clips before upload | Mux has an official guide for expo-video. The compressor needs a development build (see [testing](#testing-without-the-store-accounts)). |
 | Maps | **react-native-maps** | Supports our custom "Day 14" pins and works in Expo Go. Expo's own maps library needs iOS 17 or later. |
 | Sign-in | **Supabase Auth** client with **expo-apple-authentication**, native Google sign-in, and email codes | Apple and email codes work in Expo Go. Google sign-in needs a development build. |
@@ -79,15 +79,37 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Java version | **Java 25** (the current long-term version) in production. The code stays compatible with Java 21, which this cloud environment has. | Spring recommends 25; virtual threads work best from Java 24 on |
 | Build | **Maven** | Familiar and predictable |
 | Who is calling | **Spring Security** as a resource server: it checks the sign-in token from Supabase Auth against Supabase's public keys | Standard; no passwords or sessions in our code |
-| Reading and writing data | **Spring Data JPA** for simple cases, plain SQL (`JdbcClient`) for feeds and search | Familiar, and SQL where SQL is clearer |
+| Reading and writing data | Plain SQL with Spring's `JdbcClient`, in one `Store` class per feature | One way to reach the database. JPA was used for a single table at first; two ways of doing the same thing cost more than they gave, so it was removed (November 2026). The SQL you debug is the SQL that runs. |
 | Database changes | **Flyway** migrations in the repo | Every change is versioned and repeatable |
 | API description | **springdoc-openapi** | Produces the OpenAPI document that the app's client is generated from |
-| Rate limits | **Bucket4j**, stored in PostgreSQL | Stops abuse without adding another server such as Redis |
+| Rate limits | **Bucket4j**. Changes and sign-in attempts are counted in PostgreSQL, so every copy of the API shares the ceiling; reads are counted in memory | Stops abuse without adding another server such as Redis, and without a database write for every read |
 | Scheduled jobs | Spring's scheduler | Auto-pause after 30 days, trending scores, reminders, the weekly digest |
 | Web pages for shared links | **Thymeleaf** templates served by the API | Read-only journey and entry pages, link previews, the files that make links open the app, terms and privacy pages |
 | Outside services | Official Java SDKs for Mux, Resend and S3-compatible storage; plain HTTPS for Expo Push | |
 | Tests | **JUnit** with Spring's test tools, against a real PostgreSQL | Proven in this cloud environment: a test app built and passed against PostgreSQL in about 20 seconds |
-| Packaging | A Docker image, deployed by GitHub Actions | The same image runs anywhere |
+| Packaging | A Docker image (`apps/api/Dockerfile`, built in CI on every push), deployed by GitHub Actions | The same image runs anywhere |
+| Code style | **Spotless** with palantir-java-format; compiler warnings are errors | `./mvnw spotless:apply` formats; `./mvnw verify` (CI) fails on unformatted code or a warning |
+
+### How the API is put together
+
+These hold for every feature. New code follows them, and `RulesTest` and `ShapeTest` keep them true.
+
+| Rule | What it means |
+|---|---|
+| Controller, service, store | A controller turns a request into a call. A service holds the rules. A `Store` holds the SQL. No SQL anywhere else. |
+| The signed-in person | Controllers take `@Me UUID me` (or `@Me CurrentUser`). Nothing reads the token by hand. |
+| Who may see what | Written once, in `common/Rules.java`: which journeys a person may see, and what blocking hides. Every query uses it. |
+| Counts | Followers, entries, likes and comments are kept by database triggers. Java never writes them. |
+| Fixed sets of words | Visibility, status, label style, media kind and the like are Java enums, lower case on the wire. The app's generated client gets exact types, and an unknown word gets its own answer. |
+| Lists | A list that can grow without end is a page: `{ items, nextCursor }`, with `cursor` and `limit` (100 at most). The cursor is opaque to the app. Today it holds a position, which can repeat or skip an item if the list changes between two pages; because nobody outside `PageRequest` reads it, it can become "after this row" later without changing the app. "Top of" answers (Discover, search, Activity, the digest) are capped and say so. |
+| A story | `GET /v1/journeys/{id}/entries` is read in pages from the start, or around any entry (`around`), with a way back (`prevCursor`). A journey's page uses `GET /v1/journeys/{id}/summary` and never loads the whole story. |
+| Sending twice | Creating a journey, an entry or a comment takes a `clientId` the app makes up. The same `clientId` again gives back the first one. |
+| Photos | Every photo has a full address and a smaller one (`thumbUrl`, `coverThumbUrl`; profile pictures are always small). Locally the API makes the smaller file the first time it is asked for. With the real storage this becomes image resizing in front of R2, or files made at upload: to be decided when storage is connected. |
+| Failures | Always a `code` and a sentence a person can read, also for the ones nobody planned for. The app shows the sentence as it is. |
+| Stand-ins | Local sign-in, local files and sample data work only with the `local` (or `test`) profile. The API refuses to start if one of them is switched on without it. |
+| Scheduled jobs | A job writes a row to `job_runs` first; with several copies of the API running, only the copy that gets the row does the work. |
+| Links that leave the app | Built from `JOURNEY_PUBLIC_URL` when it is set, otherwise from the request. Behind a proxy, set `JOURNEY_FORWARD_HEADERS=framework`. |
+| The API's description | `/v3/api-docs` and the try-it-out page are on in local mode and off everywhere else. |
 
 ### Managed services
 

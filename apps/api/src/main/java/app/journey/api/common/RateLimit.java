@@ -1,12 +1,25 @@
 package app.journey.api.common;
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.ConsumptionProbe;
+import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
+import io.github.bucket4j.distributed.jdbc.PrimaryKeyMapper;
+import io.github.bucket4j.postgresql.Bucket4jPostgreSQL;
+import io.github.bucket4j.postgresql.PostgreSQLSelectForUpdateBasedProxyManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -17,63 +30,112 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * A ceiling on how fast one person (or, before sign-in, one address) may call the API: generous for reading,
  * tighter for changing things, tight for guessing sign-in codes. It stops a runaway loop or a script from
- * hurting everyone else.
+ * hurting everyone else. The counting is done by Bucket4j.
  *
- * <p>The counts are kept in this copy of the API's memory, per minute. With several copies running, each has
- * its own count; that is good enough to stop abuse, and a shared limit at the edge can be added later.
+ * <p>Changes and sign-in attempts are counted in PostgreSQL, so the ceiling holds across every copy of the API.
+ * Reads are counted in this copy's memory: there are far more of them, a database write for each would cost
+ * more than it protects, and a per-copy ceiling is enough to stop a loop.
  */
 @Configuration
 public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
 
-  private record Window(long minute, AtomicInteger count) {}
+    private static final Duration MINUTE = Duration.ofMinutes(1);
 
-  private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
-  private final boolean enabled;
-  private final int reads;
-  private final int writes;
-  private final int signIns;
+    private final boolean enabled;
+    private final Bandwidth reads;
+    private final BucketConfiguration writes;
+    private final BucketConfiguration signIns;
+    private final PostgreSQLSelectForUpdateBasedProxyManager<String> shared;
+    private final ConcurrentHashMap<String, Bucket> readers = new ConcurrentHashMap<>();
+    private final Jobs jobs;
 
-  RateLimit(
-      @Value("${journey.rate-limit.enabled:true}") boolean enabled,
-      @Value("${journey.rate-limit.reads-per-minute:600}") int reads,
-      @Value("${journey.rate-limit.writes-per-minute:120}") int writes,
-      @Value("${journey.rate-limit.sign-ins-per-minute:10}") int signIns) {
-    this.enabled = enabled;
-    this.reads = reads;
-    this.writes = writes;
-    this.signIns = signIns;
-  }
-
-  @Override
-  public void addInterceptors(InterceptorRegistry registry) {
-    registry.addInterceptor(this).addPathPatterns("/v1/**", "/local-auth/**").order(-10);
-  }
-
-  @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-    if (!enabled) {
-      return true;
+    RateLimit(
+            DataSource dataSource,
+            Jobs jobs,
+            @Value("${journey.rate-limit.enabled:true}") boolean enabled,
+            @Value("${journey.rate-limit.reads-per-minute:600}") int reads,
+            @Value("${journey.rate-limit.writes-per-minute:120}") int writes,
+            @Value("${journey.rate-limit.sign-ins-per-minute:10}") int signIns) {
+        this.jobs = jobs;
+        this.enabled = enabled;
+        this.reads = perMinute(reads);
+        this.writes = BucketConfiguration.builder().addLimit(perMinute(writes)).build();
+        this.signIns =
+                BucketConfiguration.builder().addLimit(perMinute(signIns)).build();
+        this.shared = Bucket4jPostgreSQL.selectForUpdateBasedBuilder(dataSource)
+                .primaryKeyMapper(PrimaryKeyMapper.STRING)
+                .table("rate_limits")
+                .idColumn("id")
+                .stateColumn("state")
+                .expiresAtColumn("expires_at")
+                .expirationAfterWrite(
+                        ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofMinutes(5)))
+                .build();
     }
-    boolean signIn = request.getRequestURI().startsWith("/local-auth/");
-    boolean read = "GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()) || "OPTIONS".equals(request.getMethod());
-    String kind = signIn ? "signin" : read ? "read" : "write";
-    int ceiling = signIn ? signIns : read ? reads : writes;
-    long minute = System.currentTimeMillis() / 60_000;
-    Window window = windows.compute(kind + ":" + who(request), (key, current) ->
-        current == null || current.minute() != minute ? new Window(minute, new AtomicInteger()) : current);
-    if (window.count().incrementAndGet() > ceiling) {
-      response.setHeader("Retry-After", String.valueOf(60 - (System.currentTimeMillis() / 1000) % 60));
-      throw new ApiProblem(HttpStatus.TOO_MANY_REQUESTS, "slow_down", "That's a lot at once. Wait a minute and try again.");
-    }
-    if (windows.size() > 50_000) {
-      windows.values().removeIf(old -> old.minute() != minute); // forget everyone who has been quiet since last minute
-    }
-    return true;
-  }
 
-  /** The signed-in person, or the caller's address when nobody is signed in yet. */
-  private static String who(HttpServletRequest request) {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    return auth instanceof JwtAuthenticationToken token ? token.getToken().getSubject() : request.getRemoteAddr();
-  }
+    /** A full allowance to start with, topped up evenly over the minute. */
+    private static Bandwidth perMinute(int allowance) {
+        return Bandwidth.builder()
+                .capacity(allowance)
+                .refillGreedy(allowance, MINUTE)
+                .build();
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(this)
+                .addPathPatterns("/v1/**", "/local-auth/**")
+                .order(-10);
+    }
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (!enabled) {
+            return true;
+        }
+        String who = who(request);
+        ConsumptionProbe probe;
+        if (request.getRequestURI().startsWith("/local-auth/")) {
+            probe = shared.builder().build("signin:" + who, () -> signIns).tryConsumeAndReturnRemaining(1);
+        } else if (isRead(request)) {
+            if (readers.size() > 50_000) {
+                readers.clear(); // everyone starts the minute afresh; far better than growing without end
+            }
+            probe = readers.computeIfAbsent(
+                            who, key -> Bucket.builder().addLimit(reads).build())
+                    .tryConsumeAndReturnRemaining(1);
+        } else {
+            probe = shared.builder().build("write:" + who, () -> writes).tryConsumeAndReturnRemaining(1);
+        }
+        if (!probe.isConsumed()) {
+            response.setHeader(
+                    "Retry-After",
+                    String.valueOf(Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()))));
+            throw new ApiProblem(
+                    HttpStatus.TOO_MANY_REQUESTS, "slow_down", "That's a lot at once. Wait a minute and try again.");
+        }
+        return true;
+    }
+
+    /** Each night, forget the people who have been quiet: their allowance is full again anyway. */
+    @Scheduled(cron = "${journey.rate-limit.cleanup-cron:0 45 3 * * *}", zone = "UTC")
+    void forgetQuietPeople() {
+        if (jobs.claim("rate_limit_cleanup", LocalDate.now(ZoneOffset.UTC).toString())) {
+            while (shared.removeExpired(1000) > 0) {
+                // keep going until none are left
+            }
+        }
+    }
+
+    private static boolean isRead(HttpServletRequest request) {
+        return "GET".equals(request.getMethod())
+                || "HEAD".equals(request.getMethod())
+                || "OPTIONS".equals(request.getMethod());
+    }
+
+    /** The signed-in person, or the caller's address when nobody is signed in yet. */
+    private static String who(HttpServletRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth instanceof JwtAuthenticationToken token ? token.getToken().getSubject() : request.getRemoteAddr();
+    }
 }

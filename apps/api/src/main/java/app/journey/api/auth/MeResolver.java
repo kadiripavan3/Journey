@@ -18,29 +18,33 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 class MeResolver implements HandlerMethodArgumentResolver, WebMvcConfigurer {
 
-  @Override
-  public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-    resolvers.add(this);
-  }
-
-  @Override
-  public boolean supportsParameter(MethodParameter parameter) {
-    return parameter.hasParameterAnnotation(Me.class)
-        && (parameter.getParameterType() == UUID.class || parameter.getParameterType() == CurrentUser.class);
-  }
-
-  @Override
-  public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer container, NativeWebRequest request, WebDataBinderFactory binders) {
-    CurrentUser user = current();
-    return parameter.getParameterType() == UUID.class ? user.id() : user;
-  }
-
-  /** The person behind the current request. Everything under /v1 is signed in, so this only fails if the security rules change. */
-  static CurrentUser current() {
-    Authentication who = SecurityContextHolder.getContext().getAuthentication();
-    if (who instanceof JwtAuthenticationToken token) {
-      return CurrentUser.from(token.getToken());
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(this);
     }
-    throw ApiProblem.unauthorized("signed_out", "Please sign in again.");
-  }
+
+    @Override
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.hasParameterAnnotation(Me.class)
+                && (parameter.getParameterType() == UUID.class || parameter.getParameterType() == CurrentUser.class);
+    }
+
+    @Override
+    public Object resolveArgument(
+            MethodParameter parameter,
+            ModelAndViewContainer container,
+            NativeWebRequest request,
+            WebDataBinderFactory binders) {
+        CurrentUser user = current();
+        return parameter.getParameterType() == UUID.class ? user.id() : user;
+    }
+
+    /** The person behind the current request. Everything under /v1 is signed in, so this only fails if the security rules change. */
+    static CurrentUser current() {
+        Authentication who = SecurityContextHolder.getContext().getAuthentication();
+        if (who instanceof JwtAuthenticationToken token) {
+            return CurrentUser.from(token.getToken());
+        }
+        throw ApiProblem.unauthorized("signed_out", "Please sign in again.");
+    }
 }

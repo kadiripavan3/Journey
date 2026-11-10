@@ -19,28 +19,30 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 class ProfileGuard implements HandlerInterceptor, WebMvcConfigurer {
 
-  private static final Set<String> CHANGES = Set.of("POST", "PUT", "PATCH", "DELETE");
+    private static final Set<String> CHANGES = Set.of("POST", "PUT", "PATCH", "DELETE");
 
-  private final ProfileStore profiles;
+    private final ProfileStore profiles;
 
-  ProfileGuard(ProfileStore profiles) {
-    this.profiles = profiles;
-  }
-
-  @Override
-  public void addInterceptors(InterceptorRegistry registry) {
-    // Saving or deleting the profile itself, and uploads (the profile picture comes first), don't need one yet.
-    registry.addInterceptor(this).addPathPatterns("/v1/**").excludePathPatterns("/v1/me", "/v1/me/profile", "/v1/media/**");
-  }
-
-  @Override
-  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-    if (!CHANGES.contains(request.getMethod())) {
-      return true;
+    ProfileGuard(ProfileStore profiles) {
+        this.profiles = profiles;
     }
-    if (!profiles.exists(MeResolver.current().id())) {
-      throw ApiProblem.conflict("profile_required", "Finish setting up your profile first.");
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // Saving or deleting the profile itself, and uploads (the profile picture comes first), don't need one yet.
+        registry.addInterceptor(this)
+                .addPathPatterns("/v1/**")
+                .excludePathPatterns("/v1/me", "/v1/me/profile", "/v1/media/**");
     }
-    return true;
-  }
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (!CHANGES.contains(request.getMethod())) {
+            return true;
+        }
+        if (!profiles.exists(MeResolver.current().id())) {
+            throw ApiProblem.conflict("profile_required", "Finish setting up your profile first.");
+        }
+        return true;
+    }
 }

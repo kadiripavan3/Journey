@@ -17,20 +17,24 @@ import org.junit.jupiter.api.Test;
  */
 class OpenApiDocumentTest extends ApiTest {
 
-  private static final Path COMMITTED = Path.of("openapi.json");
+    private static final Path COMMITTED = Path.of("openapi.json");
 
-  @Test
-  void theCommittedDescriptionMatchesTheApi() throws Exception {
-    String json =
-        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-    String pretty = new tools.jackson.databind.json.JsonMapper().readTree(json).toPrettyString() + "\n";
+    @Test
+    void theCommittedDescriptionMatchesTheApi() throws Exception {
+        String json = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        String pretty =
+                new tools.jackson.databind.json.JsonMapper().readTree(json).toPrettyString() + "\n";
 
-    if ("1".equals(System.getenv("UPDATE_OPENAPI")) || !Files.exists(COMMITTED)) {
-      Files.writeString(COMMITTED, pretty);
+        if ("1".equals(System.getenv("UPDATE_OPENAPI")) || !Files.exists(COMMITTED)) {
+            Files.writeString(COMMITTED, pretty);
+        }
+        assertEquals(
+                Files.readString(COMMITTED),
+                pretty,
+                "apps/api/openapi.json is out of date. Run: UPDATE_OPENAPI=1 ./mvnw test, then regenerate the app's client.");
     }
-    assertEquals(
-        Files.readString(COMMITTED),
-        pretty,
-        "apps/api/openapi.json is out of date. Run: UPDATE_OPENAPI=1 ./mvnw test, then regenerate the app's client.");
-  }
 }

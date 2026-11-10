@@ -9,16 +9,22 @@ import java.util.function.Function;
  * same two parameters, {@code cursor} and {@code limit}.
  */
 public record Page<T>(
-    List<T> items,
-    @Schema(nullable = true, description = "Send this back as `cursor` to get the next page. Null on the last page.") String nextCursor) {
+        List<T> items,
 
-  /** Builds a page from rows fetched with {@link PageRequest#fetch()}: one row more than asked for says there is a next page. */
-  public static <T> Page<T> of(List<T> rows, PageRequest request) {
-    boolean more = rows.size() > request.limit();
-    return new Page<>(more ? rows.subList(0, request.limit()) : rows, more ? PageRequest.cursor(request.offset() + request.limit()) : null);
-  }
+        @Schema(
+                nullable = true,
+                description = "Send this back as `cursor` to get the next page. Null on the last page.")
+        String nextCursor) {
 
-  public <R> Page<R> map(Function<List<T>, List<R>> views) {
-    return new Page<>(views.apply(items), nextCursor);
-  }
+    /** Builds a page from rows fetched with {@link PageRequest#fetch()}: one row more than asked for says there is a next page. */
+    public static <T> Page<T> of(List<T> rows, PageRequest request) {
+        boolean more = rows.size() > request.limit();
+        return new Page<>(
+                more ? rows.subList(0, request.limit()) : rows,
+                more ? PageRequest.cursor(request.offset() + request.limit()) : null);
+    }
+
+    public <R> Page<R> map(Function<List<T>, List<R>> views) {
+        return new Page<>(views.apply(items), nextCursor);
+    }
 }

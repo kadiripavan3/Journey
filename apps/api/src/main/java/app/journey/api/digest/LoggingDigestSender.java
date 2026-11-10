@@ -9,11 +9,17 @@ import org.springframework.stereotype.Component;
 @Component
 class LoggingDigestSender implements DigestSender {
 
-  private static final Logger log = LoggerFactory.getLogger(LoggingDigestSender.class);
+    private static final Logger log = LoggerFactory.getLogger(LoggingDigestSender.class);
 
-  @Override
-  public void send(UUID userId, int entryCount, int journeyCount, boolean alsoByEmail) {
-    log.info("Weekly digest for {}: {} new {} in {} {}{}.", userId, entryCount, entryCount == 1 ? "entry" : "entries", journeyCount,
-        journeyCount == 1 ? "journey" : "journeys", alsoByEmail ? " (also by email)" : "");
-  }
+    @Override
+    public void send(UUID userId, int entryCount, int journeyCount, boolean alsoByEmail) {
+        log.info(
+                "Weekly digest for {}: {} new {} in {} {}{}.",
+                userId,
+                entryCount,
+                entryCount == 1 ? "entry" : "entries",
+                journeyCount,
+                journeyCount == 1 ? "journey" : "journeys",
+                alsoByEmail ? " (also by email)" : "");
+    }
 }
