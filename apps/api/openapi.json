@@ -13,6 +13,9 @@
     "bearer" : [ ]
   } ],
   "tags" : [ {
+    "name" : "local-places",
+    "description" : "A stand-in place search for the web preview. Exists only in local mode."
+  }, {
     "name" : "entries",
     "description" : "Entries, the story line and the Home feed"
   }, {
@@ -532,6 +535,14 @@
           "schema" : {
             "type" : "string",
             "format" : "uuid"
+          }
+        }, {
+          "name" : "author",
+          "in" : "query",
+          "description" : "A username: only what this person wrote, on a shared journey",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -1338,6 +1349,36 @@
         }
       }
     },
+    "/v1/local/places" : {
+      "get" : {
+        "tags" : [ "local-places" ],
+        "summary" : "Places from a bundled list whose name matches the words typed",
+        "operationId" : "searchLocalPlaces",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PlaceResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/journeys/{journeyId}/summary" : {
       "get" : {
         "tags" : [ "entries" ],
@@ -1359,6 +1400,34 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/JourneySummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{journeyId}/map" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "The journey on a map: its entries that have a place, in story order, 300 at most",
+        "operationId" : "getJourneyMap",
+        "parameters" : [ {
+          "name" : "journeyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyMapResponse"
                 }
               }
             }
@@ -1972,6 +2041,10 @@
         },
         "required" : [ "avatarUrl", "displayName", "id", "username" ]
       },
+      "LocationPrecision" : {
+        "type" : "string",
+        "enum" : [ "none", "city", "exact" ]
+      },
       "SaveEntryRequest" : {
         "type" : "object",
         "properties" : {
@@ -1997,6 +2070,19 @@
             "type" : "string",
             "maxLength" : 80,
             "minLength" : 0
+          },
+          "lat" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Where the place is on the map. Send both numbers or neither."
+          },
+          "lng" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "locationPrecision" : {
+            "$ref" : "#/components/schemas/LocationPrecision",
+            "description" : "city (the default when there is a point) or exact. Other people see a city-level point unless it is exact."
           },
           "isMilestone" : {
             "type" : "boolean"
@@ -2064,6 +2150,18 @@
           "placeName" : {
             "type" : [ "string", "null" ]
           },
+          "lat" : {
+            "type" : [ "number", "null" ],
+            "format" : "double",
+            "description" : "Where it is on the map. Other people get a city-level point unless the author chose the exact spot."
+          },
+          "lng" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "locationPrecision" : {
+            "$ref" : "#/components/schemas/LocationPrecision"
+          },
           "isMilestone" : {
             "type" : "boolean"
           },
@@ -2092,7 +2190,7 @@
             "$ref" : "#/components/schemas/EntryViewerResponse"
           }
         },
-        "required" : [ "author", "body", "commentCount", "createdAt", "edited", "happenedAt", "happenedOn", "id", "isMilestone", "journeyId", "journeyTitle", "label", "likeCount", "media", "number", "placeName", "position", "title", "viewer" ]
+        "required" : [ "author", "body", "commentCount", "createdAt", "edited", "happenedAt", "happenedOn", "id", "isMilestone", "journeyId", "journeyTitle", "label", "lat", "likeCount", "lng", "locationPrecision", "media", "number", "placeName", "position", "title", "viewer" ]
       },
       "EntryViewerResponse" : {
         "type" : "object",
@@ -2123,12 +2221,21 @@
           "kind" : {
             "$ref" : "#/components/schemas/MediaKind"
           },
+          "status" : {
+            "$ref" : "#/components/schemas/MediaStatus",
+            "description" : "ready, or for a clip that its author still sees: processing (being converted) or failed. Other people only ever get ready ones."
+          },
           "url" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "A picture to show: the photo itself, or a clip's still frame"
           },
           "thumbUrl" : {
+            "type" : "string",
+            "description" : "A smaller version of that picture, for lists and grids"
+          },
+          "playbackUrl" : {
             "type" : [ "string", "null" ],
-            "description" : "A smaller version of a photo, for lists and grids. Null for clips."
+            "description" : "For a clip that is ready: the address to play it from. Null for photos."
           },
           "width" : {
             "type" : [ "integer", "null" ],
@@ -2140,10 +2247,15 @@
           },
           "durationSeconds" : {
             "type" : [ "integer", "null" ],
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "A clip's length"
           }
         },
-        "required" : [ "durationSeconds", "height", "id", "kind", "thumbUrl", "url", "width" ]
+        "required" : [ "durationSeconds", "height", "id", "kind", "playbackUrl", "status", "thumbUrl", "url", "width" ]
+      },
+      "MediaStatus" : {
+        "type" : "string",
+        "enum" : [ "pending", "processing", "ready", "failed" ]
       },
       "ReportReason" : {
         "type" : "string",
@@ -2193,6 +2305,11 @@
           "contentType" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "durationSeconds" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "For a clip: how long it is, in whole seconds. At most 60."
           }
         },
         "required" : [ "contentType", "kind" ]
@@ -2702,6 +2819,23 @@
         },
         "required" : [ "items", "nextCursor" ]
       },
+      "PlaceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "lat" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "lng" : {
+            "type" : "number",
+            "format" : "double"
+          }
+        },
+        "required" : [ "lat", "lng", "name" ]
+      },
       "JourneySummaryResponse" : {
         "type" : "object",
         "properties" : {
@@ -2778,6 +2912,72 @@
           }
         },
         "required" : [ "entryId", "happenedOn", "label", "title" ]
+      },
+      "JourneyMapResponse" : {
+        "type" : "object",
+        "properties" : {
+          "pins" : {
+            "type" : "array",
+            "description" : "The entries that have a place, in story order",
+            "items" : {
+              "$ref" : "#/components/schemas/MapPinResponse"
+            }
+          },
+          "pinCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries have a place; more than the pins when the map is capped"
+          },
+          "placeCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many different places they are in"
+          },
+          "capped" : {
+            "type" : "boolean",
+            "description" : "True when the journey has more places than a map shows at once"
+          }
+        },
+        "required" : [ "capped", "pinCount", "pins", "placeCount" ]
+      },
+      "MapPinResponse" : {
+        "type" : "object",
+        "properties" : {
+          "entryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "label" : {
+            "type" : "string",
+            "description" : "\"Day 14\" or \"Part 3\""
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "placeName" : {
+            "type" : "string"
+          },
+          "lat" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "lng" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "isMilestone" : {
+            "type" : "boolean"
+          },
+          "happenedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "thumbUrl" : {
+            "type" : [ "string", "null" ],
+            "description" : "A small picture of the entry's first photo"
+          }
+        },
+        "required" : [ "entryId", "happenedOn", "isMilestone", "label", "lat", "lng", "placeName", "thumbUrl", "title" ]
       },
       "TimelinePageResponse" : {
         "type" : "object",

@@ -54,6 +54,8 @@ class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/j/**", "/share/**")
                         .permitAll() // the public web pages behind shared links, and their stylesheet
+                        .requestMatchers("/webhooks/**")
+                        .permitAll() // outside services reporting back; each call is checked by its signature
                         .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
                         .permitAll() // these controllers only exist in local mode; uploads carry their own token
                         .requestMatchers("/v1/**")

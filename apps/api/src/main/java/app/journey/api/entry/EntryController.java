@@ -3,6 +3,7 @@ package app.journey.api.entry;
 import app.journey.api.auth.Me;
 import app.journey.api.common.PageRequest;
 import app.journey.api.entry.EntryService.EntryResponse;
+import app.journey.api.entry.EntryService.JourneyMapResponse;
 import app.journey.api.entry.EntryService.JourneySummaryResponse;
 import app.journey.api.entry.EntryService.TimelinePageResponse;
 import app.journey.api.entry.FeedService.FeedResponse;
@@ -54,6 +55,16 @@ class EntryController {
             @Size(max = 80, message = "Use 80 characters or fewer.")
             String placeName,
 
+            @Schema(description = "Where the place is on the map. Send both numbers or neither.")
+            Double lat,
+
+            Double lng,
+
+            @Schema(
+                    description =
+                            "city (the default when there is a point) or exact. Other people see a city-level point unless it is exact.")
+            LocationPrecision locationPrecision,
+
             Boolean isMilestone,
 
             @Size(max = 13, message = "That's too many photos and clips for one entry.")
@@ -72,8 +83,19 @@ class EntryController {
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit,
             @Parameter(description = "An entry id: start with the page that holds it") @RequestParam(required = false)
-                    UUID around) {
-        return entries.timeline(journeyId, me, cursor, limit, around);
+                    UUID around,
+            @Parameter(description = "A username: only what this person wrote, on a shared journey")
+                    @RequestParam(required = false)
+                    String author) {
+        return entries.timeline(journeyId, me, cursor, limit, around, author);
+    }
+
+    @GetMapping("/journeys/{journeyId}/map")
+    @Operation(
+            operationId = "getJourneyMap",
+            summary = "The journey on a map: its entries that have a place, in story order, 300 at most")
+    JourneyMapResponse map(@Me UUID me, @PathVariable UUID journeyId) {
+        return entries.map(journeyId, me);
     }
 
     @GetMapping("/journeys/{journeyId}/summary")
@@ -97,7 +119,7 @@ class EntryController {
                 r.body(),
                 r.happenedAt(),
                 r.happenedOn(),
-                r.placeName(),
+                Place.of(r.placeName(), r.lat(), r.lng(), r.locationPrecision()),
                 Boolean.TRUE.equals(r.isMilestone()),
                 r.mediaIds());
     }
@@ -118,7 +140,7 @@ class EntryController {
                 r.body(),
                 r.happenedAt(),
                 r.happenedOn(),
-                r.placeName(),
+                Place.of(r.placeName(), r.lat(), r.lng(), r.locationPrecision()),
                 Boolean.TRUE.equals(r.isMilestone()),
                 r.mediaIds());
     }

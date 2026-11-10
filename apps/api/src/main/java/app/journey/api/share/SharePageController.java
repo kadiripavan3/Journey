@@ -38,7 +38,7 @@ class SharePageController {
     String journey(@PathVariable UUID id, Model model) {
         var journey = journeys.view(journeys.require(id, ANYONE), ANYONE);
         model.addAttribute("journey", journey);
-        var story = entries.timeline(id, ANYONE, null, PAGE, null);
+        var story = entries.timeline(id, ANYONE, null, PAGE, null, null);
         model.addAttribute("entries", story.items());
         model.addAttribute("more", story.total() - story.items().size());
         model.addAttribute("appLink", "journey://journey/" + id);

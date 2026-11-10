@@ -6,6 +6,7 @@ import app.journey.api.journey.FriendInvited;
 import app.journey.api.journey.JourneyStore;
 import app.journey.api.media.LocalDiskStorage;
 import app.journey.api.media.MediaSizes;
+import app.journey.api.place.LocalPlaces;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -580,9 +581,12 @@ public class LocalSeed implements ApplicationRunner {
                     Instant startOfDay = on.atStartOfDay().toInstant(ZoneOffset.UTC);
                     at = recent.isBefore(startOfDay) ? startOfDay : recent;
                 }
+                java.util.Optional<LocalPlaces.KnownPlace> point =
+                        story.place() == null ? java.util.Optional.empty() : LocalPlaces.named(story.place());
                 UUID entry = jdbc.sql("""
-                insert into entries (journey_id, author_id, happened_at, happened_on, title, body, place_name, is_milestone, created_at)
-                values (:journey, :author, :at, :on, :title, :body, :place, :milestone, :at)
+                insert into entries (journey_id, author_id, happened_at, happened_on, title, body, place_name, lat, lng,
+                  location_precision, is_milestone, created_at)
+                values (:journey, :author, :at, :on, :title, :body, :place, :lat, :lng, :precision, :milestone, :at)
                 returning id
                 """)
                         .param("journey", journey)
@@ -592,6 +596,9 @@ public class LocalSeed implements ApplicationRunner {
                         .param("title", story.title())
                         .param("body", story.body())
                         .param("place", story.place())
+                        .param("lat", point.map(LocalPlaces.KnownPlace::lat).orElse(null))
+                        .param("lng", point.map(LocalPlaces.KnownPlace::lng).orElse(null))
+                        .param("precision", point.isPresent() ? "city" : "none")
                         .param("milestone", story.milestone())
                         .query(UUID.class)
                         .single();

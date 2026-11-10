@@ -19,15 +19,28 @@ public class MediaStore {
             Integer width,
             Integer height,
             Integer durationS,
-            String status) {
+            MediaStatus status,
+            String videoAssetId,
+            String playbackId) {
 
         public boolean ready() {
-            return "ready".equals(status);
+            return status == MediaStatus.READY;
+        }
+
+        /** Can go on an entry: ready, or a clip the video service is still converting. */
+        public boolean usable() {
+            return ready() || (kind == MediaKind.VIDEO && status == MediaStatus.PROCESSING);
         }
     }
 
-    /** A file to remove from storage. */
-    public record StoredFile(UUID id, String storageKey) {}
+    /** A file to remove: a photo from storage, or a clip from the video service. */
+    public record StoredFile(UUID id, MediaKind kind, String storageKey, String videoAssetId) {}
+
+    private static final org.springframework.jdbc.core.RowMapper<StoredFile> FILE = (rs, n) -> new StoredFile(
+            rs.getObject("id", UUID.class),
+            MediaKind.read(rs.getString("kind")),
+            rs.getString("storage_key"),
+            rs.getString("video_asset_id"));
 
     private final JdbcClient jdbc;
 
@@ -35,15 +48,55 @@ public class MediaStore {
         this.jdbc = jdbc;
     }
 
-    public UUID insert(UUID ownerId, MediaKind kind, String contentType, String storageKey) {
+    public UUID insert(UUID ownerId, MediaKind kind, String contentType, String storageKey, Integer durationS) {
         return jdbc.sql(
-                        "insert into media (owner_id, kind, content_type, storage_key) values (:owner, :kind, :type, :key) returning id")
+                        "insert into media (owner_id, kind, content_type, storage_key, duration_s) values (:owner, :kind, :type, :key, :duration) returning id")
                 .param("owner", ownerId)
                 .param("kind", kind.code())
                 .param("type", contentType)
                 .param("key", storageKey)
+                .param("duration", durationS)
                 .query(UUID.class)
                 .single();
+    }
+
+    /** Remembers the video service's own id for a clip's upload. */
+    public void setVideoUpload(UUID id, String uploadId) {
+        jdbc.sql("update media set video_upload_id = :upload where id = :id")
+                .param("upload", uploadId)
+                .param("id", id)
+                .update();
+    }
+
+    /** The clip is with the video service, which is converting it. */
+    public void markProcessing(UUID id, Long bytes) {
+        jdbc.sql(
+                        "update media set status = 'processing', bytes = coalesce(:bytes, bytes) where id = :id and status = 'pending'")
+                .param("bytes", bytes)
+                .param("id", id)
+                .update();
+    }
+
+    /** The clip can be watched. What the video service found out about it (its ids, its real length) is kept. */
+    public void markClipReady(UUID id, Long bytes, String assetId, String playbackId, Integer durationS) {
+        jdbc.sql("""
+            update media set status = 'ready', bytes = coalesce(:bytes, bytes), video_asset_id = coalesce(:asset, video_asset_id),
+              playback_id = coalesce(:playback, playback_id), duration_s = coalesce(:duration, duration_s)
+            where id = :id
+            """)
+                .param("bytes", bytes)
+                .param("asset", assetId)
+                .param("playback", playbackId)
+                .param("duration", durationS)
+                .param("id", id)
+                .update();
+    }
+
+    public void markFailed(UUID id, String assetId) {
+        jdbc.sql("update media set status = 'failed', video_asset_id = coalesce(:asset, video_asset_id) where id = :id")
+                .param("asset", assetId)
+                .param("id", id)
+                .update();
     }
 
     public Optional<MediaRow> find(UUID id) {
@@ -55,7 +108,7 @@ public class MediaStore {
             return List.of();
         }
         return jdbc.sql(
-                        "select id, owner_id, kind, content_type, storage_key, width, height, duration_s, status from media where id in (:ids)")
+                        "select id, owner_id, kind, content_type, storage_key, width, height, duration_s, status, video_asset_id, playback_id from media where id in (:ids)")
                 .param("ids", ids)
                 .query((rs, n) -> new MediaRow(
                         rs.getObject("id", UUID.class),
@@ -66,16 +119,18 @@ public class MediaStore {
                         (Integer) rs.getObject("width"),
                         (Integer) rs.getObject("height"),
                         (Integer) rs.getObject("duration_s"),
-                        rs.getString("status")))
+                        MediaStatus.read(rs.getString("status")),
+                        rs.getString("video_asset_id"),
+                        rs.getString("playback_id")))
                 .list();
     }
 
     /** Ready photos that were uploaded before smaller versions were made at upload, oldest first. */
     public List<StoredFile> withoutSizes(int limit) {
         return jdbc.sql(
-                        "select id, storage_key from media where kind = 'photo' and status = 'ready' and not sized order by created_at limit :limit")
+                        "select id, kind, storage_key, video_asset_id from media where kind = 'photo' and status = 'ready' and not sized order by created_at limit :limit")
                 .param("limit", limit)
-                .query((rs, n) -> new StoredFile(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+                .query(FILE)
                 .list();
     }
 
@@ -94,10 +149,10 @@ public class MediaStore {
     }
 
     /** Every file a person uploaded, for deleting their account. */
-    public List<String> keysOwnedBy(UUID ownerId) {
-        return jdbc.sql("select storage_key from media where owner_id = :owner")
+    public List<StoredFile> filesOwnedBy(UUID ownerId) {
+        return jdbc.sql("select id, kind, storage_key, video_asset_id from media where owner_id = :owner")
                 .param("owner", ownerId)
-                .query(String.class)
+                .query(FILE)
                 .list();
     }
 
@@ -113,7 +168,7 @@ public class MediaStore {
      */
     public List<StoredFile> abandoned(int olderThanHours, int limit) {
         return jdbc.sql("""
-            select m.id, m.storage_key from media m
+            select m.id, m.kind, m.storage_key, m.video_asset_id from media m
             where m.created_at < now() - make_interval(hours => :hours)
               and not exists (select 1 from entry_media em where em.media_id = m.id)
               and not exists (select 1 from journeys j where j.cover_media_id = m.id)
@@ -122,7 +177,7 @@ public class MediaStore {
             """)
                 .param("hours", olderThanHours)
                 .param("limit", limit)
-                .query((rs, n) -> new StoredFile(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+                .query(FILE)
                 .list();
     }
 

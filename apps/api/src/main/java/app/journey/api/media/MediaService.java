@@ -1,6 +1,7 @@
 package app.journey.api.media;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.PublicUrls;
 import app.journey.api.media.MediaStore.MediaRow;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -26,6 +27,11 @@ public class MediaService {
     public static final int MAX_CLIPS_PER_ENTRY = 3;
     public static final long MAX_PHOTO_BYTES = 15L * 1024 * 1024;
     public static final long MAX_CLIP_BYTES = 200L * 1024 * 1024;
+    /** A clip is at most a minute long. */
+    public static final int MAX_CLIP_SECONDS = 60;
+
+    /** The picture shown for a clip that has no still frame of its own (yet). */
+    static final String CLIP_STILL = "/share/clip.jpg";
 
     private static final Logger log = LoggerFactory.getLogger(MediaService.class);
     // The app turns every photo into a JPEG before sending it; PNG is accepted too. Both are formats the API can make
@@ -37,29 +43,52 @@ public class MediaService {
     public record MediaResponse(
             UUID id,
             MediaKind kind,
+
+            @Schema(
+                    description =
+                            "ready, or for a clip that its author still sees: processing (being converted) or failed. Other people only ever get ready ones.")
+            MediaStatus status,
+
+            @Schema(description = "A picture to show: the photo itself, or a clip's still frame")
             String url,
 
-            @Schema(nullable = true, description = "A smaller version of a photo, for lists and grids. Null for clips.")
+            @Schema(description = "A smaller version of that picture, for lists and grids")
             String thumbUrl,
+
+            @Schema(
+                    nullable = true,
+                    description = "For a clip that is ready: the address to play it from. Null for photos.")
+            String playbackUrl,
 
             @Schema(nullable = true) Integer width,
             @Schema(nullable = true) Integer height,
-            @Schema(nullable = true) Integer durationSeconds) {}
+
+            @Schema(nullable = true, description = "A clip's length")
+            Integer durationSeconds) {}
 
     public record NewUpload(UUID mediaId, MediaStorage.UploadTarget target) {}
 
     private final MediaStore store;
     private final MediaStorage storage;
     private final MediaSizes sizes;
+    private final VideoService video;
+    private final PublicUrls urls;
 
-    MediaService(MediaStore store, MediaStorage storage, MediaSizes sizes) {
+    MediaService(MediaStore store, MediaStorage storage, MediaSizes sizes, VideoService video, PublicUrls urls) {
         this.store = store;
         this.storage = storage;
         this.sizes = sizes;
+        this.video = video;
+        this.urls = urls;
     }
 
+    /**
+     * Starts an upload: a record of the file to come, and where the phone sends it. Photos go to storage;
+     * clips go to the video service. For a clip the app says how long it is, and one over a minute is refused
+     * before anything is sent.
+     */
     @Transactional
-    public NewUpload startUpload(UUID ownerId, MediaKind kind, String contentType) {
+    public NewUpload startUpload(UUID ownerId, MediaKind kind, String contentType, Integer durationSeconds) {
         String type = contentType == null
                 ? ""
                 : contentType.toLowerCase().split(";")[0].trim();
@@ -71,10 +100,21 @@ public class MediaService {
                             ? "That clip's format isn't supported. Use MP4 or MOV."
                             : "That photo's format isn't supported. Use JPEG or PNG.");
         }
+        boolean clip = kind == MediaKind.VIDEO;
+        if (clip && durationSeconds != null && (durationSeconds < 0 || durationSeconds > MAX_CLIP_SECONDS)) {
+            throw ApiProblem.badRequest("clip_too_long", "Keep clips to " + MAX_CLIP_SECONDS + " seconds or less.");
+        }
         LocalDate today = LocalDate.now();
         String key = "%d/%02d/%s.%s".formatted(today.getYear(), today.getMonthValue(), UUID.randomUUID(), extension);
-        UUID id = store.insert(ownerId, kind, type, key);
-        return new NewUpload(id, storage.uploadTarget(id, key, type));
+        UUID id = store.insert(ownerId, kind, type, key, clip ? durationSeconds : null);
+        if (!clip) {
+            return new NewUpload(id, storage.uploadTarget(id, key, type));
+        }
+        VideoService.ClipUpload upload = video.startUpload(id, key, type);
+        if (upload.uploadId() != null) {
+            store.setVideoUpload(id, upload.uploadId());
+        }
+        return new NewUpload(id, upload.target());
     }
 
     /**
@@ -88,29 +128,59 @@ public class MediaService {
                 .filter(found -> found.ownerId().equals(ownerId))
                 .orElseThrow(
                         () -> ApiProblem.badRequest("unknown_media", "That upload couldn't be found. Add it again."));
-        if (row.ready()) {
+        if (row.usable()) {
             return;
         }
-        boolean clip = row.kind() == MediaKind.VIDEO;
+        if (row.kind() == MediaKind.VIDEO) {
+            // The video service says where the clip stands: ready at once (the local stand-in), or being converted.
+            VideoService.ClipState state = video.afterUpload(row);
+            if (state.status() == MediaStatus.READY) {
+                store.markClipReady(id, state.bytes(), state.assetId(), state.playbackId(), state.durationSeconds());
+            } else {
+                store.markProcessing(id, state.bytes());
+            }
+            return;
+        }
         long bytes = storage.size(row.storageKey()).orElse(0);
         if (bytes == 0) {
-            throw ApiProblem.badRequest(
-                    "upload_missing",
-                    clip ? "The clip didn't arrive. Try again." : "The photo didn't arrive. Try again.");
+            throw ApiProblem.badRequest("upload_missing", "The photo didn't arrive. Try again.");
         }
         try {
-            if (bytes > (clip ? MAX_CLIP_BYTES : MAX_PHOTO_BYTES)) {
-                throw new ApiProblem(
-                        HttpStatus.CONTENT_TOO_LARGE,
-                        "too_large",
-                        clip ? "That clip is too big. Keep clips under 60 seconds." : "That photo is too big.");
+            if (bytes > MAX_PHOTO_BYTES) {
+                throw new ApiProblem(HttpStatus.CONTENT_TOO_LARGE, "too_large", "That photo is too big.");
             }
-            MediaSizes.Dimensions size = clip ? null : sizes.make(row.storageKey());
-            store.markReady(id, bytes, size == null ? null : size.width(), size == null ? null : size.height());
+            MediaSizes.Dimensions size = sizes.make(row.storageKey());
+            store.markReady(id, bytes, size.width(), size.height());
         } catch (ApiProblem refused) {
-            deleteFiles(row.storageKey()); // nothing good comes of keeping a file that was refused
+            deletePhotoFiles(row.storageKey()); // nothing good comes of keeping a file that was refused
             throw refused;
         }
+    }
+
+    /**
+     * The video service has converted a clip, and it can be watched. Its real length is known only now, so a
+     * clip over a minute is refused here and removed from the service.
+     */
+    @Transactional
+    public void clipConverted(UUID mediaId, String assetId, String playbackId, Double seconds) {
+        MediaRow clip =
+                store.find(mediaId).filter(row -> row.kind() == MediaKind.VIDEO).orElse(null);
+        if (clip == null) {
+            video.delete(null, assetId); // its record was deleted while it was being converted
+            return;
+        }
+        if (seconds != null && seconds > MAX_CLIP_SECONDS + 1) {
+            store.markFailed(mediaId, assetId);
+            afterCommit(() -> video.delete(clip.storageKey(), assetId));
+            return;
+        }
+        store.markClipReady(mediaId, null, assetId, playbackId, seconds == null ? null : (int) Math.round(seconds));
+    }
+
+    /** The video service couldn't convert a clip. Its author sees that it failed and can remove it. */
+    @Transactional
+    public void clipFailed(UUID mediaId) {
+        store.markFailed(mediaId, null);
     }
 
     /**
@@ -139,8 +209,16 @@ public class MediaService {
         return handled;
     }
 
-    /** Removes a file and the smaller versions made of it. */
-    private void deleteFiles(String storageKey) {
+    /** Removes a photo and the smaller versions made of it, or a clip from the video service. */
+    private void deleteFiles(MediaStore.StoredFile file) {
+        if (file.kind() == MediaKind.VIDEO) {
+            video.delete(file.storageKey(), file.videoAssetId());
+        } else {
+            deletePhotoFiles(file.storageKey());
+        }
+    }
+
+    private void deletePhotoFiles(String storageKey) {
         storage.delete(storageKey);
         for (MediaSize size : MediaSize.values()) {
             storage.delete(size.keyFor(storageKey));
@@ -158,9 +236,12 @@ public class MediaService {
                         throw ApiProblem.badRequest(
                                 "unknown_media", "One of the photos couldn't be found. Add it again.");
                     }
-                    if (!row.ready()) {
+                    if (!row.usable()) {
                         throw ApiProblem.badRequest(
-                                "media_not_ready", "A photo is still uploading. Wait a moment and try again.");
+                                "media_not_ready",
+                                row.status() == MediaStatus.FAILED
+                                        ? "A clip couldn't be used. Remove it and add it again."
+                                        : "A photo or clip is still uploading. Wait a moment and try again.");
                     }
                     return row;
                 })
@@ -182,13 +263,42 @@ public class MediaService {
         return new PersonResponse(id, username, displayName, urlFor(avatarKey, MediaSize.SMALL));
     }
 
+    /**
+     * A photo or clip as the app shows it. `url` and `thumbUrl` are always pictures: for a clip, its still
+     * frame, or a neutral picture while it has none. A clip's `playbackUrl` is there once it can be watched.
+     */
     public MediaResponse view(
-            UUID id, MediaKind kind, String storageKey, Integer width, Integer height, Integer durationS) {
+            UUID id,
+            MediaKind kind,
+            MediaStatus status,
+            String storageKey,
+            String playbackId,
+            Integer width,
+            Integer height,
+            Integer durationS) {
+        if (kind == MediaKind.PHOTO) {
+            return new MediaResponse(
+                    id,
+                    kind,
+                    status,
+                    storage.publicUrl(storageKey),
+                    storage.publicUrl(MediaSize.MEDIUM.keyFor(storageKey)),
+                    null,
+                    width,
+                    height,
+                    null);
+        }
+        boolean ready = status == MediaStatus.READY;
+        String still = ready ? video.stillUrl(playbackId, 1280) : null;
+        String small = ready ? video.stillUrl(playbackId, 640) : null;
+        String blank = urls.to(CLIP_STILL);
         return new MediaResponse(
                 id,
                 kind,
-                storage.publicUrl(storageKey),
-                kind == MediaKind.PHOTO ? storage.publicUrl(MediaSize.MEDIUM.keyFor(storageKey)) : null,
+                status,
+                still == null ? blank : still,
+                small == null ? blank : small,
+                ready ? video.playbackUrl(storageKey, playbackId) : null,
                 width,
                 height,
                 durationS);
@@ -197,9 +307,9 @@ public class MediaService {
     /** Deletes everything a person uploaded: the records now, the files right after. */
     @Transactional
     public void deleteAllOwnedBy(UUID ownerId) {
-        List<String> keys = store.keysOwnedBy(ownerId);
+        List<MediaStore.StoredFile> files = store.filesOwnedBy(ownerId);
         store.deleteOwnedBy(ownerId);
-        afterCommit(() -> keys.forEach(this::deleteFiles));
+        afterCommit(() -> files.forEach(this::deleteFiles));
     }
 
     /**
@@ -224,7 +334,7 @@ public class MediaService {
     public int removeAbandoned() {
         List<MediaStore.StoredFile> files = store.abandoned(24, 500);
         store.delete(files.stream().map(MediaStore.StoredFile::id).toList());
-        afterCommit(() -> files.forEach(file -> deleteFiles(file.storageKey())));
+        afterCommit(() -> files.forEach(this::deleteFiles));
         if (!files.isEmpty()) {
             log.info("Removed {} uploads that were never used.", files.size());
         }
