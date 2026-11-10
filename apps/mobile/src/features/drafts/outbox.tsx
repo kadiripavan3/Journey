@@ -1,19 +1,18 @@
-import { createContext, type ReactNode, use, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { createContext, type ReactNode, use, useEffect, useMemo, useSyncExternalStore } from 'react';
 
-import { useOnline } from '@/api/online';
-import { useCache } from '@/api/cache';
-import { messageFor } from '@/api/fetcher';
+import { cacheFor } from '@/api/cache';
+import { onAnswer } from '@/api/fetcher';
 import { useGetMe } from '@/api/generated/journey';
+import { useOnline } from '@/api/online';
 
-import { isUnreachable, sendDraft, uploadsForgotten } from './send';
+import { OutboxEngine } from './engine';
 import { draftStore } from './store';
 import type { Draft, DraftInput, DraftStore, Progress } from './types';
 
 type Value = {
   /** This person's drafts and entries on their way, oldest first. */
   drafts: Draft[];
-  /** How far the one going up has come, by the draft's id. */
-  progress: Record<string, Progress | undefined>;
   /** False when the phone says it has no connection. */
   online: boolean;
   /** Keeps what the composer holds on the phone. "post" puts it in line to go up; "draft" leaves it waiting for its author. */
@@ -32,151 +31,80 @@ type Value = {
 };
 
 const OutboxContext = createContext<Value | null>(null);
+const EngineContext = createContext<OutboxEngine | null>(null);
 
-/** After nothing answered: how long to wait before the next try. Longer each time, up to two minutes. */
-const waitFor = (fails: number) => Math.min(15_000 * 2 ** Math.max(fails - 1, 0), 120_000);
+const NONE: Draft[] = [];
+const nothing = () => () => {};
 
 /**
  * 7.4 Drafts and uploads: entries that haven't been posted yet live here, on the phone. A new entry is put
- * in line and goes up in the background, one at a time, oldest first: its photos and clips, then the entry.
- * Without a connection it waits and goes by itself when the phone is back. Every entry carries the id it was
- * given when it was started, so however often it is sent, it is posted once.
+ * in line and goes up in the background, one at a time: its photos and clips, then the entry. Without a
+ * connection it waits and goes by itself when the phone is back. Every entry carries the id it was given
+ * when it was started, so however often it is sent, it is posted once.
+ *
+ * The work itself is `OutboxEngine`; this shows screens what it holds. What `useOutbox()` hands out only
+ * changes when the list of drafts or the connection does. How far an upload has come changes many times a
+ * second, so it has a hook of its own, `useProgress`, for the few places that draw it.
  */
 export function OutboxProvider({ children, store = draftStore }: { children: ReactNode; store?: DraftStore }) {
-  const cache = useCache();
+  const client = useQueryClient();
   const owner = useGetMe().data?.id;
   const online = useOnline();
-  const [all, setAll] = useState<Draft[]>([]);
-  const [progress, setProgress] = useState<Record<string, Progress | undefined>>({});
-  /** True for a while after nothing answered, so a phone that only thinks it is online isn't asked over and over. */
-  const [resting, setResting] = useState(false);
-  const sending = useRef<string | null>(null);
-  const fails = useRef(0);
-  const resent = useRef(new Set<string>());
-  const rest = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (rest.current) clearTimeout(rest.current);
-    },
-    [],
+  const engine = useMemo(
+    () => (owner ? new OutboxEngine({ store, owner, onPosted: (journeyId) => void cacheFor(client).entrySaved(journeyId).catch(() => undefined) }) : null),
+    [owner, store, client],
   );
 
   useEffect(() => {
-    if (!owner) return;
-    let current = true;
-    store
-      .load(owner)
-      .then((drafts) => {
-        // Anything saved while the list was loading stays.
-        if (current) setAll((now) => [...drafts.filter((draft) => !now.some((other) => other.clientId === draft.clientId)), ...now]);
-      })
-      .catch(() => undefined);
+    if (!engine) return;
+    engine.start();
+    // Whatever was waiting for a journey or an account that has just been deleted goes with it, whichever
+    // screen asked for the deletion.
+    const stopHearing = onAnswer((method, path) => {
+      if (method !== 'DELETE') return;
+      const journey = /^\/v1\/journeys\/([^/?]+)$/.exec(path);
+      if (journey?.[1]) void engine.discardJourney(journey[1]);
+      else if (path === '/v1/me') void engine.discardEverything();
+    });
     return () => {
-      current = false;
+      stopHearing();
+      engine.stop();
     };
-  }, [owner, store]);
+  }, [engine]);
 
-  const drafts = all.filter((draft) => draft.owner === owner).sort((a, b) => a.savedAt.localeCompare(b.savedAt));
-  const put = (next: Draft) => setAll((now) => [...now.filter((draft) => draft.clientId !== next.clientId), next]);
+  useEffect(() => engine?.setOnline(online), [engine, online]);
 
-  const run = async (draft: Draft) => {
-    let current: Draft = { ...draft, state: 'sending', problem: undefined };
-    try {
-      // Kept as "queued" until it is done: if the app closes now, it carries on from here next time.
-      await store.save({ ...current, state: 'queued' });
-      put(current);
-      await sendDraft(current, {
-        onProgress: (step) => setProgress((now) => ({ ...now, [draft.clientId]: step })),
-        onUploaded: async (key, mediaId) => {
-          current = { ...current, media: current.media.map((media) => (media.key === key ? { ...media, mediaId } : media)) };
-          await store.save({ ...current, state: 'queued' }).catch(() => undefined);
-        },
-      });
-      await store.remove(draft.clientId).catch(() => undefined);
-      fails.current = 0;
-      resent.current.delete(draft.clientId);
-      setAll((now) => now.filter((other) => other.clientId !== draft.clientId));
-      void cache.entrySaved(draft.journeyId).catch(() => undefined);
-    } catch (error) {
-      let next: Draft;
-      if (isUnreachable(error)) {
-        // No connection after all: it keeps its place in line and is tried again in a while.
-        next = { ...current, state: 'queued' };
-        fails.current += 1;
-        setResting(true);
-        if (rest.current) clearTimeout(rest.current);
-        rest.current = setTimeout(() => setResting(false), waitFor(fails.current));
-      } else if (uploadsForgotten(error) && !resent.current.has(draft.clientId)) {
-        // Its files went up so long ago that the API cleared them out. Send them again, once.
-        resent.current.add(draft.clientId);
-        next = { ...current, state: 'queued', media: current.media.map((media) => ({ ...media, mediaId: undefined })) };
-      } else {
-        next = { ...current, state: 'failed', problem: messageFor(error) };
-      }
-      await store.save(next).catch(() => undefined);
-      put(next);
-    } finally {
-      sending.current = null;
-      setProgress((now) => ({ ...now, [draft.clientId]: undefined }));
-    }
-  };
-
-  // Whenever something changes: if the phone is online and nothing is going up, the oldest one in line goes.
-  const next = owner && online && !resting ? drafts.find((draft) => draft.state === 'queued') : undefined;
-  useEffect(() => {
-    if (!next || sending.current) return;
-    sending.current = next.clientId;
-    void run(next);
-  });
-
-  const value: Value = {
-    drafts,
-    progress,
-    online,
-    save: async (input, how) => {
-      if (!owner) throw new Error('Nobody is signed in.');
-      const media = [];
-      for (const item of input.media) media.push(await store.keep(input.clientId, item));
-      const draft: Draft = { ...input, media, owner, state: how === 'post' ? 'queued' : 'draft', problem: undefined, savedAt: new Date().toISOString() };
-      await store.save(draft);
-      put(draft);
-    },
-    hold: (clientId) => {
-      if (sending.current === clientId) return false;
-      const draft = all.find((other) => other.clientId === clientId);
-      if (draft && draft.state !== 'draft') {
-        const held: Draft = { ...draft, state: 'draft', problem: undefined };
-        put(held);
-        void store.save(held).catch(() => undefined);
-      }
-      return true;
-    },
-    release: (clientId, was) => {
-      const draft = all.find((other) => other.clientId === clientId);
-      if (!draft || draft.state !== 'draft' || was === 'draft' || was === 'sending') return;
-      const back: Draft = { ...draft, state: 'queued', problem: undefined };
-      put(back);
-      void store.save(back).catch(() => undefined);
-    },
-    retry: (clientId) => {
-      const draft = all.find((other) => other.clientId === clientId);
-      if (!draft || sending.current === clientId) return;
-      fails.current = 0;
-      const again: Draft = { ...draft, state: 'queued', problem: undefined };
-      put(again);
-      void store.save(again).catch(() => undefined);
-    },
-    discard: async (clientId) => {
-      if (sending.current === clientId) return;
-      setAll((now) => now.filter((draft) => draft.clientId !== clientId));
-      await store.remove(clientId).catch(() => undefined);
-    },
-  };
-  return <OutboxContext value={value}>{children}</OutboxContext>;
+  const drafts = useSyncExternalStore(engine?.subscribe ?? nothing, engine?.getDrafts ?? (() => NONE));
+  const value = useMemo<Value>(
+    () => ({
+      drafts,
+      online,
+      save: (input, how) => (engine ? engine.save(input, how) : Promise.reject(new Error('Nobody is signed in.'))),
+      hold: (clientId) => engine?.hold(clientId) ?? false,
+      release: (clientId, was) => engine?.release(clientId, was),
+      retry: (clientId) => engine?.retry(clientId),
+      discard: (clientId) => engine?.discard(clientId) ?? Promise.resolve(),
+    }),
+    [drafts, online, engine],
+  );
+  return (
+    <EngineContext value={engine}>
+      <OutboxContext value={value}>{children}</OutboxContext>
+    </EngineContext>
+  );
 }
 
 export function useOutbox(): Value {
   const value = use(OutboxContext);
   if (!value) throw new Error('useOutbox must be used inside OutboxProvider');
   return value;
+}
+
+/**
+ * How far one draft that is going up has come; undefined while it isn't going up. Only the component that
+ * calls this draws again as the upload moves on, and a few times a second at most.
+ */
+export function useProgress(clientId: string | undefined): Progress | undefined {
+  const engine = use(EngineContext);
+  return useSyncExternalStore(engine?.subscribeProgress ?? nothing, () => (engine && clientId ? engine.getProgress(clientId) : undefined));
 }

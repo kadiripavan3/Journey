@@ -44,15 +44,25 @@ export function connectSession(next: Hooks) {
   renewing = null;
 }
 
-type Listener = (method: string, path: string, answer: unknown) => void;
-let listener: Listener | null = null;
+type Listener = (method: string, path: string, answer: unknown, sent: unknown) => void;
+const listeners = new Set<Listener>();
+let answeredAt = 0;
 
 /**
- * Hears every request the API said yes to: its method, its address (without the API's own) and the answer.
- * Counting what people do listens here, so a change is counted whichever part of the app made the call.
+ * Hears every request the API said yes to: its method, its address (without the API's own), the answer, and
+ * what was sent with it. Whatever has to follow a change wherever it was made listens here: counting what
+ * people do, and removing the drafts of a journey that was deleted. Returns how to stop listening.
  */
-export function onAnswer(next: Listener | null) {
-  listener = next;
+export function onAnswer(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** When the API last said yes to anything; 0 when it hasn't yet. "The API can be reached" is judged by this. */
+export function lastAnswerAt(): number {
+  return answeredAt;
 }
 
 /** The renewal that is on its way. Every request that needs a fresh token waits for the same one. */
@@ -147,10 +157,14 @@ export const apiFetch = async <T>(path: string, options?: RequestInit): Promise<
       isRecord(problem.fields) ? (problem.fields as Record<string, string>) : {},
     );
   }
-  try {
-    listener?.((options?.method ?? 'GET').toUpperCase(), path, body);
-  } catch {
-    // A listener that breaks must never fail the request it heard about.
+  answeredAt = Date.now();
+  const method = (options?.method ?? 'GET').toUpperCase();
+  for (const listener of listeners) {
+    try {
+      listener(method, path, body, options?.body);
+    } catch {
+      // A listener that breaks must never fail the request it heard about.
+    }
   }
   return body as T;
 };

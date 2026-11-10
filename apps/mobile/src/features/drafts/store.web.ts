@@ -4,6 +4,7 @@ import type { Draft, DraftMedia, DraftStore } from './types';
  * Drafts in a browser (the web preview): kept in the browser's own storage. The phone's SQLite and file
  * folder aren't used here. A photo picked in a browser only lasts until the page is closed, so after a
  * reload a draft comes back with its words and whatever was already uploaded, without the files that weren't.
+ * The name it is kept under carries its version; when the shape of a draft changes, the name does.
  */
 const KEY = 'journey.outbox.v1';
 
@@ -44,6 +45,10 @@ export const draftStore: DraftStore = {
 
   async remove(clientId) {
     write(read().filter((draft) => draft.clientId !== clientId));
+  },
+
+  async removeAll(owner) {
+    write(read().filter((draft) => draft.owner !== owner));
   },
 
   async keep(_clientId, media) {

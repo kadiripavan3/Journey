@@ -34,6 +34,8 @@ export function draftSaved(draft: Pick<Draft, 'media' | 'savedAt'>, now: Date = 
 export function progressLine(progress: Progress | undefined, online: boolean): string {
   if (!progress) return online ? 'Waiting for its turn' : 'Waiting for a connection';
   if (progress.kind === 'entry') return 'Posting';
+  // A clip is made smaller on the phone before it goes up; on a long one that takes a moment worth naming.
+  if (progress.preparing) return progress.of > 1 ? `Getting clip ${progress.at} of ${progress.of} ready` : 'Getting the clip ready';
   const photo = progress.kind === 'photo';
   const now = progress.of > 1 ? (photo ? `${progress.at} of ${progress.of} photos` : `Clip ${progress.at} of ${progress.of}`) : photo ? 'Uploading the photo' : 'Uploading the clip';
   return progress.then > 0 ? `${now} · then ${plural(progress.then, photo ? 'clip' : 'photo')}` : now;

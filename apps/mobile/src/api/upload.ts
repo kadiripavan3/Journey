@@ -2,7 +2,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import { ApiError } from './fetcher';
 import { completeUpload, startUpload } from './generated/journey';
-import { sendFile } from './transfer';
+import { removeFile, sendFile } from './transfer';
 
 /** The longest side a photo is uploaded at. Bigger photos are resized on the phone first. */
 const MAX_SIDE = 2048;
@@ -19,32 +19,43 @@ export type LocalClip = { uri: string; durationSeconds?: number; mimeType?: stri
  * The photo is resized and saved as JPEG on the phone, then sent straight to storage.
  */
 export async function uploadPhoto(photo: LocalPhoto): Promise<string> {
-  const longest = Math.max(photo.width, photo.height);
-  const context = ImageManipulator.manipulate(photo.uri);
-  if (longest > MAX_SIDE) {
-    context.resize(photo.width >= photo.height ? { width: MAX_SIDE } : { height: MAX_SIDE });
-  }
-  const rendered = await context.renderAsync();
-  const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.82 });
-
-  const target = await startUpload({ kind: 'photo', contentType: 'image/jpeg' });
-  const file = await (await fetch(saved.uri)).blob();
-  let response: Response;
-  const limit = new AbortController();
-  const timer = setTimeout(() => limit.abort(), PHOTO_TIME_LIMIT_MS);
+  // The copy that goes up is made here and removed again once the upload is over, however it ended.
+  let copy: string;
   try {
-    response = await fetch(target.uploadUrl, { method: target.method, headers: target.headers, body: file, signal: limit.signal });
+    const longest = Math.max(photo.width, photo.height);
+    const context = ImageManipulator.manipulate(photo.uri);
+    if (longest > MAX_SIDE) {
+      context.resize(photo.width >= photo.height ? { width: MAX_SIDE } : { height: MAX_SIDE });
+    }
+    const rendered = await context.renderAsync();
+    copy = (await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.82 })).uri;
   } catch {
-    throw new ApiError(0, 'unreachable', "A photo couldn't be uploaded. Check your connection and try again.");
+    // Not a connection that is gone: trying again later can't fix a photo that can't be read.
+    throw new ApiError(400, 'file_gone', "A photo of this entry can't be read any more. Open the entry, take it out and add it again.");
+  }
+
+  try {
+    const target = await startUpload({ kind: 'photo', contentType: 'image/jpeg' });
+    const file = await (await fetch(copy)).blob();
+    let response: Response;
+    const limit = new AbortController();
+    const timer = setTimeout(() => limit.abort(), PHOTO_TIME_LIMIT_MS);
+    try {
+      response = await fetch(target.uploadUrl, { method: target.method, headers: target.headers, body: file, signal: limit.signal });
+    } catch {
+      throw new ApiError(0, 'unreachable', "A photo couldn't be uploaded. Check your connection and try again.");
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!response.ok) {
+      throw new ApiError(response.status, 'upload_failed', "A photo couldn't be uploaded. Try again.");
+    }
+    // Tell the API the file is there. It checks it and makes the smaller versions; only then can it be used.
+    await completeUpload(target.mediaId);
+    return target.mediaId;
   } finally {
-    clearTimeout(timer);
+    if (copy !== photo.uri) removeFile(copy);
   }
-  if (!response.ok) {
-    throw new ApiError(response.status, 'upload_failed', "A photo couldn't be uploaded. Try again.");
-  }
-  // Tell the API the file is there. It checks it and makes the smaller versions; only then can it be used.
-  await completeUpload(target.mediaId);
-  return target.mediaId;
 }
 
 /**

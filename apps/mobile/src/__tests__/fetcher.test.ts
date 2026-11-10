@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, connectSession, isUnreachable, messageFor, onAnswer, TIME_LIMIT_MS } from '@/api/fetcher';
+import { ApiError, apiFetch, connectSession, isUnreachable, lastAnswerAt, messageFor, onAnswer, TIME_LIMIT_MS } from '@/api/fetcher';
 
 const respond = (status: number, body?: unknown) =>
   Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -85,14 +85,20 @@ describe('apiFetch', () => {
 
   it('tells whoever counts about every yes, and never about a no', async () => {
     const heard: string[] = [];
-    onAnswer((method, path, answer) => heard.push(`${method} ${path} ${JSON.stringify(answer)}`));
+    const stop = onAnswer((method, path, answer) => heard.push(`${method} ${path} ${JSON.stringify(answer)}`));
+    const broken = onAnswer(() => {
+      throw new Error('a listener that breaks');
+    });
     try {
+      const before = Date.now();
       fetchMock.mockReturnValueOnce(respond(200, { id: 'j1' })).mockReturnValueOnce(respond(400, { code: 'invalid_input' }));
-      await apiFetch('/v1/journeys', { method: 'POST' });
+      await expect(apiFetch('/v1/journeys', { method: 'POST' })).resolves.toEqual({ id: 'j1' });
       await apiFetch('/v1/journeys', { method: 'POST' }).catch(() => undefined);
       expect(heard).toEqual(['POST /v1/journeys {"id":"j1"}']);
+      expect(lastAnswerAt()).toBeGreaterThanOrEqual(before);
     } finally {
-      onAnswer(null);
+      stop();
+      broken();
     }
   });
 });

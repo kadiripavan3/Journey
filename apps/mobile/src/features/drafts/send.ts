@@ -7,6 +7,8 @@ import { momentFor } from '@/lib/dates';
 
 import type { Draft, Progress } from './types';
 
+export { isUnreachable } from '@/api/fetcher';
+
 type Hooks = {
   onProgress: (progress: Progress) => void;
   /** A file has gone up. Remembered at once, so trying again after a failure doesn't send it twice. */
@@ -18,7 +20,8 @@ const WEIGHT = { photo: 1, video: 6 } as const;
 
 /**
  * Posts a draft: sends the photos and clips that haven't gone up yet, one after the other, then the entry.
- * The entry carries the draft's own id, so the API makes one entry however often this runs.
+ * The entry carries the draft's own id, so the API makes one entry however often this runs, and the moment
+ * it was written, however much later it goes up.
  */
 export async function sendDraft(draft: Draft, hooks: Hooks): Promise<EntryResponse> {
   const waiting = draft.media.filter((media) => !media.mediaId);
@@ -30,7 +33,8 @@ export async function sendDraft(draft: Draft, hooks: Hooks): Promise<EntryRespon
   for (const [index, media] of waiting.entries()) {
     const at = count(media.kind) - count(media.kind, index) + 1;
     const then = count(media.kind === 'photo' ? 'video' : 'photo', index);
-    const report = (part: number) => hooks.onProgress({ kind: media.kind, at, of: count(media.kind), then, fraction: (done + WEIGHT[media.kind] * part) / whole });
+    const report = (part: number, preparing?: boolean) =>
+      hooks.onProgress({ kind: media.kind, at, of: count(media.kind), then, fraction: (done + WEIGHT[media.kind] * part) / whole, ...(preparing ? { preparing } : {}) });
     report(0);
     const mediaId = media.kind === 'video' ? await sendClip(media, report) : await uploadPhoto(media);
     ids.set(media.key, mediaId);
@@ -45,15 +49,26 @@ export async function sendDraft(draft: Draft, hooks: Hooks): Promise<EntryRespon
     ...placeFields(draft.place),
     isMilestone: draft.milestone,
     happenedOn: draft.day,
-    happenedAt: momentFor(draft.day),
+    happenedAt: momentFor(draft.day, new Date(draft.writtenAt ?? draft.savedAt)),
     mediaIds: draft.media.map((media) => media.mediaId ?? ids.get(media.key)).filter((id): id is string => !!id),
     clientId: draft.clientId,
   });
 }
 
-/** True when nothing answered: no connection, or the API can't be reached. Worth trying again later, as it is. */
-export function isUnreachable(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 0;
+/**
+ * How a try ended when the entry didn't go up:
+ *  - `unreachable`: nothing answered. No connection, most likely; worth trying again as it is.
+ *  - `later`: something answered, and said "not now" (it stumbled, it is busy, it is being updated, or the
+ *    sign-in has to be renewed first). Worth trying again after a while.
+ *  - `refused`: a no that trying again won't change. The person has to look at it.
+ */
+export type Failure = 'unreachable' | 'later' | 'refused';
+
+export function howItFailed(error: unknown): Failure {
+  if (!(error instanceof ApiError)) return 'refused';
+  if (error.status === 0) return 'unreachable';
+  if (error.status === 401 || error.status === 408 || error.status === 429 || error.status >= 500) return 'later';
+  return 'refused';
 }
 
 /**

@@ -7,7 +7,7 @@ import { layout, radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
 
-import { useOutbox } from './outbox';
+import { useOutbox, useProgress } from './outbox';
 import { draftTitle, progressLine } from './words';
 
 /** How much of something has gone up: a thin bar that fills from the left. */
@@ -31,11 +31,11 @@ export function PostingBanner({ journeyId }: { journeyId: string }) {
   const outbox = useOutbox();
   const waiting = outbox.drafts.filter((draft) => draft.journeyId === journeyId && draft.state !== 'draft');
   const first = waiting.find((draft) => draft.state === 'sending') ?? waiting[0];
+  const progress = useProgress(first?.clientId);
   if (!first) return null;
 
   const failed = first.state === 'failed';
   const offline = !outbox.online && !failed;
-  const progress = outbox.progress[first.clientId];
   const more = waiting.length > 1 ? ` and ${plural(waiting.length - 1, 'more', 'more')}` : '';
   const headline = failed ? `Couldn't post "${draftTitle(first)}"` : offline ? `Saved: "${draftTitle(first)}"${more}` : `Posting "${draftTitle(first)}"${more}`;
   const detail = failed ? (first.problem ?? 'Open it to try again.') : offline ? "It posts by itself when you're back online." : progressLine(progress, outbox.online);
