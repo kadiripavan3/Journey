@@ -1,5 +1,7 @@
 package app.journey.api.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class Jobs {
+
+    private static final Logger log = LoggerFactory.getLogger(Jobs.class);
 
     private final JdbcClient jdbc;
 
@@ -24,6 +28,28 @@ public class Jobs {
                         .param("period", period)
                         .update()
                 > 0;
+    }
+
+    /**
+     * Runs a job for a period, in the one copy of the API that gets to. A job that fails says so in the log,
+     * by name, and never takes the scheduler down with it. When it finished is written down next to when it
+     * started. Returns true when this copy ran it and it finished.
+     */
+    public boolean run(String job, String period, Runnable work) {
+        if (!claim(job, period)) {
+            return false;
+        }
+        try {
+            work.run();
+        } catch (RuntimeException failed) {
+            log.error("The job {} failed for {}", job, period, failed);
+            return false;
+        }
+        jdbc.sql("update job_runs set finished_at = now() where job = :job and period = :period")
+                .param("job", job)
+                .param("period", period)
+                .update();
+        return true;
     }
 
     /** Once a night: the record of runs from more than two months ago is of no use to anyone. */

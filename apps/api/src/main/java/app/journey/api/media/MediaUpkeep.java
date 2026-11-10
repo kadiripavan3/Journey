@@ -40,17 +40,15 @@ class MediaUpkeep {
 
     @Scheduled(cron = "${journey.media.catch-up-cron:0 4/15 * * * *}", zone = "UTC")
     void everyQuarterHour() {
-        if (!jobs.claim(
-                "media_catch_up", Instant.now().truncatedTo(ChronoUnit.MINUTES).toString())) {
-            return;
-        }
-        int looked = media.checkWaiting();
-        if (looked > 0) {
-            log.info("Looked at {} photos and clips that had not been looked at yet.", looked);
-        }
-        int moved = media.askAboutSlowClips();
-        if (moved > 0) {
-            log.info("{} clips the video service had not reported on are settled now.", moved);
-        }
+        jobs.run("media_catch_up", Instant.now().truncatedTo(ChronoUnit.MINUTES).toString(), () -> {
+            int looked = media.checkWaiting();
+            if (looked > 0) {
+                log.info("Looked at {} photos and clips that had not been looked at yet.", looked);
+            }
+            int moved = media.askAboutSlowClips();
+            if (moved > 0) {
+                log.info("{} clips the video service had not reported on are settled now.", moved);
+            }
+        });
     }
 }

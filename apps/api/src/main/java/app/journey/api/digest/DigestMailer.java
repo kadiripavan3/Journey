@@ -3,13 +3,12 @@ package app.journey.api.digest;
 import app.journey.api.common.PublicUrls;
 import app.journey.api.digest.DigestService.DigestJourneyResponse;
 import app.journey.api.digest.DigestService.DigestResponse;
-import app.journey.api.notify.EmailSender.Email;
+import app.journey.api.notify.EmailOutbox.Letter;
 import app.journey.api.profile.Profile;
 import app.journey.api.profile.ProfileStore;
 import java.time.temporal.IsoFields;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
@@ -22,25 +21,27 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 @Component
 class DigestMailer {
 
-    private final ObjectProvider<DigestService> digests;
     private final ProfileStore profiles;
     private final SpringTemplateEngine templates;
     private final PublicUrls urls;
 
-    DigestMailer(
-            ObjectProvider<DigestService> digests,
-            ProfileStore profiles,
-            SpringTemplateEngine templates,
-            PublicUrls urls) {
-        this.digests = digests;
+    DigestMailer(ProfileStore profiles, SpringTemplateEngine templates, PublicUrls urls) {
         this.profiles = profiles;
         this.templates = templates;
         this.urls = urls;
     }
 
-    /** The email for one person, or empty when their week turned out to have nothing in it after all. */
-    Optional<Email> write(UUID userId, String to) {
-        DigestResponse week = digests.getObject().thisWeek(userId);
+    /** "5 new entries in 3 journeys you follow." */
+    static String words(int entryCount, int journeyCount) {
+        return "%d new %s in %s you follow."
+                .formatted(
+                        entryCount,
+                        entryCount == 1 ? "entry" : "entries",
+                        journeyCount == 1 ? "a journey" : journeyCount + " journeys");
+    }
+
+    /** The email about one person's week, or empty when the week turned out to have nothing in it after all. */
+    Optional<Letter> write(UUID userId, DigestResponse week) {
         if (week.journeys().isEmpty()) {
             return Optional.empty();
         }
@@ -48,7 +49,7 @@ class DigestMailer {
                 .map(Profile::displayName)
                 .map(DigestMailer::firstName)
                 .orElse("there");
-        String subject = DigestDelivery.words(week.entryCount(), week.journeys().size());
+        String subject = words(week.entryCount(), week.journeys().size());
 
         Context model = new Context();
         model.setVariable("name", name);
@@ -89,7 +90,7 @@ class DigestMailer {
                         userId,
                         week.to().get(IsoFields.WEEK_BASED_YEAR),
                         week.to().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-        return Optional.of(new Email(to, "This week: " + subject, html, text.toString(), sendOnce));
+        return Optional.of(new Letter("This week: " + subject, html, text.toString(), sendOnce));
     }
 
     private static String firstName(String displayName) {

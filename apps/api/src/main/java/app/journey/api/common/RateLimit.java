@@ -139,11 +139,11 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
     /** Each night, forget the people who have been quiet: their allowance is full again anyway. */
     @Scheduled(cron = "${journey.rate-limit.cleanup-cron:0 45 3 * * *}", zone = "UTC")
     void forgetQuietPeople() {
-        if (jobs.claim("rate_limit_cleanup", LocalDate.now(ZoneOffset.UTC).toString())) {
+        jobs.run("rate_limit_cleanup", LocalDate.now(ZoneOffset.UTC).toString(), () -> {
             while (shared.removeExpired(1000) > 0) {
                 // keep going until none are left
             }
-        }
+        });
     }
 
     private static boolean isRead(HttpServletRequest request) {

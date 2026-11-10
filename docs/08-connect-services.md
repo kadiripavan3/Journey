@@ -177,7 +177,7 @@ Then remove `JOURNEY_EMAIL_MODE = "off"` from `fly.toml` and deploy.
 
 The API reads each person's email address from Supabase's own table of people, in the same database. The database user from step 1 is allowed to; nothing to set.
 
-**Check:** sign in with an address that is not yours: the code arrives. For the digest: in the app, Settings, Notifications, switch on "Also send it by email"; it is sent on Sunday at six in the evening (UTC) if a journey you follow had new entries that week.
+**Check:** sign in with an address that is not yours: the code arrives. For the digest: in the app, Settings, Notifications, switch on "Also send it by email"; it is sent on your own Sunday evening (from six o'clock, by the time zone of the phone you used last) if a journey you follow had new entries that week.
 
 ## 9. AWS Rekognition: the automatic photo check
 

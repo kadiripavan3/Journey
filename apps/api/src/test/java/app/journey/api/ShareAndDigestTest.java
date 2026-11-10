@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import app.journey.api.digest.DigestService;
+import app.journey.api.digest.DigestJob;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -19,8 +19,10 @@ import org.springframework.http.MediaType;
 /** The public pages behind shared links, and the weekly digest. */
 class ShareAndDigestTest extends ApiTest {
 
+    static final java.time.Instant SUNDAY_EVENING = java.time.Instant.parse("2026-11-15T18:30:00Z");
+
     @Autowired
-    DigestService digest;
+    DigestJob digest;
 
     @Test
     void aSharedLinkOpensForAnyoneButNeverShowsAPrivateJourney() throws Exception {
@@ -76,7 +78,7 @@ class ShareAndDigestTest extends ApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.entryCount").value(0))
                 .andExpect(jsonPath("$.moment").isEmpty());
-        assertThat(digest.sendAll()).isZero();
+        assertThat(digest.sendDue(SUNDAY_EVENING)).isZero();
 
         entry(maya, trip, "Hoi An", 2);
         String bromo = entry(maya, trip, "Mount Bromo", 0);
@@ -107,6 +109,8 @@ class ShareAndDigestTest extends ApiTest {
                                         "{\"notifyNewEntries\":true,\"notifyCompleted\":true,\"notifyComments\":true,\"notifyFollowers\":true,\"notifyLikes\":true,"
                                                 + "\"weeklyDigest\":false,\"digestEmail\":false,\"reminders\":true,\"defaultVisibility\":\"public\"}"))
                 .andExpect(status().isOk());
-        assertThat(digest.sendAll()).isEqualTo(1);
+        // The week with nothing new was noted as "had" for everyone; this is the Sunday after.
+        assertThat(digest.sendDue(SUNDAY_EVENING.plus(java.time.Duration.ofDays(7))))
+                .isEqualTo(1);
     }
 }

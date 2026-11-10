@@ -194,14 +194,7 @@ public class PushDelivery {
      */
     @Scheduled(cron = "${journey.push.outcomes-cron:0 7/15 * * * *}", zone = "UTC")
     void everyQuarterHour() {
-        if (jobs.claim(
-                "push_outcomes", Instant.now().truncatedTo(ChronoUnit.MINUTES).toString())) {
-            try {
-                readOutcomes();
-            } catch (RuntimeException unreachable) {
-                log.warn("Couldn't ask the push service what became of earlier pushes: {}", unreachable.toString());
-            }
-        }
+        jobs.run("push_outcomes", Instant.now().truncatedTo(ChronoUnit.MINUTES).toString(), this::readOutcomes);
     }
 
     /** Returns how many phones were forgotten. */
@@ -222,11 +215,11 @@ public class PushDelivery {
     /** Once a night: forget pushes that were sent or dropped more than a month ago. */
     @Scheduled(cron = "${journey.push.cleanup-cron:0 50 3 * * *}", zone = "UTC")
     void nightly() {
-        if (jobs.claim("push_cleanup", LocalDate.now(ZoneOffset.UTC).toString())) {
+        jobs.run("push_cleanup", LocalDate.now(ZoneOffset.UTC).toString(), () -> {
             int removed = outbox.forgetOlderThan(30);
             if (removed > 0) {
                 log.info("Forgot {} old pushes.", removed);
             }
-        }
+        });
     }
 }

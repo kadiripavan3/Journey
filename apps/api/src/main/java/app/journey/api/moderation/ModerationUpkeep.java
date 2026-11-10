@@ -24,11 +24,11 @@ class ModerationUpkeep {
 
     @Scheduled(cron = "${journey.moderation.forget-cron:0 20 4 * * *}", zone = "UTC")
     void nightly() {
-        if (jobs.claim("review_records", LocalDate.now(ZoneOffset.UTC).toString())) {
+        jobs.run("review_records", LocalDate.now(ZoneOffset.UTC).toString(), () -> {
             int gone = moderation.forgetOldRecords();
             if (gone > 0) {
                 log.info("Forgot {} old review records.", gone);
             }
-        }
+        });
     }
 }

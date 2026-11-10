@@ -9,9 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import app.journey.api.digest.DigestService;
+import app.journey.api.digest.DigestJob;
 import app.journey.api.journey.AutoPause;
 import app.journey.api.journey.Trending;
+import app.journey.api.notify.EmailOutbox;
 import app.journey.api.notify.EmailSender.Email;
 import app.journey.api.notify.LoggingEmailSender;
 import app.journey.api.notify.LoggingPushSender;
@@ -40,8 +41,14 @@ class UpkeepTest extends ApiTest {
     @Autowired
     Trending trending;
 
+    /** Six thirty on a Sunday evening, for people whose phone is on UTC (and for people with no phone on record). */
+    static final Instant SUNDAY_EVENING = Instant.parse("2026-11-15T18:30:00Z");
+
     @Autowired
-    DigestService digest;
+    DigestJob digest;
+
+    @Autowired
+    EmailOutbox emails;
 
     @Autowired
     PushDelivery delivery;
@@ -303,16 +310,20 @@ class UpkeepTest extends ApiTest {
         entry(maya, trip, "Mount Bromo", 0);
         jdbc.sql("delete from notifications").update(); // the pushes about the entries themselves are another test
 
-        assertThat(digest.sendAll()).isEqualTo(2);
-        assertThat(digest.sendAll()).isEqualTo(2); // asked twice before it is sent: still one push each
+        // It goes out on Sunday evening, once: asking again finds that everyone has had this week's.
+        assertThat(digest.sendDue(SUNDAY_EVENING.minusSeconds(2 * 3600))).isZero(); // four o'clock: not yet
+        assertThat(digest.sendDue(SUNDAY_EVENING)).isEqualTo(2);
+        assertThat(digest.sendDue(SUNDAY_EVENING.plusSeconds(3600))).isZero();
         delivery.deliverDue();
+        assertThat(emails.deliverDue()).isEqualTo(1);
+        assertThat(emails.deliverDue()).isZero();
 
         assertThat(phone.sent()).hasSize(2);
         assertThat(phone.sent().get(0).title()).isEqualTo("This week in the journeys you follow");
         assertThat(phone.sent().get(0).body()).isEqualTo("2 new entries in a journey you follow.");
         assertThat(phone.sent().get(0).url()).isEqualTo("/digest");
         // Only Nora asked for the email. It is hers, and built from the same week as the page.
-        assertThat(inbox.sent()).hasSize(2);
+        assertThat(inbox.sent()).hasSize(1);
         Email email = inbox.sent().get(0);
         assertThat(email.to()).isEqualTo("nora@example.com");
         assertThat(email.subject()).isEqualTo("This week: 2 new entries in a journey you follow.");
@@ -323,9 +334,7 @@ class UpkeepTest extends ApiTest {
                 .contains("/j/" + trip)
                 .contains("2 new entries");
         assertThat(email.text()).contains("Southeast Asia by motorbike (2 new)").contains("Switch it off in the app");
-        assertThat(email.sendOnceKey())
-                .isEqualTo(inbox.sent().get(1).sendOnceKey())
-                .startsWith("digest-");
+        assertThat(email.sendOnceKey()).startsWith("digest-");
         mvc.perform(get("/v1/digest").header("Authorization", nora))
                 .andExpect(jsonPath("$.entryCount").value(2));
     }
@@ -348,7 +357,8 @@ class UpkeepTest extends ApiTest {
                 .andExpect(status().isOk());
         entry(maya, trip, "Hoi An", 1);
 
-        digest.sendAll();
+        digest.sendDue(SUNDAY_EVENING);
+        emails.deliverDue();
 
         assertThat(inbox.sent()).hasSize(1);
         org.hamcrest.MatcherAssert.assertThat(
