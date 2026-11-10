@@ -13,6 +13,21 @@ public interface EmailSender {
      */
     record Email(String to, String subject, String html, String text, String sendOnceKey) {}
 
-    /** Sends the email. Throws when it couldn't be handed over, so the caller can say so in its log and go on. */
+    /** The service looked at the email and won't send it (a wrong address, a sender it doesn't know). Trying again won't help. */
+    class Refused extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public Refused(String why, Throwable cause) {
+            super(why, cause);
+        }
+    }
+
+    /**
+     * Sends the email.
+     *
+     * @throws Refused when the service won't send this email, however often it is asked
+     * @throws RuntimeException when it couldn't be handed over right now (the service is busy or can't be
+     *     reached): try again later
+     */
     void send(Email email);
 }

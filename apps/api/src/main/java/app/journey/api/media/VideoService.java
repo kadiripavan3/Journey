@@ -1,6 +1,8 @@
 package app.journey.api.media;
 
 import app.journey.api.media.MediaStore.MediaRow;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -38,6 +40,25 @@ public interface VideoService {
     /** A still frame of the clip, about this many pixels wide, or null when the service can't make one. */
     String stillUrl(String playbackId, int width);
 
-    /** Removes the clip for good. Nothing happens if it is already gone. */
+    /**
+     * A few still frames of a clip, as JPEGs, for the automatic check to look at. Empty when the service
+     * makes none: then there is nothing to check. Throws when the service can't be reached.
+     */
+    default Optional<List<byte[]>> stills(String playbackId, Integer durationSeconds) {
+        return Optional.empty();
+    }
+
+    /** What the service says about a clip when asked: converted (with its ids and length), or failed. */
+    record Found(boolean failed, String assetId, String playbackId, Double seconds) {}
+
+    /**
+     * Asks the service where a clip stands, for one whose "it is ready" never arrived. Empty when the service
+     * has nothing to say yet (still converting), or never tells.
+     */
+    default Optional<Found> lookUp(MediaRow clip) {
+        return Optional.empty();
+    }
+
+    /** Removes the clip for good. Nothing happens if it is already gone. Throws when it couldn't be removed. */
     void delete(String storageKey, String assetId);
 }

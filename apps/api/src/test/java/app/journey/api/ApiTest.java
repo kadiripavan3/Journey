@@ -29,7 +29,7 @@ public abstract class ApiTest {
     @BeforeEach
     void emptyDatabase() {
         jdbc.sql(
-                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits, review_log, deletion_requests, push_tickets cascade")
+                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits, review_log, deletion_requests, push_tickets, media_orphan_checks, removed_files cascade")
                 .update();
     }
 
@@ -57,27 +57,48 @@ public abstract class ApiTest {
         return token;
     }
 
-    /** Uploads a small photo the way the app does: ask for a target, send the bytes there. Returns the media id. */
+    /** Uploads a small photo the way the app does: ask for a target, send the bytes there, say it is done. Returns the media id. */
     protected String uploadPhoto(String token) throws Exception {
-        String target = mvc.perform(post("/v1/media/uploads")
-                        .header("Authorization", token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"photo\",\"contentType\":\"image/jpeg\"}"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        java.io.ByteArrayOutputStream jpeg = new java.io.ByteArrayOutputStream();
-        javax.imageio.ImageIO.write(
-                new java.awt.image.BufferedImage(8, 6, java.awt.image.BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
-        mvc.perform(put(java.net.URI.create(JsonPath.<String>read(target, "$.uploadUrl")))
-                        .contentType(MediaType.IMAGE_JPEG)
-                        .content(jpeg.toByteArray()))
-                .andExpect(status().isNoContent());
+        return upload(
+                token,
+                "image/jpeg",
+                jpeg(new java.awt.image.BufferedImage(8, 6, java.awt.image.BufferedImage.TYPE_INT_RGB)));
+    }
+
+    /** Uploads these bytes as a photo and says it is done, expecting that to work. Returns the media id. */
+    protected String upload(String token, String contentType, byte[] bytes) throws Exception {
+        String target = startPhoto(token, contentType);
+        send(target, contentType, bytes);
         String id = JsonPath.read(target, "$.mediaId");
         mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", token))
                 .andExpect(status().isNoContent());
         return id;
+    }
+
+    /** Asks for somewhere to send a photo. Returns the API's answer (mediaId, uploadUrl, …) as JSON. */
+    protected String startPhoto(String token, String contentType) throws Exception {
+        return mvc.perform(post("/v1/media/uploads")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"photo\",\"contentType\":\"%s\"}".formatted(contentType)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
+    /** Sends a file to where the API said to send it. */
+    protected void send(String target, String contentType, byte[] bytes) throws Exception {
+        mvc.perform(put(java.net.URI.create(JsonPath.<String>read(target, "$.uploadUrl")))
+                        .contentType(MediaType.valueOf(contentType))
+                        .content(bytes))
+                .andExpect(status().isNoContent());
+    }
+
+    protected static byte[] jpeg(java.awt.image.BufferedImage image) throws java.io.IOException {
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "jpg", bytes);
+        return bytes.toByteArray();
     }
 
     /** Creates a public trip that started `daysAgo` days ago. Returns its id. */

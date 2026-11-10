@@ -379,36 +379,10 @@ class ShapeTest extends ApiTest {
     }
 
     @Test
-    void aScheduledJobRunsOncePerPeriodAndUnusedUploadsAreTidiedAway() throws Exception {
+    void aScheduledJobRunsOncePerPeriod() {
         assertThat(jobs.claim("weekly_digest", "2026-W46")).isTrue();
         assertThat(jobs.claim("weekly_digest", "2026-W46")).isFalse();
         assertThat(jobs.claim("weekly_digest", "2026-W47")).isTrue();
-
-        String maya = person("maya");
-        String used = uploadPhoto(maya);
-        String unused = uploadPhoto(maya);
-        String fresh = uploadPhoto(maya);
-        String journey = journey(maya, "Southeast Asia", "public", 3);
-        mvc.perform(post("/v1/journeys/" + journey + "/entries")
-                        .header("Authorization", maya)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"mediaIds\":[\"%s\"]}".formatted(used)))
-                .andExpect(status().isCreated());
-        mvc.perform(post("/v1/media/uploads")
-                        .header("Authorization", maya)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"photo\",\"contentType\":\"image/jpeg\"}"))
-                .andExpect(status().isOk()); // started, never sent
-        jdbc.sql("update media set created_at = now() - interval '2 days' where id <> cast(:fresh as uuid)")
-                .param("fresh", fresh)
-                .update();
-
-        assertThat(media.removeAbandoned()).isEqualTo(2);
-        assertThat(jdbc.sql("select id::text from media order by created_at")
-                        .query(String.class)
-                        .list())
-                .containsExactlyInAnyOrder(used, fresh);
-        assertThat(unused).isNotEqualTo(used);
     }
 
     @Test
@@ -532,11 +506,6 @@ class ShapeTest extends ApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.media[0].width").value(1000))
                 .andExpect(jsonPath("$.media[0].height").value(500));
-
-        // A photo from before sizes were made at upload gets them when the API next starts.
-        jdbc.sql("update media set sized = false").update();
-        assertThat(media.makeMissingSizes()).isEqualTo(1);
-        assertThat(media.makeMissingSizes()).isZero();
     }
 
     /** Uploads a JPEG of the given size the way the app does. Returns the media id. */

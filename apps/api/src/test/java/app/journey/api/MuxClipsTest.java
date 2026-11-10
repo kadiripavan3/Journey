@@ -5,14 +5,20 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.journey.api.media.MediaService;
 import com.jayway.jsonpath.JsonPath;
 import com.sun.net.httpserver.HttpServer;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -20,12 +26,15 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -44,6 +53,10 @@ class MuxClipsTest extends ApiTest {
     private static volatile String lastAuthorization;
     private static volatile String lastBody;
     private static volatile boolean down;
+    /** What the pretend Mux shows in a clip's still frames: "plain", "magenta" (the local check's test marker) or "down". */
+    private static volatile String stills = "plain";
+    /** What the pretend Mux says when asked about an upload or an asset, by path. */
+    private static final Map<String, String> KNOWN = new ConcurrentHashMap<>();
 
     static {
         try {
@@ -58,7 +71,19 @@ class MuxClipsTest extends ApiTest {
             lastBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             byte[] answer = new byte[0];
             int code = 204;
-            if (down) {
+            String type = "application/json";
+            if (path.endsWith("/thumbnail.jpg")) {
+                code = stills.equals("down") ? 500 : 200;
+                type = "image/jpeg";
+                answer = stills.equals("down")
+                        ? new byte[0]
+                        : still(stills.equals("magenta") ? Color.MAGENTA : Color.GREEN);
+            } else if (exchange.getRequestMethod().equals("GET")) {
+                String known = KNOWN.get(path);
+                code = known == null ? 404 : 200;
+                answer = (known == null ? "{\"error\":{\"type\":\"not_found\"}}" : known)
+                        .getBytes(StandardCharsets.UTF_8);
+            } else if (down) {
                 code = 500;
                 answer = "{\"error\":{\"type\":\"internal\",\"messages\":[\"down\"]}}".getBytes(StandardCharsets.UTF_8);
             } else if (exchange.getRequestMethod().equals("POST") && path.equals("/video/v1/uploads")) {
@@ -70,7 +95,7 @@ class MuxClipsTest extends ApiTest {
                         .formatted(n, n)
                         .getBytes(StandardCharsets.UTF_8);
             }
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.getResponseHeaders().add("Content-Type", type);
             exchange.sendResponseHeaders(code, answer.length == 0 ? -1 : answer.length);
             if (answer.length > 0) {
                 exchange.getResponseBody().write(answer);
@@ -86,6 +111,9 @@ class MuxClipsTest extends ApiTest {
         settings.add(
                 "journey.video.mux.api-url",
                 () -> "http://127.0.0.1:" + MUX.getAddress().getPort());
+        settings.add(
+                "journey.video.mux.image-url",
+                () -> "http://127.0.0.1:" + MUX.getAddress().getPort());
         settings.add("journey.video.mux.token-id", () -> "token-id");
         settings.add("journey.video.mux.token-secret", () -> "token-secret");
         settings.add("journey.video.mux.webhook-secret", () -> SECRET);
@@ -96,10 +124,28 @@ class MuxClipsTest extends ApiTest {
         MUX.stop(0);
     }
 
+    @Autowired
+    MediaService media;
+
     @BeforeEach
     void quiet() {
         CALLS.clear();
+        KNOWN.clear();
         down = false;
+        stills = "plain";
+    }
+
+    private static byte[] still(Color colour) {
+        try {
+            BufferedImage image = new BufferedImage(640, 360, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = image.createGraphics();
+            g.setColor(colour);
+            g.fillRect(0, 0, 640, 360);
+            g.dispose();
+            return jpeg(image);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private String startClip(String token) throws Exception {
@@ -185,8 +231,17 @@ class MuxClipsTest extends ApiTest {
         mvc.perform(get("/v1/entries/" + entry).header("Authorization", reader))
                 .andExpect(jsonPath("$.media", hasSize(0)));
 
+        CALLS.clear();
         mvc.perform(fromMux(body, Instant.now(), SECRET)).andExpect(status().isNoContent());
+        // Before anyone else can watch it, three of its frames were fetched and looked at.
+        assertThat(CALLS)
+                .containsExactly("GET /pb_1/thumbnail.jpg", "GET /pb_1/thumbnail.jpg", "GET /pb_1/thumbnail.jpg");
         mvc.perform(fromMux(body, Instant.now(), SECRET)).andExpect(status().isNoContent()); // Mux may say it twice
+        assertThat(CALLS).hasSize(3);
+        assertThat(jdbc.sql("select held or screened_at is null from media")
+                        .query(Boolean.class)
+                        .single())
+                .isFalse();
 
         mvc.perform(get("/v1/entries/" + entry).header("Authorization", reader))
                 .andExpect(jsonPath("$.media[0].status").value("ready"))
@@ -199,7 +254,120 @@ class MuxClipsTest extends ApiTest {
         // Deleting the account removes the clip at Mux as well.
         CALLS.clear();
         mvc.perform(delete("/v1/me").header("Authorization", kai)).andExpect(status().isNoContent());
+        assertThat(media.sweep()).isEqualTo(1);
         assertThat(CALLS).containsExactly("DELETE /video/v1/assets/asset_1");
+    }
+
+    @Test
+    void aClipIsLookedAtThroughItsFramesAndHeldWhenOneOfThemIsDoubted() throws Exception {
+        String kai = person("kai");
+        String reader = person("reader");
+        String journey = journey(kai, "Learn to surf", "public", 6);
+        String clip = JsonPath.read(startClip(kai), "$.mediaId");
+        mvc.perform(post("/v1/media/uploads/" + clip + "/complete").header("Authorization", kai))
+                .andExpect(status().isNoContent());
+        String entry = JsonPath.read(
+                mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                                .header("Authorization", kai)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"Stood up\",\"mediaIds\":[\"%s\"]}".formatted(clip)))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.id");
+
+        stills = "magenta";
+        mvc.perform(fromMux(ready(clip, "asset_1", "pb_1", 12), Instant.now(), SECRET))
+                .andExpect(status().isNoContent());
+
+        // Its author sees it, marked as held; nobody else does, until a reviewer has looked.
+        mvc.perform(get("/v1/entries/" + entry).header("Authorization", kai))
+                .andExpect(jsonPath("$.media[0].status").value("ready"))
+                .andExpect(jsonPath("$.media[0].held").value(true));
+        mvc.perform(get("/v1/entries/" + entry).header("Authorization", reader))
+                .andExpect(jsonPath("$.media", hasSize(0)));
+        mvc.perform(get("/admin").with(httpBasic("ada", "review")))
+                .andExpect(content().string(containsString("This is a clip")))
+                .andExpect(content().string(containsString("https://stream.mux.com/pb_1.m3u8")));
+    }
+
+    @Test
+    void whenTheFramesCannotBeFetchedTheClipIsShownAndLookedAtLater() throws Exception {
+        String kai = person("kai");
+        String clip = JsonPath.read(startClip(kai), "$.mediaId");
+        mvc.perform(post("/v1/media/uploads/" + clip + "/complete").header("Authorization", kai))
+                .andExpect(status().isNoContent());
+        stills = "down";
+        mvc.perform(fromMux(ready(clip, "asset_1", "pb_1", 12), Instant.now(), SECRET))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.sql(
+                                "select status || ':' || held || ':' || (screened_at is null) || ':' || screen_attempts from media")
+                        .query(String.class)
+                        .single())
+                .isEqualTo("ready:false:true:1");
+
+        // Later the frames are there, and this time one of them is doubted.
+        stills = "magenta";
+        assertThat(media.checkWaiting()).isEqualTo(1);
+        assertThat(jdbc.sql("select held from media").query(Boolean.class).single())
+                .isTrue();
+    }
+
+    @Test
+    void aClipMuxNeverReportedOnIsAskedAbout() throws Exception {
+        String kai = person("kai");
+        String lost = JsonPath.read(startClip(kai), "$.mediaId");
+        String neverSent = JsonPath.read(startClip(kai), "$.mediaId");
+        String broken = JsonPath.read(startClip(kai), "$.mediaId");
+        for (String clip : List.of(lost, neverSent, broken)) {
+            mvc.perform(post("/v1/media/uploads/" + clip + "/complete").header("Authorization", kai))
+                    .andExpect(status().isNoContent());
+        }
+        // Nothing is asked about a clip that has only just been sent.
+        CALLS.clear();
+        assertThat(media.askAboutSlowClips()).isZero();
+        assertThat(CALLS).isEmpty();
+
+        // Twenty minutes on, Mux's "it is ready" for the first one never came (the API was down, say).
+        jdbc.sql("update media set created_at = now() - interval '20 minutes'").update();
+        KNOWN.put(
+                "/video/v1/uploads/" + uploadOf(lost),
+                "{\"data\":{\"status\":\"asset_created\",\"asset_id\":\"asset_lost\"}}");
+        KNOWN.put(
+                "/video/v1/assets/asset_lost",
+                "{\"data\":{\"status\":\"ready\",\"duration\":8.2,\"playback_ids\":[{\"id\":\"pb_lost\",\"policy\":\"public\"}]}}");
+        KNOWN.put("/video/v1/uploads/" + uploadOf(neverSent), "{\"data\":{\"status\":\"waiting\"}}");
+        KNOWN.put("/video/v1/uploads/" + uploadOf(broken), "{\"data\":{\"status\":\"errored\"}}");
+
+        assertThat(media.askAboutSlowClips()).isEqualTo(2);
+
+        assertThat(statusOf(lost)).isEqualTo("ready");
+        assertThat(jdbc.sql("select playback_id || ':' || duration_s from media where id = cast(:id as uuid)")
+                        .param("id", lost)
+                        .query(String.class)
+                        .single())
+                .isEqualTo("pb_lost:8");
+        assertThat(statusOf(broken)).isEqualTo("failed");
+        // The phone may still be sending this one: it waits, but not for ever.
+        assertThat(statusOf(neverSent)).isEqualTo("processing");
+        jdbc.sql("update media set created_at = now() - interval '2 days' where status = 'processing'")
+                .update();
+        assertThat(media.askAboutSlowClips()).isEqualTo(1);
+        assertThat(statusOf(neverSent)).isEqualTo("failed");
+    }
+
+    private String uploadOf(String mediaId) {
+        return jdbc.sql("select video_upload_id from media where id = cast(:id as uuid)")
+                .param("id", mediaId)
+                .query(String.class)
+                .single();
+    }
+
+    private String statusOf(String mediaId) {
+        return jdbc.sql("select status from media where id = cast(:id as uuid)")
+                .param("id", mediaId)
+                .query(String.class)
+                .single();
     }
 
     @Test
@@ -229,6 +397,7 @@ class MuxClipsTest extends ApiTest {
         // The app said 40 seconds; Mux measured 75. It is refused and removed there.
         mvc.perform(fromMux(ready(tooLong, "asset_long", "pb_long", 75.2), Instant.now(), SECRET))
                 .andExpect(status().isNoContent());
+        assertThat(media.sweep()).isEqualTo(1);
         assertThat(CALLS).containsExactly("DELETE /video/v1/assets/asset_long");
         mvc.perform(fromMux(
                         "{\"type\":\"video.asset.errored\",\"data\":{\"id\":\"asset_bad\",\"passthrough\":\"%s\"}}"
@@ -263,6 +432,7 @@ class MuxClipsTest extends ApiTest {
         mvc.perform(fromMux(
                         ready("00000000-0000-0000-0000-000000000001", "asset_orphan", "p", 3), Instant.now(), SECRET))
                 .andExpect(status().isNoContent());
+        assertThat(media.sweep()).isEqualTo(1);
         assertThat(CALLS).containsExactly("DELETE /video/v1/assets/asset_orphan");
         mvc.perform(fromMux("not json", Instant.now(), SECRET))
                 .andExpect(status().isBadRequest())

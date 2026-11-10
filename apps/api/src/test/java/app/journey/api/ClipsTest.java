@@ -19,6 +19,9 @@ import org.springframework.http.MediaType;
 /** Short clips with the local stand-in: kept as they arrive, ready at once, at most three a minute long. */
 class ClipsTest extends ApiTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    app.journey.api.media.MediaService media;
+
     /** Starts a clip upload, sends some bytes and says it is done. Returns the media id. */
     private String uploadClip(String token, int seconds) throws Exception {
         String target = startClip(token, seconds);
@@ -85,6 +88,7 @@ class ClipsTest extends ApiTest {
 
         // Deleting the account takes the clip's file with it.
         mvc.perform(delete("/v1/me").header("Authorization", kai)).andExpect(status().isNoContent());
+        media.sweep();
         mvc.perform(get(URI.create(JsonPath.<String>read(body, "$.media[0].playbackUrl"))))
                 .andExpect(status().isNotFound());
         assertThat(jdbc.sql("select count(*) from media").query(Integer.class).single())

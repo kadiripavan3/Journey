@@ -44,7 +44,8 @@ class LocalMediaController {
     ResponseEntity<Void> receive(@PathVariable UUID id, @RequestParam String token, HttpServletRequest request)
             throws IOException {
         MediaRow row = media.find(id).orElse(null);
-        if (row == null || !storage.tokenMatches(id, token)) {
+        // The link is for one upload, until it is done: afterwards there is nothing left to send to.
+        if (row == null || !storage.tokenMatches(id, token) || row.status() != MediaStatus.PENDING) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         boolean clip = row.kind() == MediaKind.VIDEO;
@@ -67,6 +68,9 @@ class LocalMediaController {
 
     @GetMapping("/media/{year}/{month}/{file}")
     ResponseEntity<Resource> serve(@PathVariable String year, @PathVariable String month, @PathVariable String file) {
+        if (year.equals(MediaService.INCOMING)) {
+            return ResponseEntity.notFound().build(); // an upload on its way in is never shown to anyone
+        }
         String key = year + "/" + month + "/" + file;
         Path path;
         try {
@@ -80,8 +84,7 @@ class LocalMediaController {
         Resource resource = new FileSystemResource(path);
         return ResponseEntity.ok()
                 .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
-                .cacheControl(
-                        CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePublic())
                 .body(resource);
     }
 }

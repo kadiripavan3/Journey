@@ -3,27 +3,16 @@ package app.journey.api.moderation;
 import app.journey.api.account.ReportTarget;
 import app.journey.api.comment.CommentAdded;
 import app.journey.api.common.ApiProblem;
-import app.journey.api.media.MediaKind;
-import app.journey.api.media.MediaReady;
 import app.journey.api.media.MediaService;
-import app.journey.api.media.MediaSize;
-import app.journey.api.media.MediaStorage;
-import app.journey.api.moderation.MediaScreening.Verdict;
+import app.journey.api.media.MediaStatus;
 import app.journey.api.moderation.ModerationStore.DeletionRequestRow;
 import app.journey.api.moderation.ModerationStore.HeldCommentRow;
 import app.journey.api.moderation.ModerationStore.LogRow;
 import app.journey.api.moderation.ModerationStore.ReportRow;
-import app.journey.api.moderation.ModerationStore.Unscreened;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +25,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ModerationService {
 
-    private static final Logger log = LoggerFactory.getLogger(ModerationService.class);
     private static final int QUEUE = 100;
 
-    /** A held photo as the reviewer's page shows it. */
+    /** A held photo or clip as the reviewer's page shows it. A clip has a still frame and an address to watch it at. */
     public record HeldPhoto(
-            UUID id, String url, String reason, String owner, Instant uploadedAt, Instant askedAgainAt) {}
+            UUID id,
+            String url,
+            String playbackUrl,
+            String reason,
+            String owner,
+            Instant uploadedAt,
+            Instant askedAgainAt) {}
 
     /** Everything that waits for a reviewer, oldest first, and the last things reviewers did. */
     public record Queue(
@@ -52,88 +46,19 @@ public class ModerationService {
             List<LogRow> log) {}
 
     private final ModerationStore store;
-    private final ObjectProvider<MediaScreening> screening;
-    private final MediaStorage storage;
     private final MediaService media;
     private final ApplicationEventPublisher events;
 
-    ModerationService(
-            ModerationStore store,
-            ObjectProvider<MediaScreening> screening,
-            MediaStorage storage,
-            MediaService media,
-            ApplicationEventPublisher events) {
+    ModerationService(ModerationStore store, MediaService media, ApplicationEventPublisher events) {
         this.store = store;
-        this.screening = screening;
-        this.storage = storage;
         this.media = media;
         this.events = events;
     }
 
-    // ---- the automatic check ----
-
-    /** Every photo is checked the moment its upload is complete, before anyone else can see it. */
-    @EventListener
-    public void photoReady(MediaReady ready) {
-        if (ready.kind() == MediaKind.PHOTO) {
-            check(ready.mediaId(), ready.storageKey());
-        }
-    }
-
-    /**
-     * Checks photos the check hasn't seen: ones uploaded while it couldn't be reached, and ones from before it
-     * existed. Stops at the first photo it can't check, so an outage doesn't spin. Returns how many it checked.
-     * (No transaction around it: each photo's result is saved as soon as it is known.)
-     */
-    public int checkWaiting() {
-        int checked = 0;
-        List<Unscreened> batch;
-        while (!(batch = store.unscreened(50)).isEmpty()) {
-            for (Unscreened photo : batch) {
-                if (!check(photo.id(), photo.storageKey())) {
-                    return checked;
-                }
-                checked++;
-            }
-        }
-        return checked;
-    }
-
-    /** True when the photo was checked. False when the check couldn't be reached: the photo stays as it is and is tried again later. */
-    private boolean check(UUID mediaId, String storageKey) {
-        MediaScreening check = screening.getIfAvailable();
-        if (check == null) {
-            return false;
-        }
-        try {
-            Verdict verdict = check.screen(read(MediaSize.MEDIUM.keyFor(storageKey)));
-            store.markScreened(mediaId, verdict.flagged(), verdict.reason());
-            if (verdict.flagged()) {
-                log.info("Photo {} is held for review: {}", mediaId, verdict.reason());
-            }
-            return true;
-        } catch (IOException gone) {
-            // The file isn't there to look at; there is nothing to hold.
-            store.markScreened(mediaId, false, null);
-            return true;
-        } catch (RuntimeException unreachable) {
-            log.warn(
-                    "The photo check couldn't look at {}; it will be tried again: {}", mediaId, unreachable.toString());
-            return false;
-        }
-    }
-
-    private byte[] read(String storageKey) throws IOException {
-        try (InputStream in = storage.open(storageKey)) {
-            return in.readAllBytes();
-        }
-    }
-
     // ---- for the person whose photo is held ----
 
-    @Transactional
     public void askAgain(UUID mediaId, UUID owner) {
-        if (!store.askAgain(mediaId, owner)) {
+        if (!media.askForSecondLook(mediaId, owner)) {
             throw new ApiProblem(HttpStatus.NOT_FOUND, "not_held", "That photo isn't being reviewed.");
         }
     }
@@ -143,13 +68,26 @@ public class ModerationService {
     @Transactional(readOnly = true)
     public Queue queue() {
         List<HeldPhoto> photos = store.heldPhotos(QUEUE).stream()
-                .map(p -> new HeldPhoto(
-                        p.id(),
-                        media.urlFor(p.storageKey(), MediaSize.MEDIUM),
-                        p.reason(),
-                        p.owner(),
-                        p.uploadedAt(),
-                        p.askedAgainAt()))
+                .map(p -> {
+                    MediaService.MediaResponse shown = media.view(
+                            p.id(),
+                            p.kind(),
+                            MediaStatus.READY,
+                            p.storageKey(),
+                            p.playbackId(),
+                            null,
+                            null,
+                            null,
+                            true);
+                    return new HeldPhoto(
+                            p.id(),
+                            shown.thumbUrl(),
+                            shown.playbackUrl(),
+                            p.reason(),
+                            p.owner(),
+                            p.uploadedAt(),
+                            p.askedAgainAt());
+                })
                 .toList();
         return new Queue(
                 store.openReports(QUEUE),
@@ -197,7 +135,7 @@ public class ModerationService {
 
     @Transactional
     public void releasePhoto(UUID mediaId, String reviewer) {
-        if (store.releasePhoto(mediaId)) {
+        if (media.letThrough(mediaId)) {
             store.log(reviewer, "released a photo", "photo", mediaId.toString(), "");
         }
     }

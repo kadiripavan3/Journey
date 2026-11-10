@@ -763,24 +763,23 @@ public class LocalSeed implements ApplicationRunner {
         }
         ClassPathResource resource = new ClassPathResource("seed/img/" + name + ".jpg");
         String key = "seed/img/" + name + ".jpg";
-        long bytes;
+        MediaSizes.Made made;
         try (InputStream in = resource.getInputStream()) {
-            bytes = storage.store(key, in, Long.MAX_VALUE);
+            made = sizes.store(in.readAllBytes(), key);
         } catch (IOException e) {
             throw new UncheckedIOException("Could not read the sample photo " + name, e);
         }
-        MediaSizes.Dimensions size = sizes.make(key);
         UUID id = jdbc.sql("""
-            insert into media (owner_id, kind, content_type, storage_key, bytes, width, height, status, sized)
-            values (:owner, 'photo', 'image/jpeg', :key, :bytes, :w, :h, 'ready', true)
+            insert into media (owner_id, kind, content_type, storage_key, bytes, width, height, status, sized, screened_at)
+            values (:owner, 'photo', 'image/jpeg', :key, :bytes, :w, :h, 'ready', true, now())
             on conflict (storage_key) do update set status = 'ready', sized = true
             returning id
             """)
                 .param("owner", owner)
                 .param("key", key)
-                .param("bytes", bytes)
-                .param("w", size.width())
-                .param("h", size.height())
+                .param("bytes", made.bytes())
+                .param("w", made.width())
+                .param("h", made.height())
                 .query(UUID.class)
                 .single();
         done.put(name, id);

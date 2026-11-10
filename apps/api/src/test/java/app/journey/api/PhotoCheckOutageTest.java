@@ -10,9 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import app.journey.api.media.MediaService;
 import app.journey.api.moderation.MediaScreening;
 import app.journey.api.moderation.MediaScreening.Verdict;
-import app.journey.api.moderation.ModerationService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ class PhotoCheckOutageTest extends ApiTest {
     MediaScreening screening;
 
     @Autowired
-    ModerationService moderation;
+    MediaService media;
 
     @Test
     void aPhotoUploadedWhileTheCheckIsDownIsShownAndCheckedOnceItIsBack() throws Exception {
@@ -52,13 +52,13 @@ class PhotoCheckOutageTest extends ApiTest {
                 .andExpect(jsonPath("$.media", hasSize(1)));
         assertThat(waiting()).isEqualTo(1);
 
-        // Still down at night: nothing changes, and the catch-up stops at the first photo instead of spinning.
-        assertThat(moderation.checkWaiting()).isZero();
+        // Still down a while later: nothing changes, and the catch-up stops instead of spinning.
+        assertThat(media.checkWaiting()).isZero();
         assertThat(waiting()).isEqualTo(1);
 
         // Back, and it doubts this one: the photo is held from then on.
         doReturn(Verdict.flag("Explicit (99%)")).when(screening).screen(any(byte[].class));
-        assertThat(moderation.checkWaiting()).isEqualTo(1);
+        assertThat(media.checkWaiting()).isEqualTo(1);
         mvc.perform(get("/v1/entries/" + entry).header("Authorization", nora))
                 .andExpect(jsonPath("$.media", hasSize(0)));
         mvc.perform(get("/v1/entries/" + entry).header("Authorization", maya))
@@ -67,9 +67,58 @@ class PhotoCheckOutageTest extends ApiTest {
                         .query(String.class)
                         .single())
                 .isEqualTo("Explicit (99%)");
-        // Checked once is checked: the next night has nothing to do.
-        assertThat(moderation.checkWaiting()).isZero();
+        // Checked once is checked: the next time there is nothing to do.
+        assertThat(media.checkWaiting()).isZero();
         assertThat(waiting()).isZero();
+    }
+
+    @Test
+    void aPhotoTheCheckCanNeverLookAtIsHeldForAPersonAndDoesNotHoldUpTheOthers() throws Exception {
+        doThrow(new IllegalStateException("Timed out")).when(screening).screen(any(byte[].class));
+        String maya = person("maya");
+        String stubborn = uploadPhoto(maya);
+        // Shown for now, and tried again a few times.
+        for (int round = 0; round < 3; round++) {
+            assertThat(media.checkWaiting()).isZero();
+        }
+        assertThat(jdbc.sql("select held from media where id = cast(:id as uuid)")
+                        .param("id", stubborn)
+                        .query(Boolean.class)
+                        .single())
+                .isFalse();
+
+        // The check is back for everything else. The one tried most is looked at last, so it holds nobody up.
+        doReturn(Verdict.fine()).when(screening).screen(any(byte[].class));
+        String next = uploadPhoto(maya);
+        assertThat(jdbc.sql("select screened_at is not null from media where id = cast(:id as uuid)")
+                        .param("id", next)
+                        .query(Boolean.class)
+                        .single())
+                .isTrue();
+        // And the one the check keeps failing on: after the fifth try a person looks instead.
+        doThrow(new IllegalStateException("Timed out")).when(screening).screen(any(byte[].class));
+        assertThat(media.checkWaiting()).isZero();
+        assertThat(jdbc.sql("select held_reason from media where id = cast(:id as uuid) and held")
+                        .param("id", stubborn)
+                        .query(String.class)
+                        .single())
+                .isEqualTo("The automatic check could not look at this after several tries");
+        assertThat(waiting()).isZero();
+    }
+
+    @Test
+    void aPictureTheCheckRefusesToReadIsHeldForAPersonStraightAway() throws Exception {
+        doThrow(new MediaScreening.UnreadablePhoto("InvalidImageFormatException"))
+                .when(screening)
+                .screen(any(byte[].class));
+        String maya = person("maya");
+        String photo = uploadPhoto(maya);
+        assertThat(jdbc.sql(
+                                "select held_reason from media where id = cast(:id as uuid) and held and screened_at is not null")
+                        .param("id", photo)
+                        .query(String.class)
+                        .single())
+                .isEqualTo("The automatic check couldn't read this picture: InvalidImageFormatException");
     }
 
     private int waiting() {

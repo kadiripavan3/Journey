@@ -176,14 +176,27 @@ class OutsideServicesTest {
     }
 
     @Test
-    void resendRefusingAnEmailIsAnErrorAndAMissingKeyStopsTheApiFromStarting() {
+    void resendRefusingAnEmailIsToldApartFromResendBeingBusyAndAMissingKeyStopsTheApiFromStarting() {
         status = 422;
         answers.add(
                 "{\"statusCode\":422,\"name\":\"validation_error\",\"message\":\"The from address is not verified\"}");
         ResendEmailSender resend = new ResendEmailSender("re_test_key", address(""), "Journey <hello@journey.test>");
+        // Refused for what it is: asking again won't help, and the caller is told so.
         assertThatThrownBy(() -> resend.send(new Email("nora@example.com", "s", "<p>h</p>", "t", "k")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Resend didn't take the email");
+                .isInstanceOf(EmailSender.Refused.class)
+                .hasMessageContaining("Resend didn't take the email")
+                .hasMessageContaining("The from address is not verified");
+
+        // "Slow down" and "we're having trouble" are different: the same email can go later.
+        status = 429;
+        answers.add("{\"statusCode\":429,\"name\":\"rate_limit_exceeded\",\"message\":\"Too many requests\"}");
+        assertThatThrownBy(() -> resend.send(new Email("nora@example.com", "s", "<p>h</p>", "t", "k")))
+                .isInstanceOf(RuntimeException.class)
+                .isNotInstanceOf(EmailSender.Refused.class);
+        status = 503;
+        assertThatThrownBy(() -> resend.send(new Email("nora@example.com", "s", "<p>h</p>", "t", "k")))
+                .isInstanceOf(RuntimeException.class)
+                .isNotInstanceOf(EmailSender.Refused.class);
 
         assertThatThrownBy(() -> new ResendEmailSender(" ", address(""), "Journey <hello@journey.test>"))
                 .isInstanceOf(IllegalStateException.class)

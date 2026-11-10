@@ -35,17 +35,18 @@
       </div>
     </section>
 
-    <h2>Held photos <span class="count" th:text="${#lists.size(queue.photos)}">0</span></h2>
-    <p class="empty" th:if="${#lists.isEmpty(queue.photos)}">No photos are waiting.</p>
+    <h2>Held photos and clips <span class="count" th:text="${#lists.size(queue.photos)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.photos)}">No photos or clips are waiting.</p>
     <section class="item photo" th:each="p : ${queue.photos}">
-      <img th:src="${p.url}" alt="The held photo" loading="lazy">
+      <img th:src="${p.url}" th:alt="${p.playbackUrl != null ? 'A frame of the held clip' : 'The held photo'}" loading="lazy">
       <div>
         <p class="eyebrow" th:text="${p.askedAgainAt != null ? 'Asked for a second look' : 'Flagged by the automatic check'}">Flagged</p>
         <p class="what" th:text="${p.reason != null ? p.reason : 'No reason given'}">Reason</p>
+        <p class="meta" th:if="${p.playbackUrl != null}">This is a clip; the picture is one frame of it. <a th:href="${p.playbackUrl}" rel="noopener" target="_blank">Watch the clip</a> (it opens in Safari, or in a player such as VLC).</p>
         <p class="meta" th:text="${(p.owner != null ? 'Uploaded by @' + p.owner : 'The uploader has left') + ' · ' + @reviewTimes.utc(p.uploadedAt)}">Uploaded by</p>
         <div class="actions">
           <form method="post" th:action="@{'/admin/photos/' + ${p.id} + '/release'}"><button class="btn line" type="submit">It's fine, show it</button></form>
-          <form method="post" th:action="@{'/admin/photos/' + ${p.id} + '/remove'}"><button class="btn danger" type="submit">Remove the photo</button></form>
+          <form method="post" th:action="@{'/admin/photos/' + ${p.id} + '/remove'}"><button class="btn danger" type="submit" th:text="${p.playbackUrl != null ? 'Remove the clip' : 'Remove the photo'}">Remove the photo</button></form>
         </div>
       </div>
     </section>

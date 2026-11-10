@@ -3,6 +3,7 @@ package app.journey.api.moderation;
 import app.journey.api.account.ReportTarget;
 import app.journey.api.common.Codes;
 import app.journey.api.common.Sql;
+import app.journey.api.media.MediaKind;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,17 +27,22 @@ public class ModerationStore {
             String what,
             String byWhom) {}
 
+    /** A held photo or clip. */
     public record HeldPhotoRow(
-            UUID id, String storageKey, String reason, String owner, Instant uploadedAt, Instant askedAgainAt) {}
+            UUID id,
+            MediaKind kind,
+            String storageKey,
+            String playbackId,
+            String reason,
+            String owner,
+            Instant uploadedAt,
+            Instant askedAgainAt) {}
 
     public record HeldCommentRow(UUID id, String body, String author, String journeyTitle, Instant createdAt) {}
 
     public record DeletionRequestRow(UUID id, String email, String username, String note, Instant createdAt) {}
 
     public record LogRow(String reviewer, String action, String targetType, String targetId, String note, Instant at) {}
-
-    /** A photo waiting for the automatic check. */
-    public record Unscreened(UUID id, String storageKey) {}
 
     private final JdbcClient jdbc;
 
@@ -46,14 +52,6 @@ public class ModerationStore {
 
     // ---- photos ----
 
-    public void markScreened(UUID mediaId, boolean held, String reason) {
-        jdbc.sql("update media set screened_at = now(), held = :held, held_reason = :reason where id = :id")
-                .param("held", held)
-                .param("reason", reason)
-                .param("id", mediaId)
-                .update();
-    }
-
     public boolean isHeld(UUID mediaId) {
         return jdbc.sql("select held from media where id = :id")
                 .param("id", mediaId)
@@ -62,49 +60,23 @@ public class ModerationStore {
                 .orElse(false);
     }
 
-    /** Ready photos the check hasn't looked at yet (it was unreachable, or they are older than the check), oldest first. */
-    public List<Unscreened> unscreened(int limit) {
-        return jdbc.sql("""
-            select id, storage_key from media
-            where kind = 'photo' and status = 'ready' and screened_at is null order by created_at limit :limit
-            """)
-                .param("limit", limit)
-                .query((rs, n) -> new Unscreened(rs.getObject("id", UUID.class), rs.getString("storage_key")))
-                .list();
-    }
-
-    /** True when the photo is this person's and is held: they asked for a second look. */
-    public boolean askAgain(UUID mediaId, UUID ownerId) {
-        return jdbc.sql("update media set appeal_at = now() where id = :id and owner_id = :owner and held")
-                        .param("id", mediaId)
-                        .param("owner", ownerId)
-                        .update()
-                > 0;
-    }
-
     public List<HeldPhotoRow> heldPhotos(int limit) {
         return jdbc.sql("""
-            select m.id, m.storage_key, m.held_reason, p.username, m.created_at, m.appeal_at
+            select m.id, m.kind, m.storage_key, m.playback_id, m.held_reason, p.username, m.created_at, m.appeal_at
             from media m left join profiles p on p.id = m.owner_id
             where m.held order by m.appeal_at nulls last, m.created_at limit :limit
             """)
                 .param("limit", limit)
                 .query((rs, n) -> new HeldPhotoRow(
                         rs.getObject("id", UUID.class),
+                        MediaKind.read(rs.getString("kind")),
                         rs.getString("storage_key"),
+                        rs.getString("playback_id"),
                         rs.getString("held_reason"),
                         rs.getString("username"),
                         Sql.instant(rs, "created_at"),
                         Sql.instant(rs, "appeal_at")))
                 .list();
-    }
-
-    /** True when the photo was held and no longer is. */
-    public boolean releasePhoto(UUID mediaId) {
-        return jdbc.sql("update media set held = false, held_reason = null, appeal_at = null where id = :id and held")
-                        .param("id", mediaId)
-                        .update()
-                > 0;
     }
 
     // ---- comments ----

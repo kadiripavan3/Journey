@@ -28,9 +28,12 @@ public interface MediaStorage {
     /** Reads a stored file. The caller closes the stream. */
     InputStream open(String storageKey) throws IOException;
 
-    /** Stores a file the API made itself (a smaller version of a photo). */
+    /** Stores a file the API made itself (a photo in one of its sizes). */
     void put(String storageKey, byte[] bytes, String contentType) throws IOException;
 
-    /** Removes the file for good. Nothing happens if it is already gone. */
+    /**
+     * Removes the file for good. Nothing happens if it is already gone. Throws when the file couldn't be
+     * removed, so whoever asked can try again later.
+     */
     void delete(String storageKey);
 }

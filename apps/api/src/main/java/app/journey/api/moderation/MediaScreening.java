@@ -18,10 +18,21 @@ public interface MediaScreening {
         }
     }
 
+    /** The check looked at the bytes and says they are not a picture it can judge. Trying again won't change that. */
+    class UnreadablePhoto extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public UnreadablePhoto(String why) {
+            super(why);
+        }
+    }
+
     /**
-     * Looks at one photo.
+     * Looks at one photo, or one still frame of a clip.
      *
-     * @param jpeg the photo as a JPEG, at most 800 pixels on its long side (the medium size made at upload)
+     * @param jpeg the picture as a JPEG, at most 800 pixels on its long side
+     * @throws UnreadablePhoto when the check refuses the picture itself
+     * @throws RuntimeException when the check couldn't be reached (it is tried again later)
      */
     Verdict screen(byte[] jpeg);
 }

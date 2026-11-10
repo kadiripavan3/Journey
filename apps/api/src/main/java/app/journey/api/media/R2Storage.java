@@ -7,8 +7,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -33,10 +31,21 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 @ConditionalOnProperty(name = "journey.media.mode", havingValue = "r2")
 public class R2Storage implements MediaStorage {
 
-    private static final Logger log = LoggerFactory.getLogger(R2Storage.class);
     private static final Duration LINK_LIFE = Duration.ofMinutes(15);
-    /** A stored file never changes (a new upload gets a new key), so phones and the CDN may keep it for good. */
-    private static final String KEEP = "public, max-age=31536000, immutable";
+    /**
+     * A stored photo never changes (a new upload gets a new address), but it can be removed: by its owner, with
+     * their account, or by a reviewer. So phones and the CDN may keep a copy for a day, not for good, and a
+     * removed photo is gone everywhere within that day.
+     */
+    private static final String KEEP = "public, max-age=86400";
+
+    /** An upload on its way in is replaced by the photo made from it; nobody should keep a copy of it. */
+    private static final String DONT_KEEP = "no-store";
+
+    /** No call to storage may wait for ever. */
+    private static final Duration CALL = Duration.ofSeconds(30);
+
+    private static final Duration ONE_TRY = Duration.ofSeconds(10);
 
     private final S3Client s3;
     private final S3Presigner presigner;
@@ -71,6 +80,7 @@ public class R2Storage implements MediaStorage {
                 // Only doing so when the store asks for it keeps plain uploads plain.
                 .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
                 .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+                .overrideConfiguration(calls -> calls.apiCallTimeout(CALL).apiCallAttemptTimeout(ONE_TRY))
                 .build();
         this.presigner = S3Presigner.builder()
                 .endpointOverride(URI.create(endpoint))
@@ -89,11 +99,11 @@ public class R2Storage implements MediaStorage {
                         .putObjectRequest(put -> put.bucket(bucket)
                                 .key(storageKey)
                                 .contentType(contentType)
-                                .cacheControl(KEEP)))
+                                .cacheControl(DONT_KEEP)))
                 .url()
                 .toString();
         // The link is only good with exactly these headers: they are part of what was signed.
-        return new UploadTarget(url, "PUT", Map.of("Content-Type", contentType, "Cache-Control", KEEP));
+        return new UploadTarget(url, "PUT", Map.of("Content-Type", contentType, "Cache-Control", DONT_KEEP));
     }
 
     @Override
@@ -139,13 +149,9 @@ public class R2Storage implements MediaStorage {
         }
     }
 
+    /** Removing a file that is already gone is not an error (the store answers the same either way). */
     @Override
     public void delete(String storageKey) {
-        try {
-            s3.deleteObject(delete -> delete.bucket(bucket).key(storageKey));
-        } catch (RuntimeException e) {
-            // A file left behind costs a little storage; it must not stop an account from being deleted.
-            log.warn("Could not delete {} from storage: {}", storageKey, e.getMessage());
-        }
+        s3.deleteObject(delete -> delete.bucket(bucket).key(storageKey));
     }
 }

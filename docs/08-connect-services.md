@@ -61,7 +61,12 @@ The API checks every sign-in token against the project's public keys, which it f
 | Access key id, secret access key | Fly secrets | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` |
 | The bucket's public address, no slash at the end | Fly secrets | `R2_PUBLIC_URL` |
 
-The phone sends each photo straight to R2 with a link that is good for fifteen minutes and for that one file. The API then reads the photo once to make the two smaller versions and stores them next to it. Nothing else is needed for the small photos: no resizing service.
+The phone sends each photo straight to R2, into a folder called `incoming`, with a link that is good for fifteen minutes and for that one file. The API then opens it, saves the photo it keeps (in three sizes) under `photos`, and deletes the upload. Nothing else is needed for the small photos: no resizing service.
+
+Two rules to add to the bucket, so that nothing waiting in `incoming` can be passed around or left lying:
+
+- **A lifecycle rule** (the bucket's Settings, Object lifecycle rules): delete objects under the prefix `incoming/` one day after they were created. The API removes unfinished uploads itself; this is the second lock on the same door.
+- **A rule on the public address** (in Cloudflare, for the domain from step 2: Security, WAF, Custom rules): block requests whose path starts with `/incoming/`. Photos are only ever shown from `/photos/`.
 
 **Check:** post an entry with a photo. It shows in the story, and its address starts with your public address.
 
@@ -188,7 +193,9 @@ Every photo is looked at by a machine when it is uploaded. One it flags for nudi
 
 Then remove `JOURNEY_MODERATION_MODE = "off"` from `fly.toml` and deploy. Photos posted before that are checked in the background, a few at a time.
 
-If Rekognition can't be reached, photos are shown and checked later; an outage never stops people from posting.
+If Rekognition can't be reached, photos are shown and looked at again every quarter of an hour; an outage never stops people from posting. Clips are checked the same way, through three of their still frames. If the API is set to use Rekognition and has no credentials, it says so and doesn't start.
+
+**So that AWS doesn't keep the photos:** by default AWS may store what is sent to Rekognition to improve the service. Opt out for the account (AWS Organizations, Policies, "AI services opt-out policies"), so the privacy policy's sentence "the service that checks photos does not keep them" is true.
 
 **Check:** post an ordinary photo: it shows as usual. The API's log (`fly logs`) has no line about the photo check failing.
 

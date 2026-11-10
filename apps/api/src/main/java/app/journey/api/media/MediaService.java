@@ -5,20 +5,23 @@ import app.journey.api.common.PublicUrls;
 import app.journey.api.media.MediaStore.MediaRow;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** Photos and clips: what may be uploaded, and turning stored files into addresses the app can show. */
 @Service
@@ -30,6 +33,9 @@ public class MediaService {
     public static final long MAX_CLIP_BYTES = 200L * 1024 * 1024;
     /** A clip is at most a minute long. */
     public static final int MAX_CLIP_SECONDS = 60;
+
+    /** Where an upload sits until the photo that is kept has been made from it. Nothing here is ever shown. */
+    static final String INCOMING = "incoming";
 
     /** The picture shown for a clip that has no still frame of its own (yet). */
     static final String CLIP_STILL = "/share/clip.jpg";
@@ -76,69 +82,92 @@ public class MediaService {
 
     public record NewUpload(UUID mediaId, MediaStorage.UploadTarget target) {}
 
+    /** How many uploads one person may have started and not finished, and how many they may send in a day. */
+    static final int MAX_UNFINISHED = 40;
+
+    static final int MAX_PHOTOS_A_DAY = 400;
+    static final int MAX_CLIPS_A_DAY = 40;
+
+    /** After this many tries at which the automatic check couldn't look, a person looks instead. */
+    static final int CHECK_TRIES = 5;
+
     private final MediaStore store;
     private final MediaStorage storage;
     private final MediaSizes sizes;
     private final VideoService video;
+    private final PhotoCheck check;
     private final PublicUrls urls;
-    private final ApplicationEventPublisher events;
+    private final TransactionTemplate transaction;
 
     MediaService(
             MediaStore store,
             MediaStorage storage,
             MediaSizes sizes,
             VideoService video,
+            PhotoCheck check,
             PublicUrls urls,
-            ApplicationEventPublisher events) {
+            TransactionTemplate transaction) {
         this.store = store;
         this.storage = storage;
         this.sizes = sizes;
         this.video = video;
+        this.check = check;
         this.urls = urls;
-        this.events = events;
+        this.transaction = transaction;
     }
 
     /**
      * Starts an upload: a record of the file to come, and where the phone sends it. Photos go to storage;
      * clips go to the video service. For a clip the app says how long it is, and one over a minute is refused
-     * before anything is sent.
+     * before anything is sent. Nobody may pile up uploads without end.
+     *
+     * <p>No transaction is open while the video service is asked for a link.
      */
-    @Transactional
     public NewUpload startUpload(UUID ownerId, MediaKind kind, String contentType, Integer durationSeconds) {
         String type = contentType == null
                 ? ""
                 : contentType.toLowerCase().split(";")[0].trim();
-        String extension = (kind == MediaKind.VIDEO ? CLIP_TYPES : PHOTO_TYPES).get(type);
+        boolean clip = kind == MediaKind.VIDEO;
+        String extension = (clip ? CLIP_TYPES : PHOTO_TYPES).get(type);
         if (extension == null) {
             throw ApiProblem.badRequest(
                     "unsupported_media",
-                    kind == MediaKind.VIDEO
+                    clip
                             ? "That clip's format isn't supported. Use MP4 or MOV."
                             : "That photo's format isn't supported. Use JPEG or PNG.");
         }
-        boolean clip = kind == MediaKind.VIDEO;
         if (clip && durationSeconds != null && (durationSeconds < 0 || durationSeconds > MAX_CLIP_SECONDS)) {
             throw ApiProblem.badRequest("clip_too_long", "Keep clips to " + MAX_CLIP_SECONDS + " seconds or less.");
         }
+        MediaStore.Recent recent = store.recentOf(ownerId);
+        if (recent.unfinished() >= MAX_UNFINISHED
+                || (clip ? recent.clipsToday() >= MAX_CLIPS_A_DAY : recent.photosToday() >= MAX_PHOTOS_A_DAY)) {
+            throw new ApiProblem(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    "too_many_uploads",
+                    clip
+                            ? "That's a lot of clips for one day. Try again tomorrow."
+                            : "That's a lot of photos at once. Give it a moment and try again.");
+        }
+        UUID id = UUID.randomUUID();
         LocalDate today = LocalDate.now();
-        String key = "%d/%02d/%s.%s".formatted(today.getYear(), today.getMonthValue(), UUID.randomUUID(), extension);
-        UUID id = store.insert(ownerId, kind, type, key, clip ? durationSeconds : null);
+        // Where the phone sends it. A photo is made into its kept version, under another address, when it is done.
+        String key = "%s/%d-%02d/%s.%s"
+                .formatted(clip ? "clips" : INCOMING, today.getYear(), today.getMonthValue(), id, extension);
         if (!clip) {
+            store.insert(id, ownerId, kind, type, key, null, null);
             return new NewUpload(id, storage.uploadTarget(id, key, type));
         }
         VideoService.ClipUpload upload = video.startUpload(id, key, type);
-        if (upload.uploadId() != null) {
-            store.setVideoUpload(id, upload.uploadId());
-        }
+        store.insert(id, ownerId, kind, type, key, durationSeconds, upload.uploadId());
         return new NewUpload(id, upload.target());
     }
 
     /**
-     * The app says an upload is done. The API looks at what arrived: it must be there, within the size allowed
-     * and, for a photo, a picture it can read. Then the smaller versions are made and the file is ready to use.
-     * Saying "done" twice is fine.
+     * The app says an upload is done. For a photo the API opens what arrived, makes the photo it keeps from
+     * it (see {@link MediaSizes}), has it looked at, and only then is it ready to use. Saying "done" twice is
+     * fine. No database connection is held while the file is read, made and looked at.
      */
-    @Transactional
     public void completeUpload(UUID id, UUID ownerId) {
         MediaRow row = store.find(id)
                 .filter(found -> found.ownerId().equals(ownerId))
@@ -147,16 +176,27 @@ public class MediaService {
         if (row.usable()) {
             return;
         }
-        if (row.kind() == MediaKind.VIDEO) {
-            // The video service says where the clip stands: ready at once (the local stand-in), or being converted.
-            VideoService.ClipState state = video.afterUpload(row);
-            if (state.status() == MediaStatus.READY) {
-                store.markClipReady(id, state.bytes(), state.assetId(), state.playbackId(), state.durationSeconds());
-            } else {
-                store.markProcessing(id, state.bytes());
-            }
-            return;
+        if (row.status() == MediaStatus.FAILED) {
+            throw ApiProblem.badRequest("media_not_ready", "That upload couldn't be used. Add it again.");
         }
+        if (!store.claim(id)) {
+            // Another "done" for the same file is being worked on right now.
+            throw new ApiProblem(
+                    HttpStatus.SERVICE_UNAVAILABLE, "busy", "We're still getting that ready. Try again in a moment.");
+        }
+        try {
+            if (row.kind() == MediaKind.VIDEO) {
+                completeClip(row);
+            } else {
+                completePhoto(row);
+            }
+        } catch (RuntimeException failed) {
+            store.release(id);
+            throw failed;
+        }
+    }
+
+    private void completePhoto(MediaRow row) {
         long bytes = storage.size(row.storageKey()).orElse(0);
         if (bytes == 0) {
             throw ApiProblem.badRequest("upload_missing", "The photo didn't arrive. Try again.");
@@ -165,80 +205,186 @@ public class MediaService {
             if (bytes > MAX_PHOTO_BYTES) {
                 throw new ApiProblem(HttpStatus.CONTENT_TOO_LARGE, "too_large", "That photo is too big.");
             }
-            MediaSizes.Dimensions size = sizes.make(row.storageKey());
-            store.markReady(id, bytes, size.width(), size.height());
-            events.publishEvent(new MediaReady(id, ownerId, row.kind(), row.storageKey())); // the photo check listens
+            String kept = row.storageKey()
+                            .replaceFirst("^" + INCOMING + "/", "photos/")
+                            .replaceFirst("\\.[a-z]+$", "") + "-"
+                    + UUID.randomUUID().toString().substring(0, 8) + ".jpg";
+            MediaSizes.Made made = sizes.make(row.storageKey(), kept);
+            PhotoCheck.Result looked = check.look(made.preview());
+            store.photoReady(row.id(), kept, made.bytes(), made.width(), made.height(), looked);
+            if (looked.held()) {
+                log.info("Photo {} is held for review: {}", row.id(), looked.reason());
+            }
         } catch (ApiProblem refused) {
-            deletePhotoFiles(row.storageKey()); // nothing good comes of keeping a file that was refused
+            if (refused.status().is4xxClientError()) {
+                quietly(() ->
+                        storage.delete(row.storageKey())); // nothing good comes of keeping a file that was refused
+            }
             throw refused;
         }
     }
 
+    private void completeClip(MediaRow row) {
+        // The video service says where the clip stands: ready at once (the local stand-in), or being converted.
+        VideoService.ClipState state = video.afterUpload(row);
+        if (state.status() == MediaStatus.READY) {
+            store.clipConverted(row.id(), state.assetId(), state.playbackId(), state.durationSeconds());
+            store.clipReady(row.id(), state.bytes(), lookAtClip(state.playbackId(), state.durationSeconds()));
+        } else {
+            store.markProcessing(row.id(), state.bytes());
+        }
+    }
+
     /**
-     * The video service has converted a clip, and it can be watched. Its real length is known only now, so a
-     * clip over a minute is refused here and removed from the service.
+     * The video service has converted a clip. Its real length is known only now, so a clip over a minute is
+     * refused here and removed from the service. Otherwise its still frames are looked at, and then it can be
+     * watched. Hearing this twice, or after the clip's record is gone, is fine.
      */
-    @Transactional
     public void clipConverted(UUID mediaId, String assetId, String playbackId, Double seconds) {
         MediaRow clip =
                 store.find(mediaId).filter(row -> row.kind() == MediaKind.VIDEO).orElse(null);
         if (clip == null) {
-            video.delete(null, assetId); // its record was deleted while it was being converted
+            // Its record was deleted while it was being converted.
+            store.queueRemoval(MediaKind.VIDEO, "", assetId);
+            return;
+        }
+        if (clip.ready()) {
             return;
         }
         if (seconds != null && seconds > MAX_CLIP_SECONDS + 1) {
             store.markFailed(mediaId, assetId);
-            afterCommit(() -> video.delete(clip.storageKey(), assetId));
+            store.queueRemoval(MediaKind.VIDEO, clip.storageKey(), assetId);
             return;
         }
-        store.markClipReady(mediaId, null, assetId, playbackId, seconds == null ? null : (int) Math.round(seconds));
+        Integer length = seconds == null ? clip.durationS() : (Integer) (int) Math.round(seconds);
+        store.clipConverted(mediaId, assetId, playbackId, length);
+        store.clipReady(mediaId, null, lookAtClip(playbackId, length));
     }
 
     /** The video service couldn't convert a clip. Its author sees that it failed and can remove it. */
-    @Transactional
     public void clipFailed(UUID mediaId) {
         store.markFailed(mediaId, null);
     }
 
     /**
-     * Makes the smaller versions for photos that don't have them yet (uploaded before they were made at upload).
-     * Runs when the API starts and picks up where it left off. Returns how many photos it handled.
+     * Asks the video service about clips it has had for a quarter of an hour without saying they are ready:
+     * its message may have been lost. One it knows nothing about after a day has failed. Returns how many
+     * clips moved on.
      */
-    public int makeMissingSizes() {
-        int handled = 0;
-        List<MediaStore.StoredFile> batch;
-        while (!(batch = store.withoutSizes(100)).isEmpty()) {
-            for (MediaStore.StoredFile photo : batch) {
-                try {
-                    sizes.make(photo.storageKey());
-                } catch (RuntimeException gone) {
-                    // The original is missing or unreadable; its addresses stay dead either way, and it isn't tried
-                    // again.
-                    log.warn("No smaller versions for {}: {}", photo.storageKey(), gone.getMessage());
+    public int askAboutSlowClips() {
+        int moved = 0;
+        for (MediaRow clip : store.clipsStillConverting(15, 100)) {
+            try {
+                Optional<VideoService.Found> found = video.lookUp(clip);
+                if (found.isPresent() && found.get().failed()) {
+                    store.markFailed(clip.id(), found.get().assetId());
+                    moved++;
+                } else if (found.isPresent()) {
+                    clipConverted(
+                            clip.id(),
+                            found.get().assetId(),
+                            found.get().playbackId(),
+                            found.get().seconds());
+                    moved++;
+                } else if (store.olderThanADay(clip.id())) {
+                    store.markFailed(clip.id(), null);
+                    moved++;
                 }
-                store.markSized(photo.id());
-                handled++;
+            } catch (RuntimeException unreachable) {
+                log.warn("Couldn't ask the video service about clip {}: {}", clip.id(), unreachable.toString());
+                break;
             }
         }
-        if (handled > 0) {
-            log.info("Made the smaller versions of {} photos.", handled);
-        }
-        return handled;
+        return moved;
     }
 
-    /** Removes a photo and the smaller versions made of it, or a clip from the video service. */
-    private void deleteFiles(MediaStore.StoredFile file) {
-        if (file.kind() == MediaKind.VIDEO) {
-            video.delete(file.storageKey(), file.videoAssetId());
-        } else {
-            deletePhotoFiles(file.storageKey());
+    /** A clip is looked at through a few of its still frames. The worst of them decides. */
+    private PhotoCheck.Result lookAtClip(String playbackId, Integer durationSeconds) {
+        Optional<List<byte[]>> frames;
+        try {
+            frames = playbackId == null ? Optional.empty() : video.stills(playbackId, durationSeconds);
+        } catch (RuntimeException unreachable) {
+            log.warn("Couldn't fetch a clip's still frames; it will be looked at later: {}", unreachable.toString());
+            return PhotoCheck.Result.of(PhotoCheck.Outcome.NOT_LOOKED);
         }
+        if (frames.isEmpty()) {
+            return PhotoCheck.Result.of(
+                    PhotoCheck.Outcome.CLEAN); // this video service makes no stills: nothing to look at
+        }
+        if (frames.get().isEmpty()) {
+            return PhotoCheck.Result.of(PhotoCheck.Outcome.NOT_LOOKED);
+        }
+        PhotoCheck.Result worst = PhotoCheck.Result.of(PhotoCheck.Outcome.CLEAN);
+        for (byte[] frame : frames.get()) {
+            worst = worst.worseOf(check.look(frame));
+        }
+        return worst;
     }
 
-    private void deletePhotoFiles(String storageKey) {
-        storage.delete(storageKey);
-        for (MediaSize size : MediaSize.values()) {
-            storage.delete(size.keyFor(storageKey));
+    /**
+     * Looks at photos and clips nobody has looked at: ones that came while the automatic check couldn't be
+     * reached or was switched off. Stops after a few in a row that couldn't be looked at, so an outage doesn't
+     * spin; one it can never look at is held for a person after {@link #CHECK_TRIES} tries. Returns how many
+     * were settled.
+     */
+    public int checkWaiting() {
+        int settled = 0;
+        int missesInARow = 0;
+        Set<UUID> seen = new HashSet<>();
+        List<MediaStore.Unscreened> batch;
+        while (missesInARow < 3 && !(batch = unseen(store.unscreened(50), seen)).isEmpty()) {
+            for (MediaStore.Unscreened one : batch) {
+                seen.add(one.id());
+                PhotoCheck.Result looked = lookAgain(one);
+                if (looked.outcome() == PhotoCheck.Outcome.OFF) {
+                    return settled; // switched off: nothing will be looked at now
+                }
+                store.screened(one.id(), looked, CHECK_TRIES);
+                if (looked.settled()) {
+                    settled++;
+                    missesInARow = 0;
+                } else if (++missesInARow >= 3) {
+                    break;
+                }
+            }
+        }
+        return settled;
+    }
+
+    private static List<MediaStore.Unscreened> unseen(List<MediaStore.Unscreened> batch, Set<UUID> seen) {
+        return batch.stream().filter(one -> !seen.contains(one.id())).toList();
+    }
+
+    private PhotoCheck.Result lookAgain(MediaStore.Unscreened one) {
+        if (one.kind() == MediaKind.VIDEO) {
+            return lookAtClip(one.playbackId(), one.durationS());
+        }
+        byte[] preview;
+        try (InputStream in = storage.open(MediaSize.MEDIUM.keyFor(one.storageKey()))) {
+            preview = in.readNBytes((int) MAX_PHOTO_BYTES);
+        } catch (java.nio.file.NoSuchFileException gone) {
+            return PhotoCheck.Result.of(PhotoCheck.Outcome.CLEAN); // the file isn't there to look at; nothing to hold
+        } catch (IOException | RuntimeException unreachable) {
+            return PhotoCheck.Result.of(PhotoCheck.Outcome.NOT_LOOKED);
+        }
+        return check.look(preview);
+    }
+
+    /** A reviewer has looked at a held photo or clip and lets it through. True when it was held. */
+    public boolean letThrough(UUID id) {
+        return store.letThrough(id);
+    }
+
+    /** The owner of a held photo asks for a second look. True when it is theirs and held. */
+    public boolean askForSecondLook(UUID id, UUID ownerId) {
+        return store.askAgain(id, ownerId);
+    }
+
+    private static void quietly(Runnable work) {
+        try {
+            work.run();
+        } catch (RuntimeException ignored) {
+            // Best effort: what is left behind is removed with the uploads nobody used.
         }
     }
 
@@ -337,52 +483,61 @@ public class MediaService {
     }
 
     /**
-     * Removes one upload for good: its record now, its files once that change is kept. For a reviewer who
-     * removes a held photo.
+     * Removes one upload for good: its record now, its files a moment later (they are queued in the same
+     * transaction, and tried until they are gone). For a reviewer who removes a held photo.
      */
     @Transactional
     public void remove(UUID id) {
-        store.find(id).ifPresent(row -> {
-            store.delete(List.of(id));
-            afterCommit(() ->
-                    deleteFiles(new MediaStore.StoredFile(row.id(), row.kind(), row.storageKey(), row.videoAssetId())));
-        });
+        store.deleteAndQueueFiles(List.of(id));
     }
 
     /** Deletes everything a person uploaded: the records now, the files right after. */
     @Transactional
     public void deleteAllOwnedBy(UUID ownerId) {
-        List<MediaStore.StoredFile> files = store.filesOwnedBy(ownerId);
         store.deleteOwnedBy(ownerId);
-        afterCommit(() -> files.forEach(this::deleteFiles));
     }
 
     /**
-     * Files are removed only once the change to the database has been kept. If the change is undone instead
-     * (something failed further on), the records are back and so the files must still be there.
+     * Tidies up, in three steps. Files whose last use went away (an entry, a journey or an account was
+     * deleted; a photo was taken off) lose their record. So do uploads nobody ever used. And every file whose
+     * record is gone is removed from storage or from the video service, and tried again later if that fails.
+     * Returns how many files were removed.
      */
-    private static void afterCommit(Runnable work) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            work.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                work.run();
-            }
+    public int sweep() {
+        Integer unused = transaction.execute(status -> {
+            int gone = store.deleteAndQueueFiles(store.takeNoLongerUsed(500));
+            return gone + store.deleteAndQueueFiles(store.neverUsed(500));
         });
+        if (unused != null && unused > 0) {
+            log.info("{} uploads are no longer used; their files are being removed.", unused);
+        }
+        int removed = 0;
+        List<MediaStore.Removal> batch;
+        // Taken in a short transaction of its own; the files are then removed with no transaction open.
+        while (!(batch = take()).isEmpty()) {
+            for (MediaStore.Removal file : batch) {
+                try {
+                    if (file.kind() == MediaKind.VIDEO) {
+                        video.delete(file.storageKey().isEmpty() ? null : file.storageKey(), file.videoAssetId());
+                    } else {
+                        sizes.remove(file.storageKey());
+                    }
+                    store.removed(file.id());
+                    removed++;
+                } catch (RuntimeException failed) {
+                    log.warn(
+                            "Couldn't remove {} (try {}); it will be tried again: {}",
+                            file.storageKey(),
+                            file.attempts(),
+                            failed.toString());
+                }
+            }
+        }
+        return removed;
     }
 
-    /** Removes uploads nobody used (see {@link MediaStore#abandoned}). Returns how many. */
-    @Transactional
-    public int removeAbandoned() {
-        List<MediaStore.StoredFile> files = store.abandoned(24, 500);
-        store.delete(files.stream().map(MediaStore.StoredFile::id).toList());
-        afterCommit(() -> files.forEach(this::deleteFiles));
-        if (!files.isEmpty()) {
-            log.info("Removed {} uploads that were never used.", files.size());
-        }
-        return files.size();
+    private List<MediaStore.Removal> take() {
+        List<MediaStore.Removal> taken = transaction.execute(status -> store.takeRemovals(200));
+        return taken == null ? List.of() : taken;
     }
 }
