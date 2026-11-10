@@ -343,13 +343,14 @@ public class JourneyService {
                 journeys.momentKeys(id, 3).stream().map(media::urlFor).toList());
     }
 
-    /** Public journeys whose title, description, tags or creator match the words typed. */
+    /** Public journeys whose title, description, tags, creator or places (where its entries happened) match the words typed. */
     public List<JourneyResponse> search(String pattern, UUID viewer, int limit) {
         return views(
                 journeys.list(
                         """
             j.visibility = 'public' and (j.title ilike :q or j.description ilike :q or p.display_name ilike :q or p.username ilike :q
-              or exists (select 1 from unnest(j.tags) t where t ilike :q))
+              or exists (select 1 from unnest(j.tags) t where t ilike :q)
+              or exists (select 1 from entries pe where pe.journey_id = j.id and pe.place_name ilike :q))
             """,
                         Map.of("q", pattern),
                         "j.follower_count desc, j.last_entry_at desc nulls last",

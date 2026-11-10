@@ -244,4 +244,24 @@ class PlacesTest extends ApiTest {
                 .andExpect(jsonPath("$", hasSize(0)));
         mvc.perform(get("/v1/local/places").param("q", "hanoi")).andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void searchFindsAJourneyByThePlacesOfItsEntries() throws Exception {
+        String maya = person("maya");
+        String reader = person("reader");
+        String asia = journey(maya, "Six weeks on a motorbike", "public", 9);
+        entryAt(maya, asia, "Lanterns", 2, ",\"placeName\":\"Hoi An, Vietnam\",\"lat\":15.88,\"lng\":108.33");
+        String secret = journey(maya, "Diary", "private", 9);
+        entryAt(maya, secret, "Quiet day", 1, ",\"placeName\":\"Hoi An, Vietnam\"");
+        journey(maya, "Learning the ukulele", "public", 3);
+
+        // Neither the title nor the tags say Vietnam; the entry's place does. A private journey stays out.
+        mvc.perform(get("/v1/search").param("q", "hoi an").header("Authorization", reader))
+                .andExpect(jsonPath("$.journeys", hasSize(1)))
+                .andExpect(jsonPath("$.journeys[0].title").value("Six weeks on a motorbike"));
+        mvc.perform(get("/v1/search").param("q", "vietnam").header("Authorization", reader))
+                .andExpect(jsonPath("$.journeys", hasSize(1)));
+        mvc.perform(get("/v1/search").param("q", "bolivia").header("Authorization", reader))
+                .andExpect(jsonPath("$.journeys", hasSize(0)));
+    }
 }
