@@ -58,7 +58,12 @@ public class PeopleStore {
         this.jdbc = jdbc;
     }
 
-    /** A profile as the viewer may see it: other people see only public journeys counted. */
+    /**
+     * A profile as the viewer may see it: other people see only public journeys counted.
+     *
+     * <p>This is the one place blocking works in one direction only, on purpose: someone who blocked you
+     * doesn't exist for you, but you can still open the profile of someone you blocked, to unblock them.
+     */
     public Optional<ProfileRow> profile(String username, UUID viewer) {
         return jdbc.sql("""
             select p.id, p.username, p.display_name, p.bio, p.link, a.storage_key as avatar_key,

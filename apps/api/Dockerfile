@@ -13,7 +13,8 @@ COPY src src
 # The tests need a database and run in CI, not here.
 RUN ./mvnw -B -ntp -DskipTests package
 
-FROM eclipse-temurin:21-jre
+# Runs on Java 25, as the tech plan says. The code is built for Java 21, which is what CI tests with.
+FROM eclipse-temurin:25-jre
 RUN useradd --system --uid 10001 --no-create-home journey
 WORKDIR /app
 COPY --from=build /src/target/journey-api-*.jar app.jar

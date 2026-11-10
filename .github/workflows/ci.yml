@@ -70,3 +70,65 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+
+  walkthrough:
+    name: Walk-through (the app in a browser, against the API)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: journey
+          POSTGRES_PASSWORD: journey
+          POSTGRES_DB: journey
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U journey -d journey"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Start the API in local mode
+        working-directory: apps/api
+        run: |
+          ./mvnw -q -B -ntp -DskipTests package
+          nohup java -jar target/journey-api-*.jar --spring.profiles.active=local > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf localhost:8080/actuator/health | grep -q UP; then exit 0; fi
+            sleep 2
+          done
+          echo "The API did not start"; tail -50 "$RUNNER_TEMP/api.log"; exit 1
+      - name: Build the web version of the app
+        working-directory: apps/mobile
+        run: |
+          npm ci
+          CI=1 npx expo export -p web
+      - name: Walk through every screen, in light and in dark
+        run: |
+          npm install --prefix scripts/e2e
+          (cd scripts/e2e && npx playwright install --with-deps chromium)
+          node scripts/e2e/serve.js "$PWD/apps/mobile/dist" 8081 &
+          node scripts/e2e/walkthrough.js "$RUNNER_TEMP/shots" light
+          node scripts/e2e/walkthrough.js "$RUNNER_TEMP/shots" dark
+      - name: Keep the screenshots and the API's log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walkthrough
+          path: |
+            ${{ runner.temp }}/shots
+            ${{ runner.temp }}/api.log
+          retention-days: 7
+
