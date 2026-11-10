@@ -3,7 +3,7 @@ import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
 
 import { radius, textStyle, useTheme } from '@/theme';
 
-import { Txt } from './Txt';
+import { MAX_TEXT_SCALE, Txt } from './Txt';
 import { webNoOutline } from './web';
 
 type Props = Omit<TextInputProps, 'style'> & {
@@ -47,6 +47,7 @@ export function Field({ label, error, note, noteTone = 'muted', prefix, accessor
             </Txt>
           ) : null}
           <TextInput
+            maxFontSizeMultiplier={MAX_TEXT_SCALE}
             {...input}
             accessibilityLabel={label}
             multiline={multiline}

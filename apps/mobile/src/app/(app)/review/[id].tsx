@@ -1,12 +1,14 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { CircleCheck, ShieldAlert } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useCache } from '@/api/cache';
 import { messageFor } from '@/api/fetcher';
 import { askSecondLook, useChangeEntry, useGetEntry } from '@/api/generated/journey';
 import { entryEyebrow } from '@/features/entries/labels';
+import { saveRequest } from '@/features/entries/saveRequest';
+import { useLeave } from '@/features/navigation/useLeave';
 import { HeldVeil } from '@/features/safety/Held';
 import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -18,6 +20,7 @@ import { Photo } from '@/ui/Photo';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 /**
  * 11.3 Held for review: when the automatic check flags a photo, it is hidden until a person has looked at it.
@@ -25,7 +28,7 @@ import { Txt } from '@/ui/Txt';
  */
 export default function HeldForReview() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const leave = useLeave();
   const { colors, shadow } = useTheme();
   const cache = useCache();
   const entry = useGetEntry(id);
@@ -36,7 +39,7 @@ export default function HeldForReview() {
     mutation: {
       onSuccess: async (saved) => {
         await cache.entrySaved(saved.journeyId, saved.id);
-        router.back();
+        leave();
       },
     },
   });
@@ -50,10 +53,8 @@ export default function HeldForReview() {
 
   const remove = () => {
     if (!e) return;
-    change.mutate({
-      id: e.id,
-      data: { title: e.title, body: e.body, placeName: e.placeName ?? '', isMilestone: e.isMilestone, happenedOn: e.happenedOn, happenedAt: e.happenedAt, mediaIds: fine.map((m) => m.id) },
-    });
+    // Everything the entry has stays as it is (its place and the spot on the map too); only the held photos go.
+    change.mutate({ id: e.id, data: saveRequest(e, { mediaIds: fine.map((m) => m.id) }) });
   };
   const askAgain = async () => {
     setAsking(true);
@@ -98,11 +99,11 @@ export default function HeldForReview() {
       }>
       {entry.isPending ? (
         <View style={{ height: 320 }}>
-          <Loading />
+          <Loading offline={entry.isPaused} />
         </View>
-      ) : entry.isError || !e ? (
+      ) : !e ? (
         <View style={{ height: 320 }}>
-          <Problem message={messageFor(entry.error)} onRetry={() => void entry.refetch()} retrying={entry.isRefetching} />
+          <Problem message={messageFor(entry.error)} onRetry={() => void entry.refetch()} retrying={entry.isFetching} />
         </View>
       ) : (
         <>
@@ -141,11 +142,11 @@ export default function HeldForReview() {
               <NoteBox icon={() => <CircleCheck size={20} color={colors.ok} />} title="Nothing is being reviewed" style={{ marginHorizontal: -4 }}>
                 Every photo in this entry can be seen by everyone who can see the journey.
               </NoteBox>
-              <Pressable accessibilityRole="button" accessibilityLabel="Back to the entry" onPress={() => router.back()} style={{ alignSelf: 'center', marginTop: 20 }}>
+              <Tap accessibilityRole="button" accessibilityLabel="Back to the entry" onPress={leave} style={{ alignSelf: 'center', marginTop: 20 }}>
                 <Txt variant="item" weight={800} style={{ color: colors.accentText }}>
                   Back to the entry
                 </Txt>
-              </Pressable>
+              </Tap>
             </>
           )}
         </>

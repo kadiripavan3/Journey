@@ -11,7 +11,8 @@ export function Photo({ uri, style, radius = 'card', children, label }: { uri?: 
   return (
     <View style={[{ borderRadius: corner, overflow: 'hidden', backgroundColor: colors.fill }, style]}>
       {uri ? (
-        <Image source={{ uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={150} accessible={!!label} accessibilityLabel={label} />
+        // A row that is reused for another entry must not show the last one's picture while the new one loads.
+        <Image source={{ uri }} recyclingKey={uri} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={150} accessible={!!label} accessibilityLabel={label} />
       ) : null}
       {children}
     </View>

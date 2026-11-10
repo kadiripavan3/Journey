@@ -12,7 +12,7 @@ import { ShareSheet } from '../sharing/ShareSheet';
 
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(() => Promise.resolve(true)) }));
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }), useIsFocused: () => true }));
 
 const photo = (id: string, held: boolean) => ({ id, kind: 'photo', url: `https://example.com/${id}.jpg`, thumbUrl: null, width: 4, height: 3, durationSeconds: null, held });
 const entry = (media: ReturnType<typeof photo>[]) => ({ id: 'e1', journeyId: 'j1', journeyTitle: 'Iceland ring road', label: 'Day 8', title: 'Black sand', body: '', media }) as unknown as EntryResponse;

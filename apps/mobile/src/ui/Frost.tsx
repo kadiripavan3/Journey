@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { darkTheme, useTheme, withAlpha } from '@/theme';
 
 type Props = {
   tone?: 'theme' | 'dark';
@@ -25,6 +25,12 @@ export function Frost({ tone = 'theme', intensity = 28, mode = 'blur' }: Props) 
   if (mode === 'tint') {
     // The theme's own glass colour is nearly solid already; on a photo the label needs a little more behind it.
     return tone === 'dark' ? <View pointerEvents="none" style={[FILL, { backgroundColor: colors.photoTint }]} /> : null;
+  }
+  if (Platform.OS === 'android') {
+    // Android can only blur an area that has been wired to what lies behind it (expo-blur's BlurTargetView);
+    // without that the library draws a thin see-through sheet, and words on a busy photo get hard to read.
+    // So Android gets a denser tint on purpose: the glass is darker (or more solid) there, never unreadable.
+    return <View pointerEvents="none" style={[FILL, { backgroundColor: tone === 'dark' ? withAlpha(darkTheme.colors.stage, 0.5) : withAlpha(colors.bg, 0.8) }]} />;
   }
   return <BlurView pointerEvents="none" intensity={intensity} tint={tone === 'dark' ? 'dark' : scheme} style={FILL} />;
 }

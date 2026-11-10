@@ -49,11 +49,11 @@ export default function CompleteJourney() {
       }>
       {recap.isPending ? (
         <View style={{ height: 200 }}>
-          <Loading />
+          <Loading offline={recap.isPaused} />
         </View>
-      ) : recap.isError || !r ? (
+      ) : !r ? (
         <View style={{ height: 260 }}>
-          <Problem message={messageFor(recap.error)} onRetry={() => void recap.refetch()} retrying={recap.isRefetching} />
+          <Problem message={messageFor(recap.error)} onRetry={() => void recap.refetch()} retrying={recap.isFetching} />
         </View>
       ) : (
         <>

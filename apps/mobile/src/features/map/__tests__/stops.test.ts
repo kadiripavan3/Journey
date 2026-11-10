@@ -1,6 +1,8 @@
 import type { MapPinResponse } from '@/api/generated/journey';
 
-import { pinEyebrow, regionOf, stopLabel, stopsOf } from '../stops';
+import { entryEyebrow } from '@/features/entries/labels';
+
+import { regionOf, stopLabel, stopsOf } from '../stops';
 
 const pin = (entryId: string, label: string, lat: number, lng: number, extra: Partial<MapPinResponse> = {}): MapPinResponse => ({
   entryId,
@@ -30,8 +32,8 @@ describe('stops on the map', () => {
   });
 
   it('names a pin by its day and place', () => {
-    expect(pinEyebrow({ label: 'Day 14', placeName: 'Hoi An' })).toBe('Day 14 · Hoi An');
-    expect(pinEyebrow({ label: 'Part 3', placeName: '' })).toBe('Part 3');
+    expect(entryEyebrow({ label: 'Day 14', placeName: 'Hoi An' })).toBe('Day 14 · Hoi An');
+    expect(entryEyebrow({ label: 'Part 3', placeName: '' })).toBe('Part 3');
   });
 });
 

@@ -1,10 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { useGetSettings } from '@/api/generated/journey';
 import { useCatalog } from '@/features/journeys/catalog';
 import { useNewJourney } from '@/features/journeys/draft';
 import { TemplateCard } from '@/features/journeys/TemplateCard';
@@ -17,6 +16,7 @@ import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 const POPULAR = ['trip', 'challenge30'];
 
@@ -28,17 +28,10 @@ export default function ChooseTemplate() {
   const catalog = useCatalog();
   const { draft, change, reset } = useNewJourney();
 
-  // Every visit starts a fresh journey, with the template asked for (if any) already picked.
-  useEffect(() => {
-    reset(params.template);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the flow opens
-  }, []);
-  // New journeys start as the person chose in Privacy and safety.
-  const startAs = useGetSettings().data?.defaultVisibility;
-  useEffect(() => {
-    if (startAs === 'public' || startAs === 'unlisted' || startAs === 'private') change({ visibility: startAs });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the setting arrives
-  }, [startAs]);
+  // Opening the flow starts a fresh journey, with the template asked for (if any) already picked. Who can
+  // see it is decided on the last step, from what the person chose in Privacy and safety.
+  const template = params.template;
+  useEffect(() => reset(template), [reset, template]);
 
   const cards = catalog.templates.filter((t) => t.id !== 'journal');
   const journal = catalog.template('journal');
@@ -52,11 +45,11 @@ export default function ChooseTemplate() {
       <Lead>Pick a starting point. You can change anything later.</Lead>
       {catalog.query.isPending ? (
         <View style={{ height: 240 }}>
-          <Loading />
+          <Loading offline={catalog.query.isPaused} />
         </View>
-      ) : catalog.query.isError ? (
+      ) : catalog.query.isError && !catalog.query.data ? (
         <View style={{ height: 280 }}>
-          <Problem message={messageFor(catalog.query.error)} onRetry={() => void catalog.query.refetch()} retrying={catalog.query.isRefetching} />
+          <Problem message={messageFor(catalog.query.error)} onRetry={() => void catalog.query.refetch()} retrying={catalog.query.isFetching} />
         </View>
       ) : (
         <View style={{ marginTop: 16, marginHorizontal: -4, gap: 10 }}>
@@ -76,7 +69,7 @@ export default function ChooseTemplate() {
             </View>
           ))}
           {journal ? (
-            <Pressable
+            <Tap
               accessibilityRole="button"
               accessibilityLabel={`${journal.name}. ${journal.description}`}
               accessibilityState={{ selected: draft.template === journal.id }}
@@ -101,7 +94,7 @@ export default function ChooseTemplate() {
                 {` · ${journal.description.charAt(0).toLowerCase()}${journal.description.slice(1)}`}
               </Txt>
               <ChevronRight size={18} color={colors.muted} />
-            </Pressable>
+            </Tap>
           ) : null}
         </View>
       )}

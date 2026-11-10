@@ -163,20 +163,34 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   await step('discover', async () => {
     await R('tab', { name: 'Discover' }).click();
     await T('Trending now').waitFor();
+    // Three rails: what is trending, what is new, and what was just completed.
+    await T('New journeys').waitFor();
+    await T('Recently completed').waitFor();
     await shot('discover');
     await R('button', { name: 'Food' }).click();
     await T("My grandmother's recipes").first().waitFor();
     await shot('discover-food');
+    // With a category chosen, a rail's title leads to that category's own page.
+    await R('button', { name: 'Trending now. See all' }).click();
+    await R('heading', { name: 'Food' }).waitFor();
+    await T("My grandmother's recipes").first().waitFor();
+    await shot('category');
+    await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Food' }).click();
     await T('Couch to 10K').first().click();
     await T('Read the story').waitFor();
     await shot('journey');
-    // Sharing: a browser has no share sheet, so the link is copied; the page behind it opens without signing in.
+    // Sharing: the same sheet as for an entry, with the link as others will see it; the page behind it opens without signing in.
     await R('button', { name: 'Share this journey' }).click();
-    await T('Link copied').waitFor();
+    await R('button', { name: 'Copy link' }).waitFor();
+    await shot('share-journey');
+    await R('button', { name: 'Copy link' }).click();
+    await R('button', { name: 'Copied' }).first().waitFor();
     const shared = await page.evaluate(() => navigator.clipboard.readText());
     const sharePage = await fetch(shared);
     if (!sharePage.ok || !(await sharePage.text()).includes('Couch to 10K')) throw new Error('the share page did not open: ' + shared);
+    await page.mouse.click(195, 60);
+    await R('button', { name: 'Copy link' }).waitFor({ state: 'detached' });
     await R('button', { name: 'Follow', exact: true }).click();
     await T("You follow").waitFor();
     await shot('journey-followed');
@@ -249,6 +263,18 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Milestone').first().waitFor({ timeout: 30000 });
     await T('Skógafoss before breakfast').waitFor();
     await shot('own-timeline');
+    // Two photos: the second is a swipe away, inside the card.
+    await T('1 / 2').waitFor();
+    const strip = await L('2 photos. Swipe to see the next one.').evaluate((labelled) => {
+      const scrolls = (el) => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX);
+      const photos = scrolls(labelled) ? labelled : ([...labelled.querySelectorAll('*')].find(scrolls) ?? labelled);
+      photos.scrollLeft = photos.clientWidth;
+      return `${photos.scrollWidth} wide in ${photos.clientWidth}, at ${photos.scrollLeft}, overflow ${getComputedStyle(photos).overflowX}`;
+    });
+    await T('2 / 2').waitFor({ timeout: 8000 }).catch(() => {
+      throw new Error('swiping to the second photo did not show "2 / 2": the strip is ' + strip);
+    });
+    await shot('own-timeline-second-photo');
     await T('Skógafoss before breakfast').click();
     await T('Entry 1 of 1').waitFor();
     await shot('own-entry');
@@ -272,6 +298,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Edit entry').click();
     await T('Edit entry').first().waitFor();
     await L('Title, optional').fill('Skógafoss at sunrise');
+    // Leaving with a change asks first: nothing is thrown away by a slip of the thumb.
+    await R('button', { name: 'Close' }).click();
+    await T('Discard your changes?').waitFor();
+    await shot('edit-discard');
+    await R('button', { name: 'Keep editing' }).click();
     await R('button', { name: 'Save' }).click();
     await T('Skógafoss at sunrise').first().waitFor({ timeout: 20000 });
     await R('button', { name: 'Close' }).click();
@@ -382,8 +413,26 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('tab', { name: 'Discover' }).click();
     await T('Southeast Asia by motorbike').click();
     await T(/^Read all 5 entries/).click();
+    // A day's label stays at the top of the story while that day's entries scroll underneath it.
+    await T('Sunrise over Mount Bromo').waitFor();
+    const days = page.getByRole('heading', { name: /^(Day|Part) \d+/ });
+    // The label that sits just under the bar, if any.
+    const atTop = () => days.evaluateAll((labels) => labels.map((label) => ({ says: label.getAttribute('aria-label'), top: label.getBoundingClientRect().top })).find((label) => label.top >= 40 && label.top <= 140)?.says ?? null);
+    const first = await atTop();
+    await days.first().evaluate((label) => {
+      let list = label.parentElement;
+      while (list && !['auto', 'scroll'].includes(getComputedStyle(list).overflowY)) list = list.parentElement;
+      list.scrollTop = 600;
+    });
+    await page.waitForTimeout(700);
+    const held = await atTop();
+    if (!held) throw new Error('no day label is held at the top of the story after scrolling');
+    if (held === first) throw new Error('the story did not scroll: the same day label is still at the top');
+    await shot('timeline-sticky-day');
     await R('button', { name: 'Jump to' }).click();
     await T('Start from the beginning').waitFor();
+    // Every day of the story is one tap away, as well as its milestones.
+    await T('Days', { exact: true }).waitFor();
     await shot('jump-to');
     await T('Newest entry').click();
     await T('Sunrise over Mount Bromo').waitFor();
@@ -454,6 +503,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: /^Drafts and uploads\. 1 draft/ }).click();
     await T(/^Text only · saved/).waitFor();
     await shot('drafts');
+    await R('button', { name: /^Notes from the hot spring/ }).click();
+    await T('Draft', { exact: true }).waitFor();
+    // Opened and closed without a change: no question, and it is still there.
+    await R('button', { name: 'Close' }).click();
+    await T(/^Text only · saved/).waitFor();
     await R('button', { name: /^Notes from the hot spring/ }).click();
     await T('Draft', { exact: true }).waitFor();
     await L('What happened').fill('Forty degrees in the water, four outside.');
@@ -571,6 +625,10 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Remove photo 2' }).waitFor();
     await L('Title, optional').fill('Black sand and big waves');
     await L('What happened').fill('Stood far back from the water, as the signs say. The waves still made it to my boots.');
+    await R('button', { name: 'Add a place' }).click();
+    await L('Search for a place').fill('skoga');
+    await R('button', { name: /^Skógafoss, Iceland/ }).click();
+    await R('button', { name: /^Place: Skógafoss, Iceland/ }).waitFor();
     await R('button', { name: 'Post' }).click();
     // The story also says "Posting …" in a banner while the photos go up, so ask for the entry's own row.
     const posted = page.getByRole('button', { name: /^Black sand and big waves$/ }).last();
@@ -605,6 +663,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Entry 1 of 1').waitFor({ timeout: 20000 });
     await T('One photo is being reviewed').waitFor({ state: 'detached' });
     await shot('entry-photo-removed');
+    // Only the photo went: the entry still has its place, with the spot on the map.
+    const me = (await api(null, 'POST', '/local-auth/token', { email: `nora.${tag}@example.com`, code: '123456' })).accessToken;
+    const kept = await api(me, 'GET', `/v1/entries/${entryId}`);
+    if (kept.placeName !== 'Skógafoss, Iceland' || kept.lat == null || kept.lng == null) throw new Error('removing the held photo took the place with it');
+    if (kept.media.length !== 1) throw new Error('the held photo is still on the entry');
     // The photo is off the entry but still waiting; the reviewer clears it away.
     await review(async (queue) => {
       await queue.locator('section.item.photo', { hasText: `@nora.${tag} ` }).getByRole('button', { name: 'Remove the photo' }).click();
@@ -678,6 +741,13 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Complete journey' }).click();
     await T('Journey complete').waitFor({ timeout: 20000 });
     await shot('recap');
+    // The recap can be shared: the same sheet as for a journey, with what it added up to.
+    await R('button', { name: 'Share recap' }).click();
+    await T('Share the recap').waitFor();
+    await R('button', { name: 'Copy link' }).waitFor();
+    await shot('share-recap');
+    await page.mouse.click(195, 60);
+    await R('button', { name: 'Copy link' }).waitFor({ state: 'detached' });
     await R('button', { name: 'Close' }).click();
     await T('See the recap').waitFor();
     await shot('completed-journey');

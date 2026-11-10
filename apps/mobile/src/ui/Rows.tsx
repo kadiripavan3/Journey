@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { radius, useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 
 import { Card } from './Card';
 import { Toggle } from './Toggle';
@@ -10,7 +10,7 @@ import { Txt } from './Txt';
 
 /** A group of settings rows on one raised card. */
 export function RowGroup({ children }: { children: ReactNode }) {
-  return <Card style={{ marginHorizontal: 16, borderRadius: radius.card, overflow: 'hidden' }}>{children}</Card>;
+  return <Card style={{ marginHorizontal: layout.barGutter, borderRadius: radius.card, overflow: 'hidden' }}>{children}</Card>;
 }
 
 type RowProps = {

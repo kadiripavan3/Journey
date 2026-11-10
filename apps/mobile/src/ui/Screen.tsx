@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { layout, useTheme } from '@/theme';
+
+import { AvoidKeyboard } from './AvoidKeyboard';
 
 type Props = {
   children: ReactNode;
@@ -17,7 +19,7 @@ export function Screen({ children, footer, header }: Props) {
   const { colors } = useTheme();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <AvoidKeyboard style={{ flex: 1 }}>
         {header}
         <ScrollView
           style={{ flex: 1 }}
@@ -27,7 +29,7 @@ export function Screen({ children, footer, header }: Props) {
           {children}
         </ScrollView>
         {footer ? <View style={{ paddingHorizontal: layout.rowGutter, paddingTop: 12, paddingBottom: 12, gap: 10 }}>{footer}</View> : null}
-      </KeyboardAvoidingView>
+      </AvoidKeyboard>
     </SafeAreaView>
   );
 }

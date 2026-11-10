@@ -3,8 +3,9 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { type EntryResponse, useGetEntryShareLink, useGetMe, useGetMyShareLink } from '@/api/generated/journey';
+import { type EntryResponse, type JourneyResponse, useGetEntryShareLink, useGetMe, useGetMyShareLink } from '@/api/generated/journey';
 import { entryHeadline } from '@/features/entries/labels';
+import { plural } from '@/lib/plural';
 import { copyText, mailLink, messageLink, shareLink, shortLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { LinkBox } from '@/ui/LinkBox';
@@ -164,6 +165,35 @@ export function ProfileShareSheet({ visible, onClose }: { visible: boolean; onCl
               title: me.displayName,
               line: 'Your public journeys on one page. Put the link in your Instagram or TikTok bio.',
               photo: me.avatarUrl,
+            }
+          : undefined
+      }
+    />
+  );
+}
+
+/**
+ * Sharing a journey: its page on the web, which also works for people who don't have the app. The one sheet
+ * for the journey's page, "Journey is live" and the recap. With `recap`, the words are about what the
+ * journey added up to.
+ */
+export function JourneyShareSheet({ journey, visible, onClose, recap }: { journey: JourneyResponse; visible: boolean; onClose: () => void; recap?: { dayCount: number; entryCount: number; placeCount: number } }) {
+  const mine = journey.viewer.isOwner || journey.viewer.isMember;
+  const summed = recap ? [plural(recap.dayCount, 'day'), plural(recap.entryCount, 'entry', 'entries'), ...(recap.placeCount > 0 ? [plural(recap.placeCount, 'place')] : [])] : [];
+  return (
+    <ShareSheet
+      visible={visible}
+      onClose={onClose}
+      heading={recap ? 'Share the recap' : mine ? 'Share your journey' : 'Share this journey'}
+      problem={journey.shareUrl ? null : 'This journey is private, so it has no link to share.'}
+      link={
+        journey.shareUrl
+          ? {
+              url: journey.shareUrl,
+              title: journey.title,
+              line: recap ? summed.join(' · ') : `${journey.progressLabel} · by ${journey.owner.displayName}`,
+              text: recap ? `${journey.title}: ${summed.slice(0, 2).join(', ')} on Journey` : `${journey.title} on Journey`,
+              photo: journey.coverThumbUrl,
             }
           : undefined
       }

@@ -24,11 +24,6 @@ export function stopLabel(stop: Stop): string {
   return stop.pins.length > 1 ? `${first} +${stop.pins.length - 1}` : first;
 }
 
-/** "Day 14 · Hoi An": a pin's label and its place. */
-export function pinEyebrow(pin: Pick<MapPinResponse, 'label' | 'placeName'>): string {
-  return pin.placeName ? `${pin.label} · ${pin.placeName}` : pin.label;
-}
-
 /** The part of the world that holds every pin, with some room around it: the map's first view. Null without pins. */
 export function regionOf(pins: Pick<MapPinResponse, 'lat' | 'lng'>[]): { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number } | null {
   if (pins.length === 0) return null;

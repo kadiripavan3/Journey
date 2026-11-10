@@ -2,11 +2,11 @@ import { useRouter } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { messageFor } from '@/api/fetcher';
 import { useGetDigest } from '@/api/generated/journey';
 import { EntryPost } from '@/features/entries/EntryPost';
 import { entryEyebrow } from '@/features/entries/labels';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
+import { PageProblem } from '@/features/states/PageProblem';
 import { formatDay } from '@/lib/dates';
 import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
@@ -16,7 +16,7 @@ import { Card } from '@/ui/Card';
 import { EmptyState } from '@/ui/EmptyState';
 import { GroupLabel } from '@/ui/Heading';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
+import { Pill } from '@/ui/Pill';
 import { Txt } from '@/ui/Txt';
 
 /** 8.3 Weekly digest: what moved on in the journeys you follow. It ends like the feed does, and a quiet week says so. */
@@ -29,10 +29,8 @@ export default function Digest() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="This week" subtitle={d ? `${formatDay(d.from)} to ${formatDay(d.to)}` : undefined} trailing={<View style={{ width: 40 }} />} />
-      {digest.isPending ? (
-        <Loading />
-      ) : digest.isError || !d ? (
-        <Problem message={messageFor(digest.error)} onRetry={() => void digest.refetch()} retrying={digest.isRefetching} />
+      {!d ? (
+        digest.isError ? <PageProblem error={digest.error} onRetry={() => void digest.refetch()} retrying={digest.isFetching} /> : <Loading offline={digest.isPaused} />
       ) : d.entryCount === 0 && d.finished.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 60 }}>
           <EmptyState emoji="🌙" title="A quiet week" body="Nothing new in the journeys you follow. When there is, it shows up here." action={<Button label="Find more in Discover" onPress={() => router.navigate('/discover')} />} />
@@ -42,7 +40,7 @@ export default function Digest() {
           {d.moment ? (
             <>
               <GroupLabel style={{ marginHorizontal: layout.gutter, marginTop: 10 }}>Moment of the week</GroupLabel>
-              <Card style={{ marginHorizontal: 16, padding: 14, borderRadius: radius.panel }}>
+              <Card style={{ marginHorizontal: layout.barGutter, padding: 14, borderRadius: radius.panel }}>
                 <EntryPost entry={d.moment} onPress={() => router.push(`/entry/${d.moment?.id}`)} />
                 <Txt variant="footnote" numberOfLines={1} color="muted" style={{ marginTop: 10 }}>
                   {d.moment.author.displayName} · {d.moment.journeyTitle}
@@ -61,13 +59,7 @@ export default function Digest() {
                   title={journey.title}
                   detail={entryEyebrow(latest)}
                   onPress={() => router.push(`/journey/${journey.id}/timeline`)}
-                  trailing={
-                    <View style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.tile, backgroundColor: colors.accent }}>
-                      <Txt variant="small" weight={800} style={{ color: colors.onAccent }}>
-                        {newCount} new
-                      </Txt>
-                    </View>
-                  }
+                  trailing={<Pill tone="accent" label={`${newCount} new`} style={{ alignSelf: 'center' }} />}
                 />
               ))}
             </>

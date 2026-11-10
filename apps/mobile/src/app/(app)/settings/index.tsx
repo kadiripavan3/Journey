@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
 import { Bell, CircleHelp, FileText, Flag, Lock, LogOut, Palette, ShieldCheck, UserRound } from 'lucide-react-native';
-import { Linking, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { apiBaseUrl } from '@/api/config';
 import { useGetMe, useGetSettings } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
+import { openPage } from '@/lib/pages';
 import { layout, useTheme } from '@/theme';
 import { useAppearance } from '@/theme/appearance';
 import { AppBar } from '@/ui/AppBar';
@@ -26,7 +26,6 @@ export default function Settings() {
   const appearance = useAppearance();
   const profile = me?.profile;
   // These are web pages, so they can also be read without the app; the stores ask for exactly that.
-  const openPage = (path: string) => void Linking.openURL(apiBaseUrl() + path).catch(() => undefined);
   const switches = settings
     ? [settings.notifyNewEntries, settings.notifyCompleted, settings.notifyComments, settings.notifyFollowers, settings.notifyLikes, settings.weeklyDigest, settings.digestEmail, settings.reminders]
     : null;

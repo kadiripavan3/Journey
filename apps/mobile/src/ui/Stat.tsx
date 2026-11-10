@@ -1,8 +1,9 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { radius, type TypeVariant, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
+import { Tap } from './Motion';
 
 type Props = {
   /** What to show, already written the way it should read: "1.2k", "Day 14". */
@@ -52,8 +53,8 @@ export function Stat({ value, label, spoken, divider, onPress, dot, layout = 'ro
     );
   }
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={says} onPress={onPress} style={frame}>
+    <Tap accessibilityRole="button" accessibilityLabel={says} onPress={onPress} style={frame}>
       {content}
-    </Pressable>
+    </Tap>
   );
 }

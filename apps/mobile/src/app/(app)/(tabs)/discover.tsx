@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
@@ -11,13 +11,15 @@ import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { layout, radius, useTheme } from '@/theme';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
+import { Loading } from '@/ui/Loading';
+import { Tap } from '@/ui/Motion';
 import { Problem } from '@/ui/Problem';
 import { Rail } from '@/ui/Rail';
 import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
-/** 4.1 Discover: search, category chips, then Trending now and Recently completed. */
+/** 4.1 Discover: search, category chips, then Trending now, New journeys and Recently completed. */
 export default function Discover() {
   const router = useRouter();
   const { colors, shadow } = useTheme();
@@ -33,7 +35,11 @@ export default function Discover() {
 
   const data = discover.data;
   const chosen = catalog.category(category);
-  const nothing = data && data.trending.length === 0 && data.completed.length === 0;
+  const fresh = data?.fresh ?? [];
+  const nothing = !!data && data.trending.length === 0 && fresh.length === 0 && data.completed.length === 0;
+  const open = (id: string) => router.push(`/journey/${id}`);
+  // With a category chosen, a rail's title leads to that category's own page.
+  const seeAll = category ? () => router.push(`/category/${category}`) : undefined;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -44,29 +50,34 @@ export default function Discover() {
         <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
           Discover
         </Txt>
-        <Pressable
+        <Tap
           accessibilityRole="button"
           accessibilityLabel="Search journeys, people and tags"
+          scaleTo={0.985}
           onPress={() => router.push('/search')}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, height: 50, marginTop: 12, marginHorizontal: 16, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, marginTop: 12, marginHorizontal: layout.barGutter, paddingHorizontal: 18, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
           <Search size={18} color={colors.text} />
           <Txt variant="control">
             Search journeys, people, #tags
           </Txt>
-        </Pressable>
+        </Tap>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 14 }}>
           {catalog.categories.map((c) => (
             <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id === category ? null : c.id)} />
           ))}
         </ScrollView>
 
-        {discover.isPending ? (
-          <>
-            <RailSkeleton />
-            <RailSkeleton size={158} count={3} />
-          </>
-        ) : discover.isError ? (
-          <Problem message={messageFor(discover.error)} onRetry={() => void discover.refetch()} retrying={discover.isRefetching} />
+        {!data ? (
+          discover.isError ? (
+            <Problem message={messageFor(discover.error)} onRetry={() => void discover.refetch()} retrying={discover.isFetching} />
+          ) : discover.isPaused ? (
+            <Loading offline />
+          ) : (
+            <>
+              <RailSkeleton />
+              <RailSkeleton size={158} count={3} />
+            </>
+          )
         ) : nothing ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
             <EmptyState
@@ -77,22 +88,32 @@ export default function Discover() {
           </View>
         ) : (
           <>
-            {data && data.trending.length > 0 ? (
+            {data.trending.length > 0 ? (
               <>
-                <SectionHeader title="Trending now" />
+                <SectionHeader title="Trending now" onPress={seeAll} />
                 <Rail>
                   {data.trending.map((journey, index) => (
-                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? 'Trending' : undefined} pillEmoji="🔥" onPress={() => router.push(`/journey/${journey.id}`)} />
+                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? 'Trending' : undefined} pillEmoji="🔥" onPress={() => open(journey.id)} />
                   ))}
                 </Rail>
               </>
             ) : null}
-            {data && data.completed.length > 0 ? (
+            {fresh.length > 0 ? (
               <>
-                <SectionHeader title="Recently completed" />
+                <SectionHeader title="New journeys" onPress={seeAll} />
+                <Rail>
+                  {fresh.map((journey) => (
+                    <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => open(journey.id)} />
+                  ))}
+                </Rail>
+              </>
+            ) : null}
+            {data.completed.length > 0 ? (
+              <>
+                <SectionHeader title="Recently completed" onPress={seeAll} />
                 <Rail>
                   {data.completed.map((journey) => (
-                    <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => router.push(`/journey/${journey.id}`)} />
+                    <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => open(journey.id)} />
                   ))}
                 </Rail>
               </>

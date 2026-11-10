@@ -5,14 +5,14 @@ import { messageFor } from '@/api/fetcher';
 import { useGetBlockedInfinite, useUnblockProfile } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
+import { PersonRow } from '@/features/people/PersonRow';
+import { PageProblem } from '@/features/states/PageProblem';
 import { MoreButton } from '@/ui/MoreButton';
 import { timeAgo } from '@/lib/dates';
 import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
-import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
 
 /** 10.7 Blocked accounts: who you've blocked, and a way to undo it. */
@@ -34,10 +34,8 @@ export default function Blocked() {
           {messageFor(unblock.error)}
         </Txt>
       ) : null}
-      {blocked.isPending ? (
-        <Loading />
-      ) : blocked.isError ? (
-        <Problem message={messageFor(blocked.error)} onRetry={() => void blocked.refetch()} retrying={blocked.isRefetching} />
+      {!blocked.data ? (
+        blocked.isError ? <PageProblem error={blocked.error} onRetry={() => void blocked.refetch()} retrying={blocked.isFetching} /> : <Loading offline={blocked.isPaused} />
       ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
           You haven&apos;t blocked anyone.
@@ -45,18 +43,12 @@ export default function Blocked() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {people.map((person) => (
-            <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
-              <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
-              <View style={{ flex: 1 }}>
-                <Txt variant="item" numberOfLines={1}>
-                  {person.displayName}
-                </Txt>
-                <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
-                  @{person.username} · blocked {timeAgo(person.blockedAt)}
-                </Txt>
-              </View>
-              <Button label="Unblock" inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />
-            </View>
+            <PersonRow
+              key={person.id}
+              person={person}
+              detail={`@${person.username} · blocked ${timeAgo(person.blockedAt)}`}
+              trailing={<Button label="Unblock" inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />}
+            />
           ))}
           <MoreButton pages={blocked} />
         </ScrollView>

@@ -5,7 +5,7 @@ import { ActivityIndicator, TextInput, View } from 'react-native';
 import type { Point } from '@/features/media/exif';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Sheet, SheetRow } from '@/ui/Sheet';
-import { Txt } from '@/ui/Txt';
+import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 
 import { canLocate, LocationDenied, placeAt, placeHere, searchPlaces } from './lookup';
@@ -105,6 +105,7 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, marginHorizontal: layout.rowGutter, marginTop: 6, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.field, backgroundColor: colors.fill }}>
         <Search size={18} color={colors.muted} />
         <TextInput
+          maxFontSizeMultiplier={MAX_TEXT_SCALE}
           accessibilityLabel="Search for a place"
           value={words}
           onChangeText={type}

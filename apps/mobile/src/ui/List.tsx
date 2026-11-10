@@ -11,6 +11,11 @@ type Props<T> = {
   keyOf: (item: T, index: number) => string;
   /** Rows of different shapes say which shape they are, so only like rows are reused for each other. */
   typeOf?: (item: T) => string;
+  /**
+   * Rows that stay at the top of the list while what belongs to them scrolls underneath, until the next such
+   * row takes their place: a day's label over its entries. Give these rows a background, or the rows show through.
+   */
+  sticky?: (item: T) => boolean;
   header?: ReactElement | null;
   footer?: ReactElement | null;
   /** Shown in place of the rows when there are none. */
@@ -36,12 +41,14 @@ type Props<T> = {
  * Every list that can grow long is drawn with this: only the rows on screen exist, however many there are,
  * and the next page is fetched as the end comes near.
  */
-export function List<T>({ data, row, keyOf, typeOf, header, footer, empty, onEnd, onStart, loadingMore, refreshing, onRefresh, columns, bottom = 40, top = 0, startAt, listRef }: Props<T>) {
+export function List<T>({ data, row, keyOf, typeOf, sticky, header, footer, empty, onEnd, onStart, loadingMore, refreshing, onRefresh, columns, bottom = 40, top = 0, startAt, listRef }: Props<T>) {
   const { colors } = useTheme();
+  const stuck = sticky ? data.flatMap((item, index) => (sticky(item) ? [index] : [])) : undefined;
   return (
     <FlashList
       ref={listRef}
       data={data}
+      stickyHeaderIndices={stuck}
       renderItem={({ item, index }) => row(item, index)}
       keyExtractor={keyOf}
       getItemType={typeOf}

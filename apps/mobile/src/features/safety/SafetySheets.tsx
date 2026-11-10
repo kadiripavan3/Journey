@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { type ReportReason, useBlockProfile, useReport } from '@/api/generated/journey';
@@ -9,6 +9,7 @@ import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 const REASONS = [
   { id: 'spam', label: 'Spam or a scam' },
@@ -50,7 +51,7 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
             {REASONS.map((r, index) => {
               const on = r.id === reason;
               return (
-                <Pressable
+                <Tap
                   key={r.id}
                   accessibilityRole="radio"
                   accessibilityLabel={r.label}
@@ -61,7 +62,7 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
                     {r.label}
                   </Txt>
                   <View style={{ width: 22, height: 22, borderRadius: radius.pill, borderWidth: on ? 7 : 2, borderColor: on ? colors.text : colors.lineStrong }} />
-                </Pressable>
+                </Tap>
               );
             })}
           </View>

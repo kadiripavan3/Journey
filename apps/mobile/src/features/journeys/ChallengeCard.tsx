@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { daysBetween, today } from '@/lib/dates';
+import { compact, plural } from '@/lib/plural';
 import { radius, useTheme } from '@/theme';
 import { Card } from '@/ui/Card';
 import { Ring } from '@/ui/Ring';
@@ -32,6 +33,11 @@ export function ChallengeCard({ journey, days }: { journey: JourneyResponse; day
           <Txt variant="caption" weight={500} color="muted" style={{ marginTop: 2 }}>
             {percent}% there{journey.status === 'completed' ? '' : left > 0 ? ` · ${left} ${left === 1 ? 'day' : 'days'} to go` : ' · last day'}
           </Txt>
+          {journey.followerCount > 0 ? (
+            <Txt variant="caption" weight={700} style={{ marginTop: 4 }}>
+              {journey.viewer?.isOwner ? `${plural(journey.followerCount, 'person', 'people')} cheering you on` : `${compact(journey.followerCount)} cheering`}
+            </Txt>
+          ) : null}
         </View>
       </View>
       <View accessible accessibilityLabel={`Checked in on ${done.size} of ${target} days`} style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, marginHorizontal: -3 }}>

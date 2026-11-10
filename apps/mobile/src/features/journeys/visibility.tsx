@@ -1,9 +1,8 @@
 import { Globe, Link as LinkIcon, Lock } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 
-import type { NewJourneyDraft } from './draft';
-
-export type Visibility = NewJourneyDraft['visibility'];
+/** Who can see a journey. */
+export type Visibility = 'public' | 'unlisted' | 'private';
 
 type Choice = {
   id: Visibility;

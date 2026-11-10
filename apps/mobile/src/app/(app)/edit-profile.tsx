@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Camera, Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { ApiError, messageFor } from '@/api/fetcher';
 import { saveProfile, useCheckUsername, useGetMe } from '@/api/generated/journey';
@@ -10,8 +9,10 @@ import { useCache } from '@/api/cache';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { pickSquarePhoto } from '@/features/media/pick';
+import { useLeave } from '@/features/navigation/useLeave';
 import { useDebounced } from '@/lib/useDebounced';
 import { normalizeUsername, usernameProblem } from '@/lib/username';
+import { PHOTOS_CLOSED } from '@/lib/words';
 import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -21,10 +22,11 @@ import { Field } from '@/ui/Field';
 import { GroupLabel } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 /** 9.3 Edit profile: photo, name, username, a short bio and one link, plus the interests that shape Discover. */
 export default function EditProfile() {
-  const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const catalog = useCatalog();
   const cache = useCache();
@@ -59,7 +61,7 @@ export default function EditProfile() {
         setRemovePhoto(false);
       }
     } catch {
-      setFailure(new ApiError(0, 'photos', "We couldn't open your photos. Check that Journey may see them in the phone's Settings."));
+      setFailure(new ApiError(0, 'photos', PHOTOS_CLOSED));
     }
   };
 
@@ -70,7 +72,7 @@ export default function EditProfile() {
       const avatarMediaId = photo ? await uploadPhoto(photo) : undefined;
       const saved = await saveProfile({ displayName: displayName.trim(), username, bio: bio.trim(), link: link.trim(), interests, avatarMediaId, removeAvatar: removePhoto && !photo });
       await cache.profileSaved(saved);
-      router.back();
+      leave();
     } catch (error) {
       setFailure(error);
     } finally {
@@ -83,12 +85,12 @@ export default function EditProfile() {
       header={
         <AppBar
           title="Edit profile"
-          left={<BarLink label="Cancel" quiet onPress={() => router.back()} />}
+          left={<BarLink label="Cancel" quiet onPress={leave} />}
           trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!canSave || saving} onPress={() => void save()} />}
         />
       }>
       <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 18, gap: 10 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
+        <Tap accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
           {photo ? (
             <Image source={{ uri: photo.uri }} style={{ width: 104, height: 104, borderRadius: radius.pill, backgroundColor: colors.fill2 }} contentFit="cover" />
           ) : (
@@ -97,7 +99,7 @@ export default function EditProfile() {
           <View style={{ position: 'absolute', right: -2, bottom: 0, width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.text, borderWidth: 3, borderColor: colors.bg }}>
             <Camera size={16} color={colors.bg} />
           </View>
-        </Pressable>
+        </Tap>
         {picture ? (
           <Button
             label="Remove photo"

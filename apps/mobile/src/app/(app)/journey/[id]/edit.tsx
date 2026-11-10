@@ -1,59 +1,42 @@
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarDays, Camera, Check } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { ApiError, messageFor } from '@/api/fetcher';
-import { updateJourney, useGetJourney } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
+import { messageFor } from '@/api/fetcher';
+import { updateJourney, useGetJourney } from '@/api/generated/journey';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
-import { useCatalog } from '@/features/journeys/catalog';
+import { DetailsForm, type JourneyDetails } from '@/features/journeys/DetailsForm';
 import { parseTags } from '@/features/journeys/draft';
-import { VISIBILITY } from '@/features/journeys/visibility';
-import { pickPhotos } from '@/features/media/pick';
-import { addDays, formatDayLong, today } from '@/lib/dates';
-import { radius, useTheme } from '@/theme';
+import { visibility as visibilityWords } from '@/features/journeys/visibility';
+import { VisibilitySheet } from '@/features/journeys/VisibilitySheet';
+import { useLeave } from '@/features/navigation/useLeave';
+import { today } from '@/lib/dates';
 import { AppBar, BarLink } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
-import { DayPicker } from '@/ui/DayPicker';
-import { Emoji } from '@/ui/Emoji';
-import { Field, FieldButton } from '@/ui/Field';
+import { FieldButton } from '@/ui/Field';
 import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
-import { Sheet, SheetRow } from '@/ui/Sheet';
-import { Txt } from '@/ui/Txt';
 
-/** Change a journey's details after it has started: the same fields as when it was made. */
+/** Change a journey's details after it has started: the same form as when it was made, and who can see it. */
 export default function EditJourney() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const { colors } = useTheme();
-  const catalog = useCatalog();
+  const leave = useLeave();
   const cache = useCache();
   const journey = useGetJourney(id);
   const j = journey.data;
 
   const [filled, setFilled] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
-  const [startDate, setStartDate] = useState(today());
-  const [category, setCategory] = useState('');
+  const [details, setDetails] = useState<JourneyDetails>({ title: '', description: '', tags: '', startDate: today(), category: null });
   const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
   const [cover, setCover] = useState<LocalPhoto | null>(null);
-  const [picking, setPicking] = useState<'day' | 'category' | 'visibility' | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
 
   if (j && !filled) {
     setFilled(true);
-    setTitle(j.title);
-    setDescription(j.description);
-    setTags(j.tags.join(' '));
-    setStartDate(j.startDate);
-    setCategory(j.category);
+    setDetails({ title: j.title, description: j.description, tags: j.tags.join(' '), startDate: j.startDate, category: j.category });
     setVisibility(j.visibility);
   }
 
@@ -62,102 +45,57 @@ export default function EditJourney() {
     setFailure(null);
     try {
       const coverMediaId = cover ? await uploadPhoto(cover) : undefined;
-      const saved = await updateJourney(id, { title: title.trim(), description: description.trim(), tags: parseTags(tags), startDate, category, visibility, coverMediaId });
+      const saved = await updateJourney(id, {
+        title: details.title.trim(),
+        description: details.description.trim(),
+        tags: parseTags(details.tags),
+        startDate: details.startDate,
+        category: details.category ?? undefined,
+        visibility,
+        coverMediaId,
+      });
       await cache.journeyChanged(saved);
-      router.back();
+      leave();
     } catch (error) {
       setFailure(error);
     } finally {
       setSaving(false);
     }
   };
-  const chooseCover = async () => {
-    try {
-      const [photo] = await pickPhotos(1);
-      if (photo) setCover(photo);
-    } catch {
-      setFailure(new ApiError(0, 'photos', "We couldn't open your photos. Check that Journey may see them in the phone's Settings."));
-    }
-  };
-
-  const shownCover = cover?.uri ?? j?.coverUrl;
-  const chosenCategory = catalog.category(category);
-  const chosenVisibility = VISIBILITY.find((v) => v.id === visibility) ?? VISIBILITY[0]!;
 
   return (
     <Screen
       header={
         <AppBar
           title="Edit journey"
-          left={<BarLink label="Cancel" quiet onPress={() => router.back()} />}
-          trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!filled || saving || title.trim().length === 0} onPress={() => void save()} />}
+          left={<BarLink label="Cancel" quiet onPress={leave} />}
+          trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!filled || saving || details.title.trim().length === 0} onPress={() => void save()} />}
         />
       }>
       {journey.isPending ? (
         <View style={{ height: 240 }}>
-          <Loading />
+          <Loading offline={journey.isPaused} />
         </View>
-      ) : journey.isError ? (
+      ) : journey.isError && !journey.data ? (
         <View style={{ height: 280 }}>
-          <Problem message={messageFor(journey.error)} onRetry={() => void journey.refetch()} retrying={journey.isRefetching} />
+          <Problem message={messageFor(journey.error)} onRetry={() => void journey.refetch()} retrying={journey.isFetching} />
         </View>
       ) : (
         <>
-          <View style={{ height: 168, marginTop: 10, marginBottom: 16, borderRadius: radius.cardLarge, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
-            {shownCover ? <Image source={{ uri: shownCover }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" accessibilityLabel="The journey's cover" /> : null}
-            <View style={shownCover ? { position: 'absolute', right: 12, bottom: 12 } : undefined}>
-              <Button label={shownCover ? 'Change cover' : 'Add a cover'} size="sm" variant={shownCover ? 'glass' : 'soft'} icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} />
-            </View>
-          </View>
-          {failure ? (
-            <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginBottom: 12 }}>
-              {messageFor(failure)}
-            </Txt>
-          ) : null}
-          <View style={{ gap: 12 }}>
-            <Field label="Title" value={title} onChangeText={setTitle} maxLength={80} />
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <FieldButton label="Starts" value={formatDayLong(startDate)} icon={<CalendarDays size={18} color={colors.text} />} onPress={() => setPicking('day')} />
-              <FieldButton label="Category" value={chosenCategory ? chosenCategory.label : 'Choose'} icon={chosenCategory ? <Emoji char={chosenCategory.emoji} size={20} /> : undefined} onPress={() => setPicking('category')} />
-            </View>
-            <Field label="What's it about? · optional" value={description} onChangeText={setDescription} multiline maxLength={300} />
-            <Field label="Tags · up to 5" value={tags} onChangeText={setTags} autoCapitalize="none" autoCorrect={false} note="Separate tags with spaces." />
-            <FieldButton label="Who can see it" value={chosenVisibility.label} onPress={() => setPicking('visibility')} />
-          </View>
+          <View style={{ height: 10 }} />
+          <DetailsForm
+            value={details}
+            onChange={(patch) => setDetails((now) => ({ ...now, ...patch }))}
+            coverUri={cover?.uri ?? j?.coverUrl}
+            onCover={setCover}
+            problem={failure ? messageFor(failure) : null}
+            dayTitle="When did it start?"
+          >
+            <FieldButton label="Who can see it" value={visibilityWords(visibility).label} onPress={() => setChoosing(true)} />
+          </DetailsForm>
         </>
       )}
-
-      <DayPicker visible={picking === 'day'} onClose={() => setPicking(null)} title="When did it start?" value={startDate} onChange={setStartDate} min={addDays(today(), -365 * 5)} max={addDays(today(), 365)} />
-      <Sheet visible={picking === 'category'} onClose={() => setPicking(null)} title="Category">
-        {catalog.categories.map((c, index) => (
-          <SheetRow
-            key={c.id}
-            first={index === 0}
-            icon={() => <Emoji char={c.emoji} size={24} />}
-            label={c.label}
-            trailing={c.id === category ? <Check size={20} color={colors.text} strokeWidth={2.6} /> : undefined}
-            onPress={() => {
-              setCategory(c.id);
-              setPicking(null);
-            }}
-          />
-        ))}
-      </Sheet>
-      <Sheet visible={picking === 'visibility'} onClose={() => setPicking(null)} title="Who can see it?">
-        {VISIBILITY.map((v, index) => (
-          <SheetRow
-            key={v.id}
-            first={index === 0}
-            label={v.label}
-            note={v.note}
-            trailing={v.id === visibility ? <Check size={20} color={colors.text} strokeWidth={2.6} /> : undefined}
-            onPress={() => {
-              setVisibility(v.id);
-              setPicking(null);
-            }}
-          />
-        ))}
-      </Sheet>
+      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title="Who can see it?" value={visibility} onChange={setVisibility} />
     </Screen>
   );
 }

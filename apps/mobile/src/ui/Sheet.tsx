@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { layout, radius, useTheme } from '@/theme';
 
+import { AvoidKeyboard } from './AvoidKeyboard';
 import { Txt } from './Txt';
 
 type Props = {
@@ -26,7 +27,7 @@ export function Sheet({ visible, onClose, title, subtitle, children, footer, act
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <AvoidKeyboard style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -64,7 +65,7 @@ export function Sheet({ visible, onClose, title, subtitle, children, footer, act
           </ScrollView>
           {footer ? <View style={{ paddingBottom: Math.max(insets.bottom, 12), borderTopWidth: 1, borderTopColor: colors.line }}>{footer}</View> : null}
         </View>
-      </KeyboardAvoidingView>
+      </AvoidKeyboard>
     </Modal>
   );
 }
@@ -93,7 +94,7 @@ export function SheetRow({ icon, label, note, onPress, danger, trailing, first }
         alignItems: 'center',
         gap: 14,
         paddingVertical: 13,
-        paddingHorizontal: 22,
+        paddingHorizontal: layout.gutter,
         borderTopWidth: first ? 0 : 1,
         borderTopColor: colors.line,
         backgroundColor: pressed ? colors.fill : 'transparent',

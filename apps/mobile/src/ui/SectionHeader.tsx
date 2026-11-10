@@ -1,15 +1,15 @@
 import { ChevronRight } from 'lucide-react-native';
-import { Pressable } from 'react-native';
 
 import { layout, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
+import { Tap } from './Motion';
 
 /** A section's heading with an optional way to see everything in it. */
 export function SectionHeader({ title, onPress }: { title: string; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
-    <Pressable
+    <Tap
       accessibilityRole={onPress ? 'button' : 'header'}
       accessibilityLabel={onPress ? `${title}. See all` : title}
       disabled={!onPress}
@@ -19,6 +19,6 @@ export function SectionHeader({ title, onPress }: { title: string; onPress?: () 
         {title}
       </Txt>
       {onPress ? <ChevronRight size={20} color={colors.text} /> : null}
-    </Pressable>
+    </Tap>
   );
 }

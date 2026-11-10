@@ -1,21 +1,20 @@
 import { useRouter } from 'expo-router';
-import { Ban, Check, Eye, ImageOff } from 'lucide-react-native';
+import { Ban, Eye, ImageOff } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { messageFor } from '@/api/fetcher';
 import { useGetBlocked } from '@/api/generated/journey';
-import { VISIBILITY, visibility } from '@/features/journeys/visibility';
+import { visibility } from '@/features/journeys/visibility';
+import { VisibilitySheet } from '@/features/journeys/VisibilitySheet';
 import { useSettingsEditor } from '@/features/settings/useSettingsEditor';
-import { layout, radius, useTheme } from '@/theme';
+import { PageProblem } from '@/features/states/PageProblem';
+import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
+import { NoteBox } from '@/ui/NoteBox';
 import { Row, RowGroup, ToggleRow } from '@/ui/Rows';
-import { Sheet, SheetRow } from '@/ui/Sheet';
-import { Txt } from '@/ui/Txt';
 
 /** 10.3 Privacy and safety: careful defaults, and you choose who sees each journey. */
 export default function Privacy() {
@@ -30,10 +29,8 @@ export default function Privacy() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Privacy and safety" trailing={<View style={{ width: 40 }} />} />
-      {settings.isPending ? (
-        <Loading />
-      ) : settings.isError || !s ? (
-        <Problem message={messageFor(settings.error)} onRetry={() => void settings.refetch()} retrying={settings.isRefetching} />
+      {!s ? (
+        settings.isError ? <PageProblem error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isFetching} /> : <Loading offline={settings.isPaused} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           <GroupLabel style={{ marginHorizontal: layout.gutter }}>New journeys</GroupLabel>
@@ -48,32 +45,12 @@ export default function Privacy() {
           <RowGroup>
             <Row first icon={(c) => <Ban size={18} color={c} />} label="Blocked accounts" value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
           </RowGroup>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 18, marginHorizontal: 16, padding: 14, borderRadius: radius.photo, backgroundColor: colors.fill }}>
-            <ImageOff size={20} color={colors.text} />
-            <View style={{ flex: 1 }}>
-              <Txt variant="control" weight={800}>
-                Never live
-              </Txt>
-              <Txt variant="note">Journey never shares where you are right now. Places come only from entries you post.</Txt>
-            </View>
-          </View>
+          <NoteBox icon={(c) => <ImageOff size={20} color={c} />} title="Never live" style={{ marginTop: 18, marginHorizontal: layout.barGutter }}>
+            Journey never shares where you are right now. Places come only from entries you post.
+          </NoteBox>
         </ScrollView>
       )}
-      <Sheet visible={choosing} onClose={() => setChoosing(false)} title="Start new journeys as">
-        {VISIBILITY.map((v, index) => (
-          <SheetRow
-            key={v.id}
-            first={index === 0}
-            label={v.label}
-            note={v.note}
-            trailing={v.id === current.id ? <Check size={20} color={colors.text} strokeWidth={2.6} /> : undefined}
-            onPress={() => {
-              change({ defaultVisibility: v.id });
-              setChoosing(false);
-            }}
-          />
-        ))}
-      </Sheet>
+      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title="Start new journeys as" value={current.id} onChange={(defaultVisibility) => change({ defaultVisibility })} />
     </SafeAreaView>
   );
 }

@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { ChevronRight, ShieldAlert } from 'lucide-react-native';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { EntryResponse } from '@/api/generated/journey';
 import { plural } from '@/lib/plural';
 import { darkTheme, radius, useTheme, withAlpha } from '@/theme';
 import { Frost } from '@/ui/Frost';
+import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
 
 /** How many of an entry's photos are waiting for a reviewer. Only the person who posted them ever gets more than none. */
@@ -43,11 +44,12 @@ export function HeldNote({ entry }: { entry: EntryResponse }) {
   if (held === 0) return null;
   const what = held === 1 ? 'One photo is being reviewed' : `${plural(held, 'photo')} are being reviewed`;
   return (
-    <Pressable
+    <Tap
       accessibilityRole="button"
       accessibilityLabel={`${what}. See what this means`}
+      scaleTo={0.985}
       onPress={() => router.push(`/review/${entry.id}`)}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.field, backgroundColor: pressed ? colors.fill2 : colors.fill })}>
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.field, backgroundColor: colors.fill }}>
       <ShieldAlert size={18} color={colors.warn} />
       <View style={{ flex: 1 }}>
         <Txt variant="caption" weight={800}>
@@ -58,7 +60,7 @@ export function HeldNote({ entry }: { entry: EntryResponse }) {
         </Txt>
       </View>
       <ChevronRight size={16} color={colors.muted} />
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -68,7 +70,7 @@ export function HeldCommentNote() {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
       <ShieldAlert size={14} color={colors.warn} />
-      <Txt variant="footnote" weight={600} style={{ flex: 1, color: colors.warn }}>
+      <Txt variant="footnote" weight={600} color="muted" style={{ flex: 1 }}>
         Only you can see this for now. A person will read it soon.
       </Txt>
     </View>
