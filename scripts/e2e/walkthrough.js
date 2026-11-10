@@ -38,8 +38,13 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     try {
       await fn();
     } catch (e) {
-      await page.screenshot({ path: `${out}/${scheme}-FAILED-${name}.png` });
+      await page.screenshot({ path: `${out}/${scheme}-FAILED-${name}.png` }).catch(() => undefined);
       const line = (String(e.stack).match(/walkthrough\.js:(\d+)/) || [])[1];
+      // Where the screenshot can't be looked at (a CI log), say what was on the screen and what went wrong on the way.
+      const seen = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(-700)).catch(() => '(the page could not be read)');
+      console.log(`WHEN IT FAILED the address was ${page.url()}`);
+      console.log(`ON THE SCREEN (the end of it): ${seen}`);
+      console.log(`ERRORS SO FAR: ${JSON.stringify(errors.slice(-12))}`);
       throw new Error(`${name}${line ? ` (line ${line})` : ''}: ${e.message.split('\n')[0]}`);
     }
   };

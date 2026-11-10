@@ -1,30 +1,26 @@
 {
   "phase": "Phase 1 · Build",
   "updated": "2026-11-10",
-  "summary": "Most of the app now works, running on one computer with stand-ins for the outside services: sign up, follow and read journeys, start your own, post entries with photos, like, comment, follow people, Activity, search, settings, report and block, completing a journey with its recap, shared journeys, the weekly digest and share links. Ten sample creators make it feel alive while you test alone. A full code review has since been done and everything it found is fixed, in the API and in the app, so what comes next is built on a checked foundation.",
+  "summary": "The app and the API are built, end to end, and run on one computer with stand-ins for the outside services. Everything in the first version is there: sign-up, journeys, entries with photos, clips and places, the map, following, likes, comments, Activity, search, shared journeys with invitations by link, the weekly digest, notifications, reminders, writing without a connection, reporting, blocking, a reviewer's queue, the legal pages and the web pages behind shared links. The real services (Supabase, Cloudflare R2, Mux, Expo Push, Resend, the photo check, Fly.io) each have their adapter behind a setting, ready to be switched on one at a time. Two full code reviews have been done and everything they found is fixed. What it has not had yet is a real phone and a real service: that is your part, and the next step.",
   "next": [
-    "Run it on your Mac and open it on your iPhone in Expo Go (the Run it page has the steps). After pulling the new code, run `npm ci` in `apps/mobile` once. Sign up, follow a few journeys, start one and post an entry with a photo. Tell me what you see and what feels wrong. The app has still never run on a real phone.",
-    "Answer the three new questions below (old comments of someone you block, small photos once real storage is connected, and the two changes to the tech plan).",
-    "Still to build: the map, short clips, working offline and push. Each needs something first: a place search for the map (your choice of provider), and a real build on your iPhone for clips and push.",
-    "Review the 66 screens on the Screens page and comment on anything to change.",
-    "Confirm the accent colour once the screens are reviewed (Sun for now)."
+    "Run it on your Mac and open it on your iPhone in Expo Go (the Run it page has the steps). After pulling the new code, run `npm ci` in `apps/mobile` once. Sign up, follow a few journeys, start one, post an entry with a photo and a place, try it without a connection. Tell me what you see and what feels wrong. The app has still never run on a real phone.",
+    "Read the calls I made while fixing the second review (Requirements, Decisions, rows 22 to 37) and tell me which you see differently. Three of them are questions I could not settle alone; they are under Open questions below.",
+    "When you are ready for real services: enrol in the Apple Developer Program first (it can take weeks, and a build of Journey on an iPhone needs it), then follow Connect the real services step by step. Each step has its own check, and the API tells you in one list what is still missing.",
+    "The first real build on a phone is the first test of everything that could only be written carefully here: push notifications arriving, Apple and Google sign-in, clips shrunk on the phone, the map on Android, the keyboard and the status bar on both kinds of phone, links that open the app.",
+    "Review the screens on the Screens page and comment on anything to change. Then confirm the accent colour (Sun for now)."
   ],
   "open": [
     {
-      "q": "Blocking and old comments",
-      "a": "When you block someone, their old comments on your journeys are hidden from you, but other people still see them. Should blocking remove them instead, as Instagram does? (What they wrote in a journey you share stays visible to you as its owner, so you can remove it.)"
+      "q": "One report, or several, before a journey leaves Discover?",
+      "a": "Today one report takes a journey out of Discover, search and suggestions until a reviewer has looked (it still opens by its link). That is safe, but one person can hide a journey they dislike for a while. The alternative is to wait for reports from several different people. Which do you want for the beta?"
     },
     {
-      "q": "Small photos with the real storage",
-      "a": "Lists now show a smaller version of every photo. Locally the API makes it. With Cloudflare R2 this becomes either Cloudflare's image resizing or files made at upload. To decide when storage is connected; resizing has a small monthly cost."
+      "q": "A switch for counting in the app?",
+      "a": "The app counts what people do (kinds and counts only, no names, nothing they wrote) when analytics is switched on in a build. There is no switch for it in Settings. The stores don't require one for this kind of counting; some people expect one. Add it?"
     },
     {
-      "q": "Two changes to the tech plan",
-      "a": "JPA is gone: the API reaches the database one way, with plain SQL. And the rate limit (Bucket4j, as planned) counts changes and sign-in attempts in the database but reads in memory, so a read doesn't cost a database write. Both are written into the Tech plan. Say so if you want either back."
-    },
-    {
-      "q": "Places on the map",
-      "a": "Entries have a place name but no coordinates yet. The map needs a place search; I'll propose options before building it."
+      "q": "Sentences from the API in other languages",
+      "a": "The app's own text is now in one place, ready for translation. The sentences the API sends (errors, pushes, emails, the web pages) are English, each with a stable code. Translating those is a piece of work for when you choose a second language. Fine to leave until then?"
     },
     {
       "q": "Accent colour",
@@ -40,6 +36,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-10",
+      "text": "**The rest of the build, a second code review, and everything it found, fixed.** Your three answers are in: old comments of someone you block are removed, the API makes the small photos itself, and the tech-plan calls stand. Then the remaining features were built: places and the map, short clips, drafts that wait without a connection, push notifications and reminders, a journey that pauses itself, what's trending, moderation with a reviewer's queue, invitations by link, the legal pages, and the adapters for every real service. Five independent reviewers then read all of it as architects and found about 150 things. All are fixed or, where the fix is a product choice, written down as a call you can change (Requirements, rows 22 to 37). The ones that mattered most: a photo is now made afresh from what was uploaded and looked at before anyone sees it; nothing is lost when the API restarts in the middle of sending pushes, emails or deleting files; who may see what also holds for covers, recaps and lists of authors; every list is read from where the reader is, so it stays fast as it grows; the app opens and shows what it kept when there is no connection, and nothing you wrote is lost on the way out; and every sentence in the app is in one place, ready for translation. The docs were corrected wherever they had fallen behind the code, including one thing you should know now: **a build of Journey on your iPhone needs the paid Apple Developer Program**, because Apple doesn't sign Sign in with Apple and push notifications for a free Apple ID. Expo Go covers everything else. Tests: 256 in the API and more than 360 in the app, plus the browser walk-through of every screen in light and dark. None of this has run on a real phone or against a real service yet."
+    },
     {
       "date": "2026-11-10",
       "text": "**A code review, and everything it found, fixed.** Defects first, each with a test: a journey made private no longer shows up for people who followed it, the owner of a shared journey hears about friends' entries, counts stay right when an account is deleted, and unexpected errors answer with a sentence instead of nothing. Then the foundation. The API has one rule for who may see what, lets the database keep the counts, sends long lists a page at a time, makes sending the same thing twice harmless, serves small photos for lists, and limits how fast one person can call it. The app is reorganised into a design system and features, takes every text size, corner and colour from the tokens (a check fails otherwise), draws only the part of a long list that is on screen, and updates what changed instead of loading everything again. A second, independent review of the new API code found six more defects, also fixed. Tests: 73 in the API (were 48), 77 in the app (were 21), and the walk-through through every screen now runs automatically on every change."
