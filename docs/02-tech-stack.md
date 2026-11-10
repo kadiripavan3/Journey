@@ -99,6 +99,8 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 | Controller, service, store | A controller turns a request into a call. A service holds the rules. A `Store` holds the SQL. No SQL anywhere else. |
 | The signed-in person | Controllers take `@Me UUID me` (or `@Me CurrentUser`). Nothing reads the token by hand. |
 | Who may see what | Written once, in `common/Rules.java`: which journeys a person may see, and what blocking hides. Every query uses it. |
+| Held for review | Every photo is checked when its upload completes (`MediaScreening`: a local stand-in, or AWS Rekognition with `JOURNEY_MODERATION_MODE=rekognition`). A flagged photo is held: its owner sees it marked, nobody else sees it, and it can't be a cover or a profile picture. Comments go through a small word filter (`WordFilter`) the same way. A journey with an open report is left out of Discover, search and suggestions, and still opens by link. All of this is in `Rules` too (`shownMedia`, `publicMedia`, `shownComment`, `notUnderReview`). If the photo check can't be reached, the photo is shown and a nightly job checks it later. |
+| A person decides | Nothing is removed automatically. The reviewer's pages at `/admin` list open reports, held photos and comments, and requests to delete an account made on the web. They ask for a name and the reviewers' password (`JOURNEY_ADMIN_PASSWORD`; the pages don't exist while it is unset), and an address that gets it wrong ten times waits ten minutes. Every decision is written to `review_log` with the name and the time. |
 | Counts | Followers, entries, likes and comments are kept by database triggers. Java never writes them. |
 | Fixed sets of words | Visibility, status, label style, media kind and the like are Java enums, lower case on the wire. The app's generated client gets exact types, and an unknown word gets its own answer. |
 | Lists | A list that can grow without end is a page: `{ items, nextCursor }`, with `cursor` and `limit` (100 at most). The cursor is opaque to the app. Today it holds a position, which can repeat or skip an item if the list changes between two pages; because nobody outside `PageRequest` reads it, it can become "after this row" later without changing the app. "Top of" answers (Discover, search, Activity, the digest) are capped and say so. |
@@ -109,6 +111,8 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 | Stand-ins | Local sign-in, local files and sample data work only with the `local` (or `test`) profile. The API refuses to start if one of them is switched on without it. |
 | Scheduled jobs | A job writes a row to `job_runs` first; with several copies of the API running, only the copy that gets the row does the work. |
 | Links that leave the app | Built from `JOURNEY_PUBLIC_URL` when it is set, otherwise from the request. Behind a proxy, set `JOURNEY_FORWARD_HEADERS=framework`. |
+| Web pages | A journey (`/j/{id}`), an entry (`/e/{id}`), a person's public journeys (`/u/{username}`) and a one-time invitation (`/i/{token}`) each have a page anyone can open; they follow the same visibility rules as the app. The legal pages (`/terms`, `/privacy`, `/guidelines`, `/contact`) and the request to delete an account (`/delete-account`) are plain pages too. The app asks the API for the link to share (`/v1/entries/{id}/share-link`, `/v1/me/share-link`); it never builds a web address itself. The two files that let a link open the app are served from `/.well-known/` once the app's ids are set (see `apps/mobile/README.md`). |
+| Invite links | A one-time link for a friend who isn't on Journey yet. The token is random and only its hash is stored; it works once, for one person, for 7 days, and making a new one stops the one before. Joining by link counts against the three friends like any other invitation. |
 | The API's description | `/v3/api-docs` and the try-it-out page are on in local mode and off everywhere else. |
 | Places | An entry can have a point on the map (`lat`, `lng`) and a `locationPrecision`: `city` (the default) or `exact`. The exact point is stored. Other people are sent the middle of a square about 10 km wide unless the author chose `exact`; the author always gets their own point back (`entry/Place.java`). Search also finds a journey by the places of its entries. |
 | The map | `GET /v1/journeys/{id}/map` gives the entries that have a point, in the order of the story (300 at most), and how many there are in all. |
@@ -219,7 +223,7 @@ flowchart LR
 | `entries` | id, journey_id, author_id, happened_at, body, place_name, lat, lng, location_precision (none · city · exact), is_milestone, like_count, comment_count, created_at, edited_at |
 | `entry_media` | id, entry_id, type (photo · video), path, thumb_path, width, height, blurhash, duration_s, video_id, status (processing · ready · failed), position |
 | `journey_members` | journey_id, user_id, role (owner · contributor), status (invited · active · left · removed), invited_by, joined_at |
-| `journey_invites` | code, journey_id, created_by, expires_at, used_by (one-time links for friends who aren't on Journey yet) |
+| `invite_links` | id, journey_id, token_hash, created_by, expires_at, used_by, used_at (one-time links for friends who aren't on Journey yet; the link itself is never stored) |
 | `journey_follows` | user_id, journey_id, last_read_at (drives "new since your last visit"), notify |
 | `creator_follows` | follower_id, creator_id |
 | `likes` | user_id, entry_id |
@@ -227,7 +231,8 @@ flowchart LR
 | `notifications` | The pushes waiting to be sent: id, user_id, kind, batch_key, actor_id, journey_id, entry_id, count, text, send_after, status (pending · sent · skipped), attempts. Activity is not read from here. |
 | `devices` | token (the phone's address at the push service), user_id, platform, time_zone, seen_at |
 | `notification_prefs` | user_id, one switch for each type (new entries, completed journeys, comments, followers and invitations, likes, reminders), digest_push, digest_email, checkin_time |
-| `reports`, `blocks` | reporter, target, reason, status · blocker_id, blocked_id |
+| `reports`, `blocks` | reporter, target, reason, status, reviewed_by, reviewed_at, outcome (dismissed · removed) · blocker_id, blocked_id |
+| `review_log`, `deletion_requests` | reviewer, action, target, note, created_at · email, username, note, status (open · done), done_by, done_at |
 | `templates` | id, name, category, label_style, prompts (JSON) |
 
 The rules that matter:

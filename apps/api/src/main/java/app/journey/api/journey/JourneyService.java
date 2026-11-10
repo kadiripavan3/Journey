@@ -5,8 +5,8 @@ import app.journey.api.common.ApiProblem;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import app.journey.api.common.PublicUrls;
+import app.journey.api.common.Rules;
 import app.journey.api.journey.JourneyStore.JourneyRow;
-import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
 import app.journey.api.profile.PersonResponse;
@@ -158,7 +158,7 @@ public class JourneyService {
         requireCategory(chosenCategory);
         requireSensibleStart(startDate);
         if (coverMediaId != null) {
-            media.requireOwn(List.of(coverMediaId), owner, MediaKind.PHOTO);
+            media.requireOwnShowable(coverMediaId, owner);
         }
         Optional<UUID> started = journeys.insert(
                 owner,
@@ -221,7 +221,7 @@ public class JourneyService {
         }
         UUID cover = clearCover ? null : coverMediaId != null ? coverMediaId : journeys.coverMediaId(id);
         if (coverMediaId != null) {
-            media.requireOwn(List.of(coverMediaId), viewer, MediaKind.PHOTO);
+            media.requireOwnShowable(coverMediaId, viewer);
         }
         journeys.update(
                 id,
@@ -287,6 +287,9 @@ public class JourneyService {
         require(id, viewer);
         journeys.markRead(viewer, id);
     }
+
+    /** Places that recommend journeys leave out one with an open report, until a reviewer has looked at it. */
+    private static final String NOT_UNDER_REVIEW = " and " + Rules.notUnderReview("j");
 
     private static final String NEWEST_ACTIVITY = "coalesce(j.last_entry_at, j.created_at) desc";
 
@@ -367,7 +370,7 @@ public class JourneyService {
             j.visibility = 'public' and (j.title ilike :q or j.description ilike :q or p.display_name ilike :q or p.username ilike :q
               or exists (select 1 from unnest(j.tags) t where t ilike :q)
               or exists (select 1 from entries pe where pe.journey_id = j.id and pe.place_name ilike :q))
-            """,
+            """ + NOT_UNDER_REVIEW,
                         Map.of("q", pattern),
                         "j.follower_count desc, j.last_entry_at desc nulls last",
                         limit,
@@ -383,7 +386,7 @@ public class JourneyService {
      */
     public DiscoverResponse discover(UUID viewer, String category, List<String> interests) {
         String base = "j.visibility = 'public' and j.entry_count >= " + DISCOVER_MIN_ENTRIES
-                + " and (cast(:category as text) is null or j.category = :category)";
+                + " and (cast(:category as text) is null or j.category = :category)" + NOT_UNDER_REVIEW;
         List<String> mine = Catalog.categoriesFor(interests);
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("category", category == null || category.isBlank() ? null : category);
@@ -430,7 +433,7 @@ public class JourneyService {
                         """
             j.visibility = 'public' and j.status = 'active' and j.entry_count >= 1 and j.owner_id <> :me
             and not exists (select 1 from journey_follows sf where sf.journey_id = j.id and sf.user_id = :me)
-            """,
+            """ + NOT_UNDER_REVIEW,
                         params,
                         "(j.category in (:categories)) desc, j.follower_count desc, j.last_entry_at desc nulls last",
                         limit,

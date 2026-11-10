@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{legal/parts :: head('Terms')}"></head>
+<body class="plain">
+  <main class="text">
+    <p class="brandline"><span class="brand">Journey</span></p>
+    <p th:replace="~{legal/parts :: draft}"></p>
+    <h1>Terms of use</h1>
+    <p class="lede">The short version: your stories stay yours, be decent to other people, and you can leave whenever you like.</p>
+
+    <h2>Who can use Journey</h2>
+    <p>You must be 13 or older (16 or older where the law of your country says so). You confirm this when you create your profile.</p>
+
+    <h2>Your account</h2>
+    <p>You sign in with Apple, Google or a code sent to your email address. Keep your sign-in to yourself; what happens in your account is your responsibility.</p>
+
+    <h2>What you post</h2>
+    <p>Your journeys, entries, photos, clips and comments belong to you. By posting them you allow us to store them and show them to the people you chose: everyone for a public journey, anyone with the link for an unlisted one, and only its authors for a private one.</p>
+    <p>Post only what is yours to post, and nothing that breaks the <a th:href="@{/guidelines}">community guidelines</a>.</p>
+
+    <h2>Shared journeys</h2>
+    <p>When you write in someone else's journey, your entries stay yours: you can change or delete them at any time, and they stay in the journey if you leave. The journey's owner can remove them from their journey.</p>
+
+    <h2>What we may do</h2>
+    <p>An automatic check may hold a photo until a person has looked at it. We may remove content that breaks the guidelines, and close accounts that keep breaking them. We tell you when we do.</p>
+
+    <h2>Leaving</h2>
+    <p>You can delete your account in the app (Settings, Account) or <a th:href="@{/delete-account}">ask us on the web</a>. Deleting removes your profile, journeys, entries, photos, clips, comments, likes and follows for good.</p>
+
+    <h2>The service</h2>
+    <p>Journey is provided as it is. We work to keep it running and your stories safe, but we can't promise it will never fail. Changes to these terms are announced in the app before they apply.</p>
+
+    <h2>Questions</h2>
+    <p>You can <span th:replace="~{legal/parts :: reach}"></span>.</p>
+    <nav th:replace="~{legal/parts :: links}"></nav>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

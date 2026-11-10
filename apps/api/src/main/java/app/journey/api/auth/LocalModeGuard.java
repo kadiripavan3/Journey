@@ -39,6 +39,9 @@ public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmen
         if ("local".equals(environment.getProperty("journey.video.mode"))) {
             on.add("journey.video.mode=local (clips served from this computer's disk, unconverted)");
         }
+        if ("local".equals(environment.getProperty("journey.moderation.mode"))) {
+            on.add("journey.moderation.mode=local (no photo is ever checked)");
+        }
         if (environment.getProperty("journey.seed.enabled", Boolean.class, false)) {
             on.add("journey.seed.enabled=true (sample people and journeys)");
         }

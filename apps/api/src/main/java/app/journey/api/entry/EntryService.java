@@ -468,12 +468,13 @@ public class EntryService {
                 m.playbackId(),
                 m.width(),
                 m.height(),
-                m.durationS());
+                m.durationS(),
+                m.held());
     }
 
     public List<EntryResponse> views(List<EntryRow> rows, UUID viewer) {
         Map<UUID, List<EntryMediaRow>> mediaByEntry =
-                entries.mediaFor(rows.stream().map(EntryRow::id).toList());
+                entries.mediaFor(rows.stream().map(EntryRow::id).toList(), viewer);
         return rows.stream()
                 .map(e -> {
                     boolean day = e.labelStyle() == LabelStyle.DAY;

@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import type { EntryResponse } from '@/api/generated/journey';
+import { HeldVeil } from '@/features/safety/Held';
 import { Eyebrow } from '@/ui/Eyebrow';
 import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
@@ -18,6 +19,7 @@ export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse;
       {cover ? (
         <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ width: photo, height: photo, alignItems: 'center', justifyContent: 'center' }}>
           {cover.kind === 'video' ? <ClipBadge compact /> : null}
+          {cover.held ? <HeldVeil small /> : null}
         </Photo>
       ) : null}
       <View style={{ flex: 1 }}>

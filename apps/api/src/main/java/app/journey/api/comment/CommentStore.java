@@ -25,10 +25,11 @@ public class CommentStore {
             String authorName,
             String authorAvatarKey,
             String body,
-            Instant createdAt) {}
+            Instant createdAt,
+            boolean held) {}
 
     private static final String SELECT = """
-      select c.id, c.entry_id, c.parent_id, c.author_id, p.username, p.display_name, a.storage_key as avatar_key, c.body, c.created_at
+      select c.id, c.entry_id, c.parent_id, c.author_id, p.username, p.display_name, a.storage_key as avatar_key, c.body, c.created_at, c.held
       from comments c
       join profiles p on p.id = c.author_id
       left join media a on a.id = p.avatar_media_id
@@ -43,7 +44,8 @@ public class CommentStore {
             rs.getString("display_name"),
             rs.getString("avatar_key"),
             rs.getString("body"),
-            Sql.instant(rs, "created_at"));
+            Sql.instant(rs, "created_at"),
+            rs.getBoolean("held"));
 
     private final JdbcClient jdbc;
 
@@ -72,6 +74,7 @@ public class CommentStore {
         List<CommentRow> rows = jdbc.sql(
                         SELECT + " left join comments pc on pc.id = c.parent_id where c.entry_id = :entry and "
                                 + Rules.notBlocked("c.author_id", ":viewer")
+                                + " and " + Rules.shownComment("c", ":viewer")
                                 + " order by coalesce(pc.created_at, c.created_at), coalesce(c.parent_id, c.id), c.parent_id is not null, c.created_at, c.id"
                                 + " limit :limit offset :offset")
                 .param("entry", entryId)
@@ -84,10 +87,10 @@ public class CommentStore {
     }
 
     /** Adds a comment. Empty when the same one (clientId) is being saved by another request at this very moment. */
-    public Optional<UUID> insert(UUID entryId, UUID authorId, UUID parentId, String body, UUID clientId) {
+    public Optional<UUID> insert(UUID entryId, UUID authorId, UUID parentId, String body, UUID clientId, boolean held) {
         return jdbc.sql("""
-            insert into comments (entry_id, author_id, parent_id, body, client_id)
-            values (:entry, :author, :parent, :body, cast(:client as uuid))
+            insert into comments (entry_id, author_id, parent_id, body, client_id, held)
+            values (:entry, :author, :parent, :body, cast(:client as uuid), :held)
             on conflict (author_id, client_id) where client_id is not null do nothing
             returning id
             """)
@@ -96,6 +99,7 @@ public class CommentStore {
                 .param("parent", parentId)
                 .param("body", body)
                 .param("client", clientId == null ? null : clientId.toString())
+                .param("held", held)
                 .query(UUID.class)
                 .optional();
     }

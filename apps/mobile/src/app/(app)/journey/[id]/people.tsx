@@ -1,20 +1,24 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Link as LinkIcon, Share2 } from 'lucide-react-native';
+import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type MemberResponse, useGetInvitableInfinite, useGetJourney, useGetMe, useGetMembers, useInviteMember, useRemoveMember } from '@/api/generated/journey';
+import { type InviteLinkResponse, type MemberResponse, useCreateInviteLink, useGetInvitableInfinite, useGetJourney, useGetMe, useGetMembers, useInviteMember, useRemoveMember } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
 import { MoreButton } from '@/ui/MoreButton';
 import { timeAgo } from '@/lib/dates';
 import { plural } from '@/lib/plural';
+import { shareLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { GroupLabel } from '@/ui/Heading';
+import { LinkBox } from '@/ui/LinkBox';
 import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
@@ -140,6 +144,7 @@ export default function JourneyPeople() {
                   <MoreButton pages={invitable} />
                 </>
               )}
+              {data.spotsLeft > 0 && journey.data && journey.data.status !== 'completed' ? <InviteLink journeyId={id} title={journey.data.title} /> : null}
             </>
           ) : null}
 
@@ -169,5 +174,43 @@ export default function JourneyPeople() {
         </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+/** "Not on Journey yet?": a one-time link for a friend who doesn't have the app. It is shown once, when it is made. */
+function InviteLink({ journeyId, title }: { journeyId: string; title: string }) {
+  const [link, setLink] = useState<InviteLinkResponse | null>(null);
+  const make = useCreateInviteLink({ mutation: { onSuccess: setLink } });
+  return (
+    <>
+      <GroupLabel style={{ marginHorizontal: layout.gutter }}>Not on Journey yet?</GroupLabel>
+      {link ? (
+        <>
+          <LinkBox url={link.url} icon={(c) => <LinkIcon size={18} color={c} />} style={{ marginHorizontal: layout.barGutter }} />
+          <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
+            The link works once, for one person, for 7 days. Copy or send it now: it isn&apos;t shown again.
+          </Txt>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginHorizontal: layout.barGutter }}>
+            <Button label="Send the link" size="sm" variant="soft" icon={(c) => <Share2 size={15} color={c} />} onPress={() => void shareLink(`Add to ${title} with me`, link.url)} />
+            <Button label="Make a new link" size="sm" variant="quiet" loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} />
+          </View>
+        </>
+      ) : (
+        <>
+          <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginBottom: 12 }}>
+            Make a link for a friend who doesn&apos;t have Journey yet. They join when they open it and sign up.
+          </Txt>
+          <Button label="Make an invite link" variant="soft" icon={(c) => <LinkIcon size={18} color={c} />} loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} style={{ marginHorizontal: layout.barGutter }} />
+          <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
+            The link works once, for one person, for 7 days.
+          </Txt>
+        </>
+      )}
+      {make.isError ? (
+        <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8, marginHorizontal: layout.rowGutter }}>
+          {messageFor(make.error)}
+        </Txt>
+      ) : null}
+    </>
   );
 }

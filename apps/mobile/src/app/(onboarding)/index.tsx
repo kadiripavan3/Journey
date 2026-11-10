@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
+import { apiBaseUrl } from '@/api/config';
 import { ApiError, messageFor } from '@/api/fetcher';
 import { getGetMeQueryKey, useCheckUsername, useGetMe, useSaveProfile } from '@/api/generated/journey';
 import { useOnboarding } from '@/auth/onboarding';
@@ -13,6 +14,7 @@ import { initials, normalizeUsername, usernameProblem } from '@/lib/username';
 import { radius, useTheme } from '@/theme';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { CheckRow } from '@/ui/CheckRow';
 import { Field } from '@/ui/Field';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
@@ -30,6 +32,9 @@ export default function CreateProfile() {
   const [displayName, setDisplayName] = useState(existing?.displayName ?? '');
   const [rawUsername, setRawUsername] = useState(existing?.username ?? '');
   const [bio, setBio] = useState(existing?.bio ?? '');
+  // Asked once, when the profile is made. Journey is for people aged 13 and over.
+  const [oldEnough, setOldEnough] = useState(false);
+  const openPage = (path: string) => void Linking.openURL(apiBaseUrl() + path).catch(() => undefined);
 
   const username = normalizeUsername(rawUsername);
   const localProblem = username ? usernameProblem(username) : null;
@@ -48,7 +53,7 @@ export default function CreateProfile() {
   const failed = save.error instanceof ApiError ? save.error : null;
   const usernameError =
     localProblem ?? (checked && !checked.available ? checked.reason : null) ?? (failed && failed.code !== 'invalid_input' ? failed.message : failed?.fields.username) ?? null;
-  const canContinue = displayName.trim().length > 0 && username.length >= 3 && !localProblem && checked?.available !== false;
+  const canContinue = displayName.trim().length > 0 && username.length >= 3 && !localProblem && checked?.available !== false && (!!existing || oldEnough);
 
   return (
     <Screen
@@ -68,7 +73,7 @@ export default function CreateProfile() {
             loading={save.isPending}
             onPress={() => {
               onboarding.begin(); // stay in the sign-up steps once the profile exists
-              save.mutate({ data: { displayName: displayName.trim(), username, bio: bio.trim() } });
+              save.mutate({ data: { displayName: displayName.trim(), username, bio: bio.trim(), ageConfirmed: existing ? undefined : oldEnough } });
             }}
           />
           <Button label="Use a different email" variant="quiet" block onPress={() => void session.signOut()} />
@@ -114,6 +119,27 @@ export default function CreateProfile() {
         />
         <Field label="Bio · optional" value={bio} onChangeText={setBio} multiline maxLength={150} error={failed?.fields.bio} />
       </View>
+      {existing ? null : (
+        <CheckRow
+          label="I'm 13 or older"
+          checked={oldEnough}
+          onChange={setOldEnough}
+          style={{ marginTop: 18 }}
+          note={
+            <Txt variant="footnote" color="muted">
+              By continuing you agree to the{' '}
+              <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ color: colors.accentText }}>
+                terms
+              </Txt>{' '}
+              and the{' '}
+              <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ color: colors.accentText }}>
+                privacy policy
+              </Txt>
+              .
+            </Txt>
+          }
+        />
+      )}
     </Screen>
   );
 }

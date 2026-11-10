@@ -460,6 +460,27 @@
         }
       }
     },
+    "/v1/media/{id}/second-look" : {
+      "post" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Ask a reviewer to look again at a photo of yours that the automatic check is holding",
+        "operationId" : "askSecondLook",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/v1/media/uploads" : {
       "post" : {
         "tags" : [ "media" ],
@@ -720,6 +741,34 @@
         }
       }
     },
+    "/v1/journeys/{id}/invite-link" : {
+      "post" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Make a one-time link for a friend who isn't on Journey yet. It works once, for one person, for 7 days; making a new one stops the old one.",
+        "operationId" : "createInviteLink",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteLinkResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/invitation/accept" : {
       "post" : {
         "tags" : [ "Shared journeys" ],
@@ -772,6 +821,33 @@
           },
           "required" : true
         },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invites/{token}/accept" : {
+      "post" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "Join the journey an invite link is for. The link is used up.",
+        "operationId" : "acceptInviteLink",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1249,6 +1325,25 @@
         }
       }
     },
+    "/v1/me/share-link" : {
+      "get" : {
+        "tags" : [ "Sharing" ],
+        "summary" : "Your 'Follow my journey' link: a page with your public journeys, for a social bio",
+        "operationId" : "getMyShareLink",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShareLinkResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/journeys" : {
       "get" : {
         "tags" : [ "journeys" ],
@@ -1578,6 +1673,33 @@
         }
       }
     },
+    "/v1/invites/{token}" : {
+      "get" : {
+        "tags" : [ "Shared journeys" ],
+        "summary" : "What an invite link invites you to",
+        "operationId" : "getLinkInvitation",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LinkInvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/feed" : {
       "get" : {
         "tags" : [ "entries" ],
@@ -1606,6 +1728,34 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entries/{id}/share-link" : {
+      "get" : {
+        "tags" : [ "Sharing" ],
+        "summary" : "The link to share one entry. A private journey's entries have none.",
+        "operationId" : "getEntryShareLink",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShareLinkResponse"
                 }
               }
             }
@@ -1903,6 +2053,10 @@
           "removeAvatar" : {
             "type" : "boolean",
             "description" : "True to go back to no picture"
+          },
+          "ageConfirmed" : {
+            "type" : "boolean",
+            "description" : "The person confirms they are 13 or older. Needed, and must be true, when the profile is first created."
           }
         },
         "required" : [ "displayName", "username" ]
@@ -2323,9 +2477,13 @@
             "type" : [ "integer", "null" ],
             "format" : "int32",
             "description" : "A clip's length"
+          },
+          "held" : {
+            "type" : "boolean",
+            "description" : "True while the automatic check has this photo held for a reviewer. Only its owner ever sees a held photo."
           }
         },
-        "required" : [ "durationSeconds", "height", "id", "kind", "playbackUrl", "status", "thumbUrl", "url", "width" ]
+        "required" : [ "durationSeconds", "height", "held", "id", "kind", "playbackUrl", "status", "thumbUrl", "url", "width" ]
       },
       "MediaStatus" : {
         "type" : "string",
@@ -2523,6 +2681,20 @@
         "type" : "string",
         "enum" : [ "owner", "friend", "invited", "none" ]
       },
+      "InviteLinkResponse" : {
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "description" : "The link to send. It is shown once: only a hash of it is kept."
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "expiresAt", "url" ]
+      },
       "CompleteJourneyRequest" : {
         "type" : "object",
         "properties" : {
@@ -2584,11 +2756,15 @@
             "type" : "boolean",
             "description" : "True when the journey's creator wrote it"
           },
+          "held" : {
+            "type" : "boolean",
+            "description" : "True while the comment waits for a reviewer. Only its author ever sees a held comment."
+          },
           "viewer" : {
             "$ref" : "#/components/schemas/CommentViewerResponse"
           }
         },
-        "required" : [ "author", "body", "byCreator", "createdAt", "entryId", "id", "parentId", "viewer" ]
+        "required" : [ "author", "body", "byCreator", "createdAt", "entryId", "held", "id", "parentId", "viewer" ]
       },
       "CommentViewerResponse" : {
         "type" : "object",
@@ -2821,6 +2997,20 @@
           }
         },
         "required" : [ "email", "id", "profile" ]
+      },
+      "ShareLinkResponse" : {
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string",
+            "description" : "A web page anyone can open, with or without the app"
+          },
+          "text" : {
+            "type" : "string",
+            "description" : "A line to send along with the link"
+          }
+        },
+        "required" : [ "text", "url" ]
       },
       "InvitationResponse" : {
         "type" : "object",
@@ -3138,6 +3328,22 @@
           }
         },
         "required" : [ "items", "nextCursor" ]
+      },
+      "LinkInvitationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "journey" : {
+            "$ref" : "#/components/schemas/JourneyResponse"
+          },
+          "invitedBy" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "expiresAt", "invitedBy", "journey" ]
       },
       "FeedGroupResponse" : {
         "type" : "object",

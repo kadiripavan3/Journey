@@ -7,6 +7,7 @@ import app.journey.api.common.PageRequest;
 import app.journey.api.entry.EntryService;
 import app.journey.api.entry.EntryStore.EntryRow;
 import app.journey.api.media.MediaService;
+import app.journey.api.moderation.WordFilter;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -38,6 +39,11 @@ public class CommentService {
 
             @Schema(description = "True when the journey's creator wrote it")
             boolean byCreator,
+
+            @Schema(
+                    description =
+                            "True while the comment waits for a reviewer. Only its author ever sees a held comment.")
+            boolean held,
 
             CommentViewerResponse viewer) {}
 
@@ -86,11 +92,19 @@ public class CommentService {
                     .orElseThrow(() -> ApiProblem.badRequest(
                             "comment_gone", "The comment you're replying to isn't there any more."));
             // Replies are one level deep: a reply to a reply joins the same thread.
+            if (answered.held()) {
+                throw ApiProblem.badRequest("comment_gone", "The comment you're replying to isn't there any more.");
+            }
             parent = answered.parentId() == null ? answered.id() : answered.parentId();
         }
         // Empty means the same comment arrived twice at the same moment and the other request saved it first.
-        Optional<UUID> added = comments.insert(entryId, author, parent, text, clientId);
-        added.ifPresent(comment -> events.publishEvent(new CommentAdded(comment)));
+        // A comment the word filter catches is kept, but only its author sees it until a reviewer has read it.
+        boolean held = WordFilter.flags(text);
+        Optional<UUID> added = comments.insert(entryId, author, parent, text, clientId, held);
+        if (!held) {
+            added.ifPresent(comment ->
+                    events.publishEvent(new CommentAdded(comment))); // nobody hears of a comment they can't see
+        }
         UUID id = added.or(() -> comments.findByClientId(author, clientId)).orElseThrow();
         return view(comments.find(id).orElseThrow(), entry, author);
     }
@@ -127,6 +141,7 @@ public class CommentService {
                 c.body(),
                 c.createdAt(),
                 c.authorId().equals(entry.journeyOwnerId()),
+                c.held(),
                 new CommentViewerResponse(
                         c.authorId().equals(viewer) || entry.journeyOwnerId().equals(viewer)));
     }

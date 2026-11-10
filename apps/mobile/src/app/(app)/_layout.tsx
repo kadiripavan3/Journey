@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
 import { watchConnection } from '@/api/online';
@@ -8,6 +8,7 @@ import { NewJourneyProvider } from '@/features/journeys/draft';
 import { OfflineBanner } from '@/features/navigation/OfflineBanner';
 import { usePushNotifications } from '@/features/notifications/usePushNotifications';
 import { RecentSearchesProvider } from '@/features/search/recent';
+import { takeLink } from '@/lib/links';
 
 // A screen that breaks while drawing shows a friendly page with a way to try again.
 export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
@@ -28,6 +29,14 @@ export default function AppLayout() {
 
   // A tapped notification opens its screen; a phone that said yes stays connected.
   usePushNotifications();
+
+  // A shared link (an invitation, mostly) that opened the app before the person had signed in is opened now.
+  // When the router has shown it already, it is only forgotten.
+  const pathname = usePathname();
+  useEffect(() => {
+    const link = takeLink();
+    if (link && link !== pathname) router.navigate(link);
+  }, [pathname, router]);
 
   return (
     <RecentSearchesProvider>

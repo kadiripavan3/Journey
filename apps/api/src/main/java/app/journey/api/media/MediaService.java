@@ -13,6 +13,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,7 +67,12 @@ public class MediaService {
             @Schema(nullable = true) Integer height,
 
             @Schema(nullable = true, description = "A clip's length")
-            Integer durationSeconds) {}
+            Integer durationSeconds,
+
+            @Schema(
+                    description =
+                            "True while the automatic check has this photo held for a reviewer. Only its owner ever sees a held photo.")
+            boolean held) {}
 
     public record NewUpload(UUID mediaId, MediaStorage.UploadTarget target) {}
 
@@ -75,13 +81,21 @@ public class MediaService {
     private final MediaSizes sizes;
     private final VideoService video;
     private final PublicUrls urls;
+    private final ApplicationEventPublisher events;
 
-    MediaService(MediaStore store, MediaStorage storage, MediaSizes sizes, VideoService video, PublicUrls urls) {
+    MediaService(
+            MediaStore store,
+            MediaStorage storage,
+            MediaSizes sizes,
+            VideoService video,
+            PublicUrls urls,
+            ApplicationEventPublisher events) {
         this.store = store;
         this.storage = storage;
         this.sizes = sizes;
         this.video = video;
         this.urls = urls;
+        this.events = events;
     }
 
     /**
@@ -153,6 +167,7 @@ public class MediaService {
             }
             MediaSizes.Dimensions size = sizes.make(row.storageKey());
             store.markReady(id, bytes, size.width(), size.height());
+            events.publishEvent(new MediaReady(id, ownerId, row.kind(), row.storageKey())); // the photo check listens
         } catch (ApiProblem refused) {
             deletePhotoFiles(row.storageKey()); // nothing good comes of keeping a file that was refused
             throw refused;
@@ -250,6 +265,18 @@ public class MediaService {
                 .toList();
     }
 
+    /**
+     * For a cover or a profile picture, which everyone sees: the photo must be this person's and ready, and it
+     * can't be one that is being reviewed.
+     */
+    public void requireOwnShowable(UUID id, UUID ownerId) {
+        requireOwn(List.of(id), ownerId, MediaKind.PHOTO);
+        if (store.held(id)) {
+            throw ApiProblem.badRequest(
+                    "photo_under_review", "That photo is being reviewed, so it can't be used here yet.");
+        }
+    }
+
     /** The full-size file. */
     public String urlFor(String storageKey) {
         return storageKey == null ? null : storage.publicUrl(storageKey);
@@ -277,7 +304,8 @@ public class MediaService {
             String playbackId,
             Integer width,
             Integer height,
-            Integer durationS) {
+            Integer durationS,
+            boolean held) {
         if (kind == MediaKind.PHOTO) {
             return new MediaResponse(
                     id,
@@ -288,7 +316,8 @@ public class MediaService {
                     null,
                     width,
                     height,
-                    null);
+                    null,
+                    held);
         }
         boolean ready = status == MediaStatus.READY;
         String still = ready ? video.stillUrl(playbackId, 1280) : null;
@@ -303,7 +332,21 @@ public class MediaService {
                 ready ? video.playbackUrl(storageKey, playbackId) : null,
                 width,
                 height,
-                durationS);
+                durationS,
+                held);
+    }
+
+    /**
+     * Removes one upload for good: its record now, its files once that change is kept. For a reviewer who
+     * removes a held photo.
+     */
+    @Transactional
+    public void remove(UUID id) {
+        store.find(id).ifPresent(row -> {
+            store.delete(List.of(id));
+            afterCommit(() ->
+                    deleteFiles(new MediaStore.StoredFile(row.id(), row.kind(), row.storageKey(), row.videoAssetId())));
+        });
     }
 
     /** Deletes everything a person uploaded: the records now, the files right after. */

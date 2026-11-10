@@ -26,8 +26,9 @@ class MediaTest extends ApiTest {
         String me = mvc.perform(put("/v1/me/profile")
                         .header("Authorization", nora)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Nora Lind\",\"username\":\"nora.lind\",\"avatarMediaId\":\"%s\"}"
-                                .formatted(photo)))
+                        .content(
+                                "{\"ageConfirmed\":true,\"displayName\":\"Nora Lind\",\"username\":\"nora.lind\",\"avatarMediaId\":\"%s\"}"
+                                        .formatted(photo)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -41,12 +42,14 @@ class MediaTest extends ApiTest {
         mvc.perform(put("/v1/me/profile")
                         .header("Authorization", nora)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Nora\",\"username\":\"nora.lind\"}"))
+                        .content("{\"ageConfirmed\":true,\"displayName\":\"Nora\",\"username\":\"nora.lind\"}"))
                 .andExpect(jsonPath("$.avatarUrl").value(url));
-        mvc.perform(put("/v1/me/profile")
-                        .header("Authorization", nora)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Nora\",\"username\":\"nora.lind\",\"removeAvatar\":true}"))
+        mvc.perform(
+                        put("/v1/me/profile")
+                                .header("Authorization", nora)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"ageConfirmed\":true,\"displayName\":\"Nora\",\"username\":\"nora.lind\",\"removeAvatar\":true}"))
                 .andExpect(jsonPath("$.avatarUrl").isEmpty());
     }
 

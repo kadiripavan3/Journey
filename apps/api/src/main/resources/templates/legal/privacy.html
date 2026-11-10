@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{legal/parts :: head('Privacy')}"></head>
+<body class="plain">
+  <main class="text">
+    <p class="brandline"><span class="brand">Journey</span></p>
+    <p th:replace="~{legal/parts :: draft}"></p>
+    <h1>Privacy</h1>
+    <p class="lede">What we keep, why, who sees it, and how you get rid of it.</p>
+
+    <h2>What we keep</h2>
+    <ul>
+      <li><b>Your sign-in:</b> your email address, or the identifier Apple or Google gives us. We never see a password.</li>
+      <li><b>Your profile:</b> name, username, picture, bio, link and the interests you picked.</li>
+      <li><b>What you post:</b> journeys, entries, photos, clips, comments and likes, and who you follow.</li>
+      <li><b>Places:</b> the place you put on an entry. Location data inside a photo is removed when the photo is uploaded.</li>
+      <li><b>Your settings:</b> which notifications you want, and the people you have blocked.</li>
+      <li><b>Reports:</b> what you reported and why. The person you report is not told who reported them.</li>
+    </ul>
+
+    <h2>Who sees what</h2>
+    <p>A public journey can be seen by anyone, also on the web. An unlisted journey can be seen by anyone who has its link. A private journey can be seen only by the people who write in it. Your profile shows your public journeys. When you block someone, neither of you sees the other.</p>
+
+    <h2>What we don't do</h2>
+    <p>We don't sell your data, we don't show advertising, and we don't track where you are. There is no live location.</p>
+
+    <h2>Who helps us run Journey</h2>
+    <p>Other companies store and deliver parts of the service for us: the database and sign-in, storage for photos and clips, video delivery, notifications, email, and the automatic photo check. They handle your data only to do that work. The full list is added here before launch.</p>
+
+    <h2>How long we keep it</h2>
+    <p>Until you delete it. Deleting an entry, a journey or your account removes it for good. Photos you uploaded but never used are removed after a day.</p>
+
+    <h2>Your choices</h2>
+    <p>You can change or delete anything you posted, switch each kind of notification off, block people, and delete your account in the app or by <a th:href="@{/delete-account}">asking on the web</a>. To get a copy of your data or to ask a question, <span th:replace="~{legal/parts :: reach}"></span>.</p>
+
+    <h2>Children</h2>
+    <p>Journey is not for children under 13 (16 where the law of your country says so). If you believe a child is using it, tell us and we will remove the account.</p>
+    <nav th:replace="~{legal/parts :: links}"></nav>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

@@ -56,7 +56,8 @@ public class EntryStore {
             String playbackId,
             Integer width,
             Integer height,
-            Integer durationS) {}
+            Integer durationS,
+            boolean held) {}
 
     public record MilestoneRow(UUID id, String title, LocalDate happenedOn, int dayNumber, int position) {}
 
@@ -91,6 +92,12 @@ public class EntryStore {
 
     /** Entries by someone the viewer has blocked, or who has blocked them, are left out of every read. */
     private static final String NOT_BLOCKED = " and " + Rules.entryBy("e", ":viewer");
+
+    /** A photo being reviewed is shown only to its owner. Written against the alias m (media). */
+    private static final String SHOWN = " and " + Rules.shownMedia("m", ":viewer");
+
+    /** Where photos stand for the journey as a whole (its grid, its count), one being reviewed is left out for everyone. */
+    private static final String NOT_HELD = " and " + Rules.publicMedia("m");
 
     private static final RowMapper<EntryRow> ROW = (rs, n) -> new EntryRow(
             rs.getObject("id", UUID.class),
@@ -271,10 +278,10 @@ public class EntryStore {
     /** The story's first photos, in story order. */
     public List<EntryMediaRow> photos(UUID journeyId, UUID viewer, int limit) {
         return jdbc.sql("""
-            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s
+            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s, m.held
             from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
-            """ + NOT_BLOCKED + " order by " + STORY_ORDER + ", em.position limit :limit")
+            """ + NOT_BLOCKED + NOT_HELD + " order by " + STORY_ORDER + ", em.position limit :limit")
                 .param("journey", journeyId)
                 .param("viewer", viewer)
                 .param("limit", limit)
@@ -286,7 +293,7 @@ public class EntryStore {
         return jdbc.sql("""
             select count(*) from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
-            """ + NOT_BLOCKED)
+            """ + NOT_BLOCKED + NOT_HELD)
                 .param("journey", journeyId)
                 .param("viewer", viewer)
                 .query(Integer.class)
@@ -335,18 +342,25 @@ public class EntryStore {
             rs.getString("playback_id"),
             (Integer) rs.getObject("width"),
             (Integer) rs.getObject("height"),
-            (Integer) rs.getObject("duration_s"));
+            (Integer) rs.getObject("duration_s"),
+            rs.getBoolean("held"));
 
-    public Map<UUID, List<EntryMediaRow>> mediaFor(List<UUID> entryIds) {
+    /** The photos and clips of these entries as this viewer may see them: one being reviewed is shown only to its owner. */
+    public Map<UUID, List<EntryMediaRow>> mediaFor(List<UUID> entryIds, UUID viewer) {
         if (entryIds.isEmpty()) {
             return Map.of();
         }
-        return jdbc.sql("""
-            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s
+        return jdbc
+                .sql("""
+            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s, m.held
             from entry_media em join media m on m.id = em.media_id
             where em.entry_id in (:ids)
-            order by em.entry_id, em.position
-            """).param("ids", entryIds).query(MEDIA).list().stream()
+            """ + SHOWN + " order by em.entry_id, em.position")
+                .param("ids", entryIds)
+                .param("viewer", viewer)
+                .query(MEDIA)
+                .list()
+                .stream()
                 .collect(Collectors.groupingBy(EntryMediaRow::entryId));
     }
 

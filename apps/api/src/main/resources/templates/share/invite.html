@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${invite.ownerName + ' invited you · Journey'}">Journey</title>
+  <meta name="robots" content="noindex">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Journey">
+  <meta property="og:title" th:content="${invite.ownerName + ' invited you to add to ' + invite.title}">
+  <meta property="og:description" content="Open the link to join the journey and add your own entries.">
+  <link rel="stylesheet" th:href="@{/share/tokens.css}">
+  <link rel="stylesheet" th:href="@{/share/page.css}">
+  <link rel="stylesheet" th:href="@{/share/pages.css}">
+</head>
+<body>
+  <header class="cover" th:style="${invite.coverUrl != null} ? 'background-image:url(' + ${invite.coverUrl} + ')' : ''">
+    <span class="brand">Journey</span>
+  </header>
+  <main>
+    <p class="eyebrow">An invitation</p>
+    <h1 th:text="${invite.ownerName + ' invited you to add to ' + invite.title}">Nora invited you</h1>
+    <p class="lede">You'd write in the same journey: your own entries and photos, next to theirs. Only they can change the journey itself, and you can leave whenever you like.</p>
+    <a class="cta" th:href="${appLink}">Open in the app to join</a>
+    <p class="hint">This link works once, for one person, for 7 days. Don't have Journey yet? Install the app, sign up, then open this link again.</p>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

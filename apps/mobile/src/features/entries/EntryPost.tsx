@@ -1,4 +1,5 @@
 import type { EntryResponse } from '@/api/generated/journey';
+import { HeldVeil } from '@/features/safety/Held';
 import { Eyebrow } from '@/ui/Eyebrow';
 import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
@@ -18,6 +19,7 @@ export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryRespon
     <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} scaleTo={0.985}>
       {cover ? (
         <Photo uri={cover.thumbUrl ?? cover.url} style={{ height, marginBottom: 12 }}>
+          {cover.held ? <HeldVeil /> : null}
           {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
           {entry.media.length > 1 ? <Pill label={`1 / ${entry.media.length}`} style={{ position: 'absolute', top: 12, right: 12 }} /> : null}
           {cover.kind === 'video' ? <ClipBadge seconds={cover.durationSeconds} style={{ position: 'absolute', left: 12, bottom: 12 }} /> : null}

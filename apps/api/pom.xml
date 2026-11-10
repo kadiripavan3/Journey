@@ -78,6 +78,17 @@
       <artifactId>bucket4j_jdk17-postgresql</artifactId>
       <version>8.22.0</version>
     </dependency>
+    <!-- The automatic photo check (AWS Rekognition). Only the plain HTTP client is needed, not the async one. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>rekognition</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <!-- Mux: the video service that converts and streams clips (stream A). -->
     <dependency>
       <groupId>com.mux</groupId>

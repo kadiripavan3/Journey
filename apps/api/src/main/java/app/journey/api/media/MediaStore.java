@@ -138,6 +138,15 @@ public class MediaStore {
         jdbc.sql("update media set sized = true where id = :id").param("id", id).update();
     }
 
+    /** True while the automatic check has the photo held for a reviewer. */
+    public boolean held(UUID id) {
+        return jdbc.sql("select held from media where id = :id")
+                .param("id", id)
+                .query(Boolean.class)
+                .optional()
+                .orElse(false);
+    }
+
     public void markReady(UUID id, long bytes, Integer width, Integer height) {
         jdbc.sql(
                         "update media set status = 'ready', sized = true, bytes = :bytes, width = :w, height = :h where id = :id")

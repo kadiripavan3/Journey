@@ -7,6 +7,7 @@ import { messageFor } from '@/api/fetcher';
 import { useCache } from '@/api/cache';
 import { type CommentResponse, type EntryResponse, useAddComment, useDeleteComment, useGetCommentsInfinite, useGetMe } from '@/api/generated/journey';
 import { paged, rows } from '@/api/pages';
+import { HeldCommentNote } from '@/features/safety/Held';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { timeAgo } from '@/lib/dates';
 import { newClientId } from '@/lib/ids';
@@ -83,12 +84,15 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
           </Txt>
         </View>
         <Txt variant="callout" style={{ marginTop: 2 }}>{comment.body}</Txt>
+        {comment.held ? <HeldCommentNote /> : null}
         <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Reply to ${comment.author.displayName}`} hitSlop={8} onPress={() => setReplyTo(comment)}>
-            <Txt variant="footnote" color="muted" weight={700}>
-              Reply
-            </Txt>
-          </Pressable>
+          {comment.held ? null : (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Reply to ${comment.author.displayName}`} hitSlop={8} onPress={() => setReplyTo(comment)}>
+              <Txt variant="footnote" color="muted" weight={700}>
+                Reply
+              </Txt>
+            </Pressable>
+          )}
           {comment.viewer.canDelete ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`Delete the comment by ${comment.author.displayName}`} hitSlop={8} disabled={remove.isPending} onPress={() => remove.mutate({ id: comment.id })}>
               <Txt variant="footnote" color="muted" weight={700}>

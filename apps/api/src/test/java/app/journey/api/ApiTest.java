@@ -29,7 +29,7 @@ public abstract class ApiTest {
     @BeforeEach
     void emptyDatabase() {
         jdbc.sql(
-                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits cascade")
+                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits, review_log, deletion_requests cascade")
                 .update();
     }
 
@@ -51,7 +51,8 @@ public abstract class ApiTest {
         mvc.perform(put("/v1/me/profile")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"%s\",\"username\":\"%s\"}".formatted(username, username)))
+                        .content("{\"ageConfirmed\":true,\"displayName\":\"%s\",\"username\":\"%s\"}"
+                                .formatted(username, username)))
                 .andExpect(status().isOk());
         return token;
     }

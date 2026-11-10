@@ -4,7 +4,8 @@
 // written offline that posts by itself when the connection is back, a short clip, the profile, Activity,
 // likes, comments, following a creator, search,
 // the weekly digest, sharing a link, shared journeys (inviting a friend, one person's part of the story, and being invited), settings, completing a journey, reporting,
-// blocking, and at the end deleting the account.
+// blocking, and at the end deleting the account. Along the way: the age confirmation, sharing an entry and a profile, a comment and a
+// photo held for review, the one-time invite link, the legal pages, and the reviewer's queue (ADMIN_PASSWORD, "review" in local mode).
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
 // Before running: the API on port 8080 with the local profile, and the web build served on 8081
@@ -32,7 +33,57 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   const L = (...a) => page.getByLabel(...a).last();
   let n = 0;
   const shot = async (name) => { await page.waitForTimeout(900); n += 1; await page.screenshot({ path: `${out}/${scheme}-${String(n).padStart(2, '0')}-${name}.png` }); console.log('shot', name, page.url()); };
-  const step = async (name, fn) => { try { await fn(); } catch (e) { await page.screenshot({ path: `${out}/${scheme}-FAILED-${name}.png` }); throw new Error(`${name}: ${e.message.split('\n')[0]}`); } };
+  // A failure names its step and the line of this file that was waiting, and leaves a screenshot.
+  const step = async (name, fn) => {
+    try {
+      await fn();
+    } catch (e) {
+      await page.screenshot({ path: `${out}/${scheme}-FAILED-${name}.png` });
+      const line = (String(e.stack).match(/walkthrough\.js:(\d+)/) || [])[1];
+      throw new Error(`${name}${line ? ` (line ${line})` : ''}: ${e.message.split('\n')[0]}`);
+    }
+  };
+  // The web pages the API serves (share pages, legal pages) open in a tab of their own.
+  const webShot = async (web, expected, name) => {
+    await web.waitForLoadState();
+    await web.getByText(expected).first().waitFor();
+    n += 1;
+    await web.screenshot({ path: `${out}/${scheme}-${String(n).padStart(2, '0')}-${name}.png`, fullPage: true });
+    console.log('shot', name, web.url());
+  };
+  const signedOut = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: scheme });
+  const webPage = async (url, expected, name) => {
+    const web = await signedOut.newPage();
+    await web.goto(url);
+    await webShot(web, expected, name);
+    await web.close();
+  };
+  const opened = async (open, expected, name) => {
+    const [web] = await Promise.all([page.context().waitForEvent('page'), open()]);
+    await webShot(web, expected, name);
+    await web.close();
+  };
+  // The reviewer's queue is a web page of its own, behind the reviewers' password.
+  const review = async (fn) => {
+    const context = await browser.newContext({ viewport: { width: 900, height: 1000 }, colorScheme: scheme, httpCredentials: { username: 'Walk-through', password: process.env.ADMIN_PASSWORD || 'review' } });
+    const queue = await context.newPage();
+    try {
+      await queue.goto(API_URL + '/admin');
+      await queue.getByText('Review queue').waitFor();
+      await fn(queue);
+    } finally {
+      await context.close();
+    }
+  };
+  const api = async (token, method, path, body) => {
+    const response = await fetch(API_URL + path, {
+      method,
+      headers: { 'content-type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) throw new Error(`${method} ${path} gave ${response.status}`);
+    return response.status === 204 ? null : response.json();
+  };
 
   await step('sign-up', async () => {
     await page.goto(WEB_URL + '/');
@@ -49,7 +100,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await L('Username', { exact: true }).fill(`nora.${tag}`);
     await T('is available').waitFor();
     await L('Bio · optional').fill('Photographer. Slow travel and long walks.');
+    // Journey is for people aged 13 and over: Continue waits for the tick, and the terms are one tap away.
+    if ((await R('button', { name: 'Continue', exact: true }).getAttribute('aria-disabled')) !== 'true') throw new Error('Continue did not wait for the age confirmation');
+    await R('checkbox', { name: "I'm 13 or older" }).click();
     await shot('create-profile');
+    await opened(() => T('terms', { exact: true }).click(), 'Terms of use', 'terms-page');
     await T('Continue', { exact: true }).click();
     await T('What are you into?').waitFor();
     for (const name of ['Travel', 'Hiking', 'Photography', 'Music']) await R('checkbox', { name, exact: true }).click();
@@ -198,6 +253,20 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Entry 1 of 1').waitFor();
     await shot('own-entry');
     await R('button', { name: 'Entry options' }).click();
+    await T('Share entry').click();
+    await T('Share your entry').waitFor();
+    await T(/\/e\/[0-9a-f-]{36}/).waitFor();
+    await shot('share-entry');
+    await R('button', { name: 'Copy link' }).click();
+    await R('button', { name: 'Copied' }).first().waitFor();
+    const entryLink = await page.evaluate(() => navigator.clipboard.readText());
+    await webPage(entryLink, 'Skógafoss before breakfast', 'entry-page');
+    await T('Your “Follow my journey” link').click();
+    await T(new RegExp(`/u/nora\\.${tag}`)).waitFor();
+    await shot('share-profile');
+    await webPage(`${API_URL}/u/nora.${tag}`, 'Iceland ring road', 'person-page');
+    await page.mouse.click(195, 60);
+    await R('button', { name: 'Entry options' }).click();
     await T('Edit entry').waitFor();
     await shot('entry-menu');
     await T('Edit entry').click();
@@ -282,6 +351,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('2 comments').waitFor();
     await R('button', { name: /^Reply to Nora/ }).waitFor();
     await shot('comments');
+    // The word filter holds this one: its author sees it marked, nobody else sees it until a reviewer has read it.
+    await L('Add a comment').fill('That last hill was a bitch');
+    await R('button', { name: 'Send comment' }).click();
+    await T('Only you can see this for now. A person will read it soon.').waitFor();
+    await shot('comment-held');
     await R('button', { name: 'Close comments' }).click();
     await R('button', { name: 'Close', exact: true }).click();
     await R('tab', { name: 'Discover' }).click();
@@ -329,11 +403,19 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Journey options' }).click();
     await T('People on this journey').click();
     await T('Add people').waitFor();
-    await R('button', { name: 'Invite' }).waitFor();
+    await R('button', { name: 'Invite', exact: true }).waitFor();
     await shot('people-invite');
-    await R('button', { name: 'Invite' }).click();
+    await R('button', { name: 'Invite', exact: true }).click();
     await T(/Can add entries/).waitFor({ timeout: 20000 });
     await shot('people');
+    // For a friend who isn't on Journey yet: a link that works once. The page behind it opens without signing in.
+    await R('button', { name: 'Make an invite link' }).click();
+    await T(/\/i\/[a-z2-9]{4}-[a-z2-9]{4}-/).waitFor();
+    await shot('invite-link');
+    await R('button', { name: 'Copy', exact: true }).click();
+    await R('button', { name: 'Copied' }).waitFor();
+    const inviteLink = await page.evaluate(() => navigator.clipboard.readText());
+    await webPage(inviteLink, 'invited you to add to Iceland ring road', 'invite-page');
     await R('button', { name: 'Back' }).click();
     await T('Shared journey').waitFor();
     await shot('shared-journey');
@@ -439,19 +521,13 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   });
 
   // A second person, made through the API, invites the new person to their journey.
-  const api = async (token, method, path, body) => {
-    const response = await fetch(API_URL + path, {
-      method,
-      headers: { 'content-type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!response.ok) throw new Error(`${method} ${path} gave ${response.status}`);
-    return response.status === 204 ? null : response.json();
-  };
   let host;
   await step('invited', async () => {
     host = (await api(null, 'POST', '/local-auth/token', { email: `alex.${tag}@example.com`, code: '123456' })).accessToken;
-    await api(host, 'PUT', '/v1/me/profile', { displayName: 'Alex Strand', username: `alex.${tag}` });
+    const profile = { displayName: 'Alex Strand', username: `alex.${tag}` };
+    const unconfirmed = await fetch(API_URL + '/v1/me/profile', { method: 'PUT', headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + host }, body: JSON.stringify(profile) });
+    if (unconfirmed.status !== 400 || (await unconfirmed.json()).code !== 'age_required') throw new Error('the API made a profile without the age confirmation');
+    await api(host, 'PUT', '/v1/me/profile', { ...profile, ageConfirmed: true });
     await R('tab', { name: 'Home' }).click();
     await R('button', { name: 'Find a journey' }).click();
     await R('textbox', { name: 'Search journeys, people and tags' }).fill(`alex.${tag}`);
@@ -469,6 +545,74 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Join the journey' }).click();
     await T('You write in this journey').waitFor({ timeout: 20000 });
     await shot('joined-journey');
+  });
+
+  await step('held-photo', async () => {
+    // The local photo check flags a photo that is one solid magenta. Its owner sees it hidden, with what happens next.
+    const magenta = Buffer.from(
+      await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 600;
+        const g = canvas.getContext('2d');
+        g.fillStyle = '#ff00ff';
+        g.fillRect(0, 0, 800, 600);
+        return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+      }),
+      'base64',
+    );
+    await R('button', { name: 'Entry', exact: true }).click();
+    await T('New entry').waitFor();
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), R('button', { name: 'Add photos' }).click()]);
+    await chooser.setFiles([
+      { name: 'sea-cave.jpg', mimeType: 'image/jpeg', buffer: require('fs').readFileSync(`${IMG}/sea-cave.jpg`) },
+      { name: 'magenta.jpg', mimeType: 'image/jpeg', buffer: magenta },
+    ]);
+    await R('button', { name: 'Remove photo 2' }).waitFor();
+    await L('Title, optional').fill('Black sand and big waves');
+    await L('What happened').fill('Stood far back from the water, as the signs say. The waves still made it to my boots.');
+    await R('button', { name: 'Post' }).click();
+    // The story also says "Posting …" in a banner while the photos go up, so ask for the entry's own row.
+    const posted = page.getByRole('button', { name: /^Black sand and big waves$/ }).last();
+    await posted.waitFor({ timeout: 30000 });
+    await posted.click();
+    await T('One photo is being reviewed').waitFor();
+    await shot('entry-held');
+    await T('One photo is being reviewed').click();
+    await T('Hidden for now').waitFor();
+    await T("Our automatic check flagged it, so it's hidden from everyone but you. A person will look at it soon.").waitFor();
+    await shot('held-for-review');
+    await T('Ask for a second look').click();
+    await T("Thanks. We'll take a second look.").waitFor();
+    // Nobody else gets the photo: the entry's own web page shows one picture, not two.
+    const entryId = page.url().split('/review/')[1];
+    const publicPage = await (await fetch(`${API_URL}/e/${entryId}`)).text();
+    if ((publicPage.match(/<img class="shot"/g) || []).length !== 1) throw new Error('the held photo is on the public page');
+
+    // The reviewer sees what waits: the photo (asked about again) and the comment from before.
+    await review(async (queue) => {
+      await queue.getByText('Asked for a second look').first().waitFor();
+      const comment = queue.locator('section.item', { hasText: 'That last hill was a bitch' }).filter({ hasText: `@nora.${tag},` });
+      await comment.waitFor();
+      n += 1;
+      await queue.screenshot({ path: `${out}/${scheme}-${String(n).padStart(2, '0')}-review-queue.png`, fullPage: true });
+      console.log('shot', 'review-queue', queue.url());
+      await comment.getByRole('button', { name: "It's fine, show it" }).click();
+      await queue.getByText('released a comment').first().waitFor();
+    });
+
+    await R('button', { name: 'Remove the photo' }).click();
+    await T('Entry 1 of 1').waitFor({ timeout: 20000 });
+    await T('One photo is being reviewed').waitFor({ state: 'detached' });
+    await shot('entry-photo-removed');
+    // The photo is off the entry but still waiting; the reviewer clears it away.
+    await review(async (queue) => {
+      await queue.locator('section.item.photo', { hasText: `@nora.${tag} ` }).getByRole('button', { name: 'Remove the photo' }).click();
+      await queue.getByText('removed a photo').first().waitFor();
+    });
+    await R('button', { name: 'Close', exact: true }).click();
+    await R('button', { name: 'Back' }).click();
+    await T('You write in this journey').waitFor();
     await R('button', { name: 'Back' }).click();
   });
 
@@ -492,6 +636,10 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Settings' }).click();
     await R('button', { name: /^Notifications\. 7 of 8 on/ }).waitFor();
     await shot('settings');
+    await opened(() => R('button', { name: 'Help and contact' }).click(), 'Contact', 'contact-page');
+    await opened(() => R('button', { name: 'Community guidelines' }).click(), 'Community guidelines', 'guidelines-page');
+    await opened(() => R('button', { name: 'Privacy policy' }).click(), 'Privacy', 'privacy-page');
+    await webPage(API_URL + '/delete-account', 'Ask to delete my account', 'delete-account-page');
     await R('button', { name: /^Notifications/ }).click();
     await R('switch', { name: 'Likes' }).click();
     await R('switch', { name: 'Likes', checked: false }).waitFor();
@@ -548,6 +696,16 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Send report' }).click();
     await T('Thanks for telling us').waitFor();
     await R('button', { name: 'Done' }).click();
+    // Reported, the journey leaves Discover and search until a reviewer has looked. Here the reviewer finds nothing wrong.
+    const hidden = await api(host, 'GET', '/v1/search?q=guitar');
+    if (hidden.journeys.some((j) => j.title === '30 days of guitar')) throw new Error('a reported journey is still in search');
+    await review(async (queue) => {
+      const report = queue.locator('section.item', { hasText: '30 days of guitar' }).filter({ hasText: `Reported by @nora.${tag}.` });
+      await report.getByRole('button', { name: 'Nothing wrong, keep it' }).click();
+      await queue.getByText('dismissed a report').first().waitFor();
+    });
+    const back = await api(host, 'GET', '/v1/search?q=guitar');
+    if (!back.journeys.some((j) => j.title === '30 days of guitar')) throw new Error('the journey did not come back after the report was dismissed');
     await R('button', { name: "Lea Martin's profile" }).click();
     await T('@lea.plays').waitFor();
     await R('button', { name: 'More options' }).click();
@@ -569,6 +727,34 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T("You haven't blocked anyone.").waitFor({ timeout: 20000 });
     await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
+  });
+
+  await step('invite-link', async () => {
+    // A third person sends the new person a one-time link. Opening it in the app shows the invitation; yes joins.
+    // (Opening a link loads the app afresh, which is why this comes after everything that reads what was loaded before.)
+    const friend = (await api(null, 'POST', '/local-auth/token', { email: `theo.${tag}@example.com`, code: '123456' })).accessToken;
+    await api(friend, 'PUT', '/v1/me/profile', { displayName: 'Theo Brandt', username: `theo.${tag}`, ageConfirmed: true });
+    const journey = await api(friend, 'POST', '/v1/journeys', { title: 'Lofoten by bike', template: 'trip', startDate: new Date().toISOString().slice(0, 10), visibility: 'private' });
+    const link = (await api(friend, 'POST', `/v1/journeys/${journey.id}/invite-link`)).url;
+    const token = link.split('/i/')[1];
+    await page.goto(`${WEB_URL}/invite/${token}`);
+    await T('Add to Lofoten by bike?').waitFor({ timeout: 20000 });
+    await T('Theo Brandt invited you').waitFor();
+    await shot('link-invitation');
+    await R('button', { name: 'Join the journey' }).click();
+    await T('You write in this journey').waitFor({ timeout: 20000 });
+    await shot('joined-by-link');
+    // It worked once: the page behind the link now says so, and so does the app.
+    if ((await fetch(link)).status !== 410) throw new Error('the invite link still works after it was used');
+    expectNotFound = true;
+    await page.goto(`${WEB_URL}/invite/${token}`);
+    await T('This invitation link has been used or has run out. Ask your friend for a new one.').waitFor({ timeout: 20000 });
+    await shot('link-invitation-used');
+    expectNotFound = false;
+    await api(friend, 'DELETE', '/v1/me');
+    await page.goto(WEB_URL + '/');
+    await R('tab', { name: 'You' }).click({ timeout: 20000 });
+    await R('button', { name: 'Settings' }).click();
   });
 
   await step('delete-account', async () => {
