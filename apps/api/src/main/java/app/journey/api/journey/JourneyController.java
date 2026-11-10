@@ -194,9 +194,12 @@ class JourneyController {
     }
 
     @GetMapping("/discover")
-    @Operation(operationId = "getDiscover", summary = "Trending, new and recently completed journeys")
+    @Operation(
+            operationId = "getDiscover",
+            summary = "Trending, new and recently completed journeys, leaning towards your interests")
     DiscoverResponse discover(@Me UUID me, @RequestParam(required = false) String category) {
-        return journeys.discover(me, category);
+        List<String> interests = profiles.find(me).map(Profile::interests).orElse(List.of());
+        return journeys.discover(me, category, interests);
     }
 
     @GetMapping("/journeys/suggested")

@@ -65,6 +65,19 @@
       <artifactId>bucket4j_jdk17-postgresql</artifactId>
       <version>8.22.0</version>
     </dependency>
+    <!-- Sends the weekly digest by email (the tech plan's choice). Used only with journey.email.mode=resend. -->
+    <dependency>
+      <groupId>com.resend</groupId>
+      <artifactId>resend-java</artifactId>
+      <version>4.30.0</version>
+    </dependency>
+    <!-- Resend's library talks through OkHttp but only brings it along at run time. Our adapter sets its
+         timeouts and address, so it is needed to compile too. Keep the version the same as the one Resend uses. -->
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp-jvm</artifactId>
+      <version>5.4.0</version>
+    </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>

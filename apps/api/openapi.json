@@ -197,6 +197,46 @@
         }
       }
     },
+    "/v1/me/devices" : {
+      "put" : {
+        "tags" : [ "Push notifications" ],
+        "summary" : "This device may get pushes for the signed-in person. Sending it again just refreshes it.",
+        "operationId" : "registerDevice",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Push notifications" ],
+        "summary" : "Stop pushing to this device, for example when signing out",
+        "operationId" : "forgetDevice",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/follow" : {
       "put" : {
         "tags" : [ "journeys" ],
@@ -1507,7 +1547,7 @@
     "/v1/discover" : {
       "get" : {
         "tags" : [ "journeys" ],
-        "summary" : "Trending, new and recently completed journeys",
+        "summary" : "Trending, new and recently completed journeys, leaning towards your interests",
         "operationId" : "getDiscover",
         "parameters" : [ {
           "name" : "category",
@@ -1740,9 +1780,14 @@
           "defaultVisibility" : {
             "$ref" : "#/components/schemas/Visibility",
             "description" : "What new journeys start as"
+          },
+          "reminderHour" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The hour of the person's own day, 0 to 23, at which reminders arrive. 19 is 7 pm, and what is used when this is left out."
           }
         },
-        "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminders", "weeklyDigest" ]
+        "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminderHour", "reminders", "weeklyDigest" ]
       },
       "Visibility" : {
         "type" : "string",
@@ -1823,6 +1868,31 @@
           }
         },
         "required" : [ "avatarUrl", "bio", "displayName", "id", "interests", "link", "username" ]
+      },
+      "DevicePlatform" : {
+        "type" : "string",
+        "enum" : [ "ios", "android", "web" ]
+      },
+      "RegisterDeviceRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "description" : "The device's address at the push service, as Expo gives it",
+            "maxLength" : 300,
+            "minLength" : 0
+          },
+          "platform" : {
+            "$ref" : "#/components/schemas/DevicePlatform"
+          },
+          "timeZone" : {
+            "type" : "string",
+            "description" : "Where the device is, such as Europe/Berlin, so reminders arrive at the right hour. UTC when left out or unknown.",
+            "maxLength" : 64,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "platform", "token" ]
       },
       "JourneyResponse" : {
         "type" : "object",
@@ -1917,9 +1987,13 @@
           },
           "viewer" : {
             "$ref" : "#/components/schemas/JourneyViewerResponse"
+          },
+          "pausedAutomatically" : {
+            "type" : "boolean",
+            "description" : "True when the journey paused by itself after 30 days without an entry, not because its owner paused it"
           }
         },
-        "required" : [ "authors", "category", "closingNote", "completedAt", "coverThumbUrl", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
+        "required" : [ "authors", "category", "closingNote", "completedAt", "coverThumbUrl", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "pausedAutomatically", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
       },
       "JourneyStatus" : {
         "type" : "string",

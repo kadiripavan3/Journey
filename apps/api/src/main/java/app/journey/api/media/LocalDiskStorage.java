@@ -1,5 +1,6 @@
 package app.journey.api.media;
 
+import app.journey.api.common.PublicUrls;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
@@ -29,9 +31,14 @@ public class LocalDiskStorage implements MediaStorage {
     private final Path root;
     private final byte[] secret;
 
+    private final PublicUrls urls;
+
     LocalDiskStorage(
-            @Value("${journey.media.local.dir}") String dir, @Value("${journey.media.local.secret}") String secret)
+            @Value("${journey.media.local.dir}") String dir,
+            @Value("${journey.media.local.secret}") String secret,
+            PublicUrls urls)
             throws IOException {
+        this.urls = urls;
         this.root = Path.of(dir).toAbsolutePath().normalize();
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         Files.createDirectories(root);
@@ -49,6 +56,10 @@ public class LocalDiskStorage implements MediaStorage {
 
     @Override
     public String publicUrl(String storageKey) {
+        if (RequestContextHolder.getRequestAttributes() == null) {
+            // Asked for by a scheduled job (the weekly email), with no request to take the address from.
+            return urls.to("/media/" + storageKey);
+        }
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/media/")
                 .path(storageKey)

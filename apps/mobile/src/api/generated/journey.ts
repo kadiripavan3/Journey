@@ -81,6 +81,8 @@ export interface SettingsResponse {
   reminders: boolean;
   /** What new journeys start as */
   defaultVisibility: Visibility;
+  /** The hour of the person's own day, 0 to 23, at which reminders arrive. 19 is 7 pm, and what is used when this is left out. */
+  reminderHour: number;
 }
 
 export interface SaveProfileRequest {
@@ -127,6 +129,31 @@ export interface ProfileResponse {
   /** @nullable */
   avatarUrl: string | null;
   interests: string[];
+}
+
+export type DevicePlatform = typeof DevicePlatform[keyof typeof DevicePlatform];
+
+
+export const DevicePlatform = {
+  ios: 'ios',
+  android: 'android',
+  web: 'web',
+} as const;
+
+export interface RegisterDeviceRequest {
+  /**
+     * The device's address at the push service, as Expo gives it
+     * @minLength 0
+     * @maxLength 300
+     */
+  token: string;
+  platform: DevicePlatform;
+  /**
+     * Where the device is, such as Europe/Berlin, so reminders arrive at the right hour. UTC when left out or unknown.
+     * @minLength 0
+     * @maxLength 64
+     */
+  timeZone?: string;
 }
 
 export type LabelStyle = typeof LabelStyle[keyof typeof LabelStyle];
@@ -208,6 +235,8 @@ export interface JourneyResponse {
   /** Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared. */
   authors: PersonResponse[];
   viewer: JourneyViewerResponse;
+  /** True when the journey paused by itself after 30 days without an entry, not because its owner paused it */
+  pausedAutomatically: boolean;
 }
 
 export interface SaveEntryRequest {
@@ -799,6 +828,10 @@ export interface ActivityResponse {
   /** How many lines are new */
   newCount: number;
 }
+
+export type ForgetDeviceParams = {
+  token: string;
+};
 
 export type GetTimelineParams = {
   cursor?: string;
@@ -1447,6 +1480,171 @@ export const useSaveProfile = <TError = unknown,
         TContext
       > => {
       return useMutation(getSaveProfileMutationOptions(options), queryClient);
+    }
+
+export const getRegisterDeviceUrl = () => {
+
+
+
+
+  return `/v1/me/devices`
+}
+
+/**
+ * @summary This device may get pushes for the signed-in person. Sending it again just refreshes it.
+ */
+export const registerDevice = async (registerDeviceRequest: RegisterDeviceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getRegisterDeviceUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(registerDeviceRequest)
+  }
+);}
+
+
+
+
+
+export const getRegisterDeviceMutationKey = () => ['registerDevice'] as const;
+
+export const getRegisterDeviceMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,RegisterDeviceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,RegisterDeviceMutationVariables, TContext> => {
+
+const mutationKey = getRegisterDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerDevice>>, RegisterDeviceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerDevice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof registerDevice>>>
+    export type RegisterDeviceMutationBody = RegisterDeviceRequest
+    export type RegisterDeviceMutationError = unknown
+    export type RegisterDeviceMutationVariables = {data: RegisterDeviceRequest}
+
+    /** @summary This device may get pushes for the signed-in person. Sending it again just refreshes it. */
+export const useRegisterDevice = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerDevice>>, TError,RegisterDeviceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof registerDevice>>,
+        TError,
+        RegisterDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegisterDeviceMutationOptions(options), queryClient);
+    }
+
+export const getForgetDeviceUrl = (params: ForgetDeviceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/me/devices?${stringifiedParams}` : `/v1/me/devices`
+}
+
+/**
+ * @summary Stop pushing to this device, for example when signing out
+ */
+export const forgetDevice = async (params: ForgetDeviceParams, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getForgetDeviceUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getForgetDeviceMutationKey = () => ['forgetDevice'] as const;
+
+export const getForgetDeviceMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgetDevice>>, TError,ForgetDeviceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof forgetDevice>>, TError,ForgetDeviceMutationVariables, TContext> => {
+
+const mutationKey = getForgetDeviceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof forgetDevice>>, ForgetDeviceMutationVariables> = (props) => {
+          const {params} = props ?? {};
+
+          return  forgetDevice(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ForgetDeviceMutationResult = NonNullable<Awaited<ReturnType<typeof forgetDevice>>>
+
+    export type ForgetDeviceMutationError = unknown
+    export type ForgetDeviceMutationVariables = {params: ForgetDeviceParams}
+
+    /** @summary Stop pushing to this device, for example when signing out */
+export const useForgetDevice = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgetDevice>>, TError,ForgetDeviceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof forgetDevice>>,
+        TError,
+        ForgetDeviceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getForgetDeviceMutationOptions(options), queryClient);
     }
 
 export const getFollowJourneyUrl = (id: string,) => {
@@ -6308,7 +6506,7 @@ export const getGetDiscoverUrl = (params?: GetDiscoverParams,) => {
 }
 
 /**
- * @summary Trending, new and recently completed journeys
+ * @summary Trending, new and recently completed journeys, leaning towards your interests
  */
 export const getDiscover = async (params?: GetDiscoverParams, options?: Parameters<typeof apiFetch>[1]): Promise<DiscoverResponse> => {
 
@@ -6354,7 +6552,7 @@ export type GetDiscoverQueryResult = NonNullable<Awaited<ReturnType<typeof getDi
 export type GetDiscoverQueryError = unknown
 
 
-/** @summary Trending, new and recently completed journeys */
+/** @summary Trending, new and recently completed journeys, leaning towards your interests */
 export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
  params: undefined |  GetDiscoverParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -6365,7 +6563,7 @@ export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, 
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Trending, new and recently completed journeys */
+/** @summary Trending, new and recently completed journeys, leaning towards your interests */
 export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
  params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -6376,12 +6574,12 @@ export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, 
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Trending, new and recently completed journeys */
+/** @summary Trending, new and recently completed journeys, leaning towards your interests */
 export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
  params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Trending, new and recently completed journeys */
+/** @summary Trending, new and recently completed journeys, leaning towards your interests */
 export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
  params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient

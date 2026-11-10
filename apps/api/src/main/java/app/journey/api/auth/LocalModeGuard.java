@@ -36,6 +36,12 @@ public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmen
         if (environment.getProperty("journey.seed.enabled", Boolean.class, false)) {
             on.add("journey.seed.enabled=true (sample people and journeys)");
         }
+        if ("local".equals(environment.getProperty("journey.push.mode"))) {
+            on.add("journey.push.mode=local (pushes are only written to the log; nobody's phone gets them)");
+        }
+        if ("local".equals(environment.getProperty("journey.email.mode"))) {
+            on.add("journey.email.mode=local (emails are only written to the log)");
+        }
         if (!on.isEmpty()) {
             throw new IllegalStateException(
                     "These settings are for building and testing only and need the 'local' profile: "

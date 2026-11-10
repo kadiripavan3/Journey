@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,10 +45,13 @@ public class CommentService {
     private final EntryService entries;
     private final MediaService media;
 
-    CommentService(CommentStore comments, EntryService entries, MediaService media) {
+    private final ApplicationEventPublisher events;
+
+    CommentService(CommentStore comments, EntryService entries, MediaService media, ApplicationEventPublisher events) {
         this.comments = comments;
         this.entries = entries;
         this.media = media;
+        this.events = events;
     }
 
     /** A page of an entry's comments: threads oldest first, each followed by its replies. */
@@ -85,9 +89,9 @@ public class CommentService {
             parent = answered.parentId() == null ? answered.id() : answered.parentId();
         }
         // Empty means the same comment arrived twice at the same moment and the other request saved it first.
-        UUID id = comments.insert(entryId, author, parent, text, clientId)
-                .or(() -> comments.findByClientId(author, clientId))
-                .orElseThrow();
+        Optional<UUID> added = comments.insert(entryId, author, parent, text, clientId);
+        added.ifPresent(comment -> events.publishEvent(new CommentAdded(comment)));
+        UUID id = added.or(() -> comments.findByClientId(author, clientId)).orElseThrow();
         return view(comments.find(id).orElseThrow(), entry, author);
     }
 

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,9 +65,12 @@ public class PeopleService {
     private final PeopleStore people;
     private final MediaService media;
 
-    PeopleService(PeopleStore people, MediaService media) {
+    private final ApplicationEventPublisher events;
+
+    PeopleService(PeopleStore people, MediaService media, ApplicationEventPublisher events) {
         this.people = people;
         this.media = media;
+        this.events = events;
     }
 
     public PublicProfileResponse profile(String username, UUID viewer) {
@@ -82,7 +86,9 @@ public class PeopleService {
         if (person.blockedByViewer()) {
             throw ApiProblem.badRequest("blocked", "You've blocked this person. Unblock them first.");
         }
-        people.follow(viewer, person.id());
+        if (people.follow(viewer, person.id())) {
+            events.publishEvent(new PersonFollowed(viewer, person.id()));
+        }
         return profile(username, viewer);
     }
 
