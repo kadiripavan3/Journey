@@ -187,6 +187,8 @@ class PushTest extends ApiTest {
                 .andExpect(status().isCreated());
         mvc.perform(put("/v1/profiles/nora/follow").header("Authorization", maya))
                 .andExpect(status().isOk());
+        // The entry is announced to its followers by the job, a moment after it is posted.
+        delivery.announce();
         assertThat(pending()).isEqualTo(3);
         mvc.perform(patch("/v1/journeys/" + journey)
                         .header("Authorization", maya)
@@ -293,6 +295,41 @@ class PushTest extends ApiTest {
                         .query(String.class)
                         .single())
                 .isEqualTo("skipped");
+    }
+
+    @Test
+    void postingWritesOneLineHoweverManyFollowAndTheJobTellsThoseWhoFollowedThen() throws Exception {
+        String maya = person("maya");
+        String nora = person("nora");
+        String late = person("late");
+        device(nora, "ExponentPushToken[nora-phone]");
+        device(late, "ExponentPushToken[late-phone]");
+        String journey = journey(maya, "Southeast Asia by motorbike", "public", 9);
+        mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", nora))
+                .andExpect(status().isOk());
+
+        entry(maya, journey, "Ferry to Java", 0);
+        // The author's request wrote down that it happened, and nothing per follower.
+        assertThat(announced()).isEqualTo(1);
+        assertThat(pending()).isZero();
+
+        // Someone who starts following a moment later isn't told about the entry before.
+        mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", late))
+                .andExpect(status().isOk());
+        jdbc.sql("delete from notifications").update(); // Maya hearing about her new follower is another test
+
+        assertThat(delivery.announce()).isEqualTo(1);
+        assertThat(announced()).isZero();
+        assertThat(pending()).isEqualTo(1);
+        delivery.deliverDue();
+        assertThat(to("ExponentPushToken[nora-phone]")).hasSize(1);
+        assertThat(to("ExponentPushToken[late-phone]")).isEmpty();
+    }
+
+    private int announced() {
+        return jdbc.sql("select count(*) from announcements")
+                .query(Integer.class)
+                .single();
     }
 
     private void device(String token, String pushToken) throws Exception {

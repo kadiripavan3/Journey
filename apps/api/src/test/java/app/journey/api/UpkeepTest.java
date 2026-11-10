@@ -167,6 +167,7 @@ class UpkeepTest extends ApiTest {
                 .isEqualTo("It's been 3 days since your last update. Add an entry when you're ready.");
         // The day after (four quiet days) there is nothing to say.
         jdbc.sql("delete from notifications").update();
+        jdbc.sql("delete from announcements").update();
         assertThat(reminders.remindAt(evening.plusSeconds(24 * 3600))).isZero();
     }
 
@@ -339,7 +340,8 @@ class UpkeepTest extends ApiTest {
                 .andExpect(status().isOk());
         entry(maya, trip, "Hoi An", 2);
         entry(maya, trip, "Mount Bromo", 0);
-        jdbc.sql("delete from notifications").update(); // the pushes about the entries themselves are another test
+        jdbc.sql("delete from notifications").update();
+        jdbc.sql("delete from announcements").update(); // the pushes about the entries themselves are another test
 
         // It goes out on Sunday evening, once: asking again finds that everyone has had this week's.
         assertThat(digest.sendDue(SUNDAY_EVENING.minusSeconds(2 * 3600))).isZero(); // four o'clock: not yet

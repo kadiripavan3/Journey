@@ -56,32 +56,95 @@ public class OutboxStore {
         this.jdbc = jdbc;
     }
 
-    /** A new entry: everyone who follows or writes in the journey, except its author. A burst becomes one message. */
+    /**
+     * A new entry, to be told to everyone who follows or writes in the journey. Only that it happened is
+     * written here, in the author's own transaction; {@link #announce} tells the followers.
+     */
     public void newEntry(UUID entryId, UUID journeyId, UUID authorId, Duration wait) {
         jdbc.sql("""
-            insert into notifications (user_id, kind, batch_key, actor_id, journey_id, entry_id, send_after)
-            select f.user_id, 'new_entries', 'entries:' || :journey, :author, :journey, :entry, now() + make_interval(secs => :wait)
-            from journey_follows f left join settings s on s.user_id = f.user_id
-            where f.journey_id = :journey and f.user_id <> :author and coalesce(s.notify_new_entries, true) and %s
-            """.formatted(HAS_DEVICE.formatted("f.user_id")) + MERGE)
+            insert into announcements (kind, journey_id, entry_id, actor_id, send_after)
+            values ('new_entries', :journey, :entry, :author, now() + make_interval(secs => :wait))
+            """)
                 .param("journey", journeyId)
-                .param("author", authorId)
                 .param("entry", entryId)
+                .param("author", authorId)
                 .param("wait", wait.toSeconds())
                 .update();
     }
 
-    /** A journey was completed: everyone who follows or writes in it, except its owner. */
+    /** A journey was completed, to be told to everyone who follows or writes in it. See {@link #newEntry}. */
     public void journeyCompleted(UUID journeyId, UUID ownerId) {
-        jdbc.sql("""
-            insert into notifications (user_id, kind, actor_id, journey_id)
-            select f.user_id, 'journey_completed', :owner, :journey
-            from journey_follows f left join settings s on s.user_id = f.user_id
-            where f.journey_id = :journey and f.user_id <> :owner and coalesce(s.notify_completed, true) and %s
-            """.formatted(HAS_DEVICE.formatted("f.user_id")))
+        jdbc.sql(
+                        "insert into announcements (kind, journey_id, actor_id) values ('journey_completed', :journey, :owner)")
                 .param("journey", journeyId)
                 .param("owner", ownerId)
                 .update();
+    }
+
+    private record Announcement(
+            long id, String kind, UUID journeyId, UUID entryId, UUID actorId, Instant sendAfter, Instant happenedAt) {}
+
+    /**
+     * Turns what waits to be announced into one message per follower: the oldest first, up to {@code limit}
+     * announcements. Another copy of the API skips the ones this one holds. A journey with very many followers
+     * makes one long statement, so this is given room; call it in a transaction. Only people who already
+     * followed when it happened are told: someone who follows a minute later doesn't hear about the entry
+     * before. Returns how many announcements were told.
+     */
+    public int announce(int limit) {
+        jdbc.sql(Sql.ROOM_FOR_A_JOB).update();
+        List<Announcement> waiting = jdbc.sql("""
+            select id, kind, journey_id, entry_id, actor_id, send_after, created_at from announcements
+            order by id limit :limit for update skip locked
+            """)
+                .param("limit", limit)
+                .query((rs, n) -> new Announcement(
+                        rs.getLong("id"),
+                        rs.getString("kind"),
+                        rs.getObject("journey_id", UUID.class),
+                        rs.getObject("entry_id", UUID.class),
+                        rs.getObject("actor_id", UUID.class),
+                        Sql.instant(rs, "send_after"),
+                        Sql.instant(rs, "created_at")))
+                .list();
+        for (Announcement told : waiting) {
+            if (told.kind().equals("new_entries")) {
+                // A burst becomes one message: a second entry within the wait counts the first one up. The
+                // message is dated when the entry was posted, not when this job got to it: what it says when
+                // it is sent is counted from that moment (lockDue).
+                jdbc.sql("""
+                    insert into notifications (user_id, kind, batch_key, actor_id, journey_id, entry_id, send_after, created_at)
+                    select f.user_id, 'new_entries', 'entries:' || :journey, :author, :journey, :entry, :after, :happened
+                    from journey_follows f left join settings s on s.user_id = f.user_id
+                    where f.journey_id = :journey and f.user_id <> :author and f.created_at <= :happened
+                      and coalesce(s.notify_new_entries, true) and %s
+                    """.formatted(HAS_DEVICE.formatted("f.user_id")) + MERGE)
+                        .param("journey", told.journeyId())
+                        .param("author", told.actorId())
+                        .param("entry", told.entryId())
+                        .param("after", Sql.timestamp(told.sendAfter()))
+                        .param("happened", Sql.timestamp(told.happenedAt()))
+                        .update();
+            } else {
+                jdbc.sql("""
+                    insert into notifications (user_id, kind, actor_id, journey_id, created_at)
+                    select f.user_id, 'journey_completed', :owner, :journey, :happened
+                    from journey_follows f left join settings s on s.user_id = f.user_id
+                    where f.journey_id = :journey and f.user_id <> :owner and f.created_at <= :happened
+                      and coalesce(s.notify_completed, true) and %s
+                    """.formatted(HAS_DEVICE.formatted("f.user_id")))
+                        .param("journey", told.journeyId())
+                        .param("owner", told.actorId())
+                        .param("happened", Sql.timestamp(told.happenedAt()))
+                        .update();
+            }
+        }
+        if (!waiting.isEmpty()) {
+            jdbc.sql("delete from announcements where id in (:ids)")
+                    .param("ids", waiting.stream().map(Announcement::id).toList())
+                    .update();
+        }
+        return waiting.size();
     }
 
     /** A like: the entry's author. Likes on one entry within the wait are one message. */

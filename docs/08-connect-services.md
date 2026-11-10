@@ -44,6 +44,8 @@ Never put a key in a file in the repository, in a chat, or in an app build setti
 | Project URL | App build settings (safe to be public) | `EXPO_PUBLIC_SUPABASE_URL` |
 | Publishable key | App build settings (safe to be public) | `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 
+The API opens every database connection with limits of its own: a statement is stopped after 5 seconds, a wait for a lock after 3, and a request waits at most 3 seconds for a free connection. Supabase's direct connection (the address above) accepts them. Its connection pooler does not in every mode: if you ever move the API to the pooler and it then refuses to connect, set `JOURNEY_DB_OPTIONS` to an empty value in `fly.toml` and tell me.
+
 The API reads one of Supabase's own tables: `auth.users`, to find the email address a digest or a deletion request belongs to. The default `postgres` user may. If you make a database user of your own for the API, run `grant usage on schema auth to <user>; grant select on auth.users to <user>;` in Supabase's SQL editor; without it the API's log says exactly that.
 
 The API checks every sign-in token against the project's public keys, which it fetches from the project by itself. An older project that still signs tokens with a shared secret also works: set `SUPABASE_JWT_SECRET` in Fly secrets.
@@ -283,6 +285,7 @@ When an account exists and you want me to check it from a session like this one,
 |---|---|---|
 | `JOURNEY_DB_URL`, `JOURNEY_DB_USER`, `JOURNEY_DB_PASSWORD` | 1 | yes |
 | `JOURNEY_DB_SCHEMA` (`journey`) | 1 | no |
+| `JOURNEY_DB_OPTIONS`, `JOURNEY_DB_CONNECTION_WAIT_MS` (only to change the database limits below; leave unset) | 1 | no |
 | `SUPABASE_URL` | 1 | no |
 | `SUPABASE_SERVICE_KEY` | 1 | yes |
 | `SUPABASE_JWT_SECRET` (older projects only) | 1 | yes |

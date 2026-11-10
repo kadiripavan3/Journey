@@ -92,8 +92,30 @@ public class PushDelivery {
         }
     }
 
-    /** Sends one batch of the pushes that are due. Returns how many messages it handled (sent, dropped or put back). */
+    /** How many announcements ("a new entry in this journey") are turned into messages in one go. */
+    private static final int ANNOUNCED_AT_ONCE = 200;
+
+    /**
+     * Tells the followers what was announced since the last time: each new entry and each completed journey
+     * becomes one waiting message per follower. Returns how many announcements were told.
+     */
+    public int announce() {
+        int told = 0;
+        int step;
+        do {
+            Integer done = transaction.execute(status -> outbox.announce(ANNOUNCED_AT_ONCE));
+            step = done == null ? 0 : done;
+            told += step;
+        } while (step == ANNOUNCED_AT_ONCE);
+        return told;
+    }
+
+    /**
+     * Sends one batch of the pushes that are due, after telling the followers what was announced. Returns how
+     * many messages it handled (sent, dropped or put back).
+     */
     public int deliverDue() {
+        announce();
         List<Ready> ready = new ArrayList<>();
         Integer taken = transaction.execute(status -> take(ready));
         for (List<Ready> call : calls(ready)) {
