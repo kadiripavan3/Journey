@@ -5,8 +5,8 @@
 -- Now the rows a statement added or removed are counted per journey and each journey is updated once. The
 -- journeys are locked in the order of their ids first, so two statements that touch the same journeys (an
 -- account being deleted, a block) can't end up waiting for each other.
-drop trigger journey_follows_count on journey_follows;
-drop function count_journey_follows();
+drop trigger if exists journey_follows_count on journey_follows;
+drop function if exists count_journey_follows();
 
 create function count_journey_follows() returns trigger language plpgsql as $$
 begin

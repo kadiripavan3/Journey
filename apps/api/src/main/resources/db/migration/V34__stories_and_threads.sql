@@ -6,7 +6,7 @@ set local statement_timeout = 0;
 --    page before, and an entry's place in the story is counted from the index alone. It replaces the index
 --    without the id.
 create index entries_story on entries (journey_id, happened_at, created_at, id);
-drop index entries_timeline;
+drop index if exists entries_timeline;
 
 --    A story's big moments, in story order, for "Jump to" on the journey's page. Few entries are milestones,
 --    so this index is small, and the page no longer looks at every entry to find them.
@@ -49,7 +49,7 @@ create trigger comments_thread before insert on comments
   for each row execute function place_comment_in_thread();
 
 create index comments_threads on comments (entry_id, thread_at, thread_id, created_at, id);
-drop index comments_entry;
+drop index if exists comments_entry;
 
 -- 4. Room on each page for a changed row to stay on it. A journey's counts change with every entry and
 --    every follow, and an entry's with every like and comment. When the new version of the row fits on the

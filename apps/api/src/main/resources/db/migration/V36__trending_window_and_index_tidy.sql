@@ -14,15 +14,15 @@ create index entries_posted on entries (created_at);
 -- (lists are ordered by newest activity through the reader's own follows, or by the Discover indexes). The
 -- second served one job a night, which can look at the active journeys without it. With both gone, a new
 -- entry or a new follower changes a journey's row in place and touches no index at all.
-drop index journeys_listed;
-drop index journeys_quiet;
+drop index if exists journeys_listed;
+drop index if exists journeys_quiet;
 
 -- Follows of a journey: the index now also holds who follows, so "does this person follow this journey" is
 -- one step into it. With the journey alone, the database sometimes read every follower of a popular journey
 -- to find the one row. It serves everything the old index did.
 create index journey_follows_by_journey on journey_follows (journey_id, user_id);
-drop index journey_follows_journey;
+drop index if exists journey_follows_journey;
 
 -- This repeated the table's own key with "last read" added. Marking a journey as read changes that column,
 -- so each visit to a story rewrote two index entries for nothing: Home finds a reader's follows by the key.
-drop index journey_follows_unread;
+drop index if exists journey_follows_unread;

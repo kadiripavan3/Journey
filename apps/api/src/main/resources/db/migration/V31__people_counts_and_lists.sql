@@ -48,9 +48,9 @@ create trigger profile_follows_removed after delete on profile_follows
 --    plain index on followee_id.
 create index profile_follows_followers on profile_follows (followee_id, created_at, follower_id);
 create index profile_follows_following on profile_follows (follower_id, created_at, followee_id);
-drop index profile_follows_followee;
+drop index if exists profile_follows_followee;
 
 -- 3. A person's entries, journey by journey: the entry count on a profile is read from this index alone.
 --    It replaces the plain index on author_id.
 create index entries_by_author on entries (author_id, journey_id);
-drop index entries_author;
+drop index if exists entries_author;
