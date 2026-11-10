@@ -196,6 +196,35 @@ public class JourneyService {
 
   public record DiscoverResponse(List<JourneyResponse> trending, List<JourneyResponse> fresh, List<JourneyResponse> completed) {}
 
+  public record RecapResponse(
+      JourneyResponse journey,
+      @Schema(description = "From the start date to the last entry, counting both") int dayCount,
+      int entryCount, int placeCount, int photoCount, int likeCount,
+      @Schema(nullable = true) LocalDate firstDay,
+      @Schema(nullable = true) LocalDate lastDay,
+      @Schema(description = "Photos of the best moments: milestones first, then the most liked") List<String> momentUrls) {}
+
+  /** What a journey adds up to: for the recap of a completed journey, and for the step that completes one. */
+  public RecapResponse recap(UUID id, UUID viewer) {
+    JourneyRow journey = require(id, viewer);
+    JourneyStore.Totals totals = journeys.totals(id);
+    int days = totals.lastDay() == null ? 0 : (int) ChronoUnit.DAYS.between(journey.startDate(), totals.lastDay()) + 1;
+    return new RecapResponse(view(journey, viewer), Math.max(days, 0), totals.entries(), totals.places(), totals.photos(), totals.likes(),
+        totals.firstDay(), totals.lastDay(), journeys.momentKeys(id, 3).stream().map(media::urlFor).toList());
+  }
+
+  /** Public journeys whose title, description, tags or creator match the words typed. */
+  public List<JourneyResponse> search(String pattern, UUID viewer, int limit) {
+    return views(
+        journeys.list(
+            """
+            j.visibility = 'public' and (j.title ilike :q or j.description ilike :q or p.display_name ilike :q or p.username ilike :q
+              or exists (select 1 from unnest(j.tags) t where t ilike :q))
+            """,
+            Map.of("q", pattern), "j.follower_count desc, j.last_entry_at desc nulls last", limit, viewer),
+        viewer);
+  }
+
   /** Discover uses simple rules that can be explained: most followed, newest, and recently completed. */
   public DiscoverResponse discover(UUID viewer, String category) {
     String base = "j.visibility = 'public' and j.entry_count >= " + DISCOVER_MIN_ENTRIES + " and (cast(:category as text) is null or j.category = :category)";

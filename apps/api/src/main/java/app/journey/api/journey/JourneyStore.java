@@ -57,13 +57,17 @@ public class JourneyStore {
     this.jdbc = jdbc;
   }
 
+  /** Blocking hides journeys both ways: from the person blocked, and their own from the person who blocked them. */
+  private static final String NOT_BLOCKED =
+      " and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = j.owner_id) or (b.blocker_id = j.owner_id and b.blocked_id = :viewer))";
+
   public Optional<JourneyRow> find(UUID id, UUID viewer) {
-    return jdbc.sql(SELECT + " where j.id = :id").param("viewer", viewer).param("id", id).query(ROW).optional();
+    return jdbc.sql(SELECT + " where j.id = :id" + NOT_BLOCKED).param("viewer", viewer).param("id", id).query(ROW).optional();
   }
 
   /** Journeys matching a condition, written against the aliases j (journey) and p (owner). */
   public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-    return jdbc.sql(SELECT + " where " + where + " order by " + orderBy + " limit :limit")
+    return jdbc.sql(SELECT + " where (" + where + ")" + NOT_BLOCKED + " order by " + orderBy + " limit :limit")
         .params(params).param("viewer", viewer).param("limit", limit).query(ROW).list();
   }
 
@@ -144,6 +148,38 @@ public class JourneyStore {
         .param("owner", ownerId).param("journey", journeyId).update();
     jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
         .param("id", journeyId).update();
+  }
+
+  /** What a finished (or unfinished) journey adds up to. */
+  public record Totals(int entries, int places, int photos, int likes, LocalDate firstDay, LocalDate lastDay) {}
+
+  public Totals totals(UUID journeyId) {
+    return jdbc.sql(
+            """
+            select count(*) as entries, count(distinct nullif(e.place_name, '')) as places, coalesce(sum(e.like_count), 0) as likes,
+                   min(e.happened_on) as first_day, max(e.happened_on) as last_day,
+                   (select count(*) from entry_media em join entries x on x.id = em.entry_id join media m on m.id = em.media_id
+                     where x.journey_id = :id and m.kind = 'photo') as photos
+            from entries e where e.journey_id = :id
+            """)
+        .param("id", journeyId)
+        .query((rs, n) -> new Totals(rs.getInt("entries"), rs.getInt("places"), rs.getInt("photos"), rs.getInt("likes"),
+            rs.getObject("first_day", LocalDate.class), rs.getObject("last_day", LocalDate.class)))
+        .single();
+  }
+
+  /** The photos of a journey's best moments: milestones first, then the most liked. */
+  public List<String> momentKeys(UUID journeyId, int limit) {
+    return jdbc.sql(
+            """
+            select m.storage_key from entries e
+            join entry_media em on em.entry_id = e.id and em.position = 0
+            join media m on m.id = em.media_id and m.kind = 'photo'
+            where e.journey_id = :id
+            order by e.is_milestone desc, e.like_count desc, e.happened_at
+            limit :limit
+            """)
+        .param("id", journeyId).param("limit", limit).query(String.class).list();
   }
 
   public void unfollow(UUID userId, UUID journeyId) {

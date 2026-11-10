@@ -66,8 +66,8 @@ public class CommentService {
   /** An entry's comments, oldest first. The app groups replies under the comment they answer. */
   public List<CommentResponse> list(UUID entryId, UUID viewer) {
     EntryRow entry = entries.require(entryId, viewer);
-    return jdbc.sql(SELECT + " where c.entry_id = :entry order by c.created_at limit :limit")
-        .param("entry", entryId).param("limit", LIST_LIMIT).query(ROW).list().stream()
+    return jdbc.sql(SELECT + " where c.entry_id = :entry and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = c.author_id) or (b.blocker_id = c.author_id and b.blocked_id = :viewer)) order by c.created_at limit :limit")
+        .param("entry", entryId).param("viewer", viewer).param("limit", LIST_LIMIT).query(ROW).list().stream()
         .map(row -> view(row, entry, viewer)).toList();
   }
 

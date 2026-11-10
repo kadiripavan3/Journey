@@ -84,6 +84,90 @@
         }
       }
     },
+    "/v1/profiles/{username}/block" : {
+      "put" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Block someone. Neither of you sees the other's journeys, entries or comments, and they aren't told.",
+        "operationId" : "blockProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Unblock someone",
+        "operationId" : "unblockProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/v1/me/settings" : {
+      "get" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Your notification choices and what new journeys start as",
+        "operationId" : "getSettings",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Change your settings. Send all of them.",
+        "operationId" : "saveSettings",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SettingsResponse"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/profile" : {
       "put" : {
         "tags" : [ "me" ],
@@ -297,6 +381,35 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports" : {
+      "post" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Report a journey, an entry, a comment or a person. Reports are private.",
+        "operationId" : "report",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResponse"
                 }
               }
             }
@@ -730,6 +843,33 @@
         }
       }
     },
+    "/v1/search" : {
+      "get" : {
+        "tags" : [ "Search" ],
+        "summary" : "Find public journeys and people. A leading # or @ is ignored.",
+        "operationId" : "search",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/profiles/{username}" : {
       "get" : {
         "tags" : [ "People" ],
@@ -864,6 +1004,16 @@
             }
           }
         }
+      },
+      "delete" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "Delete your account and everything in it, for good",
+        "operationId" : "deleteAccount",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
       }
     },
     "/v1/me/journeys" : {
@@ -903,6 +1053,56 @@
                   "items" : {
                     "$ref" : "#/components/schemas/JourneyResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/blocks" : {
+      "get" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "The people you have blocked, most recent first",
+        "operationId" : "getBlocked",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/BlockedPersonResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/recap" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "What a journey adds up to: days, entries, places, photos and its best moments",
+        "operationId" : "getRecap",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecapResponse"
                 }
               }
             }
@@ -1107,9 +1307,52 @@
           "followsYou" : {
             "type" : "boolean",
             "description" : "True when this person follows the viewer"
+          },
+          "hasBlocked" : {
+            "type" : "boolean",
+            "description" : "True when the viewer has blocked this person"
           }
         },
-        "required" : [ "followsYou", "isFollowing", "isMe" ]
+        "required" : [ "followsYou", "hasBlocked", "isFollowing", "isMe" ]
+      },
+      "SettingsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "notifyNewEntries" : {
+            "type" : "boolean",
+            "description" : "New entries in journeys you follow, grouped per journey"
+          },
+          "notifyCompleted" : {
+            "type" : "boolean",
+            "description" : "Journeys you follow being completed"
+          },
+          "notifyComments" : {
+            "type" : "boolean"
+          },
+          "notifyFollowers" : {
+            "type" : "boolean"
+          },
+          "notifyLikes" : {
+            "type" : "boolean",
+            "description" : "Likes, in one batch"
+          },
+          "weeklyDigest" : {
+            "type" : "boolean"
+          },
+          "digestEmail" : {
+            "type" : "boolean",
+            "description" : "Also send the weekly digest by email"
+          },
+          "reminders" : {
+            "type" : "boolean",
+            "description" : "Gentle reminders to add an entry, at most one a day"
+          },
+          "defaultVisibility" : {
+            "type" : "string",
+            "description" : "What new journeys start as: public, unlisted or private"
+          }
+        },
+        "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminders", "weeklyDigest" ]
       },
       "SaveProfileRequest" : {
         "type" : "object",
@@ -1467,6 +1710,41 @@
         },
         "required" : [ "durationSeconds", "height", "id", "kind", "url", "width" ]
       },
+      "ReportRequest" : {
+        "type" : "object",
+        "properties" : {
+          "targetType" : {
+            "type" : "string",
+            "description" : "journey, entry, comment or profile",
+            "minLength" : 1
+          },
+          "targetId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "reason" : {
+            "type" : "string",
+            "description" : "spam, harassment, nudity, violence, impersonation or other",
+            "minLength" : 1
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "reason", "targetId", "targetType" ]
+      },
+      "ReportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "id" ]
+      },
       "StartUploadRequest" : {
         "type" : "object",
         "properties" : {
@@ -1778,6 +2056,27 @@
         },
         "required" : [ "isFollowing", "isMe" ]
       },
+      "SearchResponse" : {
+        "type" : "object",
+        "properties" : {
+          "query" : {
+            "type" : "string"
+          },
+          "journeys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          },
+          "people" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ListedPersonResponse"
+            }
+          }
+        },
+        "required" : [ "journeys", "people", "query" ]
+      },
       "MeResponse" : {
         "type" : "object",
         "properties" : {
@@ -1798,6 +2097,74 @@
           }
         },
         "required" : [ "email", "id", "profile" ]
+      },
+      "BlockedPersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "avatarUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "blockedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "avatarUrl", "blockedAt", "displayName", "id", "username" ]
+      },
+      "RecapResponse" : {
+        "type" : "object",
+        "properties" : {
+          "journey" : {
+            "$ref" : "#/components/schemas/JourneyResponse"
+          },
+          "dayCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "From the start date to the last entry, counting both"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "placeCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "photoCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "likeCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "firstDay" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "lastDay" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "momentUrls" : {
+            "type" : "array",
+            "description" : "Photos of the best moments: milestones first, then the most liked",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "dayCount", "entryCount", "firstDay", "journey", "lastDay", "likeCount", "momentUrls", "photoCount", "placeCount" ]
       },
       "FeedGroupResponse" : {
         "type" : "object",

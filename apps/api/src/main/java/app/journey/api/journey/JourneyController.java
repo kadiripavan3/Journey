@@ -138,6 +138,12 @@ class JourneyController {
     return journeys.publicBy(username.toLowerCase(), me(jwt));
   }
 
+  @GetMapping("/journeys/{id}/recap")
+  @Operation(operationId = "getRecap", summary = "What a journey adds up to: days, entries, places, photos and its best moments")
+  JourneyService.RecapResponse recap(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+    return journeys.recap(id, me(jwt));
+  }
+
   @GetMapping("/discover")
   @Operation(operationId = "getDiscover", summary = "Trending, new and recently completed journeys")
   DiscoverResponse discover(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String category) {

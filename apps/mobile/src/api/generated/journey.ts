@@ -30,6 +30,8 @@ export interface PublicProfileViewerResponse {
   isFollowing: boolean;
   /** True when this person follows the viewer */
   followsYou: boolean;
+  /** True when the viewer has blocked this person */
+  hasBlocked: boolean;
 }
 
 export interface PublicProfileResponse {
@@ -47,6 +49,24 @@ export interface PublicProfileResponse {
   followerCount: number;
   followingCount: number;
   viewer: PublicProfileViewerResponse;
+}
+
+export interface SettingsResponse {
+  /** New entries in journeys you follow, grouped per journey */
+  notifyNewEntries: boolean;
+  /** Journeys you follow being completed */
+  notifyCompleted: boolean;
+  notifyComments: boolean;
+  notifyFollowers: boolean;
+  /** Likes, in one batch */
+  notifyLikes: boolean;
+  weeklyDigest: boolean;
+  /** Also send the weekly digest by email */
+  digestEmail: boolean;
+  /** Gentle reminders to add an entry, at most one a day */
+  reminders: boolean;
+  /** What new journeys start as: public, unlisted or private */
+  defaultVisibility: string;
 }
 
 export interface SaveProfileRequest {
@@ -244,6 +264,29 @@ export interface EntryResponse {
   createdAt: string;
   edited: boolean;
   viewer: EntryViewerResponse;
+}
+
+export interface ReportRequest {
+  /**
+     * journey, entry, comment or profile
+     * @minLength 1
+     */
+  targetType: string;
+  targetId: string;
+  /**
+     * spam, harassment, nudity, violence, impersonation or other
+     * @minLength 1
+     */
+  reason: string;
+  /**
+     * @minLength 0
+     * @maxLength 500
+     */
+  note?: string;
+}
+
+export interface ReportResponse {
+  id: string;
 }
 
 /**
@@ -477,11 +520,42 @@ export interface ListedPersonResponse {
   viewer: ListedPersonViewerResponse;
 }
 
+export interface SearchResponse {
+  query: string;
+  journeys: JourneyResponse[];
+  people: ListedPersonResponse[];
+}
+
 export interface MeResponse {
   id: string;
   email: string;
   /** Null until the person has created their profile */
   profile: ProfileResponse | null;
+}
+
+export interface BlockedPersonResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  blockedAt: string;
+}
+
+export interface RecapResponse {
+  journey: JourneyResponse;
+  /** From the start date to the last entry, counting both */
+  dayCount: number;
+  entryCount: number;
+  placeCount: number;
+  photoCount: number;
+  likeCount: number;
+  /** @nullable */
+  firstDay: string | null;
+  /** @nullable */
+  lastDay: string | null;
+  /** Photos of the best moments: milestones first, then the most liked */
+  momentUrls: string[];
 }
 
 export interface FeedGroupResponse {
@@ -573,6 +647,10 @@ export interface ActivityResponse {
   /** How many lines are new */
   newCount: number;
 }
+
+export type SearchParams = {
+  q: string;
+};
 
 export type GetSuggestedJourneysParams = {
   limit?: number;
@@ -743,6 +821,337 @@ export const useUnfollowProfile = <TError = unknown,
         TContext
       > => {
       return useMutation(getUnfollowProfileMutationOptions(options), queryClient);
+    }
+
+export const getBlockProfileUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/block`
+}
+
+/**
+ * @summary Block someone. Neither of you sees the other's journeys, entries or comments, and they aren't told.
+ */
+export const blockProfile = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getBlockProfileUrl(username),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getBlockProfileMutationKey = () => ['blockProfile'] as const;
+
+export const getBlockProfileMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof blockProfile>>, TError,BlockProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof blockProfile>>, TError,BlockProfileMutationVariables, TContext> => {
+
+const mutationKey = getBlockProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof blockProfile>>, BlockProfileMutationVariables> = (props) => {
+          const {username} = props ?? {};
+
+          return  blockProfile(username,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BlockProfileMutationResult = NonNullable<Awaited<ReturnType<typeof blockProfile>>>
+
+    export type BlockProfileMutationError = unknown
+    export type BlockProfileMutationVariables = {username: string}
+
+    /** @summary Block someone. Neither of you sees the other's journeys, entries or comments, and they aren't told. */
+export const useBlockProfile = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof blockProfile>>, TError,BlockProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof blockProfile>>,
+        TError,
+        BlockProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBlockProfileMutationOptions(options), queryClient);
+    }
+
+export const getUnblockProfileUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/block`
+}
+
+/**
+ * @summary Unblock someone
+ */
+export const unblockProfile = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getUnblockProfileUrl(username),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnblockProfileMutationKey = () => ['unblockProfile'] as const;
+
+export const getUnblockProfileMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unblockProfile>>, TError,UnblockProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unblockProfile>>, TError,UnblockProfileMutationVariables, TContext> => {
+
+const mutationKey = getUnblockProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unblockProfile>>, UnblockProfileMutationVariables> = (props) => {
+          const {username} = props ?? {};
+
+          return  unblockProfile(username,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnblockProfileMutationResult = NonNullable<Awaited<ReturnType<typeof unblockProfile>>>
+
+    export type UnblockProfileMutationError = unknown
+    export type UnblockProfileMutationVariables = {username: string}
+
+    /** @summary Unblock someone */
+export const useUnblockProfile = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unblockProfile>>, TError,UnblockProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unblockProfile>>,
+        TError,
+        UnblockProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnblockProfileMutationOptions(options), queryClient);
+    }
+
+export const getGetSettingsUrl = () => {
+
+
+
+
+  return `/v1/me/settings`
+}
+
+/**
+ * @summary Your notification choices and what new journeys start as
+ */
+export const getSettings = async ( options?: Parameters<typeof apiFetch>[1]): Promise<SettingsResponse> => {
+
+  return apiFetch<SettingsResponse>(getGetSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSettingsQueryKey = () => {
+    return [
+    `/v1/me/settings`
+    ] as const;
+    }
+
+
+export const getGetSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getSettings>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({ signal }) => getSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getSettings>>>
+export type GetSettingsQueryError = unknown
+
+
+/** @summary Your notification choices and what new journeys start as */
+export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your notification choices and what new journeys start as */
+export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your notification choices and what new journeys start as */
+export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your notification choices and what new journeys start as */
+export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveSettingsUrl = () => {
+
+
+
+
+  return `/v1/me/settings`
+}
+
+/**
+ * @summary Change your settings. Send all of them.
+ */
+export const saveSettings = async (settingsResponse: SettingsResponse, options?: Parameters<typeof apiFetch>[1]): Promise<SettingsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<SettingsResponse>(getSaveSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(settingsResponse)
+  }
+);}
+
+
+
+
+
+export const getSaveSettingsMutationKey = () => ['saveSettings'] as const;
+
+export const getSaveSettingsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSettings>>, TError,SaveSettingsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveSettings>>, TError,SaveSettingsMutationVariables, TContext> => {
+
+const mutationKey = getSaveSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveSettings>>, SaveSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof saveSettings>>>
+    export type SaveSettingsMutationBody = SettingsResponse
+    export type SaveSettingsMutationError = unknown
+    export type SaveSettingsMutationVariables = {data: SettingsResponse}
+
+    /** @summary Change your settings. Send all of them. */
+export const useSaveSettings = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSettings>>, TError,SaveSettingsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveSettings>>,
+        TError,
+        SaveSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveSettingsMutationOptions(options), queryClient);
     }
 
 export const getSaveProfileUrl = () => {
@@ -1377,6 +1786,92 @@ export const useUnlikeEntry = <TError = unknown,
         TContext
       > => {
       return useMutation(getUnlikeEntryMutationOptions(options), queryClient);
+    }
+
+export const getReportUrl = () => {
+
+
+
+
+  return `/v1/reports`
+}
+
+/**
+ * @summary Report a journey, an entry, a comment or a person. Reports are private.
+ */
+export const report = async (reportRequest: ReportRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ReportResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ReportResponse>(getReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reportRequest)
+  }
+);}
+
+
+
+
+
+export const getReportMutationKey = () => ['report'] as const;
+
+export const getReportMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof report>>, TError,ReportMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof report>>, TError,ReportMutationVariables, TContext> => {
+
+const mutationKey = getReportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof report>>, ReportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  report(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportMutationResult = NonNullable<Awaited<ReturnType<typeof report>>>
+    export type ReportMutationBody = ReportRequest
+    export type ReportMutationError = unknown
+    export type ReportMutationVariables = {data: ReportRequest}
+
+    /** @summary Report a journey, an entry, a comment or a person. Reports are private. */
+export const useReport = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof report>>, TError,ReportMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof report>>,
+        TError,
+        ReportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReportMutationOptions(options), queryClient);
     }
 
 export const getStartUploadUrl = () => {
@@ -2691,6 +3186,114 @@ export function useCheckUsername<TData = Awaited<ReturnType<typeof checkUsername
 
 
 
+export const getSearchUrl = (params: SearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/search?${stringifiedParams}` : `/v1/search`
+}
+
+/**
+ * @summary Find public journeys and people. A leading # or @ is ignored.
+ */
+export const search = async (params: SearchParams, options?: Parameters<typeof apiFetch>[1]): Promise<SearchResponse> => {
+
+  return apiFetch<SearchResponse>(getSearchUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchQueryKey = (params?: SearchParams,) => {
+    return [
+    `/v1/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchQueryOptions = <TData = Awaited<ReturnType<typeof search>>, TError = unknown>(params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof search>>> = ({ signal }) => search(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
+export type SearchQueryError = unknown
+
+
+/** @summary Find public journeys and people. A leading # or @ is ignored. */
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
+ params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof search>>,
+          TError,
+          Awaited<ReturnType<typeof search>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Find public journeys and people. A leading # or @ is ignored. */
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof search>>,
+          TError,
+          Awaited<ReturnType<typeof search>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Find public journeys and people. A leading # or @ is ignored. */
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Find public journeys and people. A leading # or @ is ignored. */
+export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
+ params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSearchQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetProfileUrl = (username: string,) => {
 
 
@@ -3196,6 +3799,78 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
 
 
 
+export const getDeleteAccountUrl = () => {
+
+
+
+
+  return `/v1/me`
+}
+
+/**
+ * @summary Delete your account and everything in it, for good
+ */
+export const deleteAccount = async ( options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteAccountUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAccountMutationKey = () => ['deleteAccount'] as const;
+
+export const getDeleteAccountMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext> => {
+
+const mutationKey = getDeleteAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, void> = () => {
+
+
+          return  deleteAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>
+
+    export type DeleteAccountMutationError = unknown
+
+
+    /** @summary Delete your account and everything in it, for good */
+export const useDeleteAccount = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAccountMutationOptions(options), queryClient);
+    }
+
 export const getGetMyJourneysUrl = () => {
 
 
@@ -3386,6 +4061,208 @@ export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFoll
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetFollowedJourneysQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBlockedUrl = () => {
+
+
+
+
+  return `/v1/me/blocks`
+}
+
+/**
+ * @summary The people you have blocked, most recent first
+ */
+export const getBlocked = async ( options?: Parameters<typeof apiFetch>[1]): Promise<BlockedPersonResponse[]> => {
+
+  return apiFetch<BlockedPersonResponse[]>(getGetBlockedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBlockedQueryKey = () => {
+    return [
+    `/v1/me/blocks`
+    ] as const;
+    }
+
+
+export const getGetBlockedQueryOptions = <TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBlockedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBlocked>>> = ({ signal }) => getBlocked({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBlockedQueryResult = NonNullable<Awaited<ReturnType<typeof getBlocked>>>
+export type GetBlockedQueryError = unknown
+
+
+/** @summary The people you have blocked, most recent first */
+export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBlocked>>,
+          TError,
+          Awaited<ReturnType<typeof getBlocked>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBlocked>>,
+          TError,
+          Awaited<ReturnType<typeof getBlocked>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBlockedQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRecapUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/recap`
+}
+
+/**
+ * @summary What a journey adds up to: days, entries, places, photos and its best moments
+ */
+export const getRecap = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<RecapResponse> => {
+
+  return apiFetch<RecapResponse>(getGetRecapUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecapQueryKey = (id: string,) => {
+    return [
+    `/v1/journeys/${id}/recap`
+    ] as const;
+    }
+
+
+export const getGetRecapQueryOptions = <TData = Awaited<ReturnType<typeof getRecap>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecapQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecap>>> = ({ signal }) => getRecap(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetRecapQueryResult = NonNullable<Awaited<ReturnType<typeof getRecap>>>
+export type GetRecapQueryError = unknown
+
+
+/** @summary What a journey adds up to: days, entries, places, photos and its best moments */
+export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRecap>>,
+          TError,
+          Awaited<ReturnType<typeof getRecap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey adds up to: days, entries, places, photos and its best moments */
+export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getRecap>>,
+          TError,
+          Awaited<ReturnType<typeof getRecap>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey adds up to: days, entries, places, photos and its best moments */
+export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey adds up to: days, entries, places, photos and its best moments */
+export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getRecap>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetRecapQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

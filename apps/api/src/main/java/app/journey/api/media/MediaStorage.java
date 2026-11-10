@@ -18,4 +18,7 @@ public interface MediaStorage {
 
   /** The address the file is served from once uploaded. */
   String publicUrl(String storageKey);
+
+  /** Removes the file for good. Nothing happens if it is already gone. */
+  void delete(String storageKey);
 }

@@ -22,7 +22,8 @@ public class PeopleService {
   static final int LIST_LIMIT = 200;
 
   public record PublicProfileViewerResponse(
-      boolean isMe, boolean isFollowing, @Schema(description = "True when this person follows the viewer") boolean followsYou) {}
+      boolean isMe, boolean isFollowing, @Schema(description = "True when this person follows the viewer") boolean followsYou,
+      @Schema(description = "True when the viewer has blocked this person") boolean hasBlocked) {}
 
   public record PublicProfileResponse(
       UUID id, String username, String displayName, String bio,
@@ -57,6 +58,9 @@ public class PeopleService {
     if (person.id().equals(viewer)) {
       throw ApiProblem.badRequest("thats_you", "You can't follow yourself.");
     }
+    if (person.blockedByViewer()) {
+      throw ApiProblem.badRequest("blocked", "You've blocked this person. Unblock them first.");
+    }
     people.follow(viewer, person.id());
     return profile(username, viewer);
   }
@@ -76,6 +80,20 @@ public class PeopleService {
         .toList();
   }
 
+  /** People whose name or username matches. */
+  public List<ListedPersonResponse> search(String pattern, UUID viewer, int limit) {
+    return people.search(pattern, viewer, limit).stream()
+        .map(row -> new ListedPersonResponse(
+            row.id(), row.username(), row.displayName(), media.urlFor(row.avatarKey()), row.latestJourney(),
+            new ListedPersonViewerResponse(row.id().equals(viewer), row.following())))
+        .toList();
+  }
+
+  /** The id behind a username, or "not found" (also when that person has blocked the viewer). */
+  public UUID idOf(String username, UUID viewer) {
+    return require(username, viewer).id();
+  }
+
   /** People by id as they are shown next to what they did. */
   public Map<UUID, PersonResponse> persons(Collection<UUID> ids) {
     return people.byId(ids).values().stream().collect(Collectors.toMap(PersonRow::id, this::person));
@@ -93,6 +111,6 @@ public class PeopleService {
   private PublicProfileResponse view(ProfileRow p, UUID viewer) {
     return new PublicProfileResponse(
         p.id(), p.username(), p.displayName(), p.bio(), p.link(), media.urlFor(p.avatarKey()), p.journeyCount(), p.entryCount(),
-        p.followerCount(), p.followingCount(), new PublicProfileViewerResponse(p.id().equals(viewer), p.following(), p.followsViewer()));
+        p.followerCount(), p.followingCount(), new PublicProfileViewerResponse(p.id().equals(viewer), p.following(), p.followsViewer(), p.blockedByViewer()));
   }
 }

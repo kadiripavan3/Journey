@@ -21,7 +21,7 @@ public class PeopleStore {
 
   public record ProfileRow(
       UUID id, String username, String displayName, String bio, String link, String avatarKey,
-      int journeyCount, int entryCount, int followerCount, int followingCount, boolean following, boolean followsViewer) {}
+      int journeyCount, int entryCount, int followerCount, int followingCount, boolean following, boolean followsViewer, boolean blockedByViewer) {}
 
   public record ListedRow(UUID id, String username, String displayName, String avatarKey, String latestJourney, boolean following, Instant since) {}
 
@@ -45,15 +45,17 @@ public class PeopleStore {
                    (select count(*) from profile_follows f where f.followee_id = p.id) as follower_count,
                    (select count(*) from profile_follows f where f.follower_id = p.id) as following_count,
                    exists (select 1 from profile_follows f where f.follower_id = :viewer and f.followee_id = p.id) as following,
-                   exists (select 1 from profile_follows f where f.follower_id = p.id and f.followee_id = :viewer) as follows_viewer
+                   exists (select 1 from profile_follows f where f.follower_id = p.id and f.followee_id = :viewer) as follows_viewer,
+                   exists (select 1 from blocks b where b.blocker_id = :viewer and b.blocked_id = p.id) as blocked_by_viewer
             from profiles p left join media a on a.id = p.avatar_media_id
             where p.username = :username
+              and not exists (select 1 from blocks b where b.blocker_id = p.id and b.blocked_id = :viewer)
             """)
         .param("username", username).param("viewer", viewer)
         .query((rs, n) -> new ProfileRow(
             rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("bio"), rs.getString("link"),
             rs.getString("avatar_key"), rs.getInt("journey_count"), rs.getInt("entry_count"), rs.getInt("follower_count"),
-            rs.getInt("following_count"), rs.getBoolean("following"), rs.getBoolean("follows_viewer")))
+            rs.getInt("following_count"), rs.getBoolean("following"), rs.getBoolean("follows_viewer"), rs.getBoolean("blocked_by_viewer")))
         .optional();
   }
 
@@ -80,11 +82,30 @@ public class PeopleStore {
             from profile_follows f
             join profiles p on p.id = %s
             left join media a on a.id = p.avatar_media_id
-            where %s = :person
+            where %s = :person and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = p.id) or (b.blocker_id = p.id and b.blocked_id = :viewer))
             order by f.created_at desc
             limit :limit
             """.formatted(other, self))
         .param("person", personId).param("viewer", viewer).param("limit", limit)
+        .query((rs, n) -> new ListedRow(
+            rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("avatar_key"),
+            rs.getString("latest_journey"), rs.getBoolean("following"), Sql.instant(rs, "since")))
+        .list();
+  }
+
+  /** People whose name or username matches the words typed, most followed first. */
+  public List<ListedRow> search(String pattern, UUID viewer, int limit) {
+    return jdbc.sql(
+            """
+            select p.id, p.username, p.display_name, a.storage_key as avatar_key, p.created_at as since,
+                   (select j.title from journeys j where j.owner_id = p.id and j.visibility = 'public' order by j.created_at desc limit 1) as latest_journey,
+                   exists (select 1 from profile_follows v where v.follower_id = :viewer and v.followee_id = p.id) as following
+            from profiles p left join media a on a.id = p.avatar_media_id
+            where (p.username ilike :q or p.display_name ilike :q) and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = p.id) or (b.blocker_id = p.id and b.blocked_id = :viewer))
+            order by (select count(*) from profile_follows f where f.followee_id = p.id) desc, p.username
+            limit :limit
+            """)
+        .param("q", pattern).param("viewer", viewer).param("limit", limit)
         .query((rs, n) -> new ListedRow(
             rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("avatar_key"),
             rs.getString("latest_journey"), rs.getBoolean("following"), Sql.instant(rs, "since")))

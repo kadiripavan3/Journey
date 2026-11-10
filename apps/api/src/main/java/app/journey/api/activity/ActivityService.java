@@ -112,7 +112,7 @@ public class ActivityService {
             from entries e
             join journey_follows f on f.journey_id = e.journey_id and f.user_id = :me
             join journeys j on j.id = e.journey_id
-            where e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s
+            where e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = e.author_id) or (b.blocker_id = e.author_id and b.blocked_id = :me))
             group by e.journey_id, j.title, day
             order by at desc limit :limit
             """.formatted(RECENT))
@@ -130,7 +130,7 @@ public class ActivityService {
             """
             select j.id, j.title, j.owner_id, j.completed_at
             from journeys j join journey_follows f on f.journey_id = j.id and f.user_id = :me
-            where j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s
+            where j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = j.owner_id) or (b.blocker_id = j.owner_id and b.blocked_id = :me))
             order by j.completed_at desc limit :limit
             """.formatted(RECENT))
         .param("me", me).param("limit", PER_KIND)
@@ -147,7 +147,7 @@ public class ActivityService {
             select l.entry_id, e.journey_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title, count(*) as n, max(l.created_at) as at,
                    (array_agg(l.user_id order by l.created_at desc))[1\\:2] as actors
             from entry_likes l join entries e on e.id = l.entry_id
-            where e.author_id = :me and l.user_id <> :me and l.created_at > %s
+            where e.author_id = :me and l.user_id <> :me and l.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = l.user_id) or (b.blocker_id = l.user_id and b.blocked_id = :me))
             group by l.entry_id, e.journey_id, e.title, e.body
             order by at desc limit :limit
             """.formatted(RECENT))
@@ -168,7 +168,7 @@ public class ActivityService {
             join entries e on e.id = c.entry_id
             join journeys j on j.id = e.journey_id
             left join comments pc on pc.id = c.parent_id
-            where c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s
+            where c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = c.author_id) or (b.blocker_id = c.author_id and b.blocked_id = :me))
             order by c.created_at desc limit :limit
             """.formatted(RECENT))
         .param("me", me).param("limit", PER_KIND)

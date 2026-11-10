@@ -80,6 +80,15 @@ public class LocalDiskStorage implements MediaStorage {
   }
 
   /** The file for a key, or an error if the key points outside the storage folder. */
+  @Override
+  public void delete(String storageKey) {
+    try {
+      Files.deleteIfExists(resolve(storageKey));
+    } catch (IOException | RuntimeException e) {
+      // A file left behind is tidied up later; it must not stop an account from being deleted.
+    }
+  }
+
   public Path resolve(String storageKey) {
     Path path = root.resolve(storageKey).normalize();
     if (!path.startsWith(root)) {
