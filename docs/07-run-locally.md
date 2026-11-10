@@ -74,6 +74,9 @@ Every endpoint can be tried in a browser at http://localhost:8080/swagger-ui.htm
 |---|---|
 | The API's tests (need the database running) | `cd apps/api && ./mvnw test` |
 | The app's checks: types, lint, tests | `cd apps/mobile && npm run check` |
+| Everything CI checks for the API: tests, code style, compiler warnings | `cd apps/api && ./mvnw verify` |
+| Format the API's code before committing | `cd apps/api && ./mvnw spotless:apply` |
+| After pulling new code | `cd apps/mobile && npm ci`. The API brings the database up to date by itself when it starts. |
 | After changing the API: refresh its description, then the app's client | `cd apps/api && UPDATE_OPENAPI=1 ./mvnw test`, then `cd apps/mobile && npm run api:generate` |
 | After changing `design/tokens.json`: refresh the app's theme | `cd apps/mobile && npm run theme` |
 | Empty the local database | `docker compose down -v` |
