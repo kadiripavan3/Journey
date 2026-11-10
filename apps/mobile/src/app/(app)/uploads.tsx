@@ -45,8 +45,7 @@ export default function Uploads() {
           <EmptyState emoji="📓" title="Nothing waiting" body="Drafts you save, and entries you write without a signal, wait here until they are posted." />
         </View>
       ) : (
-        // Offline, the "you're offline" mark floats just under the bar; the page starts below it.
-        <ScrollView contentContainerStyle={{ paddingTop: outbox.online ? 4 : 48, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingTop: 4, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {!outbox.online ? (
             <Note icon={<WifiOff size={20} color={colors.warn} />} title="You're offline">
               Everything here is saved on this phone. Entries post by themselves when you&apos;re back.

@@ -1,9 +1,9 @@
 import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
-import { useNetworkState } from 'expo-network';
 import { Pressable, Text } from 'react-native';
 
 import { ApiError } from '@/api/fetcher';
 import { addEntry } from '@/api/generated/journey';
+import { useOnline } from '@/api/online';
 import { uploadPhoto } from '@/api/upload';
 import { sendClip } from '@/features/media/sendClip';
 
@@ -13,7 +13,7 @@ import type { Draft, DraftInput, DraftStore, Progress } from '../types';
 import { draftContents, draftSaved, draftTitle, draftWhere, progressLine } from '../words';
 
 const mockEntrySaved = jest.fn(() => Promise.resolve());
-jest.mock('expo-network', () => ({ useNetworkState: jest.fn() }));
+jest.mock('@/api/online', () => ({ useOnline: jest.fn() }));
 jest.mock('@/api/cache', () => ({ useCache: () => ({ entrySaved: mockEntrySaved }) }));
 jest.mock('@/api/upload', () => ({ uploadPhoto: jest.fn() }));
 jest.mock('@/features/media/sendClip', () => ({ sendClip: jest.fn() }));
@@ -21,7 +21,7 @@ jest.mock('@/api/generated/journey', () => ({ addEntry: jest.fn(), useGetMe: () 
 // The phone's own storage isn't there in a test; each test brings a store that lives in memory.
 jest.mock('../store', () => ({ draftStore: {} }));
 
-const network = jest.mocked(useNetworkState);
+const network = jest.mocked(useOnline);
 const photoUp = jest.mocked(uploadPhoto);
 const clipUp = jest.mocked(sendClip);
 const entryUp = jest.mocked(addEntry);
@@ -70,7 +70,7 @@ function Probe() {
   );
 }
 
-const online = (isConnected: boolean) => network.mockReturnValue({ isConnected } as ReturnType<typeof useNetworkState>);
+const online = (isConnected: boolean) => network.mockReturnValue(isConnected);
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -10,6 +10,8 @@ export function useCatalog() {
     categories,
     templates,
     interests: catalog.data?.interests ?? [],
+    /** Whether short clips can be added to entries: false until the video service is connected (and until the answer is in). */
+    clips: catalog.data?.clips ?? false,
     category: (id: string | null | undefined) => categories.find((c) => c.id === id),
     template: (id: string | null | undefined) => templates.find((t) => t.id === id),
   };

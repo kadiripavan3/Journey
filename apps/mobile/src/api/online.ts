@@ -1,5 +1,6 @@
 import { onlineManager } from '@tanstack/react-query';
 import * as Network from 'expo-network';
+import { useSyncExternalStore } from 'react';
 
 /**
  * Tells the data layer when the phone has no connection. Without a connection it waits instead of failing:
@@ -16,4 +17,15 @@ export function watchConnection() {
       .catch(() => undefined);
     return () => subscription.remove();
   });
+}
+
+const subscribe = (heard: () => void) => onlineManager.subscribe(heard);
+const isOnline = () => onlineManager.isOnline();
+
+/**
+ * Whether the phone has a connection. One answer for the whole app: the same one the data layer acts on, so
+ * what a screen says ("you're offline") and what the app does (wait, don't fail) can't disagree.
+ */
+export function useOnline(): boolean {
+  return useSyncExternalStore(subscribe, isOnline, () => true);
 }

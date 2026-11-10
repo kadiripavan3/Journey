@@ -152,6 +152,8 @@ export default function Composer() {
   const dayLabel = j.labelStyle === 'day' ? `Day ${dayNumber} · ${formatDayLong(day)}` : formatDayLong(day);
   const photoCount = shots.filter((shot) => shot.kind === 'photo').length;
   const clipCount = shots.length - photoCount;
+  // Clips are offered only where the API can take them.
+  const clipRoom = catalog.clips ? MAX_CLIPS - clipCount : 0;
   const hasContent = shots.length > 0 || title.trim().length > 0 || body.trim().length > 0;
   const busy = progress !== null;
 
@@ -159,7 +161,7 @@ export default function Composer() {
     setPicking(true);
     setProblem(null);
     try {
-      const { picked, leftOut: note } = await pickMedia({ photos: MAX_PHOTOS - photoCount, clips: MAX_CLIPS - clipCount });
+      const { picked, leftOut: note } = await pickMedia({ photos: MAX_PHOTOS - photoCount, clips: clipRoom });
       setLeftOut(note);
       if (picked.length === 0) return;
       const firstPhoto = photoCount === 0 ? picked.find((item) => item.kind === 'photo') : undefined;
@@ -306,10 +308,10 @@ export default function Composer() {
                   </View>
                 );
               })}
-              {photoCount < MAX_PHOTOS || clipCount < MAX_CLIPS ? (
+              {photoCount < MAX_PHOTOS || clipRoom > 0 ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={shots.length === 0 ? 'Add photos or clips' : 'Add more photos or clips'}
+                  accessibilityLabel={shots.length === 0 ? `Add ${catalog.clips ? 'photos or clips' : 'photos'}` : `Add more ${catalog.clips ? 'photos or clips' : 'photos'}`}
                   disabled={picking || busy}
                   onPress={() => void addMedia()}
                   style={({ pressed }) => ({
@@ -325,14 +327,14 @@ export default function Composer() {
                   })}>
                   <ImagePlus size={22} color={colors.muted} />
                   <Txt variant="footnote" color="muted" weight={700} center style={{ marginHorizontal: 8 }}>
-                    {shots.length === 0 ? 'Photos or clips' : 'Add'}
+                    {shots.length === 0 ? (catalog.clips ? 'Photos or clips' : 'Photos') : 'Add'}
                   </Txt>
                 </Pressable>
               ) : null}
             </ScrollView>
             {shots.length > 0 || leftOut ? (
               <Txt variant="footnote" color="muted" accessibilityLiveRegion="polite" style={{ marginHorizontal: layout.barGutter }}>
-                {shots.length > 0 ? `${photoCount} of ${MAX_PHOTOS} photos · ${clipCount} of ${MAX_CLIPS} clips` : ''}
+                {shots.length > 0 ? `${photoCount} of ${MAX_PHOTOS} photos${catalog.clips || clipCount > 0 ? ` · ${clipCount} of ${MAX_CLIPS} clips` : ''}` : ''}
                 {leftOut ? `${shots.length > 0 ? '. ' : ''}${leftOut}` : ''}
               </Txt>
             ) : null}

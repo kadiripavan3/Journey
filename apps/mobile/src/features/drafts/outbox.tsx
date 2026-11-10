@@ -1,6 +1,6 @@
-import { useNetworkState } from 'expo-network';
 import { createContext, type ReactNode, use, useEffect, useRef, useState } from 'react';
 
+import { useOnline } from '@/api/online';
 import { useCache } from '@/api/cache';
 import { messageFor } from '@/api/fetcher';
 import { useGetMe } from '@/api/generated/journey';
@@ -40,7 +40,7 @@ const waitFor = (fails: number) => Math.min(15_000 * 2 ** Math.max(fails - 1, 0)
 export function OutboxProvider({ children, store = draftStore }: { children: ReactNode; store?: DraftStore }) {
   const cache = useCache();
   const owner = useGetMe().data?.id;
-  const online = useNetworkState().isConnected !== false;
+  const online = useOnline();
   const [all, setAll] = useState<Draft[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress | undefined>>({});
   /** True for a while after nothing answered, so a phone that only thinks it is online isn't asked over and over. */

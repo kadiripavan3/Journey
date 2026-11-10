@@ -1,20 +1,24 @@
-import { useNetworkState } from 'expo-network';
+import { usePathname } from 'expo-router';
 import { WifiOff } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import Animated, { FadeInUp, FadeOutUp, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useOnline } from '@/api/online';
 import { radius, useTheme } from '@/theme';
 import { Txt } from '@/ui/Txt';
 
 /** How long the banner says everything, before it shrinks to a small mark that stays until the phone is back. */
 const WIDE_FOR = 5000;
 
+/** Screens that say "you're offline" in their own words, with what it means there. The floating mark would only say it twice. */
+const SAYS_SO_ITSELF = [/^\/uploads$/, /^\/journey\/[^/]+\/add$/];
+
 /** 13.2 Offline: a calm banner says what still works. It appears when the phone loses its connection and goes when it is back. */
 export function OfflineBanner() {
-  const network = useNetworkState();
-  // Unknown (still being worked out) counts as connected: the banner only shows when the phone says it is offline.
-  if (network.isConnected !== false) return null;
+  const online = useOnline();
+  const path = usePathname();
+  if (online || SAYS_SO_ITSELF.some((screen) => screen.test(path))) return null;
   return <Banner />;
 }
 

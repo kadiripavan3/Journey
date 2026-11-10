@@ -77,7 +77,7 @@ export interface SettingsResponse {
   weeklyDigest: boolean;
   /** Also send the weekly digest by email */
   digestEmail: boolean;
-  /** Gentle reminders to add an entry, at most one a day */
+  /** Gentle reminders to add an entry, at most one a day. Off until the person asks for them. */
   reminders: boolean;
   /** What new journeys start as */
   defaultVisibility: Visibility;
@@ -872,6 +872,8 @@ export interface CatalogResponse {
   categories: CategoryResponse[];
   interests: InterestResponse[];
   templates: TemplateResponse[];
+  /** Whether short clips can be added to entries. False until the video service is connected. */
+  clips: boolean;
 }
 
 export type ActivityKind = typeof ActivityKind[keyof typeof ActivityKind];
