@@ -1,7 +1,7 @@
 package app.journey.api.media;
 
 import app.journey.api.common.ApiProblem;
-import app.journey.api.media.MediaService.MediaRow;
+import app.journey.api.media.MediaStore.MediaRow;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -37,45 +37,50 @@ import org.springframework.web.bind.annotation.RestController;
 class LocalMediaController {
 
   private final LocalDiskStorage storage;
-  private final MediaService media;
+  private final MediaStore media;
 
-  LocalMediaController(LocalDiskStorage storage, MediaService media) {
+  LocalMediaController(LocalDiskStorage storage, MediaStore media) {
     this.storage = storage;
     this.media = media;
   }
 
   @PutMapping("/local-media/{id}")
   ResponseEntity<Void> receive(@PathVariable UUID id, @RequestParam String token, HttpServletRequest request) throws IOException {
-    MediaRow row = media.find(id);
+    MediaRow row = media.find(id).orElse(null);
     if (row == null || !storage.tokenMatches(id, token)) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
-    long limit = "video".equals(row.kind()) ? MediaService.MAX_CLIP_BYTES : MediaService.MAX_PHOTO_BYTES;
+    boolean clip = row.kind() == MediaKind.VIDEO;
+    long limit = clip ? MediaService.MAX_CLIP_BYTES : MediaService.MAX_PHOTO_BYTES;
     long bytes;
     try {
       bytes = storage.store(row.storageKey(), request.getInputStream(), limit);
     } catch (LocalDiskStorage.TooLargeException e) {
-      throw new ApiProblem(HttpStatus.CONTENT_TOO_LARGE, "too_large", "video".equals(row.kind()) ? "That clip is too big. Keep clips under 60 seconds." : "That photo is too big.");
+      throw new ApiProblem(HttpStatus.CONTENT_TOO_LARGE, "too_large", clip ? "That clip is too big. Keep clips under 60 seconds." : "That photo is too big.");
     }
     if (bytes == 0) {
       throw ApiProblem.badRequest("empty_file", "The file arrived empty. Try again.");
     }
-    int[] size = "photo".equals(row.kind()) ? dimensions(storage.resolve(row.storageKey())) : null;
+    int[] size = clip ? null : dimensions(storage.resolve(row.storageKey()));
     media.markReady(id, bytes, size == null ? null : size[0], size == null ? null : size[1]);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/media/{year}/{month}/{file}")
-  ResponseEntity<Resource> serve(@PathVariable String year, @PathVariable String month, @PathVariable String file) {
+  ResponseEntity<Resource> serve(
+      @PathVariable String year, @PathVariable String month, @PathVariable String file, @RequestParam(name = "w", required = false) Integer width) {
+    String key = year + "/" + month + "/" + file;
     Path path;
     try {
-      path = storage.resolve(year + "/" + month + "/" + file);
+      path = storage.resolve(key);
     } catch (IllegalArgumentException e) {
       return ResponseEntity.notFound().build();
     }
     if (!Files.isRegularFile(path)) {
       return ResponseEntity.notFound().build();
     }
+    // Only the sizes the API itself hands out; any other number gets the original.
+    path = MediaSize.ofWidth(width).map(size -> storage.resolveSized(key, size)).orElse(path);
     Resource resource = new FileSystemResource(path);
     return ResponseEntity.ok()
         .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))

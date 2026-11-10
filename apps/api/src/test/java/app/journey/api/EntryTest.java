@@ -26,12 +26,12 @@ class EntryTest extends ApiTest {
 
     mvc.perform(get("/v1/journeys/" + id + "/entries").header("Authorization", nora))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(3)))
-        .andExpect(jsonPath("$[0].title").value("Day one, posted late"))
-        .andExpect(jsonPath("$[0].label").value("Day 1"))
-        .andExpect(jsonPath("$[1].label").value("Day 4"))
-        .andExpect(jsonPath("$[2].label").value("Day 10"))
-        .andExpect(jsonPath("$[2].author.username").value("nora"));
+        .andExpect(jsonPath("$.items", hasSize(3)))
+        .andExpect(jsonPath("$.items[0].title").value("Day one, posted late"))
+        .andExpect(jsonPath("$.items[0].label").value("Day 1"))
+        .andExpect(jsonPath("$.items[1].label").value("Day 4"))
+        .andExpect(jsonPath("$.items[2].label").value("Day 10"))
+        .andExpect(jsonPath("$.items[2].author.username").value("nora"));
     mvc.perform(get("/v1/journeys/" + id).header("Authorization", nora))
         .andExpect(jsonPath("$.entryCount").value(3))
         .andExpect(jsonPath("$.latestNumber").value(10))
@@ -48,9 +48,9 @@ class EntryTest extends ApiTest {
     entry(nora, id, "The floor", 20);
 
     mvc.perform(get("/v1/journeys/" + id + "/entries").header("Authorization", nora))
-        .andExpect(jsonPath("$[0].title").value("The floor"))
-        .andExpect(jsonPath("$[0].label").value("Part 1"))
-        .andExpect(jsonPath("$[1].label").value("Part 2"));
+        .andExpect(jsonPath("$.items[0].title").value("The floor"))
+        .andExpect(jsonPath("$.items[0].label").value("Part 1"))
+        .andExpect(jsonPath("$.items[1].label").value("Part 2"));
     mvc.perform(get("/v1/journeys/" + id).header("Authorization", nora)).andExpect(jsonPath("$.progressLabel").value("Part 2"));
   }
 

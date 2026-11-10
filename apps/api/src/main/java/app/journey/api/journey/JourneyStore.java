@@ -1,5 +1,7 @@
 package app.journey.api.journey;
 
+import app.journey.api.common.Page;
+import app.journey.api.common.PageRequest;
 import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
@@ -17,7 +19,7 @@ import org.springframework.stereotype.Repository;
 public class JourneyStore {
 
   public record JourneyRow(
-      UUID id, UUID ownerId, String title, String description, String category, String template, String labelStyle, String visibility, String status,
+      UUID id, UUID ownerId, String title, String description, String category, String template, LabelStyle labelStyle, Visibility visibility, JourneyStatus status,
       List<String> tags, LocalDate startDate, Integer targetDays, Instant completedAt, String closingNote, Instant lastEntryAt, int entryCount,
       int followerCount, Instant createdAt, String ownerUsername, String ownerName, String ownerAvatarKey, String coverKey, LocalDate latestOn, boolean following, Instant lastReadAt, boolean member, int memberCount) {}
 
@@ -47,7 +49,8 @@ public class JourneyStore {
   private static final RowMapper<JourneyRow> ROW =
       (rs, n) -> new JourneyRow(
           rs.getObject("id", UUID.class), rs.getObject("owner_id", UUID.class), rs.getString("title"), rs.getString("description"),
-          rs.getString("category"), rs.getString("template"), rs.getString("label_style"), rs.getString("visibility"), rs.getString("status"),
+          rs.getString("category"), rs.getString("template"), LabelStyle.read(rs.getString("label_style")), Visibility.read(rs.getString("visibility")),
+          JourneyStatus.read(rs.getString("status")),
           Sql.strings(rs, "tags"), rs.getObject("start_date", LocalDate.class), (Integer) rs.getObject("target_days"),
           Sql.instant(rs, "completed_at"), rs.getString("closing_note"), Sql.instant(rs, "last_entry_at"), rs.getInt("entry_count"),
           rs.getInt("follower_count"), Sql.instant(rs, "created_at"), rs.getString("owner_username"), rs.getString("owner_name"),
@@ -88,29 +91,57 @@ public class JourneyStore {
     return jdbc.sql(SELECT + " where j.id = :id" + VISIBLE).param("viewer", viewer).param("id", id).query(ROW).optional();
   }
 
-  /** For someone invited to a journey: they may look at it before joining, even when it is private. */
-  public Optional<JourneyRow> findForInvited(UUID id, UUID viewer) {
-    return jdbc.sql(SELECT + " where j.id = :id and " + Rules.notBlocked("j.owner_id", ":viewer")
+  /** For someone invited to journeys: they may look at them before joining, even when they are private. */
+  public List<JourneyRow> findForInvited(List<UUID> ids, UUID viewer) {
+    if (ids.isEmpty()) {
+      return List.of();
+    }
+    return jdbc.sql(SELECT + " where j.id in (:ids) and " + Rules.notBlocked("j.owner_id", ":viewer")
             + " and exists (select 1 from journey_members im where im.journey_id = j.id and im.user_id = :viewer)")
-        .param("viewer", viewer).param("id", id).query(ROW).optional();
+        .param("viewer", viewer).param("ids", ids).query(ROW).list();
   }
 
-  /** Journeys matching a condition, written against the aliases j (journey) and p (owner). */
+  /** The journeys with these ids that the viewer may see, in no particular order. */
+  public List<JourneyRow> findAll(List<UUID> ids, UUID viewer) {
+    if (ids.isEmpty()) {
+      return List.of();
+    }
+    return jdbc.sql(SELECT + " where j.id in (:ids)" + VISIBLE).param("ids", ids).param("viewer", viewer).query(ROW).list();
+  }
+
+  /** The first journeys matching a condition, written against the aliases j (journey) and p (owner). */
   public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-    return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy + " limit :limit")
-        .params(params).param("viewer", viewer).param("limit", limit).query(ROW).list();
+    return query(where, params, orderBy, limit, 0, viewer);
   }
 
-  public UUID insert(UUID ownerId, String title, String description, String category, String template, String labelStyle, String visibility,
-      List<String> tags, UUID coverMediaId, LocalDate startDate, Integer targetDays) {
+  /** One page of the journeys matching a condition. */
+  public Page<JourneyRow> page(String where, Map<String, ?> params, String orderBy, PageRequest page, UUID viewer) {
+    return Page.of(query(where, params, orderBy, page.fetch(), page.offset(), viewer), page);
+  }
+
+  private List<JourneyRow> query(String where, Map<String, ?> params, String orderBy, int limit, int offset, UUID viewer) {
+    return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy + ", j.id limit :limit offset :offset")
+        .params(params).param("viewer", viewer).param("limit", limit).param("offset", offset).query(ROW).list();
+  }
+
+  /** The journey this person already made from the same draft, if the app is sending it a second time. */
+  public Optional<UUID> findByClientId(UUID ownerId, UUID clientId) {
+    return jdbc.sql("select id from journeys where owner_id = :owner and client_id = :client")
+        .param("owner", ownerId).param("client", clientId).query(UUID.class).optional();
+  }
+
+  public UUID insert(UUID ownerId, UUID clientId, String title, String description, String category, String template, LabelStyle labelStyle,
+      Visibility visibility, List<String> tags, UUID coverMediaId, LocalDate startDate, Integer targetDays) {
     UUID id = jdbc.sql(
             """
-            insert into journeys (owner_id, title, description, category, template, label_style, visibility, tags, cover_media_id, start_date, target_days)
-            values (:owner, :title, :description, :category, :template, :labelStyle, :visibility, cast(:tags as text[]), cast(:cover as uuid), :startDate, cast(:targetDays as int))
+            insert into journeys (owner_id, client_id, title, description, category, template, label_style, visibility, tags, cover_media_id, start_date, target_days)
+            values (:owner, cast(:client as uuid), :title, :description, :category, :template, :labelStyle, :visibility, cast(:tags as text[]),
+              cast(:cover as uuid), :startDate, cast(:targetDays as int))
             returning id
             """)
-        .param("owner", ownerId).param("title", title).param("description", description).param("category", category).param("template", template)
-        .param("labelStyle", labelStyle).param("visibility", visibility).param("tags", Sql.arrayLiteral(tags))
+        .param("owner", ownerId).param("client", clientId == null ? null : clientId.toString())
+        .param("title", title).param("description", description).param("category", category).param("template", template)
+        .param("labelStyle", labelStyle.code()).param("visibility", visibility.code()).param("tags", Sql.arrayLiteral(tags))
         .param("cover", coverMediaId == null ? null : coverMediaId.toString()).param("startDate", startDate)
         .param("targetDays", targetDays == null ? null : targetDays.toString())
         .query(UUID.class).single();
@@ -118,8 +149,8 @@ public class JourneyStore {
     return id;
   }
 
-  public void update(UUID id, String title, String description, String category, String labelStyle, String visibility, List<String> tags,
-      UUID coverMediaId, LocalDate startDate, String status) {
+  public void update(UUID id, String title, String description, String category, LabelStyle labelStyle, Visibility visibility, List<String> tags,
+      UUID coverMediaId, LocalDate startDate, JourneyStatus status) {
     jdbc.sql(
             """
             update journeys set title = :title, description = :description, category = :category, label_style = :labelStyle,
@@ -127,9 +158,9 @@ public class JourneyStore {
               status = :status, updated_at = now()
             where id = :id
             """)
-        .param("title", title).param("description", description).param("category", category).param("labelStyle", labelStyle)
-        .param("visibility", visibility).param("tags", Sql.arrayLiteral(tags)).param("cover", coverMediaId == null ? null : coverMediaId.toString())
-        .param("startDate", startDate).param("status", status).param("id", id)
+        .param("title", title).param("description", description).param("category", category).param("labelStyle", labelStyle.code())
+        .param("visibility", visibility.code()).param("tags", Sql.arrayLiteral(tags)).param("cover", coverMediaId == null ? null : coverMediaId.toString())
+        .param("startDate", startDate).param("status", status.code()).param("id", id)
         .update();
   }
 
@@ -252,8 +283,8 @@ public class JourneyStore {
   public record NewInJourney(UUID journeyId, int newCount) {}
 
   /** Journeys the reader follows or writes in, with entries posted by others since their last visit, most recent first. */
-  public List<NewInJourney> journeysWithNewEntries(UUID userId, int limit) {
-    return jdbc.sql(
+  public Page<NewInJourney> journeysWithNewEntries(UUID userId, PageRequest page) {
+    List<NewInJourney> rows = jdbc.sql(
             """
             select f.journey_id, count(*) as new_count, max(e.created_at) as latest
             from journey_follows f
@@ -261,11 +292,12 @@ public class JourneyStore {
             join entries e on e.journey_id = f.journey_id and e.created_at > f.last_read_at and e.author_id <> :user
             where f.user_id = :user and %s and %s
             group by f.journey_id
-            order by latest desc
-            limit :limit
+            order by latest desc, f.journey_id
+            limit :limit offset :offset
             """.formatted(Rules.visibleJourney("j", ":user"), Rules.notBlocked("e.author_id", ":user")))
-        .param("user", userId).param("limit", limit)
+        .param("user", userId).param("limit", page.fetch()).param("offset", page.offset())
         .query((rs, n) -> new NewInJourney(rs.getObject("journey_id", UUID.class), rs.getInt("new_count")))
         .list();
+    return Page.of(rows, page);
   }
 }

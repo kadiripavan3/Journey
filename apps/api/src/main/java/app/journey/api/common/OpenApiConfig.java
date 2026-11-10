@@ -1,5 +1,6 @@
 package app.journey.api.common;
 
+import app.journey.api.auth.Me;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -10,12 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /** The API's description. The app's TypeScript client is generated from it. */
 @Configuration
 class OpenApiConfig {
+
+  static {
+    // The signed-in person comes from the token, not from the caller, so it is not part of the description.
+    SpringDocUtils.getConfig().addAnnotationsToIgnore(Me.class);
+  }
 
   @Bean
   OpenAPI journeyOpenApi() {

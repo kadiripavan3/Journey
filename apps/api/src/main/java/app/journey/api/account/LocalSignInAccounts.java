@@ -2,7 +2,7 @@ package app.journey.api.account;
 
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import app.journey.api.auth.LocalUsers;
 import org.springframework.stereotype.Component;
 
 /** Local mode: sign-ins live in the local_users table. */
@@ -10,14 +10,14 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "journey.auth.mode", havingValue = "local")
 class LocalSignInAccounts implements SignInAccounts {
 
-  private final JdbcClient jdbc;
+  private final LocalUsers users;
 
-  LocalSignInAccounts(JdbcClient jdbc) {
-    this.jdbc = jdbc;
+  LocalSignInAccounts(LocalUsers users) {
+    this.users = users;
   }
 
   @Override
   public void remove(UUID userId) {
-    jdbc.sql("delete from local_users where id = :id").param("id", userId).update();
+    users.remove(userId);
   }
 }

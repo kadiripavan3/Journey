@@ -1,16 +1,15 @@
 package app.journey.api.search;
 
-import app.journey.api.auth.CurrentUser;
+import app.journey.api.auth.Me;
 import app.journey.api.journey.JourneyService;
 import app.journey.api.journey.JourneyService.JourneyResponse;
 import app.journey.api.people.PeopleService;
 import app.journey.api.people.PeopleService.ListedPersonResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,7 +23,10 @@ class SearchController {
 
   static final int LIMIT = 30;
 
-  record SearchResponse(String query, List<JourneyResponse> journeys, List<ListedPersonResponse> people) {}
+  record SearchResponse(
+      String query,
+      @Schema(description = "The best matches, most followed first; at most 30") List<JourneyResponse> journeys,
+      @Schema(description = "The best matches, most followed first; at most 30") List<ListedPersonResponse> people) {}
 
   private final JourneyService journeys;
   private final PeopleService people;
@@ -36,8 +38,7 @@ class SearchController {
 
   @GetMapping
   @Operation(operationId = "search", summary = "Find public journeys and people. A leading # or @ is ignored.")
-  SearchResponse search(@AuthenticationPrincipal Jwt jwt, @RequestParam("q") String q) {
-    UUID me = CurrentUser.from(jwt).id();
+  SearchResponse search(@Me UUID me, @RequestParam("q") String q) {
     String words = q.trim().replaceFirst("^[#@]", "");
     if (words.length() < 2) {
       return new SearchResponse(words, List.of(), List.of());

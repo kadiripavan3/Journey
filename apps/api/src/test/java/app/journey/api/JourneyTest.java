@@ -63,8 +63,8 @@ class JourneyTest extends ApiTest {
     mvc.perform(put("/v1/journeys/" + secret + "/follow").header("Authorization", other)).andExpect(status().isNotFound());
     // Unlisted: anyone with the link can read it, but it is on no list.
     mvc.perform(get("/v1/journeys/" + unlisted).header("Authorization", other)).andExpect(status().isOk());
-    mvc.perform(get("/v1/profiles/nora/journeys").header("Authorization", other)).andExpect(jsonPath("$", hasSize(0)));
-    mvc.perform(get("/v1/me/journeys").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(2)));
+    mvc.perform(get("/v1/profiles/nora/journeys").header("Authorization", other)).andExpect(jsonPath("$.items", hasSize(0)));
+    mvc.perform(get("/v1/me/journeys").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(2)));
   }
 
   @Test
@@ -100,7 +100,7 @@ class JourneyTest extends ApiTest {
         .andExpect(jsonPath("$.followerCount").value(1))
         .andExpect(jsonPath("$.viewer.isFollowing").value(true));
     mvc.perform(put("/v1/journeys/" + id + "/follow").header("Authorization", other)).andExpect(jsonPath("$.followerCount").value(1));
-    mvc.perform(get("/v1/me/following").header("Authorization", other)).andExpect(jsonPath("$", hasSize(1)));
+    mvc.perform(get("/v1/me/following").header("Authorization", other)).andExpect(jsonPath("$.items", hasSize(1)));
     mvc.perform(put("/v1/journeys/" + id + "/follow").header("Authorization", nora))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("own_journey"));

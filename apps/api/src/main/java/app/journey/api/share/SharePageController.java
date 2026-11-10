@@ -31,11 +31,16 @@ class SharePageController {
     this.entries = entries;
   }
 
+  /** The page shows the start of a long story; the rest is in the app. */
+  private static final int PAGE = 60;
+
   @GetMapping("/j/{id}")
   String journey(@PathVariable UUID id, Model model) {
     var journey = journeys.view(journeys.require(id, ANYONE), ANYONE);
     model.addAttribute("journey", journey);
-    model.addAttribute("entries", entries.timeline(id, ANYONE));
+    var story = entries.timeline(id, ANYONE, null, PAGE, null);
+    model.addAttribute("entries", story.items());
+    model.addAttribute("more", story.total() - story.items().size());
     model.addAttribute("appLink", "journey://journey/" + id);
     return "share/journey";
   }

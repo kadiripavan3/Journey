@@ -63,10 +63,10 @@ class SocialTest extends ApiTest {
     mvc.perform(comment(kai, entry, "Worth it though?", reply)).andExpect(jsonPath("$.parentId").value(first));
 
     mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", kai))
-        .andExpect(jsonPath("$", hasSize(3)))
-        .andExpect(jsonPath("$[0].body").value("Was it freezing?"))
-        .andExpect(jsonPath("$[0].viewer.canDelete").value(false))
-        .andExpect(jsonPath("$[2].viewer.canDelete").value(true));
+        .andExpect(jsonPath("$.items", hasSize(3)))
+        .andExpect(jsonPath("$.items[0].body").value("Was it freezing?"))
+        .andExpect(jsonPath("$.items[0].viewer.canDelete").value(false))
+        .andExpect(jsonPath("$.items[2].viewer.canDelete").value(true));
     mvc.perform(get("/v1/entries/" + entry).header("Authorization", kai)).andExpect(jsonPath("$.commentCount").value(3));
 
     mvc.perform(comment(nora, entry, "   ", null))
@@ -91,7 +91,7 @@ class SocialTest extends ApiTest {
         .andExpect(jsonPath("$.code").value("not_yours"));
     mvc.perform(delete("/v1/comments/" + first).header("Authorization", maya)).andExpect(status().isNoContent());
     mvc.perform(delete("/v1/comments/" + other).header("Authorization", kai)).andExpect(status().isNoContent());
-    mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
     mvc.perform(get("/v1/entries/" + entry).header("Authorization", nora)).andExpect(jsonPath("$.commentCount").value(0));
   }
 
@@ -118,21 +118,21 @@ class SocialTest extends ApiTest {
         .andExpect(jsonPath("$.followingCount").value(1))
         .andExpect(jsonPath("$.viewer.followsYou").value(true));
     mvc.perform(get("/v1/profiles/maya/followers").header("Authorization", maya))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].username").value("nora"))
-        .andExpect(jsonPath("$[0].viewer.isFollowing").value(false));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].username").value("nora"))
+        .andExpect(jsonPath("$.items[0].viewer.isFollowing").value(false));
     mvc.perform(get("/v1/profiles/nora/following").header("Authorization", nora))
-        .andExpect(jsonPath("$[0].username").value("maya"))
-        .andExpect(jsonPath("$[0].latestJourney").value("Before"));
+        .andExpect(jsonPath("$.items[0].username").value("maya"))
+        .andExpect(jsonPath("$.items[0].latestJourney").value("Before"));
 
     // Journeys that existed before are not followed; the next public one is, and a private one never.
-    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
     String next = journey(maya, "After", "public", 0);
     journey(maya, "Secret", "private", 0);
     mvc.perform(get("/v1/me/following").header("Authorization", nora))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].id").value(next))
-        .andExpect(jsonPath("$[0].followerCount").value(1));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].id").value(next))
+        .andExpect(jsonPath("$.items[0].followerCount").value(1));
 
     mvc.perform(delete("/v1/profiles/maya/follow").header("Authorization", nora)).andExpect(jsonPath("$.followerCount").value(0));
     mvc.perform(get("/v1/profiles/nobody").header("Authorization", nora))

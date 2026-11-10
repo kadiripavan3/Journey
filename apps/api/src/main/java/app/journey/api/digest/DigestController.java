@@ -1,11 +1,10 @@
 package app.journey.api.digest;
 
-import app.journey.api.auth.CurrentUser;
+import app.journey.api.auth.Me;
 import app.journey.api.digest.DigestService.DigestResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +22,7 @@ class DigestController {
 
   @GetMapping
   @Operation(operationId = "getDigest", summary = "This week in the journeys you follow")
-  DigestResponse thisWeek(@AuthenticationPrincipal Jwt jwt) {
-    return digest.thisWeek(CurrentUser.from(jwt).id());
+  DigestResponse thisWeek(@Me UUID me) {
+    return digest.thisWeek(me);
   }
 }

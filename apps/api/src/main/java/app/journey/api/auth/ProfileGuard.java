@@ -1,15 +1,11 @@
 package app.journey.api.auth;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.profile.ProfileStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -25,10 +21,10 @@ class ProfileGuard implements HandlerInterceptor, WebMvcConfigurer {
 
   private static final Set<String> CHANGES = Set.of("POST", "PUT", "PATCH", "DELETE");
 
-  private final JdbcClient jdbc;
+  private final ProfileStore profiles;
 
-  ProfileGuard(JdbcClient jdbc) {
-    this.jdbc = jdbc;
+  ProfileGuard(ProfileStore profiles) {
+    this.profiles = profiles;
   }
 
   @Override
@@ -42,13 +38,8 @@ class ProfileGuard implements HandlerInterceptor, WebMvcConfigurer {
     if (!CHANGES.contains(request.getMethod())) {
       return true;
     }
-    Authentication who = SecurityContextHolder.getContext().getAuthentication();
-    if (who instanceof JwtAuthenticationToken token) {
-      UUID id = UUID.fromString(token.getToken().getSubject());
-      boolean hasProfile = jdbc.sql("select exists (select 1 from profiles where id = :id)").param("id", id).query(Boolean.class).single();
-      if (!hasProfile) {
-        throw ApiProblem.conflict("profile_required", "Finish setting up your profile first.");
-      }
+    if (!profiles.exists(MeResolver.current().id())) {
+      throw ApiProblem.conflict("profile_required", "Finish setting up your profile first.");
     }
     return true;
   }

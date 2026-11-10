@@ -478,12 +478,36 @@
     "/v1/journeys/{journeyId}/entries" : {
       "get" : {
         "tags" : [ "entries" ],
-        "summary" : "A journey's entries, in the order things happened",
+        "summary" : "A page of a journey's story, in the order things happened",
         "operationId" : "getTimeline",
         "parameters" : [ {
           "name" : "journeyId",
           "in" : "path",
           "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "around",
+          "in" : "query",
+          "description" : "An entry id: start with the page that holds it",
+          "required" : false,
           "schema" : {
             "type" : "string",
             "format" : "uuid"
@@ -495,10 +519,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/EntryResponse"
-                  }
+                  "$ref" : "#/components/schemas/TimelinePageResponse"
                 }
               }
             }
@@ -706,6 +727,21 @@
             "type" : "string",
             "format" : "uuid"
           }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -713,10 +749,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/CommentResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageCommentResponse"
                 }
               }
             }
@@ -1001,6 +1034,21 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1008,10 +1056,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/JourneyResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageJourneyResponse"
                 }
               }
             }
@@ -1031,6 +1076,21 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1038,10 +1098,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ListedPersonResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageListedPersonResponse"
                 }
               }
             }
@@ -1061,6 +1118,21 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1068,10 +1140,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ListedPersonResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageListedPersonResponse"
                 }
               }
             }
@@ -1113,16 +1182,29 @@
         "tags" : [ "journeys" ],
         "summary" : "Your own journeys, of every visibility",
         "operationId" : "getMyJourneys",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/JourneyResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageJourneyResponse"
                 }
               }
             }
@@ -1135,16 +1217,29 @@
         "tags" : [ "Shared journeys" ],
         "summary" : "Invitations to shared journeys that are waiting for your answer",
         "operationId" : "getInvitations",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/InvitationResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageInvitationResponse"
                 }
               }
             }
@@ -1157,16 +1252,29 @@
         "tags" : [ "journeys" ],
         "summary" : "The journeys you follow",
         "operationId" : "getFollowedJourneys",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/JourneyResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageJourneyResponse"
                 }
               }
             }
@@ -1179,16 +1287,57 @@
         "tags" : [ "Account and safety" ],
         "summary" : "The people you have blocked, most recent first",
         "operationId" : "getBlocked",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/BlockedPersonResponse"
-                  }
+                  "$ref" : "#/components/schemas/PageBlockedPersonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{journeyId}/summary" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments",
+        "operationId" : "getJourneySummary",
+        "parameters" : [ {
+          "name" : "journeyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneySummaryResponse"
                 }
               }
             }
@@ -1237,6 +1386,21 @@
             "type" : "string",
             "format" : "uuid"
           }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -1244,10 +1408,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/PersonResponse"
-                  }
+                  "$ref" : "#/components/schemas/PagePersonResponse"
                 }
               }
             }
@@ -1290,8 +1451,24 @@
     "/v1/feed" : {
       "get" : {
         "tags" : [ "entries" ],
-        "summary" : "Home: what's new in the journeys you follow, grouped per journey, newest first",
+        "summary" : "Home: what's new in the journeys you follow or write in, grouped per journey, newest first",
         "operationId" : "getFeed",
+        "parameters" : [ {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1541,7 +1718,8 @@
           },
           "defaultVisibility" : {
             "type" : "string",
-            "description" : "What new journeys start as: public, unlisted or private"
+            "description" : "What new journeys start as",
+            "enum" : [ "public", "unlisted", "private" ]
           }
         },
         "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminders", "weeklyDigest" ]
@@ -1662,6 +1840,10 @@
           "coverUrl" : {
             "type" : [ "string", "null" ]
           },
+          "coverThumbUrl" : {
+            "type" : [ "string", "null" ],
+            "description" : "A smaller version of the cover, for cards and lists"
+          },
           "startDate" : {
             "type" : "string",
             "format" : "date"
@@ -1716,7 +1898,7 @@
             "$ref" : "#/components/schemas/JourneyViewerResponse"
           }
         },
-        "required" : [ "authors", "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
+        "required" : [ "authors", "category", "closingNote", "completedAt", "coverThumbUrl", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
       },
       "JourneyViewerResponse" : {
         "type" : "object",
@@ -1798,6 +1980,11 @@
             },
             "maxItems" : 13,
             "minItems" : 0
+          },
+          "clientId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "An id the app makes up for this draft. Sending the same draft again gives back the entry it made the first time."
           }
         }
       },
@@ -1833,6 +2020,11 @@
           "number" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Its place in the story, counting from 1"
           },
           "title" : {
             "type" : "string"
@@ -1871,7 +2063,7 @@
             "$ref" : "#/components/schemas/EntryViewerResponse"
           }
         },
-        "required" : [ "author", "body", "commentCount", "createdAt", "edited", "happenedAt", "happenedOn", "id", "isMilestone", "journeyId", "journeyTitle", "label", "likeCount", "media", "number", "placeName", "title", "viewer" ]
+        "required" : [ "author", "body", "commentCount", "createdAt", "edited", "happenedAt", "happenedOn", "id", "isMilestone", "journeyId", "journeyTitle", "label", "likeCount", "media", "number", "placeName", "position", "title", "viewer" ]
       },
       "EntryViewerResponse" : {
         "type" : "object",
@@ -1902,6 +2094,10 @@
           "url" : {
             "type" : "string"
           },
+          "thumbUrl" : {
+            "type" : [ "string", "null" ],
+            "description" : "A smaller version of a photo, for lists and grids. Null for clips."
+          },
           "width" : {
             "type" : [ "integer", "null" ],
             "format" : "int32"
@@ -1915,15 +2111,14 @@
             "format" : "int32"
           }
         },
-        "required" : [ "durationSeconds", "height", "id", "kind", "url", "width" ]
+        "required" : [ "durationSeconds", "height", "id", "kind", "thumbUrl", "url", "width" ]
       },
       "ReportRequest" : {
         "type" : "object",
         "properties" : {
           "targetType" : {
             "type" : "string",
-            "description" : "journey, entry, comment or profile",
-            "minLength" : 1
+            "enum" : [ "journey", "entry", "comment", "profile" ]
           },
           "targetId" : {
             "type" : "string",
@@ -1931,8 +2126,7 @@
           },
           "reason" : {
             "type" : "string",
-            "description" : "spam, harassment, nudity, violence, impersonation or other",
-            "minLength" : 1
+            "enum" : [ "spam", "harassment", "nudity", "violence", "impersonation", "other" ]
           },
           "note" : {
             "type" : "string",
@@ -1957,9 +2151,7 @@
         "properties" : {
           "kind" : {
             "type" : "string",
-            "enum" : [ "photo", "video" ],
-            "minLength" : 1,
-            "pattern" : "photo|video"
+            "enum" : [ "photo", "video" ]
           },
           "contentType" : {
             "type" : "string",
@@ -2018,14 +2210,11 @@
           },
           "visibility" : {
             "type" : "string",
-            "enum" : [ "public", "unlisted", "private" ],
-            "minLength" : 1,
-            "pattern" : "public|unlisted|private"
+            "enum" : [ "public", "unlisted", "private" ]
           },
           "labelStyle" : {
             "type" : "string",
-            "enum" : [ "day", "part" ],
-            "pattern" : "day|part"
+            "enum" : [ "day", "part" ]
           },
           "tags" : {
             "type" : "array",
@@ -2036,6 +2225,11 @@
           "coverMediaId" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "clientId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "An id the app makes up for this draft. Sending the same draft again gives back the journey it made the first time."
           }
         },
         "required" : [ "startDate", "template", "title", "visibility" ]
@@ -2058,11 +2252,12 @@
           },
           "role" : {
             "type" : "string",
-            "description" : "owner or friend"
+            "description" : "owner or friend",
+            "enum" : [ "owner", "friend" ]
           },
           "status" : {
             "type" : "string",
-            "description" : "joined or invited"
+            "enum" : [ "invited", "joined" ]
           },
           "entryCount" : {
             "type" : "integer",
@@ -2092,7 +2287,7 @@
           },
           "viewerRole" : {
             "type" : "string",
-            "description" : "owner, friend, invited or none"
+            "enum" : [ "owner", "friend", "invited", "none" ]
           }
         },
         "required" : [ "members", "spotsLeft", "viewerRole" ]
@@ -2119,6 +2314,11 @@
             "type" : "string",
             "format" : "uuid",
             "description" : "The comment being replied to, if any"
+          },
+          "clientId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "An id the app makes up for this comment. Sending it again gives back the comment it made the first time."
           }
         },
         "required" : [ "body" ]
@@ -2238,13 +2438,11 @@
           },
           "visibility" : {
             "type" : "string",
-            "enum" : [ "public", "unlisted", "private" ],
-            "pattern" : "public|unlisted|private"
+            "enum" : [ "public", "unlisted", "private" ]
           },
           "labelStyle" : {
             "type" : "string",
-            "enum" : [ "day", "part" ],
-            "pattern" : "day|part"
+            "enum" : [ "day", "part" ]
           },
           "tags" : {
             "type" : "array",
@@ -2262,8 +2460,8 @@
           },
           "status" : {
             "type" : "string",
-            "enum" : [ "active", "paused" ],
-            "pattern" : "active|paused"
+            "description" : "active or paused. Completing a journey has its own step.",
+            "enum" : [ "active", "paused", "completed" ]
           }
         }
       },
@@ -2328,18 +2526,52 @@
           },
           "journeys" : {
             "type" : "array",
+            "description" : "The best matches, most followed first; at most 30",
             "items" : {
               "$ref" : "#/components/schemas/JourneyResponse"
             }
           },
           "people" : {
             "type" : "array",
+            "description" : "The best matches, most followed first; at most 30",
             "items" : {
               "$ref" : "#/components/schemas/ListedPersonResponse"
             }
           }
         },
         "required" : [ "journeys", "people", "query" ]
+      },
+      "PageJourneyResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
+      },
+      "PageListedPersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ListedPersonResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
       },
       "MeResponse" : {
         "type" : "object",
@@ -2378,6 +2610,22 @@
         },
         "required" : [ "invitedAt", "invitedBy", "journey" ]
       },
+      "PageInvitationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/InvitationResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
+      },
       "BlockedPersonResponse" : {
         "type" : "object",
         "properties" : {
@@ -2400,6 +2648,124 @@
           }
         },
         "required" : [ "avatarUrl", "blockedAt", "displayName", "id", "username" ]
+      },
+      "PageBlockedPersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BlockedPersonResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
+      },
+      "JourneySummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "first" : {
+            "description" : "The first entry of the story",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/EntryResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "latest" : {
+            "type" : "array",
+            "description" : "The newest three entries, newest first",
+            "items" : {
+              "$ref" : "#/components/schemas/EntryResponse"
+            }
+          },
+          "photos" : {
+            "type" : "array",
+            "description" : "The story's first photos",
+            "items" : {
+              "$ref" : "#/components/schemas/MediaResponse"
+            }
+          },
+          "photoCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "days" : {
+            "type" : "array",
+            "description" : "The day numbers that have an entry, for a challenge's row of ticks",
+            "items" : {
+              "type" : "integer",
+              "format" : "int32"
+            }
+          },
+          "milestones" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MilestoneResponse"
+            }
+          },
+          "newCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Entries by others since the viewer last read the journey; 0 when they don't follow it"
+          },
+          "firstNewEntryId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "Where to start reading: the first of the new entries"
+          }
+        },
+        "required" : [ "days", "first", "firstNewEntryId", "latest", "milestones", "newCount", "photoCount", "photos" ]
+      },
+      "MilestoneResponse" : {
+        "type" : "object",
+        "properties" : {
+          "entryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string",
+            "description" : "\"Day 14\" or \"Part 3\""
+          },
+          "happenedOn" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "entryId", "happenedOn", "label", "title" ]
+      },
+      "TimelinePageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EntryResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send as `cursor` for the entries after these. Null at the end of the story."
+          },
+          "prevCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send as `cursor` for the entries before these. Null at the start of the story."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries the story has"
+          }
+        },
+        "required" : [ "items", "nextCursor", "prevCursor", "total" ]
       },
       "RecapResponse" : {
         "type" : "object",
@@ -2446,6 +2812,22 @@
         },
         "required" : [ "dayCount", "entryCount", "firstDay", "journey", "lastDay", "likeCount", "momentUrls", "photoCount", "placeCount" ]
       },
+      "PagePersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PersonResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
+      },
       "FeedGroupResponse" : {
         "type" : "object",
         "properties" : {
@@ -2454,10 +2836,12 @@
           },
           "newCount" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many entries are new to the reader"
           },
           "entries" : {
             "type" : "array",
+            "description" : "The newest of them, newest first; at most three",
             "items" : {
               "$ref" : "#/components/schemas/EntryResponse"
             }
@@ -2476,10 +2860,31 @@
           },
           "followingCount" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "description" : "How many journeys the reader follows, for the empty state"
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send as `cursor` for more journeys with news. Null when there are no more."
           }
         },
-        "required" : [ "followingCount", "groups" ]
+        "required" : [ "followingCount", "groups", "nextCursor" ]
+      },
+      "PageCommentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CommentResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
       },
       "DiscoverResponse" : {
         "type" : "object",
@@ -2662,7 +3067,7 @@
           },
           "kind" : {
             "type" : "string",
-            "description" : "new_entries, journey_completed, likes, comment, reply, journey_follow, profile_follow, invitation or friend_joined"
+            "enum" : [ "new_entries", "journey_completed", "likes", "comment", "reply", "journey_follow", "profile_follow", "invitation", "friend_joined" ]
           },
           "at" : {
             "type" : "string",

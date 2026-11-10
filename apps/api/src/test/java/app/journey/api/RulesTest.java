@@ -43,7 +43,7 @@ class RulesTest extends ApiTest {
     mvc.perform(get("/v1/activity").header("Authorization", nora))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items", hasSize(0)));
-    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
     mvc.perform(get("/v1/digest").header("Authorization", nora)).andExpect(status().isOk()).andExpect(jsonPath("$.journeys", hasSize(0)));
     assertThat(jdbc.sql("select count(*) from journey_follows where not author").query(Integer.class).single()).isZero();
 
@@ -65,7 +65,7 @@ class RulesTest extends ApiTest {
 
     mvc.perform(get("/v1/feed").header("Authorization", nora)).andExpect(status().isOk()).andExpect(jsonPath("$.groups", hasSize(0)));
     mvc.perform(get("/v1/activity").header("Authorization", nora)).andExpect(status().isOk()).andExpect(jsonPath("$.items", hasSize(0)));
-    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
     // Unfollowing still takes the follow away, even though the journey itself can't be shown.
     mvc.perform(delete("/v1/journeys/" + journey + "/follow").header("Authorization", nora)).andExpect(status().isNotFound());
     assertThat(jdbc.sql("select count(*) from journey_follows where not author").query(Integer.class).single()).isZero();
@@ -108,8 +108,8 @@ class RulesTest extends ApiTest {
     // Owners and friends can't "follow" what they write in, and their own journeys aren't in "Following".
     mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", alex))
         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("own_journey"));
-    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
-    mvc.perform(get("/v1/me/following").header("Authorization", alex)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", alex)).andExpect(jsonPath("$.items", hasSize(0)));
 
     // A friend who leaves a public journey goes back to following it.
     mvc.perform(delete("/v1/journeys/" + journey + "/members/alex").header("Authorization", alex)).andExpect(status().isNoContent());
@@ -128,7 +128,7 @@ class RulesTest extends ApiTest {
     mvc.perform(post("/v1/journeys/" + journey + "/members").header("Authorization", nora).contentType(MediaType.APPLICATION_JSON)
         .content("{\"username\":\"alex\"}")).andExpect(status().isOk());
     // Invited: Alex can look at the invitation, but the journey itself opens only once they join.
-    mvc.perform(get("/v1/me/invitations").header("Authorization", alex)).andExpect(jsonPath("$", hasSize(1)));
+    mvc.perform(get("/v1/me/invitations").header("Authorization", alex)).andExpect(jsonPath("$.items", hasSize(1)));
     mvc.perform(get("/v1/journeys/" + journey).header("Authorization", alex)).andExpect(status().isNotFound());
     mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", alex)).andExpect(status().isOk());
     mvc.perform(get("/v1/journeys/" + journey).header("Authorization", alex)).andExpect(status().isOk());
@@ -165,18 +165,18 @@ class RulesTest extends ApiTest {
 
     // Kai still sees the journey, without Alex's part of it; so does Alex, without Kai's. Everyone else sees all of it.
     mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", kai))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].author.username").value("nora"));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].author.username").value("nora"));
     mvc.perform(get("/v1/entries/" + alexEntry).header("Authorization", kai)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/feed").header("Authorization", kai)).andExpect(jsonPath("$.groups", hasSize(0)));
     mvc.perform(get("/v1/activity").header("Authorization", kai))
         .andExpect(jsonPath("$.items[?(@.kind=='new_entries')].count").value(1))
         .andExpect(jsonPath("$.items[?(@.kind=='new_entries')].actors[0].username").value("nora"));
     mvc.perform(put("/v1/entries/" + alexEntry + "/like").header("Authorization", kai)).andExpect(status().isNotFound());
-    mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader)).andExpect(jsonPath("$", hasSize(2)));
+    mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader)).andExpect(jsonPath("$.items", hasSize(2)));
     String kaiEntry = entry(kai, journey, "Geysir", 0);
     mvc.perform(get("/v1/entries/" + kaiEntry).header("Authorization", alex)).andExpect(status().isNotFound());
-    mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader)).andExpect(jsonPath("$", hasSize(3)));
+    mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader)).andExpect(jsonPath("$.items", hasSize(3)));
   }
 
   @Test

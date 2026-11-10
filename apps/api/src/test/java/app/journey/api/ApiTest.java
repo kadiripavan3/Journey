@@ -25,7 +25,7 @@ public abstract class ApiTest {
 
   @BeforeEach
   void emptyDatabase() {
-    jdbc.sql("truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users cascade").update();
+    jdbc.sql("truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs cascade").update();
   }
 
   /** Signs in with the test code and returns "Bearer <token>". */

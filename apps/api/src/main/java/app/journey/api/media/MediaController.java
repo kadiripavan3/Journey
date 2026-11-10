@@ -1,17 +1,15 @@
 package app.journey.api.media;
 
-import app.journey.api.auth.CurrentUser;
+import app.journey.api.auth.Me;
 import app.journey.api.media.MediaService.NewUpload;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +27,7 @@ class MediaController {
   }
 
   record StartUploadRequest(
-      @NotBlank @Pattern(regexp = "photo|video", message = "Choose a photo or a clip.") @Schema(allowableValues = {"photo", "video"}) String kind,
+      @NotNull(message = "Choose a photo or a clip.") MediaKind kind,
       @NotBlank String contentType) {}
 
   record UploadResponse(
@@ -40,8 +38,8 @@ class MediaController {
 
   @PostMapping("/uploads")
   @Operation(operationId = "startUpload", summary = "Get a place to upload one photo or clip")
-  UploadResponse startUpload(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody StartUploadRequest request) {
-    NewUpload upload = media.startUpload(CurrentUser.from(jwt).id(), request.kind(), request.contentType());
+  UploadResponse startUpload(@Me UUID me, @Valid @RequestBody StartUploadRequest request) {
+    NewUpload upload = media.startUpload(me, request.kind(), request.contentType());
     return new UploadResponse(upload.mediaId(), upload.target().url(), upload.target().method(), upload.target().headers());
   }
 }

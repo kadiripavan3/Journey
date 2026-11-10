@@ -36,8 +36,16 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Build and test (also checks openapi.json is current)
+      - name: Build, test and check the formatting (also checks openapi.json is current)
         run: ./mvnw -B -ntp verify
+
+  image:
+    name: API image (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The image the API is deployed as still builds
+        run: docker build -t journey-api apps/api
 
   mobile:
     name: App (Expo)

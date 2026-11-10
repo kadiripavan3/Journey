@@ -19,6 +19,9 @@ public interface MediaStorage {
   /** The address the file is served from once uploaded. */
   String publicUrl(String storageKey);
 
+  /** The address of a smaller version of a photo. The storage makes it when it is first asked for. */
+  String publicUrl(String storageKey, MediaSize size);
+
   /** Removes the file for good. Nothing happens if it is already gone. */
   void delete(String storageKey);
 }

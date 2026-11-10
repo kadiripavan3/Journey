@@ -1,6 +1,7 @@
 package app.journey.api.profile;
 
 import app.journey.api.auth.CurrentUser;
+import app.journey.api.auth.Me;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,8 +11,6 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -41,13 +40,7 @@ class MeController {
 
     static ProfileResponse of(Profile profile, String avatarUrl) {
       return new ProfileResponse(
-          profile.getId(),
-          profile.getUsername(),
-          profile.getDisplayName(),
-          profile.getBio(),
-          profile.getLink(),
-          avatarUrl,
-          List.of(profile.getInterests()));
+          profile.id(), profile.username(), profile.displayName(), profile.bio(), profile.link(), avatarUrl, profile.interests());
     }
   }
 
@@ -69,17 +62,15 @@ class MeController {
 
   @GetMapping("/me")
   @Operation(operationId = "getMe", summary = "Who is signed in, with their profile if they have one")
-  MeResponse me(@AuthenticationPrincipal Jwt jwt) {
-    CurrentUser user = CurrentUser.from(jwt);
+  MeResponse me(@Me CurrentUser user) {
     return new MeResponse(user.id(), user.email(), profiles.find(user.id()).map(this::view).orElse(null));
   }
 
   @PutMapping("/me/profile")
   @Operation(operationId = "saveProfile", summary = "Create the profile, or change it")
-  ProfileResponse saveProfile(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SaveProfileRequest request) {
-    CurrentUser user = CurrentUser.from(jwt);
+  ProfileResponse saveProfile(@Me UUID me, @Valid @RequestBody SaveProfileRequest request) {
     return view(
-        profiles.save(user.id(), request.username(), request.displayName(), request.bio(), request.link(), request.interests(),
+        profiles.save(me, request.username(), request.displayName(), request.bio(), request.link(), request.interests(),
             request.avatarMediaId(), Boolean.TRUE.equals(request.removeAvatar())));
   }
 
@@ -89,9 +80,9 @@ class MeController {
 
   @GetMapping("/usernames/{username}")
   @Operation(operationId = "checkUsername", summary = "Is this username free? Checked as the person types.")
-  UsernameCheckResponse checkUsername(@AuthenticationPrincipal Jwt jwt, @PathVariable String username) {
+  UsernameCheckResponse checkUsername(@Me UUID me, @PathVariable String username) {
     String normalized = Usernames.normalize(username);
-    Optional<String> reason = profiles.whyUnavailable(normalized, CurrentUser.from(jwt).id());
+    Optional<String> reason = profiles.whyUnavailable(normalized, me);
     return new UsernameCheckResponse(normalized, reason.isEmpty(), reason.orElse(null));
   }
 }

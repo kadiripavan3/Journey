@@ -2,8 +2,13 @@ package app.journey.api.journey;
 
 import app.journey.api.catalog.Catalog;
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Page;
+import app.journey.api.common.PageRequest;
+import app.journey.api.common.PublicUrls;
 import app.journey.api.journey.JourneyStore.JourneyRow;
+import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaService;
+import app.journey.api.media.MediaSize;
 import app.journey.api.profile.PersonResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -12,11 +17,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /** The rules for journeys: who may see, change and follow them. */
 @Service
@@ -34,11 +39,10 @@ public class JourneyService {
 
   public record JourneyResponse(
       UUID id, String title, String description, String category, String template,
-      @Schema(allowableValues = {"day", "part"}) String labelStyle,
-      @Schema(allowableValues = {"public", "unlisted", "private"}) String visibility,
-      @Schema(allowableValues = {"active", "paused", "completed"}) String status,
+      LabelStyle labelStyle, Visibility visibility, JourneyStatus status,
       List<String> tags,
       @Schema(nullable = true) String coverUrl,
+      @Schema(nullable = true, description = "A smaller version of the cover, for cards and lists") String coverThumbUrl,
       LocalDate startDate,
       @Schema(nullable = true) Integer targetDays,
       @Schema(description = "Day or part number of the latest entry; 0 before the first one") int latestNumber,
@@ -54,10 +58,12 @@ public class JourneyService {
 
   private final JourneyStore journeys;
   private final MediaService media;
+  private final PublicUrls urls;
 
-  JourneyService(JourneyStore journeys, MediaService media) {
+  JourneyService(JourneyStore journeys, MediaService media, PublicUrls urls) {
     this.journeys = journeys;
     this.media = media;
+    this.urls = urls;
   }
 
   /** The journey, if this person may see it (see Rules). A private journey looks exactly like one that doesn't exist, except to its authors. */
@@ -75,31 +81,38 @@ public class JourneyService {
   }
 
   public boolean canAddEntry(JourneyRow journey, UUID viewer) {
-    return (journey.ownerId().equals(viewer) || journey.member()) && !"completed".equals(journey.status());
+    return (journey.ownerId().equals(viewer) || journey.member()) && journey.status() != JourneyStatus.COMPLETED;
   }
 
+  /** Starts a journey. Sending the same draft twice (same clientId) gives back the first one, never a second. */
   @Transactional
-  public JourneyResponse create(UUID owner, String title, String description, String templateId, String category, LocalDate startDate,
-      String visibility, String labelStyle, List<String> tags, UUID coverMediaId) {
+  public JourneyResponse create(UUID owner, UUID clientId, String title, String description, String templateId, String category, LocalDate startDate,
+      Visibility visibility, LabelStyle labelStyle, List<String> tags, UUID coverMediaId) {
+    if (clientId != null) {
+      Optional<UUID> existing = journeys.findByClientId(owner, clientId);
+      if (existing.isPresent()) {
+        return view(require(existing.get(), owner), owner);
+      }
+    }
     Catalog.Template template = Catalog.template(templateId)
         .orElseThrow(() -> ApiProblem.badRequest("unknown_template", "Pick one of the starting points."));
     String chosenCategory = category == null || category.isBlank() ? template.defaultCategory() : category;
     requireCategory(chosenCategory);
     requireSensibleStart(startDate);
     if (coverMediaId != null) {
-      media.requireOwn(List.of(coverMediaId), owner, "photo");
+      media.requireOwn(List.of(coverMediaId), owner, MediaKind.PHOTO);
     }
-    UUID id = journeys.insert(owner, title.trim(), clean(description), chosenCategory, template.id(),
-        labelStyle == null ? template.labelStyle() : labelStyle, visibility, cleanTags(tags), coverMediaId, startDate, template.targetDays());
-    if ("public".equals(visibility)) {
+    UUID id = journeys.insert(owner, clientId, title.trim(), clean(description), chosenCategory, template.id(),
+        labelStyle == null ? LabelStyle.read(template.labelStyle()) : labelStyle, visibility, cleanTags(tags), coverMediaId, startDate, template.targetDays());
+    if (visibility == Visibility.PUBLIC) {
       journeys.followForFollowersOf(owner, id); // people who follow the creator get their new journeys
     }
     return view(require(id, owner), owner);
   }
 
   @Transactional
-  public JourneyResponse update(UUID id, UUID viewer, String title, String description, String category, LocalDate startDate, String visibility,
-      String labelStyle, List<String> tags, UUID coverMediaId, boolean clearCover, String status) {
+  public JourneyResponse update(UUID id, UUID viewer, String title, String description, String category, LocalDate startDate, Visibility visibility,
+      LabelStyle labelStyle, List<String> tags, UUID coverMediaId, boolean clearCover, JourneyStatus status) {
     JourneyRow current = requireOwned(id, viewer);
     if (category != null) {
       requireCategory(category);
@@ -111,14 +124,14 @@ public class JourneyService {
         throw ApiProblem.badRequest("start_after_entries", "The journey can't start after its first entry. Move that entry first.");
       }
     }
-    if (status != null && !status.equals(current.status())) {
-      if ("completed".equals(current.status()) || "completed".equals(status)) {
+    if (status != null && status != current.status()) {
+      if (current.status() == JourneyStatus.COMPLETED || status == JourneyStatus.COMPLETED) {
         throw ApiProblem.badRequest("invalid_status", "A journey can be paused or resumed here. Completing it has its own step.");
       }
     }
     UUID cover = clearCover ? null : coverMediaId != null ? coverMediaId : journeys.coverMediaId(id);
     if (coverMediaId != null) {
-      media.requireOwn(List.of(coverMediaId), viewer, "photo");
+      media.requireOwn(List.of(coverMediaId), viewer, MediaKind.PHOTO);
     }
     journeys.update(id,
         title == null ? current.title() : title.trim(),
@@ -130,10 +143,10 @@ public class JourneyService {
         cover,
         startDate == null ? current.startDate() : startDate,
         status == null ? current.status() : status);
-    if ("public".equals(visibility) && !"public".equals(current.visibility())) {
+    if (visibility == Visibility.PUBLIC && current.visibility() != Visibility.PUBLIC) {
       journeys.followForFollowersOf(current.ownerId(), id); // it just became public
     }
-    if ("private".equals(visibility) && !"private".equals(current.visibility())) {
+    if (visibility == Visibility.PRIVATE && current.visibility() != Visibility.PRIVATE) {
       journeys.dropFollowers(id); // nobody but its authors can see it any more
     }
     return view(require(id, viewer), viewer);
@@ -142,7 +155,7 @@ public class JourneyService {
   @Transactional
   public JourneyResponse complete(UUID id, UUID viewer, String closingNote) {
     JourneyRow journey = requireOwned(id, viewer);
-    if ("completed".equals(journey.status())) {
+    if (journey.status() == JourneyStatus.COMPLETED) {
       throw ApiProblem.badRequest("already_completed", "This journey is already completed.");
     }
     if (journey.entryCount() == 0) {
@@ -181,35 +194,34 @@ public class JourneyService {
     journeys.markRead(viewer, id);
   }
 
+  private static final String NEWEST_ACTIVITY = "coalesce(j.last_entry_at, j.created_at) desc";
+
   /** The viewer's own journeys, of every visibility, newest activity first. */
-  public List<JourneyResponse> mine(UUID viewer) {
-    return views(
-        journeys.list(
+  public Page<JourneyResponse> mine(UUID viewer, PageRequest page) {
+    return journeys.page(
             "j.owner_id = :owner or exists (select 1 from journey_members mm where mm.journey_id = j.id and mm.user_id = :owner and mm.status = 'joined')",
-            Map.of("owner", viewer), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
-        viewer);
+            Map.of("owner", viewer), NEWEST_ACTIVITY, page, viewer)
+        .map(rows -> views(rows, viewer));
   }
 
   /** Journeys the viewer follows, newest activity first. */
-  public List<JourneyResponse> following(UUID viewer) {
-    return views(
-        journeys.list(
+  public Page<JourneyResponse> following(UUID viewer, PageRequest page) {
+    return journeys.page(
             "exists (select 1 from journey_follows mf where mf.journey_id = j.id and mf.user_id = :me and not mf.author)",
-            Map.of("me", viewer), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
-        viewer);
+            Map.of("me", viewer), NEWEST_ACTIVITY, page, viewer)
+        .map(rows -> views(rows, viewer));
   }
 
   /** Someone's public journeys, for their profile: the ones they own and the shared ones they write in. */
-  public List<JourneyResponse> publicBy(String username, UUID viewer) {
-    return views(
-        journeys.list(
+  public Page<JourneyResponse> publicBy(String username, UUID viewer, PageRequest page) {
+    return journeys.page(
             """
             j.visibility = 'public' and (p.username = :username or exists (
               select 1 from journey_members pm join profiles mp on mp.id = pm.user_id
               where pm.journey_id = j.id and pm.status = 'joined' and mp.username = :username))
             """,
-            Map.of("username", username), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
-        viewer);
+            Map.of("username", username), NEWEST_ACTIVITY, page, viewer)
+        .map(rows -> views(rows, viewer));
   }
 
   public record DiscoverResponse(List<JourneyResponse> trending, List<JourneyResponse> fresh, List<JourneyResponse> completed) {}
@@ -278,15 +290,15 @@ public class JourneyService {
   }
 
   private JourneyResponse view(JourneyRow j, UUID viewer, List<JourneyStore.AuthorRow> members) {
-    PersonResponse owner = new PersonResponse(j.ownerId(), j.ownerUsername(), j.ownerName(), media.urlFor(j.ownerAvatarKey()));
+    PersonResponse owner = media.person(j.ownerId(), j.ownerUsername(), j.ownerName(), j.ownerAvatarKey());
     List<PersonResponse> authors = new java.util.ArrayList<>(List.of(owner));
-    members.forEach(m -> authors.add(new PersonResponse(m.id(), m.username(), m.displayName(), media.urlFor(m.avatarKey()))));
+    members.forEach(m -> authors.add(media.person(m.id(), m.username(), m.displayName(), m.avatarKey())));
     int latest = latestNumber(j);
     return new JourneyResponse(
         j.id(), j.title(), j.description(), j.category(), j.template(), j.labelStyle(), j.visibility(), j.status(), j.tags(),
-        media.urlFor(j.coverKey()), j.startDate(), j.targetDays(), latest, progressLabel(j, latest), j.entryCount(), j.followerCount(),
+        media.urlFor(j.coverKey()), media.urlFor(j.coverKey(), MediaSize.MEDIUM), j.startDate(), j.targetDays(), latest, progressLabel(j, latest), j.entryCount(), j.followerCount(),
         j.lastEntryAt(), j.completedAt(), j.closingNote(),
-        "private".equals(j.visibility()) ? null : ServletUriComponentsBuilder.fromCurrentContextPath().path("/j/").path(j.id().toString()).toUriString(),
+        j.visibility() == Visibility.PRIVATE ? null : urls.to("/j/" + j.id()),
         owner, authors,
         new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.member(), j.lastReadAt()));
   }
@@ -295,7 +307,7 @@ public class JourneyService {
     if (j.entryCount() == 0) {
       return 0;
     }
-    if ("part".equals(j.labelStyle()) || j.latestOn() == null) {
+    if (j.labelStyle() == LabelStyle.PART || j.latestOn() == null) {
       return j.entryCount();
     }
     return (int) ChronoUnit.DAYS.between(j.startDate(), j.latestOn()) + 1;
@@ -305,7 +317,7 @@ public class JourneyService {
     if (latest == 0) {
       return "Not started";
     }
-    if ("part".equals(j.labelStyle())) {
+    if (j.labelStyle() == LabelStyle.PART) {
       return "Part " + latest;
     }
     return j.targetDays() == null ? "Day " + latest : "Day " + latest + " of " + j.targetDays();

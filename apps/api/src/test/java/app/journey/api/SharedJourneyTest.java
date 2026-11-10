@@ -27,8 +27,8 @@ class SharedJourneyTest extends ApiTest {
     mvc.perform(invite(nora, journey, "alex")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("not_a_follower"));
     mvc.perform(put("/v1/profiles/nora/follow").header("Authorization", alex)).andExpect(status().isOk());
     mvc.perform(get("/v1/journeys/" + journey + "/invitable").header("Authorization", nora))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].username").value("alex"));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].username").value("alex"));
     mvc.perform(invite(alex, journey, "reader")).andExpect(status().isForbidden());
     mvc.perform(invite(nora, journey, "alex"))
         .andExpect(status().isOk())
@@ -44,9 +44,9 @@ class SharedJourneyTest extends ApiTest {
         .andExpect(jsonPath("$.members", hasSize(1)))
         .andExpect(jsonPath("$.viewerRole").value("none"));
     mvc.perform(get("/v1/me/invitations").header("Authorization", alex))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].journey.title").value("Iceland ring road"))
-        .andExpect(jsonPath("$[0].invitedBy.username").value("nora"));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].journey.title").value("Iceland ring road"))
+        .andExpect(jsonPath("$.items[0].invitedBy.username").value("nora"));
     mvc.perform(get("/v1/activity").header("Authorization", alex)).andExpect(jsonPath("$.items[0].kind").value("invitation"));
 
     mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", alex))
@@ -57,16 +57,16 @@ class SharedJourneyTest extends ApiTest {
         .andExpect(jsonPath("$.viewer.isFollowing").value(false)) // an author, which is more than a follower
         .andExpect(jsonPath("$.viewer.canAddEntry").value(true));
     mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", alex)).andExpect(status().isNotFound());
-    mvc.perform(get("/v1/me/invitations").header("Authorization", alex)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/invitations").header("Authorization", alex)).andExpect(jsonPath("$.items", hasSize(0)));
     mvc.perform(get("/v1/activity").header("Authorization", nora)).andExpect(jsonPath("$.items[?(@.kind=='friend_joined')]", hasSize(1)));
 
     String alexEntry = entry(alex, journey, "The lake before breakfast", 0);
     mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader))
-        .andExpect(jsonPath("$", hasSize(2)))
-        .andExpect(jsonPath("$[1].author.username").value("alex"));
+        .andExpect(jsonPath("$.items", hasSize(2)))
+        .andExpect(jsonPath("$.items[1].author.username").value("alex"));
     // It is on both profiles and in both people's own lists; a friend changes only their own entries, never the journey.
-    mvc.perform(get("/v1/profiles/alex/journeys").header("Authorization", reader)).andExpect(jsonPath("$[0].title").value("Iceland ring road"));
-    mvc.perform(get("/v1/me/journeys").header("Authorization", alex)).andExpect(jsonPath("$", hasSize(1)));
+    mvc.perform(get("/v1/profiles/alex/journeys").header("Authorization", reader)).andExpect(jsonPath("$.items[0].title").value("Iceland ring road"));
+    mvc.perform(get("/v1/me/journeys").header("Authorization", alex)).andExpect(jsonPath("$.items", hasSize(1)));
     mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/v1/journeys/" + journey).header("Authorization", alex)
         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Mine now\"}")).andExpect(status().isForbidden());
     mvc.perform(get("/v1/journeys/" + journey + "/members").header("Authorization", nora))
@@ -97,7 +97,7 @@ class SharedJourneyTest extends ApiTest {
     // Someone invited to a private journey sees the invitation and, once joined, the journey; nobody else does.
     String one = signIn("a.one@example.com");
     String four = signIn("d.four@example.com");
-    mvc.perform(get("/v1/me/invitations").header("Authorization", one)).andExpect(jsonPath("$[0].journey.visibility").value("private"));
+    mvc.perform(get("/v1/me/invitations").header("Authorization", one)).andExpect(jsonPath("$.items[0].journey.visibility").value("private"));
     mvc.perform(get("/v1/journeys/" + journey).header("Authorization", one)).andExpect(status().isNotFound());
     mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", one)).andExpect(status().isOk());
     mvc.perform(get("/v1/journeys/" + journey).header("Authorization", one)).andExpect(status().isOk());

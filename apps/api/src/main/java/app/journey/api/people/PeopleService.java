@@ -1,7 +1,10 @@
 package app.journey.api.people;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Page;
+import app.journey.api.common.PageRequest;
 import app.journey.api.media.MediaService;
+import app.journey.api.media.MediaSize;
 import app.journey.api.people.PeopleStore.PersonRow;
 import app.journey.api.people.PeopleStore.ProfileRow;
 import app.journey.api.profile.PersonResponse;
@@ -19,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PeopleService {
 
-  static final int LIST_LIMIT = 200;
 
   public record PublicProfileViewerResponse(
       boolean isMe, boolean isFollowing, @Schema(description = "True when this person follows the viewer") boolean followsYou,
@@ -72,21 +74,26 @@ public class PeopleService {
   }
 
   /** The people who follow someone, or the people they follow. */
-  public List<ListedPersonResponse> listed(String username, boolean followers, UUID viewer) {
-    return people.listed(require(username, viewer).id(), followers, viewer, LIST_LIMIT).stream()
-        .map(row -> new ListedPersonResponse(
-            row.id(), row.username(), row.displayName(), media.urlFor(row.avatarKey()), row.latestJourney(),
-            new ListedPersonViewerResponse(row.id().equals(viewer), row.following())))
-        .toList();
+  public Page<ListedPersonResponse> listed(String username, boolean followers, UUID viewer, PageRequest page) {
+    return people.listed(require(username, viewer).id(), followers, viewer, page).map(rows -> listed(rows, viewer));
   }
 
   /** People whose name or username matches. */
   public List<ListedPersonResponse> search(String pattern, UUID viewer, int limit) {
-    return people.search(pattern, viewer, limit).stream()
+    return listed(people.search(pattern, viewer, limit), viewer);
+  }
+
+  private List<ListedPersonResponse> listed(List<PeopleStore.ListedRow> rows, UUID viewer) {
+    return rows.stream()
         .map(row -> new ListedPersonResponse(
-            row.id(), row.username(), row.displayName(), media.urlFor(row.avatarKey()), row.latestJourney(),
+            row.id(), row.username(), row.displayName(), media.urlFor(row.avatarKey(), MediaSize.SMALL), row.latestJourney(),
             new ListedPersonViewerResponse(row.id().equals(viewer), row.following())))
         .toList();
+  }
+
+  /** True when the first person follows the second. */
+  public boolean follows(UUID follower, UUID followee) {
+    return people.follows(follower, followee);
   }
 
   /** The id behind a username, or "not found" (also when that person has blocked the viewer). */
@@ -100,7 +107,7 @@ public class PeopleService {
   }
 
   private PersonResponse person(PersonRow row) {
-    return new PersonResponse(row.id(), row.username(), row.displayName(), media.urlFor(row.avatarKey()));
+    return media.person(row.id(), row.username(), row.displayName(), row.avatarKey());
   }
 
   private ProfileRow require(String username, UUID viewer) {

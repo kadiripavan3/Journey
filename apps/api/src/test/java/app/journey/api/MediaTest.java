@@ -71,8 +71,8 @@ class MediaTest extends ApiTest {
         .andExpect(jsonPath("$.trending[0].coverUrl").isNotEmpty())
         .andExpect(jsonPath("$.completed[0].title").value("Cappadocia by balloon"));
     mvc.perform(get("/v1/profiles/maya.rides/journeys").header("Authorization", reader))
-        .andExpect(jsonPath("$[0].title").value("Southeast Asia by motorbike"))
-        .andExpect(jsonPath("$[0].progressLabel").value("Day 22"))
-        .andExpect(jsonPath("$[0].owner.avatarUrl").isNotEmpty());
+        .andExpect(jsonPath("$.items[0].title").value("Southeast Asia by motorbike"))
+        .andExpect(jsonPath("$.items[0].progressLabel").value("Day 22"))
+        .andExpect(jsonPath("$.items[0].owner.avatarUrl").isNotEmpty());
   }
 }

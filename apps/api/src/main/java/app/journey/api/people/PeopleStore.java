@@ -1,5 +1,7 @@
 package app.journey.api.people;
 
+import app.journey.api.common.Page;
+import app.journey.api.common.PageRequest;
 import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
@@ -66,16 +68,21 @@ public class PeopleStore {
         .param("follower", follower).param("followee", followee).update() > 0;
   }
 
+  public boolean follows(UUID follower, UUID followee) {
+    return jdbc.sql("select exists (select 1 from profile_follows where follower_id = :follower and followee_id = :followee)")
+        .param("follower", follower).param("followee", followee).query(Boolean.class).single();
+  }
+
   public void unfollow(UUID follower, UUID followee) {
     jdbc.sql("delete from profile_follows where follower_id = :follower and followee_id = :followee")
         .param("follower", follower).param("followee", followee).update();
   }
 
   /** The people who follow someone (followers = true) or the people they follow, newest first, with each one's latest public journey. */
-  public List<ListedRow> listed(UUID personId, boolean followers, UUID viewer, int limit) {
+  public Page<ListedRow> listed(UUID personId, boolean followers, UUID viewer, PageRequest page) {
     String other = followers ? "f.follower_id" : "f.followee_id";
     String self = followers ? "f.followee_id" : "f.follower_id";
-    return jdbc.sql(
+    List<ListedRow> rows = jdbc.sql(
             """
             select p.id, p.username, p.display_name, a.storage_key as avatar_key, f.created_at as since,
                    (select j.title from journeys j where j.owner_id = p.id and j.visibility = 'public' order by j.created_at desc limit 1) as latest_journey,
@@ -84,14 +91,15 @@ public class PeopleStore {
             join profiles p on p.id = %s
             left join media a on a.id = p.avatar_media_id
             where %s = :person and %s
-            order by f.created_at desc
-            limit :limit
+            order by f.created_at desc, p.id
+            limit :limit offset :offset
             """.formatted(other, self, Rules.notBlocked("p.id", ":viewer")))
-        .param("person", personId).param("viewer", viewer).param("limit", limit)
+        .param("person", personId).param("viewer", viewer).param("limit", page.fetch()).param("offset", page.offset())
         .query((rs, n) -> new ListedRow(
             rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("avatar_key"),
             rs.getString("latest_journey"), rs.getBoolean("following"), Sql.instant(rs, "since")))
         .list();
+    return Page.of(rows, page);
   }
 
   /** People whose name or username matches the words typed, most followed first. */

@@ -61,15 +61,15 @@ class AccountTest extends ApiTest {
     mvc.perform(get("/v1/journeys/" + mine).header("Authorization", ray)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/entries/" + entry).header("Authorization", ray)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/profiles/nora").header("Authorization", ray)).andExpect(status().isNotFound());
-    mvc.perform(get("/v1/me/following").header("Authorization", ray)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", ray)).andExpect(jsonPath("$.items", hasSize(0)));
     mvc.perform(get("/v1/journeys/" + mine).header("Authorization", kai)).andExpect(jsonPath("$.followerCount").value(0));
     // Nora doesn't see Ray's journeys or comments, and nothing of his reaches her Activity.
     mvc.perform(get("/v1/journeys/" + his).header("Authorization", nora)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/discover").header("Authorization", nora)).andExpect(jsonPath("$.trending", hasSize(0)));
     mvc.perform(get("/v1/discover").header("Authorization", kai)).andExpect(jsonPath("$.trending", hasSize(1)));
     mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", nora))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].body").value("Lovely"));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].body").value("Lovely"));
     mvc.perform(get("/v1/activity").header("Authorization", nora))
         .andExpect(jsonPath("$.items", hasSize(1)))
         .andExpect(jsonPath("$.items[0].actors[0].username").value("kai"));
@@ -80,10 +80,10 @@ class AccountTest extends ApiTest {
     mvc.perform(put("/v1/profiles/ray/follow").header("Authorization", nora)).andExpect(status().isBadRequest());
 
     mvc.perform(get("/v1/me/blocks").header("Authorization", nora))
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].username").value("ray"));
+        .andExpect(jsonPath("$.items", hasSize(1)))
+        .andExpect(jsonPath("$.items[0].username").value("ray"));
     mvc.perform(delete("/v1/profiles/ray/block").header("Authorization", nora)).andExpect(status().isNoContent());
-    mvc.perform(get("/v1/me/blocks").header("Authorization", nora)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/blocks").header("Authorization", nora)).andExpect(jsonPath("$.items", hasSize(0)));
     mvc.perform(get("/v1/journeys/" + mine).header("Authorization", ray)).andExpect(status().isOk());
   }
 
@@ -123,7 +123,7 @@ class AccountTest extends ApiTest {
     mvc.perform(get("/v1/journeys/" + mine).header("Authorization", maya)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/profiles/nora").header("Authorization", maya)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/journeys/" + theirs).header("Authorization", maya)).andExpect(jsonPath("$.followerCount").value(0));
-    mvc.perform(get("/v1/me/following").header("Authorization", maya)).andExpect(jsonPath("$", hasSize(0)));
+    mvc.perform(get("/v1/me/following").header("Authorization", maya)).andExpect(jsonPath("$.items", hasSize(0)));
     org.assertj.core.api.Assertions.assertThat(jdbc.sql("select count(*) from media").query(Integer.class).single()).isZero();
     org.assertj.core.api.Assertions.assertThat(jdbc.sql("select count(*) from entry_likes").query(Integer.class).single()).isZero();
     // The old token still says who it was, but there is no profile behind it; the email and username are free again.

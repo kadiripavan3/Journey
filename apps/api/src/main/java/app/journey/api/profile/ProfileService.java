@@ -1,53 +1,45 @@
 package app.journey.api.profile;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** The rules for profiles: which usernames are allowed, and that each belongs to one person. */
 @Service
 public class ProfileService {
 
   static final int MAX_INTERESTS = 20;
 
-  private final ProfileRepository profiles;
+  private final ProfileStore profiles;
   private final MediaService media;
 
-  ProfileService(ProfileRepository profiles, MediaService media) {
+  ProfileService(ProfileStore profiles, MediaService media) {
     this.profiles = profiles;
     this.media = media;
   }
 
   /** The address of a profile's picture, or null when it has none. */
   public String avatarUrl(Profile profile) {
-    if (profile.getAvatarMediaId() == null) {
-      return null;
-    }
-    MediaService.MediaRow row = media.find(profile.getAvatarMediaId());
-    return row == null ? null : media.urlFor(row.storageKey());
+    return media.urlFor(profile.avatarKey());
   }
 
-  @Transactional(readOnly = true)
   public Optional<Profile> find(UUID userId) {
-    return profiles.findById(userId);
+    return profiles.find(userId);
   }
 
   /** Empty when the name is free for this person; otherwise why it can't be used. */
-  @Transactional(readOnly = true)
   public Optional<String> whyUnavailable(String username, UUID askingUserId) {
     Optional<String> problem = Usernames.problemWith(username);
     if (problem.isPresent()) {
       return problem;
     }
-    boolean taken =
-        askingUserId == null
-            ? profiles.existsByUsername(username)
-            : profiles.existsByUsernameAndIdNot(username, askingUserId);
-    return taken ? Optional.of("That name is taken. Try another.") : Optional.empty();
+    return profiles.usernameTaken(username, askingUserId) ? Optional.of("That name is taken. Try another.") : Optional.empty();
   }
 
   /** Creates the profile the first time, and updates it after that. */
@@ -57,28 +49,25 @@ public class ProfileService {
     Usernames.problemWith(username).ifPresent(reason -> {
       throw ApiProblem.badRequest("invalid_username", reason);
     });
-    if (profiles.existsByUsernameAndIdNot(username, userId)) {
+    if (profiles.usernameTaken(username, userId)) {
       throw taken();
     }
-    String[] cleanInterests =
-        interests == null
-            ? new String[0]
-            : interests.stream().map(String::trim).filter(i -> !i.isEmpty()).distinct().limit(MAX_INTERESTS).toArray(String[]::new);
-
-    Profile profile = profiles.findById(userId).orElseGet(() -> new Profile(userId));
+    Optional<Profile> current = profiles.find(userId);
     // Fields the request leaves out stay as they are, so a screen can save just what it shows.
-    String[] nextInterests = interests == null ? profile.getInterests() : cleanInterests;
-    UUID avatar = removeAvatar ? null : avatarMediaId != null ? avatarMediaId : profile.getAvatarMediaId();
+    List<String> nextInterests = interests == null
+        ? current.map(Profile::interests).orElse(List.of())
+        : interests.stream().map(String::trim).filter(i -> !i.isEmpty()).distinct().limit(MAX_INTERESTS).toList();
+    UUID avatar = removeAvatar ? null : avatarMediaId != null ? avatarMediaId : current.map(Profile::avatarMediaId).orElse(null);
     if (avatarMediaId != null) {
-      media.requireOwn(List.of(avatarMediaId), userId, "photo");
+      media.requireOwn(List.of(avatarMediaId), userId, MediaKind.PHOTO);
     }
-    profile.update(username, displayName.trim(), bio == null ? "" : bio.trim(), blankToNull(link), nextInterests, avatar);
     try {
-      return profiles.saveAndFlush(profile);
-    } catch (DataIntegrityViolationException e) {
+      profiles.save(userId, username, displayName.trim(), bio == null ? "" : bio.trim(), blankToNull(link), nextInterests, avatar);
+    } catch (DuplicateKeyException e) {
       // Two people asked for the same name at the same moment; the database's unique rule decided.
       throw taken();
     }
+    return profiles.find(userId).orElseThrow();
   }
 
   private static ApiProblem taken() {

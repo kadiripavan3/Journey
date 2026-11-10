@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -67,6 +68,18 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
     return ResponseEntity.badRequest().body(body);
   }
 
+  /** A word the API doesn't know in a fixed set ("visibility": "friends") has its own answer, written where the set is defined. */
+  @Override
+  protected ResponseEntity<Object> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+    for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
+      if (cause instanceof ApiProblem problem) {
+        return ResponseEntity.status(problem.status()).body(problem(problem.status(), problem.code(), problem.getMessage()));
+      }
+    }
+    return super.handleHttpMessageNotReadable(ex, headers, status, request);
+  }
+
   /**
    * Spring's own failures (a body it can't read, an address that doesn't exist, the wrong method) arrive
    * here. They get a code and a plain sentence like everything else, in place of Spring's technical wording.
@@ -87,6 +100,7 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
       case METHOD_NOT_ALLOWED -> problem(status, "method_not_allowed", "That can't be done here.");
       case NOT_ACCEPTABLE, UNSUPPORTED_MEDIA_TYPE -> problem(status, "unsupported_format", "We can't read or send that format.");
       case CONTENT_TOO_LARGE -> problem(status, "too_large", "That's too big to send.");
+      case TOO_MANY_REQUESTS -> problem(status, "slow_down", "That's a lot at once. Wait a minute and try again.");
       default -> status.is5xxServerError()
           ? problem(status, "unexpected", "Something went wrong on our side. Please try again.")
           : problem(status, "request_failed", "That didn't work. Please try again.");

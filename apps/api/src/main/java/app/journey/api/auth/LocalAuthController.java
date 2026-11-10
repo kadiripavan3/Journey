@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -44,12 +43,12 @@ class LocalAuthController {
 
   private final AuthProperties auth;
   private final JwtEncoder encoder;
-  private final JdbcClient jdbc;
+  private final LocalUsers users;
 
-  LocalAuthController(AuthProperties auth, JwtEncoder encoder, JdbcClient jdbc) {
+  LocalAuthController(AuthProperties auth, JwtEncoder encoder, LocalUsers users) {
     this.auth = auth;
     this.encoder = encoder;
-    this.jdbc = jdbc;
+    this.users = users;
   }
 
   record CodeRequest(@NotBlank @Email @Size(max = 254) String email) {}
@@ -72,16 +71,7 @@ class LocalAuthController {
       throw ApiProblem.unauthorized("wrong_code", "That code isn't right. Check it and try again.");
     }
     String email = normalize(request.email());
-    UUID userId =
-        jdbc.sql(
-                """
-                insert into local_users (email) values (:email)
-                on conflict (email) do update set email = excluded.email
-                returning id
-                """)
-            .param("email", email)
-            .query(UUID.class)
-            .single();
+    UUID userId = users.idFor(email);
 
     Instant now = Instant.now();
     Instant expiresAt = now.plus(auth.local().tokenTtl());

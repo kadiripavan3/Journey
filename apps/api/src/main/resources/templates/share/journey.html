@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title th:text="${journey.title + ' · Journey'}">Journey</title>
   <meta name="description" th:content="${journey.description}">
-  <meta name="robots" content="noindex" th:if="${journey.visibility != 'public'}">
+  <meta name="robots" content="noindex" th:if="${journey.visibility.code() != 'public'}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Journey">
   <meta property="og:title" th:content="${journey.title}">
@@ -26,7 +26,7 @@
       <span th:each="author, it : ${journey.authors}"><span th:if="${!it.first}" th:text="${it.last ? ' and ' : ', '}"></span><b th:text="${author.displayName}">Name</b></span>
     </p>
     <ul class="stats">
-      <li><b th:text="${journey.progressLabel}">Day 14</b><span th:text="${journey.status == 'completed' ? 'Completed' : journey.status == 'paused' ? 'Paused' : 'Active'}">Active</span></li>
+      <li><b th:text="${journey.progressLabel}">Day 14</b><span th:text="${journey.status.code() == 'completed' ? 'Completed' : journey.status.code() == 'paused' ? 'Paused' : 'Active'}">Active</span></li>
       <li><b th:text="${journey.entryCount}">23</b><span th:text="${journey.entryCount == 1 ? 'entry' : 'entries'}">entries</span></li>
       <li><b th:text="${journey.followerCount}">12</b><span>following</span></li>
     </ul>
@@ -35,12 +35,13 @@
 
     <p class="empty" th:if="${#lists.isEmpty(entries)}">No entries yet. The story starts soon.</p>
     <article th:each="entry : ${entries}" th:id="${'e-' + entry.id}">
-      <img th:if="${!#lists.isEmpty(entry.media)}" th:src="${entry.media[0].url}" alt="" loading="lazy">
+      <img th:if="${!#lists.isEmpty(entry.media) and entry.media[0].thumbUrl != null}" th:src="${entry.media[0].thumbUrl}" alt="" loading="lazy">
       <p class="eyebrow" th:text="${entry.placeName != null ? entry.label + ' · ' + entry.placeName : entry.label}">Day 1</p>
       <h2 th:if="${entry.title != ''}" th:text="${entry.title}">Title</h2>
       <p class="body" th:if="${entry.body != ''}" th:text="${entry.body}">Body</p>
       <p class="meta" th:text="${entry.author.displayName}">Author</p>
     </article>
+    <p class="hint" th:if="${more > 0}" th:text="${more == 1 ? 'One more entry is in the app.' : more + ' more entries are in the app.'}">More in the app</p>
 
     <p class="note" th:if="${journey.closingNote != null and journey.closingNote != ''}" th:text="${'“' + journey.closingNote + '”'}">Closing note</p>
   </main>
