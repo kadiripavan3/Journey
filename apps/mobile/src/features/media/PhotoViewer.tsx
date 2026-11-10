@@ -9,6 +9,7 @@ import { darkTheme, radius } from '@/theme';
 import { Frost } from '@/ui/Frost';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { ClipPlayer } from './ClipPlayer';
 
@@ -54,19 +55,19 @@ export function PhotoViewer({ photos, startAt, onClose, eyebrow, title }: Props)
               </View>
             ) : (
               <ScrollView key={photo.id} maximumZoomScale={3} minimumZoomScale={1} centerContent showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} style={{ width, height }}>
-                <Image source={{ uri: photo.url }} style={{ width, height }} contentFit="contain" accessibilityLabel={`Photo ${i + 1} of ${photos.length}`} />
+                <Image source={{ uri: photo.url }} style={{ width, height }} contentFit="contain" accessibilityLabel={words.media.viewer.photoSpoken(i + 1, photos.length)} />
               </ScrollView>
             ),
           )}
         </ScrollView>
 
         <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <RoundButton tone="photo" label="Close photos" onPress={close} icon={(c) => <X size={20} color={c} />} />
+          <RoundButton tone="photo" label={words.media.viewer.close} onPress={close} icon={(c) => <X size={20} color={c} />} />
           {photos.length > 1 ? (
             <View style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
               <Frost tone="dark" />
               <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
-                {index + 1} of {photos.length}
+                {words.media.viewer.position(index + 1, photos.length)}
               </Txt>
             </View>
           ) : null}

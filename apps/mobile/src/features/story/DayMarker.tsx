@@ -23,7 +23,7 @@ export function DayMarker({ entry }: { entry: EntryResponse }) {
         <View style={{ position: 'absolute', left: 4, top: 3, width: 16, height: 16, borderRadius: radius.pill, backgroundColor: colors.bg, borderWidth: 3, borderColor: colors.text }} />
       )}
       <Txt variant="subheading">
-        {words.common.join([entry.label, entry.isMilestone ? words.story.milestone : null])}
+        {words.common.join([entry.label, entry.isMilestone ? words.entry.milestone : null])}
       </Txt>
       <Txt variant="footnote" numberOfLines={1} color="muted" style={{ flex: 1 }}>
         {detail}

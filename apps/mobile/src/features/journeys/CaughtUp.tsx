@@ -4,6 +4,7 @@ import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { radius, useTheme } from '@/theme';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /**
  * 3.3 "You're all caught up": where a feed ends. A tick, the sentence that says what was read, and one way on.
@@ -17,7 +18,7 @@ export function CaughtUp({ line, action, style }: { line: string; action?: React
         <Check size={26} color={colors.ok} strokeWidth={2.6} />
       </View>
       <Txt variant="subtitle" accessibilityRole="header" center style={{ marginTop: 4 }}>
-        You&apos;re all caught up
+        {words.journeys.caughtUp}
       </Txt>
       <Txt variant="callout" color="muted" center>
         {line}

@@ -94,7 +94,7 @@ export default function JourneyPage() {
         <View style={{ marginTop: -30, paddingTop: 52, paddingHorizontal: layout.gutter, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, backgroundColor: colors.bg, alignItems: 'center' }}>
           <Tap
             accessibilityRole="button"
-            accessibilityLabel={words.journey.page.ownerProfile(j.owner.displayName)}
+            accessibilityLabel={words.common.profileOf(j.owner.displayName)}
             scaleTo={0.94}
             onPress={openOwner}
             style={{ position: 'absolute', top: -38, borderRadius: radius.pill, borderWidth: 4, borderColor: colors.bg, boxShadow: shadow.float }}>

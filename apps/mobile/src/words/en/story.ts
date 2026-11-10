@@ -21,7 +21,6 @@ export const story = {
   addEntry: 'Entry',
 
   // Where a day starts on the line
-  milestone: 'Milestone',
   /** What a screen reader says for a day's marker. `detail` is its place and date. */
   daySpoken: (label: string, milestone: boolean, detail: string) => `${label}${milestone ? ', milestone' : ''}. ${detail}`,
 

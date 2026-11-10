@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import type { LocalPhoto } from '@/api/upload';
 import { radius, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
+import { words } from '@/words';
 
 import { pickSquarePhoto } from './pick';
 
@@ -28,11 +29,11 @@ export function ProfilePhoto({ uri, name, onPicked, onProblem }: Props) {
       const picked = await pickSquarePhoto();
       if (picked) onPicked(picked);
     } catch {
-      onProblem("We couldn't open your photos. Check that Journey may see them in the phone's Settings.");
+      onProblem(words.media.photosClosed);
     }
   };
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={uri ? 'Change your photo' : 'Add a photo'} onPress={() => void choose()} style={{ alignSelf: 'center' }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={uri ? words.profile.photo.change : words.profile.photo.add} onPress={() => void choose()} style={{ alignSelf: 'center' }}>
       <Avatar uri={uri} name={name || ' '} size={104} />
       <View
         style={{

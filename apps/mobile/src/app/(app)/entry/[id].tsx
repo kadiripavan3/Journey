@@ -29,6 +29,7 @@ import { Loading } from '@/ui/Loading';
 import { Tap } from '@/ui/Motion';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const GAP = 14;
 const SIDE = 22;
@@ -71,12 +72,12 @@ export default function EntryView() {
         <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
           <Frost tone="dark" />
           <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
-            {current ? (pager.total ? `Entry ${current.position} of ${pager.total}` : `Entry ${current.position}`) : ' '}
+            {current ? words.entry.position(current.position, pager.total) : ' '}
           </Txt>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {current ? <RoundButton tone="photo" label="Entry options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
-          <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
+          {current ? <RoundButton tone="photo" label={words.entry.options} onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
+          <RoundButton tone="photo" label={words.common.close} onPress={leave} icon={(c) => <X size={20} color={c} />} />
         </View>
       </View>
 
@@ -113,7 +114,7 @@ export default function EntryView() {
       {current && !load.error ? (
         <Tap
           accessibilityRole="button"
-          accessibilityLabel={`Comment on this entry by ${current.author.displayName}`}
+          accessibilityLabel={words.entry.commentOn(current.author.displayName)}
           scaleTo={0.985}
           onPress={() => setCommenting(true)}
           style={{
@@ -135,7 +136,7 @@ export default function EntryView() {
           }}>
           <Frost tone="dark" />
           <Txt variant="callout" numberOfLines={1} style={{ flex: 1, color: darkTheme.colors.onPhoto }}>
-            Say something nice to {firstName(current.author.displayName)}…
+            {words.entry.sayNice(firstName(current.author.displayName))}
           </Txt>
           <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: darkTheme.colors.accent }}>
             <Send size={18} color={darkTheme.colors.onAccent} />
@@ -163,7 +164,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
         {shown ? (
           <Tap
             accessibilityRole="button"
-            accessibilityLabel={shown.kind === 'video' ? (many ? `A clip and ${entry.media.length - 1} more. Open them full screen.` : 'Open the clip full screen') : many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
+            accessibilityLabel={words.entry.openMedia(shown.kind === 'video', entry.media.length)}
             disabled={shown.held}
             scaleTo={0.99}
             onPress={() => setViewing(0)}
@@ -186,7 +187,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           {!shown && entry.isMilestone ? <MilestonePill style={{ marginBottom: 10 }} /> : null}
           {onMap ? (
             // A place with a spot on the map leads to the journey's map.
-            <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. Show it on the map`} hitSlop={{ top: 14, bottom: 14 }} onPress={() => router.push(`/journey/${entry.journeyId}/map?entry=${entry.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' }}>
+            <Tap accessibilityRole="button" accessibilityLabel={words.entry.showOnMap(entryEyebrow(entry))} hitSlop={{ top: 14, bottom: 14 }} onPress={() => router.push(`/journey/${entry.journeyId}/map?entry=${entry.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' }}>
               <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
               <MapPin size={13} color={colors.accentText} />
             </Tap>
@@ -207,15 +208,14 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           <Reactions entry={entry} onComments={onComments} />
           <Tap
             accessibilityRole="button"
-            accessibilityLabel={`${entry.author.displayName}'s profile`}
+            accessibilityLabel={words.common.profileOf(entry.author.displayName)}
             hitSlop={{ top: 8, bottom: 8 }}
             scaleTo={0.985}
             onPress={() => router.push(`/profile/${entry.author.username}`)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
             <Avatar uri={entry.author.avatarUrl} name={entry.author.displayName} size={28} />
             <Txt variant="footnote" numberOfLines={1} color="muted" style={{ flex: 1 }}>
-              {entry.author.displayName} · {formatDay(entry.happenedOn)}
-              {entry.edited ? ' · Edited' : ''}
+              {words.common.join([entry.author.displayName, formatDay(entry.happenedOn), entry.edited ? words.entry.edited : null])}
             </Txt>
           </Tap>
         </View>

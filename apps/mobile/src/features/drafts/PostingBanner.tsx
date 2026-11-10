@@ -2,11 +2,11 @@ import { useRouter } from 'expo-router';
 import { ChevronRight, CloudUpload, TriangleAlert, WifiOff } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { useOutbox, useProgress } from './outbox';
 import { draftTitle, progressLine } from './words';
@@ -29,14 +29,14 @@ export function PostingBanner({ journeyId }: { journeyId: string }) {
 
   const failed = first.state === 'failed';
   const offline = !outbox.online && !failed;
-  const more = waiting.length > 1 ? ` and ${plural(waiting.length - 1, 'more', 'more')}` : '';
-  const headline = failed ? `Couldn't post "${draftTitle(first)}"` : offline ? `Saved: "${draftTitle(first)}"${more}` : `Posting "${draftTitle(first)}"${more}`;
-  const detail = failed ? (first.problem ?? 'Open it to try again.') : offline ? "It posts by itself when you're back online." : progressLine(progress, outbox.online);
+  const others = waiting.length - 1;
+  const headline = failed ? words.drafts.banner.failed(draftTitle(first)) : offline ? words.drafts.banner.saved(draftTitle(first), others) : words.drafts.banner.posting(draftTitle(first), others);
+  const detail = failed ? (first.problem ?? words.drafts.banner.tryAgain) : offline ? words.drafts.banner.whenOnline : progressLine(progress, outbox.online);
 
   return (
     <Tap
       accessibilityRole="button"
-      accessibilityLabel={`${headline}. ${detail} Open drafts and uploads.`}
+      accessibilityLabel={words.drafts.banner.spoken(headline, detail)}
       accessibilityLiveRegion="polite"
       onPress={() => router.push('/uploads')}
       scaleTo={0.985}
@@ -69,21 +69,21 @@ export function OutboxLink() {
   const drafts = outbox.drafts.filter((draft) => draft.state === 'draft').length;
   const failed = outbox.drafts.filter((draft) => draft.state === 'failed').length;
   const going = outbox.drafts.length - drafts - failed;
-  const parts = [going > 0 ? `${going} on ${going === 1 ? 'its' : 'their'} way` : null, failed > 0 ? `${failed} couldn't upload` : null, drafts > 0 ? plural(drafts, 'draft') : null].filter(Boolean);
+  const parts = [going > 0 ? words.drafts.link.onTheWay(going) : null, failed > 0 ? words.drafts.link.failed(failed) : null, drafts > 0 ? words.drafts.link.drafts(drafts) : null].filter((part) => part !== null);
   return (
     <Tap
       accessibilityRole="button"
-      accessibilityLabel={`Drafts and uploads. ${parts.join(', ')}`}
+      accessibilityLabel={words.drafts.link.spoken(parts)}
       onPress={() => router.push('/uploads')}
       scaleTo={0.985}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: layout.barGutter, marginTop: 10, paddingVertical: 12, paddingHorizontal: 14, borderRadius: radius.photo, backgroundColor: colors.fill }}>
       {failed > 0 ? <TriangleAlert size={20} color={colors.warn} /> : <CloudUpload size={20} color={colors.text} />}
       <View style={{ flex: 1 }}>
         <Txt variant="control" weight={800}>
-          Drafts and uploads
+          {words.drafts.link.title}
         </Txt>
         <Txt variant="footnote" color="muted" numberOfLines={1}>
-          {parts.join(' · ')}
+          {words.common.join(parts)}
         </Txt>
       </View>
       <ChevronRight size={18} color={colors.muted} />

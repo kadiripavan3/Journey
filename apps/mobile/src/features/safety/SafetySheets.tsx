@@ -10,17 +10,18 @@ import { Button } from '@/ui/Button';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 import { Tap } from '@/ui/Motion';
+import { words } from '@/words';
 
 const REASONS = [
-  { id: 'spam', label: 'Spam or a scam' },
-  { id: 'harassment', label: 'Hate or harassment' },
-  { id: 'nudity', label: 'Nudity or sexual content' },
-  { id: 'violence', label: 'Violence or something dangerous' },
-  { id: 'impersonation', label: 'Pretending to be someone else' },
-  { id: 'other', label: 'Something else' },
+  { id: 'spam', label: words.safety.report.reasons.spam },
+  { id: 'harassment', label: words.safety.report.reasons.harassment },
+  { id: 'nudity', label: words.safety.report.reasons.nudity },
+  { id: 'violence', label: words.safety.report.reasons.violence },
+  { id: 'impersonation', label: words.safety.report.reasons.impersonation },
+  { id: 'other', label: words.safety.report.reasons.other },
 ] as const;
 
-export type ReportTarget = { type: 'journey' | 'entry' | 'comment' | 'profile'; id: string; word: string };
+export type ReportTarget = { type: 'journey' | 'entry' | 'comment' | 'profile'; id: string };
 
 /** 11.1 Report: pick a reason, send. Reports are private, and a person reviews each one. */
 export function ReportSheet({ target, onClose }: { target: ReportTarget | null; onClose: () => void }) {
@@ -28,6 +29,9 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [sent, setSent] = useState(false);
   const report = useReport({ mutation: { onSuccess: () => setSent(true) } });
+  // What is being reported is remembered, so the question still reads right while the sheet slides away.
+  const [what, setWhat] = useState(target?.type);
+  if (target && target.type !== what) setWhat(target.type);
   const close = () => {
     setReason(null);
     setSent(false);
@@ -39,11 +43,11 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
     <Sheet
       visible={target !== null}
       onClose={close}
-      title={sent ? 'Thanks for telling us' : `Why are you reporting this ${target?.word ?? ''}?`}
-      subtitle={sent ? 'A person will look at it. Your report stays private.' : "Reports are private. The person won't know it was you."}>
+      title={sent ? words.safety.report.sent.title : what ? words.safety.report.title[what] : undefined}
+      subtitle={sent ? words.safety.report.sent.body : words.safety.report.lead}>
       {sent ? (
         <View style={{ paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-          <Button label="Done" size="lg" block onPress={close} />
+          <Button label={words.common.done} size="lg" block onPress={close} />
         </View>
       ) : (
         <>
@@ -73,7 +77,7 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
           ) : null}
           <View style={{ paddingHorizontal: layout.rowGutter, paddingTop: 12 }}>
             <Button
-              label="Send report"
+              label={words.safety.report.send}
               size="lg"
               block
               disabled={!reason}
@@ -100,11 +104,10 @@ export function BlockSheet({ person, onClose, onBlocked }: { person: { username:
       },
     },
   });
-  const points = ["They can't see, follow or comment on your journeys in the app", "You won't see their journeys or comments", "They won't be told"];
   return (
-    <Sheet visible={person !== null} onClose={onClose} title={`Block ${person?.displayName ?? ''}?`}>
+    <Sheet visible={person !== null} onClose={onClose} title={words.safety.block.title(person?.displayName ?? '')}>
       <View style={{ gap: 10, paddingHorizontal: layout.gutter, paddingTop: 8, paddingBottom: 16 }}>
-        {points.map((point) => (
+        {words.safety.block.points.map((point) => (
           <View key={point} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Check size={18} color={colors.muted} strokeWidth={2.4} />
             <Txt variant="bodySmall" style={{ flex: 1 }}>{point}</Txt>
@@ -117,8 +120,8 @@ export function BlockSheet({ person, onClose, onBlocked }: { person: { username:
         </Txt>
       ) : null}
       <View style={{ gap: 10, paddingHorizontal: layout.rowGutter }}>
-        <Button label="Block" variant="danger" size="lg" block loading={block.isPending} onPress={() => person && block.mutate({ username: person.username })} />
-        <Button label="Cancel" variant="soft" size="lg" block onPress={onClose} />
+        <Button label={words.safety.block.confirm} variant="danger" size="lg" block loading={block.isPending} onPress={() => person && block.mutate({ username: person.username })} />
+        <Button label={words.common.cancel} variant="soft" size="lg" block onPress={onClose} />
       </View>
     </Sheet>
   );

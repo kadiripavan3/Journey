@@ -8,6 +8,7 @@ import { Photo } from '@/ui/Photo';
 import { Txt } from '@/ui/Txt';
 
 import { ClipBadge } from '@/features/media/ClipPlayer';
+import { words } from '@/words';
 
 import { entryEyebrow, entryHeadline } from './labels';
 
@@ -15,7 +16,7 @@ import { entryEyebrow, entryHeadline } from './labels';
 export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse; onPress?: () => void; photo?: number }) {
   const cover = entry.media[0];
   return (
-    <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Tap accessibilityRole="button" accessibilityLabel={words.entry.rowSpoken(entryEyebrow(entry), entryHeadline(entry))} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       {cover ? (
         <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ width: photo, height: photo, alignItems: 'center', justifyContent: 'center' }}>
           {cover.kind === 'video' ? <ClipBadge compact /> : null}

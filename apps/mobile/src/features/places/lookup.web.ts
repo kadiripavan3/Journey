@@ -13,8 +13,8 @@ export class LocationDenied extends Error {}
  * the API's local stand-in, which knows a short list of places. Where that isn't switched on, nothing is found
  * and the typed name can still be used as it is.
  */
-export async function searchPlaces(words: string): Promise<FoundPlace[]> {
-  const query = words.trim();
+export async function searchPlaces(typed: string): Promise<FoundPlace[]> {
+  const query = typed.trim();
   if (query.length < 2) return [];
   try {
     return await searchLocalPlaces({ q: query });

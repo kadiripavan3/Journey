@@ -9,6 +9,7 @@ import { darkTheme, radius } from '@/theme';
 import { Frost } from '@/ui/Frost';
 import { Pill } from '@/ui/Pill';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { clipLength } from './clips';
 
@@ -36,7 +37,7 @@ export function ClipPlayer({ clip, fit = 'contain', style }: { clip: Clip; fit?:
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={ready ? `Play the clip${length ? `. ${length}` : ''}` : clip.status === 'failed' ? "This clip couldn't be used" : 'This clip is still getting ready'}
+      accessibilityLabel={ready ? words.media.clip.playSpoken(length) : clip.status === 'failed' ? words.media.clip.failedSpoken : words.media.clip.preparingSpoken}
       accessibilityState={{ disabled: !ready }}
       disabled={!ready}
       onPress={() => setPlaying(true)}
@@ -49,14 +50,14 @@ export function ClipPlayer({ clip, fit = 'contain', style }: { clip: Clip; fit?:
             <Play size={30} color={c.onPhoto} fill={c.onPhoto} style={{ marginLeft: 4 }} />
           </View>
           <Txt variant="caption" weight={700} style={{ marginTop: 12, color: c.onPhoto }}>
-            Tap to play{length ? ` · ${length}` : ''}
+            {words.media.clip.tapToPlay(length)}
           </Txt>
         </>
       ) : (
         <View style={{ maxWidth: 260, paddingVertical: 12, paddingHorizontal: 16, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: c.photoGlass, borderWidth: 1, borderColor: c.photoGlassLine }}>
           <Frost tone="dark" />
           <Txt variant="caption" weight={700} center style={{ color: c.onPhoto }}>
-            {clip.status === 'failed' ? "This clip couldn't be used. Edit the entry to remove it or add it again." : 'Your clip is getting ready. Others see it once it is.'}
+            {clip.status === 'failed' ? words.media.clip.failed : words.media.clip.preparing}
           </Txt>
         </View>
       )}
@@ -87,5 +88,5 @@ export function ClipBadge({ seconds, compact, style }: { seconds?: number | null
       </View>
     );
   }
-  return <Pill tone="photo" label={clipLength(seconds) || 'Clip'} icon={(color) => <Play size={10} color={color} fill={color} />} style={style} />;
+  return <Pill tone="photo" label={clipLength(seconds) || words.media.clip.badge} icon={(color) => <Play size={10} color={color} fill={color} />} style={style} />;
 }

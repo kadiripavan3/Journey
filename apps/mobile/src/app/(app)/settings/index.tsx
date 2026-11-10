@@ -13,8 +13,7 @@ import { Avatar } from '@/ui/Avatar';
 import { GroupLabel } from '@/ui/Heading';
 import { Row, RowGroup } from '@/ui/Rows';
 import { Txt } from '@/ui/Txt';
-
-const APPEARANCE = { system: 'Automatic', light: 'Light', dark: 'Dark' } as const;
+import { words } from '@/words';
 
 /** 10.1 Settings: everything in plain words, in short groups. */
 export default function Settings() {
@@ -32,7 +31,7 @@ export default function Settings() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Settings" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.title} trailing={<View style={{ width: 40 }} />} />
       <ScrollView contentContainerStyle={{ paddingTop: 8, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         {profile ? (
           <RowGroup>
@@ -43,37 +42,37 @@ export default function Settings() {
                   {profile.displayName}
                 </Txt>
                 <Txt variant="footnote" numberOfLines={1} color="muted">
-                  @{profile.username} · {me?.email}
+                  {words.common.join([`@${profile.username}`, me?.email])}
                 </Txt>
               </View>
             </View>
           </RowGroup>
         ) : null}
 
-        <GroupLabel style={{ marginHorizontal: layout.gutter }}>You</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.you}</GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <UserRound size={18} color={c} />} label="Account" onPress={() => router.push('/settings/account')} />
+          <Row first icon={(c) => <UserRound size={18} color={c} />} label={words.settings.account} onPress={() => router.push('/settings/account')} />
           <Row
             icon={(c) => <Bell size={18} color={c} />}
-            label="Notifications"
-            value={switches ? `${switches.filter(Boolean).length} of ${switches.length} on` : undefined}
+            label={words.settings.notifications}
+            value={switches ? words.settings.switchesOn(switches.filter(Boolean).length, switches.length) : undefined}
             onPress={() => router.push('/settings/notifications')}
           />
-          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label="Privacy and safety" onPress={() => router.push('/settings/privacy')} />
-          <Row icon={(c) => <Palette size={18} color={c} />} label="Appearance" value={APPEARANCE[appearance]} onPress={() => router.push('/settings/appearance')} />
+          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label={words.settings.privacy} onPress={() => router.push('/settings/privacy')} />
+          <Row icon={(c) => <Palette size={18} color={c} />} label={words.settings.appearance} value={words.settings.appearancePage.choices[appearance].label} onPress={() => router.push('/settings/appearance')} />
         </RowGroup>
 
-        <GroupLabel style={{ marginHorizontal: layout.gutter }}>Help</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.help}</GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <CircleHelp size={18} color={c} />} label="Help and contact" onPress={() => openPage('/contact')} />
-          <Row icon={(c) => <Flag size={18} color={c} />} label="Community guidelines" onPress={() => openPage('/guidelines')} />
-          <Row icon={(c) => <FileText size={18} color={c} />} label="Terms of use" onPress={() => openPage('/terms')} />
-          <Row icon={(c) => <Lock size={18} color={c} />} label="Privacy policy" onPress={() => openPage('/privacy')} />
+          <Row first icon={(c) => <CircleHelp size={18} color={c} />} label={words.settings.helpAndContact} onPress={() => openPage('/contact')} />
+          <Row icon={(c) => <Flag size={18} color={c} />} label={words.settings.guidelines} onPress={() => openPage('/guidelines')} />
+          <Row icon={(c) => <FileText size={18} color={c} />} label={words.settings.terms} onPress={() => openPage('/terms')} />
+          <Row icon={(c) => <Lock size={18} color={c} />} label={words.settings.privacyPolicy} onPress={() => openPage('/privacy')} />
         </RowGroup>
 
         <GroupLabel style={{ marginHorizontal: layout.gutter }}> </GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <LogOut size={18} color={c} />} label="Sign out" onPress={() => void session.signOut()} trailing={<View />} />
+          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.settings.signOut} onPress={() => void session.signOut()} trailing={<View />} />
         </RowGroup>
       </ScrollView>
     </SafeAreaView>

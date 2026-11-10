@@ -202,14 +202,14 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
   const hand = async (how: 'post' | 'draft') => {
     if (!j) return;
     setProblem(null);
-    setProgress(how === 'post' ? 'Posting' : 'Saving');
+    setProgress(how === 'post' ? words.composer.progress.posting : words.composer.progress.saving);
     try {
-      const draft: DraftInput = { clientId, journeyId, journey: j, title, body, day, dayLabel: j.labelStyle === 'day' ? `Day ${dayNumber}` : formatDay(day), place, milestone, media: shots };
+      const draft: DraftInput = { clientId, journeyId, journey: j, title, body, day, dayLabel: j.labelStyle === 'day' ? words.composer.dayNumber(dayNumber) : formatDay(day), place, milestone, media: shots };
       await outbox.save(draft, how);
       finish(how === 'post' ? () => router.dismissTo(`/journey/${journeyId}/timeline`) : undefined);
     } catch {
       setAsking(false);
-      setProblem("This entry couldn't be saved on your phone. Free up some space and try again.");
+      setProblem(words.composer.cantSave);
     } finally {
       setProgress(null);
     }
@@ -229,15 +229,14 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
           continue;
         }
         sent += 1;
-        const what = shot.kind === 'video' ? 'clip' : 'photo';
-        const label = waiting > 1 ? `Uploading ${sent} of ${waiting}` : `Uploading the ${what}`;
+        const label = waiting > 1 ? words.composer.progress.uploading(sent, waiting) : words.composer.progress.uploadingOne(shot.kind === 'video');
         setProgress(label);
-        const mediaId = shot.kind === 'video' ? await sendClip(shot, (part) => setProgress(`${label} · ${Math.round(part * 100)}%`)) : await uploadPhoto(shot);
+        const mediaId = shot.kind === 'video' ? await sendClip(shot, (part) => setProgress(words.composer.progress.withPercent(label, Math.round(part * 100)))) : await uploadPhoto(shot);
         // Remember the upload, so trying again after a failure doesn't send the same file twice.
         setShots((now) => now.map((s) => (s.key === shot.key ? { ...s, mediaId } : s)));
         mediaIds.push(mediaId);
       }
-      setProgress('Saving');
+      setProgress(words.composer.progress.saving);
       await changeEntry(entryId, {
         title: title.trim(),
         body: body.trim(),
@@ -258,7 +257,7 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
   };
 
   // "Photo 2", "Clip 1": each counted among its own kind, in the order they are shown.
-  const names = shots.map((shot, index) => `${shot.kind === 'video' ? 'Clip' : 'Photo'} ${shots.slice(0, index).filter((other) => other.kind === shot.kind).length + 1}`);
+  const names = shots.map((shot, index) => words.composer.media.name(shot.kind === 'video', shots.slice(0, index).filter((other) => other.kind === shot.kind).length + 1));
 
   return {
     /** What kind of composer this is. */
@@ -288,7 +287,7 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
       setDay(next);
       setDayChosen(true);
     },
-    dayLabel: j ? (j.labelStyle === 'day' ? `Day ${dayNumber} · ${formatDayLong(day)}` : formatDayLong(day)) : '',
+    dayLabel: j ? (j.labelStyle === 'day' ? words.common.join([words.composer.dayNumber(dayNumber), formatDayLong(day)]) : formatDayLong(day)) : '',
     shots,
     names,
     /** The ids of photos a reviewer still has to look at: shown veiled, as everywhere else. */

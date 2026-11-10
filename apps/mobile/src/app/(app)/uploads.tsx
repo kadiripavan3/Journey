@@ -18,6 +18,7 @@ import { Rise } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /**
  * 7.4 Drafts and uploads: entries on their way up, ones that were refused (with a way to try again), and
@@ -44,52 +45,52 @@ export default function Uploads() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Drafts and uploads" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.drafts.page.title} trailing={<View style={{ width: 40 }} />} />
       {outbox.drafts.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
-          <EmptyState emoji="📓" title="Nothing waiting" body="Drafts you save, and entries you write without a signal, wait here until they are posted." />
+          <EmptyState emoji="📓" title={words.drafts.page.none.title} body={words.drafts.page.none.body} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingTop: 4, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {!outbox.online ? (
-            <Note icon={<WifiOff size={20} color={colors.warn} />} title="You're offline">
-              Everything here is saved on this phone. Entries post by themselves when you&apos;re back.
+            <Note icon={<WifiOff size={20} color={colors.warn} />} title={words.drafts.page.offline.title}>
+              {words.drafts.page.offline.body}
             </Note>
           ) : going.length > 0 ? (
-            <Note icon={<CloudUpload size={20} color={colors.text} />} title="On their way">
-              Entries go up while Journey is open. If you close it, they carry on from where they stopped next time.
+            <Note icon={<CloudUpload size={20} color={colors.text} />} title={words.drafts.page.onTheirWay.title}>
+              {words.drafts.page.onTheirWay.body}
             </Note>
           ) : null}
 
-          {going.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>{outbox.online ? 'Uploading' : 'Waiting to upload'}</GroupLabel> : null}
+          {going.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>{outbox.online ? words.drafts.page.uploading : words.drafts.page.waiting}</GroupLabel> : null}
           {going.map((draft, index) => (
             <Rise key={draft.clientId} index={index}>
               <Going draft={draft} online={outbox.online} onOpen={() => open(draft)} />
             </Rise>
           ))}
 
-          {failed.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>Couldn&apos;t upload</GroupLabel> : null}
+          {failed.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>{words.drafts.page.failed}</GroupLabel> : null}
           {failed.map((draft) => (
             <Item
               key={draft.clientId}
               draft={draft}
               onPress={() => open(draft)}
-              label={`${draftTitle(draft)}. ${draft.problem ?? "It couldn't be posted."} Open to change it.`}
-              trailing={<Button label="Retry" size="sm" variant="soft" inline icon={(c) => <RefreshCw size={15} color={c} />} onPress={() => outbox.retry(draft.clientId)} />}
+              label={words.drafts.page.failedSpoken(draftTitle(draft), draft.problem ?? words.drafts.cantPost)}
+              trailing={<Button label={words.drafts.page.retry} size="sm" variant="soft" inline icon={(c) => <RefreshCw size={15} color={c} />} onPress={() => outbox.retry(draft.clientId)} />}
               onRemove={() => setRemoving(draft)}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5 }}>
                 <TriangleAlert size={14} color={colors.warn} style={{ marginTop: 2 }} />
                 {/* The mark carries the warning colour; the sentence is in the text colour, so it reads well on white. */}
                 <Txt variant="footnote" weight={700} numberOfLines={3} style={{ flex: 1 }}>
-                  {draft.problem ?? "It couldn't be posted."}
+                  {draft.problem ?? words.drafts.cantPost}
                 </Txt>
               </View>
             </Item>
           ))}
 
-          {drafts.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>Drafts</GroupLabel> : null}
+          {drafts.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>{words.drafts.page.drafts}</GroupLabel> : null}
           {drafts.map((draft) => (
-            <Item key={draft.clientId} draft={draft} sub={draft.journey.title} onPress={() => open(draft)} label={`${draftTitle(draft)}. ${draftSaved(draft)}. Open the draft.`} trailing={<ChevronRight size={18} color={colors.muted} />} onRemove={() => setRemoving(draft)}>
+            <Item key={draft.clientId} draft={draft} sub={draft.journey.title} onPress={() => open(draft)} label={words.drafts.page.draftSpoken(draftTitle(draft), draftSaved(draft))} trailing={<ChevronRight size={18} color={colors.muted} />} onRemove={() => setRemoving(draft)}>
               <Txt variant="footnote" color="muted" numberOfLines={1}>
                 {draftSaved(draft)}
               </Txt>
@@ -98,10 +99,10 @@ export default function Uploads() {
         </ScrollView>
       )}
 
-      <Sheet visible={!!removing} onClose={() => setRemoving(null)} title="Delete this draft?" subtitle="It only exists on this phone, so it will be gone for good.">
+      <Sheet visible={!!removing} onClose={() => setRemoving(null)} title={words.drafts.page.confirmDelete.title} subtitle={words.drafts.page.confirmDelete.body}>
         <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
           <Button
-            label="Delete draft"
+            label={words.drafts.page.confirmDelete.confirm}
             variant="danger"
             size="lg"
             block
@@ -110,7 +111,7 @@ export default function Uploads() {
               setRemoving(null);
             }}
           />
-          <Button label="Keep it" variant="soft" size="lg" block onPress={() => setRemoving(null)} />
+          <Button label={words.common.keepIt} variant="soft" size="lg" block onPress={() => setRemoving(null)} />
         </View>
       </Sheet>
     </SafeAreaView>
@@ -122,7 +123,7 @@ function Going({ draft, online, onOpen }: { draft: Draft; online: boolean; onOpe
   const progress = useProgress(draft.clientId);
   const waiting = draft.state === 'queued';
   return (
-    <Item draft={draft} sub={draftWhere(draft)} onPress={waiting ? onOpen : undefined} label={`${draftTitle(draft)}. ${progressLine(progress, online)}`}>
+    <Item draft={draft} sub={draftWhere(draft)} onPress={waiting ? onOpen : undefined} label={words.common.spoken([draftTitle(draft), progressLine(progress, online)])}>
       {waiting ? null : (
         <View style={{ marginTop: 4, marginBottom: 2 }}>
           <ProgressBar fraction={Math.max(progress?.fraction ?? 0, STARTED)} />
@@ -189,7 +190,7 @@ function Item({ draft, sub, label, onPress, trailing, onRemove, children }: { dr
       )}
       {trailing}
       {onRemove ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${draftTitle(draft)}`} hitSlop={13} onPress={onRemove}>
+        <Pressable accessibilityRole="button" accessibilityLabel={words.drafts.page.remove(draftTitle(draft))} hitSlop={13} onPress={onRemove}>
           <Trash2 size={18} color={colors.muted} />
         </Pressable>
       ) : null}

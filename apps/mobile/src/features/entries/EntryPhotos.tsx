@@ -7,6 +7,7 @@ import { HeldVeil } from '@/features/safety/Held';
 import { type Radius, radius as radii, useTheme } from '@/theme';
 import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
+import { words } from '@/words';
 
 import { MilestonePill } from './MilestonePill';
 
@@ -60,7 +61,7 @@ export function EntryPhotos({ entry, height, radius = 'card', inset = 12, milest
   return (
     <View>
       <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ height, borderRadius: radii[radius], overflow: 'hidden', backgroundColor: colors.fill }}>
-        <ScrollView horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={32} accessibilityLabel={`${media.length} photos. Swipe to see the next one.`}>
+        <ScrollView horizontal pagingEnabled nestedScrollEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={32} accessibilityLabel={words.entry.photosSwipe(media.length)}>
           {media.map((m, index) => (
             // Only the photo in view and its neighbours are loaded; the others keep their place.
             <Photo key={m.id} uri={Math.abs(index - at) <= 1 ? (m.thumbUrl ?? m.url) : null} radius="none" style={{ width: width || 1, height }}>

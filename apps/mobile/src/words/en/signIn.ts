@@ -31,7 +31,9 @@ export const signIn = {
     apple: 'Continue with Apple',
     google: 'Continue with Google',
     email: 'Continue with email',
-    /** `name` is "Apple" or "Google". */
+    /** What the two companies are called in the sentences below. */
+    names: { apple: 'Apple', google: 'Google' },
+    /** `name` is one of `names`. */
     later: (name: string) => `${name} sign-in is switched on later. Use your email for now.`,
     notOnThisPhone: (name: string) => `${name} sign-in isn't available on this phone. Use your email.`,
     /** "terms" and "privacy" mark the two links. */

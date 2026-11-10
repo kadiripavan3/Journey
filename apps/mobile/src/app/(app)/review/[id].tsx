@@ -21,6 +21,8 @@ import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 import { Tap } from '@/ui/Motion';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 /**
  * 11.3 Held for review: when the automatic check flags a photo, it is hidden until a person has looked at it.
@@ -47,7 +49,6 @@ export default function HeldForReview() {
   const e = entry.data;
   const held = e?.media.filter((m) => m.held) ?? [];
   const fine = e?.media.filter((m) => !m.held) ?? [];
-  const one = held.length === 1;
   // The design shows a photo that is fine beside the one that is hidden; with nothing else, the hidden ones alone.
   const shown = [...fine.slice(0, 1), ...held].slice(0, 2);
 
@@ -72,7 +73,7 @@ export default function HeldForReview() {
   const problem = change.isError ? messageFor(change.error) : askProblem;
   return (
     <Screen
-      header={<AppBar title={e ? `${e.label} · ${e.journeyTitle}` : undefined} trailing={<View style={{ width: 40 }} />} />}
+      header={<AppBar title={e ? words.common.join([e.label, e.journeyTitle]) : undefined} trailing={<View style={{ width: 40 }} />} />}
       footer={
         e && held.length > 0 ? (
           <>
@@ -81,17 +82,20 @@ export default function HeldForReview() {
                 {problem}
               </Txt>
             ) : null}
-            <Button label={one ? 'Remove the photo' : 'Remove the photos'} variant="line" size="lg" block loading={change.isPending} onPress={remove} />
+            <Button label={words.safety.review.remove(held.length)} variant="line" size="lg" block loading={change.isPending} onPress={remove} />
             {asked ? (
               <Txt variant="small" color="muted" center accessibilityLiveRegion="polite">
-                Thanks. We&apos;ll take a second look.
+                {words.safety.review.asked}
               </Txt>
             ) : (
               <Txt variant="small" color="muted" center>
-                Think it&apos;s a mistake?{' '}
-                <Txt variant="small" weight={700} accessibilityRole="link" disabled={asking} onPress={() => void askAgain()} style={{ color: colors.accentText }}>
-                  Ask for a second look
-                </Txt>
+                {rich(words.safety.review.mistake, {
+                  ask: (text) => (
+                    <Txt variant="small" weight={700} accessibilityRole="link" disabled={asking} onPress={() => void askAgain()} style={{ color: colors.accentText }}>
+                      {text}
+                    </Txt>
+                  ),
+                })}
               </Txt>
             )}
           </>
@@ -132,19 +136,17 @@ export default function HeldForReview() {
             </View>
           </View>
           {held.length > 0 ? (
-            <NoteBox tone="warn" icon={(c) => <ShieldAlert size={20} color={c} />} title={one ? 'One photo is being reviewed' : `${held.length} photos are being reviewed`} style={{ marginHorizontal: -4 }}>
-              {one
-                ? "Our automatic check flagged it, so it's hidden from everyone but you. A person will look at it soon."
-                : "Our automatic check flagged them, so they're hidden from everyone but you. A person will look at them soon."}
+            <NoteBox tone="warn" icon={(c) => <ShieldAlert size={20} color={c} />} title={words.safety.held.photos(held.length)} style={{ marginHorizontal: -4 }}>
+              {words.safety.review.body(held.length)}
             </NoteBox>
           ) : (
             <>
-              <NoteBox icon={() => <CircleCheck size={20} color={colors.ok} />} title="Nothing is being reviewed" style={{ marginHorizontal: -4 }}>
-                Every photo in this entry can be seen by everyone who can see the journey.
+              <NoteBox icon={() => <CircleCheck size={20} color={colors.ok} />} title={words.safety.review.nothing.title} style={{ marginHorizontal: -4 }}>
+                {words.safety.review.nothing.body}
               </NoteBox>
-              <Tap accessibilityRole="button" accessibilityLabel="Back to the entry" onPress={leave} style={{ alignSelf: 'center', marginTop: 20 }}>
+              <Tap accessibilityRole="button" accessibilityLabel={words.safety.review.back} onPress={leave} style={{ alignSelf: 'center', marginTop: 20 }}>
                 <Txt variant="item" weight={800} style={{ color: colors.accentText }}>
-                  Back to the entry
+                  {words.safety.review.back}
                 </Txt>
               </Tap>
             </>

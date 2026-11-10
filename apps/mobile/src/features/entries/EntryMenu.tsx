@@ -11,6 +11,7 @@ import { layout } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = {
   entry: EntryResponse;
@@ -35,7 +36,7 @@ export function EntryMenu({ entry, visible, onClose, onShare, onDeleted }: Props
     <SheetRow
       first={first}
       icon={(c) => <Share2 size={22} color={c} />}
-      label="Share entry"
+      label={words.entry.menu.share}
       onPress={() => {
         close();
         onShare();
@@ -58,19 +59,19 @@ export function EntryMenu({ entry, visible, onClose, onShare, onDeleted }: Props
           {share(true)}
           <SheetRow
             icon={(c) => <Flag size={22} color={c} />}
-            label="Report this entry"
+            label={words.entry.menu.report}
             onPress={() => {
               close();
               setReporting(true);
             }}
           />
         </Sheet>
-        <ReportSheet target={reporting ? { type: 'entry', id: entry.id, word: 'entry' } : null} onClose={() => setReporting(false)} />
+        <ReportSheet target={reporting ? { type: 'entry', id: entry.id } : null} onClose={() => setReporting(false)} />
       </>
     );
   }
   return (
-    <Sheet visible={visible} onClose={close} title={confirming ? 'Delete this entry?' : undefined} subtitle={confirming ? 'It will be gone for good, for you and everyone following.' : undefined}>
+    <Sheet visible={visible} onClose={close} title={confirming ? words.entry.menu.confirmDelete.title : undefined} subtitle={confirming ? words.entry.menu.confirmDelete.body : undefined}>
       {remove.isError ? (
         <Txt variant="caption" color="danger" style={{ paddingHorizontal: layout.gutter, paddingBottom: 8 }}>
           {messageFor(remove.error)}
@@ -78,8 +79,8 @@ export function EntryMenu({ entry, visible, onClose, onShare, onDeleted }: Props
       ) : null}
       {confirming ? (
         <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-          <Button label="Delete entry" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: entry.id })} />
-          <Button label="Keep it" variant="soft" size="lg" block onPress={() => setConfirming(false)} />
+          <Button label={words.entry.menu.delete} variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: entry.id })} />
+          <Button label={words.common.keepIt} variant="soft" size="lg" block onPress={() => setConfirming(false)} />
         </View>
       ) : (
         <>
@@ -87,7 +88,7 @@ export function EntryMenu({ entry, visible, onClose, onShare, onDeleted }: Props
             <SheetRow
               first
               icon={(c) => <Pencil size={22} color={c} />}
-              label="Edit entry"
+              label={words.entry.menu.edit}
               onPress={() => {
                 close();
                 router.push(`/journey/${entry.journeyId}/add?entry=${entry.id}`);
@@ -95,7 +96,7 @@ export function EntryMenu({ entry, visible, onClose, onShare, onDeleted }: Props
             />
           ) : null}
           {share(!entry.viewer.canEdit)}
-          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete entry" onPress={() => setConfirming(true)} />
+          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label={words.entry.menu.delete} onPress={() => setConfirming(true)} />
         </>
       )}
     </Sheet>

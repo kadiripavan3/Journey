@@ -27,13 +27,14 @@ export default function SignIn() {
 
   // Where Apple or Google isn't offered (not connected yet, or not this kind of phone), say so plainly.
   const [busy, setBusy] = useState<string | null>(null);
-  const with_ = (name: 'Apple' | 'Google', start: (() => Promise<void>) | null) => () => {
+  const with_ = (which: 'apple' | 'google', start: (() => Promise<void>) | null) => () => {
     if (!start) {
+      const name = words.signIn.choose.names[which];
       setNote(authMode === 'local' ? words.signIn.choose.later(name) : words.signIn.choose.notOnThisPhone(name));
       return;
     }
     setNote(null);
-    setBusy(name);
+    setBusy(which);
     start()
       .catch((error: unknown) => {
         if (!(error instanceof ApiError && error.code === 'cancelled')) setNote(messageFor(error));
@@ -64,8 +65,8 @@ export default function SignIn() {
             </Txt>
           </View>
           <View style={{ paddingHorizontal: layout.rowGutter, gap: 10, marginTop: 24 }}>
-            <Button label={words.signIn.choose.apple} size="lg" variant="ink" block loading={busy === 'Apple'} onPress={with_('Apple', signInService.apple)} icon={(c) => <AppleLogo color={c} />} />
-            <Button label={words.signIn.choose.google} size="lg" variant="line" block loading={busy === 'Google'} onPress={with_('Google', signInService.google)} icon={() => <GoogleLogo />} />
+            <Button label={words.signIn.choose.apple} size="lg" variant="ink" block loading={busy === 'apple'} onPress={with_('apple', signInService.apple)} icon={(c) => <AppleLogo color={c} />} />
+            <Button label={words.signIn.choose.google} size="lg" variant="line" block loading={busy === 'google'} onPress={with_('google', signInService.google)} icon={() => <GoogleLogo />} />
             <Button label={words.signIn.choose.email} size="lg" variant="line" block onPress={() => router.push('/email')} icon={(c) => <Mail size={19} color={c} />} />
             {note ? (
               <View accessibilityLiveRegion="polite" style={{ padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>

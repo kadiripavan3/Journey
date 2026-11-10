@@ -84,13 +84,13 @@ export default function EditProfile() {
     <Screen
       header={
         <AppBar
-          title="Edit profile"
-          left={<BarLink label="Cancel" quiet onPress={leave} />}
-          trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!canSave || saving} onPress={() => void save()} />}
+          title={words.profile.edit.title}
+          left={<BarLink label={words.common.cancel} quiet onPress={leave} />}
+          trailing={<BarLink label={saving ? words.common.saving : words.common.save} disabled={!canSave || saving} onPress={() => void save()} />}
         />
       }>
       <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 18, gap: 10 }}>
-        <Tap accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
+        <Tap accessibilityRole="button" accessibilityLabel={picture ? words.profile.photo.change : words.profile.photo.add} onPress={() => void choosePhoto()}>
           {photo ? (
             <Image source={{ uri: photo.uri }} style={{ width: 104, height: 104, borderRadius: radius.pill, backgroundColor: colors.fill2 }} contentFit="cover" />
           ) : (
@@ -102,7 +102,7 @@ export default function EditProfile() {
         </Tap>
         {picture ? (
           <Button
-            label="Remove photo"
+            label={words.profile.photo.remove}
             variant="quiet"
             size="sm"
             onPress={() => {
@@ -121,9 +121,9 @@ export default function EditProfile() {
       ) : null}
 
       <View style={{ gap: 12 }}>
-        <Field label="Name" value={displayName} onChangeText={setDisplayName} autoComplete="name" autoCapitalize="words" maxLength={50} error={failed?.fields.displayName} />
+        <Field label={words.profile.name} value={displayName} onChangeText={setDisplayName} autoComplete="name" autoCapitalize="words" maxLength={50} error={failed?.fields.displayName} />
         <Field
-          label="Username"
+          label={words.profile.username.label}
           prefix="@"
           value={rawUsername}
           onChangeText={(text) => setRawUsername(text.replace(/\s/g, '').toLowerCase())}
@@ -131,15 +131,15 @@ export default function EditProfile() {
           autoCorrect={false}
           maxLength={21}
           error={usernameError}
-          note={checked?.available ? `${username} is available` : null}
+          note={checked?.available ? words.profile.username.available(username) : null}
           noteTone="ok"
           accessory={checked?.available && !usernameError ? <Check size={18} color={colors.ok} strokeWidth={2.6} /> : null}
         />
-        <Field label={`Bio · ${bio.length} of 150`} value={bio} onChangeText={setBio} multiline maxLength={150} error={failed?.fields.bio} />
-        <Field label="Link" value={link} onChangeText={setLink} autoCapitalize="none" autoCorrect={false} keyboardType="url" maxLength={200} placeholder="yoursite.com" error={failed?.fields.link} />
+        <Field label={words.profile.edit.bio(bio.length, 150)} value={bio} onChangeText={setBio} multiline maxLength={150} error={failed?.fields.bio} />
+        <Field label={words.profile.edit.link} value={link} onChangeText={setLink} autoCapitalize="none" autoCorrect={false} keyboardType="url" maxLength={200} placeholder={words.profile.edit.linkHint} error={failed?.fields.link} />
       </View>
 
-      <GroupLabel>Interests</GroupLabel>
+      <GroupLabel>{words.profile.edit.interests}</GroupLabel>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
         {catalog.interests.map((interest) => (
           <Chip

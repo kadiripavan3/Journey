@@ -5,6 +5,7 @@ import { shortLink } from '@/lib/share';
 import { useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** The link on a profile: shown without "https://", and it opens in the phone's browser. */
 export function ProfileLink({ url, style }: { url: string; style?: StyleProp<ViewStyle> }) {
@@ -15,7 +16,7 @@ export function ProfileLink({ url, style }: { url: string; style?: StyleProp<Vie
   return (
     <Tap
       accessibilityRole="link"
-      accessibilityLabel={`Open ${short}`}
+      accessibilityLabel={words.people.openLink(short)}
       hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
       onPress={() => void Linking.openURL(address).catch(() => undefined)}
       style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }, style]}>

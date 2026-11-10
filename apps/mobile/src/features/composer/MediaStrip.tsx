@@ -9,6 +9,7 @@ import { layout, radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import type { Shot } from './useComposer';
 
@@ -34,13 +35,13 @@ type Props = {
 /** The composer's strip of photos and clips: each can be taken out, and the last tile adds more. */
 export function MediaStrip({ shots, names, heldIds, onRemove, onAdd, clips, photoCount, clipCount, leftOut, locked }: Props) {
   const { colors } = useTheme();
-  const what = clips ? 'photos or clips' : 'photos';
+  const counts = shots.length > 0 ? words.composer.media.counts(photoCount, MAX_PHOTOS, clips || clipCount > 0 ? clipCount : null, MAX_CLIPS) : '';
   return (
     <View style={{ gap: 8 }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: layout.barGutter }} keyboardShouldPersistTaps="handled">
         {shots.map((shot, index) => {
           const clip = shot.kind === 'video';
-          const name = names[index] ?? 'Photo';
+          const name = names[index] ?? words.composer.media.photo;
           const held = !!shot.mediaId && heldIds.has(shot.mediaId);
           return (
             <View key={shot.key} style={{ width: 104, height: 140 }}>
@@ -57,7 +58,7 @@ export function MediaStrip({ shots, names, heldIds, onRemove, onAdd, clips, phot
               {/* Drawn small, as designed; the touch area around it is 44 pt. */}
               <Tap
                 accessibilityRole="button"
-                accessibilityLabel={`Remove ${name.toLowerCase()}`}
+                accessibilityLabel={words.composer.media.remove(name)}
                 hitSlop={10}
                 disabled={locked}
                 scaleTo={0.9}
@@ -71,21 +72,20 @@ export function MediaStrip({ shots, names, heldIds, onRemove, onAdd, clips, phot
         {onAdd ? (
           <Tap
             accessibilityRole="button"
-            accessibilityLabel={shots.length === 0 ? `Add ${what}` : `Add more ${what}`}
+            accessibilityLabel={words.composer.media.addSpoken(clips, shots.length > 0)}
             disabled={locked}
             onPress={onAdd}
             style={{ width: 104, height: 140, borderRadius: radius.photo, alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderColor: colors.fill2, opacity: locked ? 0.6 : 1 }}>
             <ImagePlus size={22} color={colors.muted} />
             <Txt variant="footnote" color="muted" weight={700} center style={{ marginHorizontal: 8 }}>
-              {shots.length === 0 ? (clips ? 'Photos or clips' : 'Photos') : 'Add'}
+              {words.composer.media.add(clips, shots.length > 0)}
             </Txt>
           </Tap>
         ) : null}
       </ScrollView>
       {shots.length > 0 || leftOut ? (
         <Txt variant="footnote" color="muted" accessibilityLiveRegion="polite" style={{ marginHorizontal: layout.barGutter }}>
-          {shots.length > 0 ? `${photoCount} of ${MAX_PHOTOS} photos${clips || clipCount > 0 ? ` · ${clipCount} of ${MAX_CLIPS} clips` : ''}` : ''}
-          {leftOut ? `${shots.length > 0 ? '. ' : ''}${leftOut}` : ''}
+          {leftOut ? (counts ? words.composer.media.countsThen(counts, leftOut) : leftOut) : counts}
         </Txt>
       ) : null}
     </View>

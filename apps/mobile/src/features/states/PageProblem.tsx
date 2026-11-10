@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { messageFor } from '@/api/fetcher';
 import { isGone } from '@/lib/loading';
 import { Problem } from '@/ui/Problem';
+import { words } from '@/words';
 
 /** Goes to Home from anywhere: closes what is open on top of the tabs, or opens the tabs when there are none underneath. */
 export function useGoHome(): () => void {
@@ -42,7 +43,7 @@ export function PageProblem({ error, onRetry, retrying, tone, inset = true }: Pr
   const gone = isGone(error);
   return (
     <View style={{ flex: 1, paddingBottom: inset ? insets.bottom : 0 }}>
-      <Problem tone={tone} title={gone ? "This isn't available" : undefined} message={messageFor(error)} onRetry={gone ? undefined : onRetry} retrying={retrying} onHome={home} />
+      <Problem tone={tone} title={gone ? words.states.problem.gone : undefined} message={messageFor(error)} onRetry={gone ? undefined : onRetry} retrying={retrying} onHome={home} />
     </View>
   );
 }

@@ -8,6 +8,7 @@ export const common = {
   next: 'Next',
   continue: 'Continue',
   cancel: 'Cancel',
+  done: 'Done',
   save: 'Save',
   saving: 'Saving…',
   follow: 'Follow',
@@ -38,6 +39,14 @@ export const common = {
   spoken: (parts: readonly (string | null | undefined | false)[]) => parts.filter(Boolean).join('. '),
   /** 1200 becomes "1.2k". */
   compact: (count: number) => compact(count),
+
+  // The tab bar
+  tabs: { home: 'Home', discover: 'Discover', activity: 'Activity', you: 'You' },
+  /** What a screen reader says for a tab with something new in it. */
+  tabWithNews: (tab: string) => `${tab}, new`,
+
+  /** What a screen reader says for a person's picture that opens their profile. */
+  profileOf: (name: string) => `${name}'s profile`,
 
   // What a screen reader says for the design system's own pieces
   /** A number over a word: "14 entries". */

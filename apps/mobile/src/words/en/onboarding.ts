@@ -9,7 +9,6 @@ export const onboarding = {
     body: 'This is how people see you when you share a journey.',
     differentEmail: 'Use a different email',
     bio: 'Bio · optional',
-    available: (username: string) => `${username} is available`,
     oldEnough: "I'm 13 or older",
     /** "terms" and "privacy" mark the two links. */
     agree: ['By continuing you agree to the ', mark('terms', 'terms'), ' and the ', mark('privacy', 'privacy policy'), '.'],

@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
 import type { LocalPhoto } from '@/api/upload';
-import { plural } from '@/words/en/plural';
+import { words } from '@/words';
 
 import { photoDay, photoPoint, type Point } from './exif';
 
@@ -100,8 +100,8 @@ export function sortPicked(all: LocalMedia[], room: { photos: number; clips: num
     } else extraClips += 1;
   }
   const notes: string[] = [];
-  if (tooLong > 0) notes.push(`Clips can be up to ${MAX_CLIP_SECONDS} seconds, so ${tooLong === 1 ? 'one was' : `${tooLong} were`} left out.`);
-  if (extraClips > 0) notes.push(`An entry holds ${plural(MAX_CLIPS, 'clip')}, so ${extraClips === 1 ? 'one was' : `${extraClips} were`} left out.`);
-  if (extraPhotos > 0) notes.push(`An entry holds ${plural(MAX_PHOTOS, 'photo')}, so ${extraPhotos === 1 ? 'one was' : `${extraPhotos} were`} left out.`);
+  if (tooLong > 0) notes.push(words.media.leftOut.tooLong(MAX_CLIP_SECONDS, tooLong));
+  if (extraClips > 0) notes.push(words.media.leftOut.clips(MAX_CLIPS, extraClips));
+  if (extraPhotos > 0) notes.push(words.media.leftOut.photos(MAX_PHOTOS, extraPhotos));
   return { picked, leftOut: notes.length > 0 ? notes.join(' ') : null };
 }

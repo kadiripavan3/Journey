@@ -3,11 +3,11 @@ import { ChevronRight, ShieldAlert } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import type { EntryResponse } from '@/api/generated/journey';
-import { plural } from '@/words/en/plural';
 import { darkTheme, radius, useTheme, withAlpha } from '@/theme';
 import { Frost } from '@/ui/Frost';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** How many of an entry's photos are waiting for a reviewer. Only the person who posted them ever gets more than none. */
 export function heldCount(entry: EntryResponse): number {
@@ -23,13 +23,13 @@ export function HeldVeil({ small }: { small?: boolean }) {
   return (
     <View
       accessible
-      accessibilityLabel="This photo is hidden while a person reviews it"
+      accessibilityLabel={words.safety.held.photoSpoken}
       style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 6, overflow: 'hidden', backgroundColor: withAlpha(darkTheme.colors.stage, 0.35) }]}>
       <Frost tone="dark" intensity={70} />
       <ShieldAlert size={small ? 20 : 24} color={on} />
       {small ? null : (
         <Txt variant="footnote" weight={800} style={{ color: on }}>
-          Hidden for now
+          {words.safety.held.hidden}
         </Txt>
       )}
     </View>
@@ -42,11 +42,11 @@ export function HeldNote({ entry }: { entry: EntryResponse }) {
   const { colors } = useTheme();
   const held = heldCount(entry);
   if (held === 0) return null;
-  const what = held === 1 ? 'One photo is being reviewed' : `${plural(held, 'photo')} are being reviewed`;
+  const what = words.safety.held.photos(held);
   return (
     <Tap
       accessibilityRole="button"
-      accessibilityLabel={`${what}. See what this means`}
+      accessibilityLabel={words.safety.held.photosSpoken(what)}
       scaleTo={0.985}
       onPress={() => router.push(`/review/${entry.id}`)}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.field, backgroundColor: colors.fill }}>
@@ -56,7 +56,7 @@ export function HeldNote({ entry }: { entry: EntryResponse }) {
           {what}
         </Txt>
         <Txt variant="small" color="muted">
-          Only you can see it for now
+          {words.safety.held.onlyYou}
         </Txt>
       </View>
       <ChevronRight size={16} color={colors.muted} />
@@ -71,7 +71,7 @@ export function HeldCommentNote() {
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
       <ShieldAlert size={14} color={colors.warn} />
       <Txt variant="footnote" weight={600} color="muted" style={{ flex: 1 }}>
-        Only you can see this for now. A person will read it soon.
+        {words.safety.held.comment}
       </Txt>
     </View>
   );

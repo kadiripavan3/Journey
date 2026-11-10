@@ -5,7 +5,6 @@ export const journey = {
   // 5.1 Journey
   page: {
     cover: (title: string) => `Cover photo of ${title}`,
-    ownerProfile: (name: string) => `${name}'s profile`,
     /** Who writes it: "Maya", "Maya and Lea", or "Maya and 3 others" (the owner first). */
     authors: (names: readonly string[], owner: string) => (names.length <= 2 ? names.join(' and ') : `${owner} and ${names.length - 1} others`),
     shared: 'Shared journey',

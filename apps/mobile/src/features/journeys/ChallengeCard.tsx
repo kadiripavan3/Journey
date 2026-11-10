@@ -2,11 +2,11 @@ import { View } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { daysBetween, today } from '@/lib/dates';
-import { compact, plural } from '@/words/en/plural';
 import { radius, useTheme } from '@/theme';
 import { Card } from '@/ui/Card';
 import { Ring } from '@/ui/Ring';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 5.5 Challenge: a progress ring and a grid of days show the arc. A missed day is just a gap, never a lost streak. */
 export function ChallengeCard({ journey, days }: { journey: JourneyResponse; days: number[] }) {
@@ -28,19 +28,19 @@ export function ChallengeCard({ journey, days }: { journey: JourneyResponse; day
         <Ring progress={done.size / target} emoji="🔥" size={70} />
         <View style={{ flex: 1 }}>
           <Txt variant="subtitle">
-            {done.size} of {target} days
+            {words.journeys.challenge.daysDone(done.size, target)}
           </Txt>
           <Txt variant="caption" weight={500} color="muted" style={{ marginTop: 2 }}>
-            {percent}% there{journey.status === 'completed' ? '' : left > 0 ? ` · ${left} ${left === 1 ? 'day' : 'days'} to go` : ' · last day'}
+            {words.journeys.challenge.progress(percent, journey.status === 'completed' ? null : left)}
           </Txt>
           {journey.followerCount > 0 ? (
             <Txt variant="caption" weight={700} style={{ marginTop: 4 }}>
-              {journey.viewer?.isOwner ? `${plural(journey.followerCount, 'person', 'people')} cheering you on` : `${compact(journey.followerCount)} cheering`}
+              {journey.viewer?.isOwner ? words.journeys.cheeringYouOn(journey.followerCount) : words.journeys.cheering(journey.followerCount)}
             </Txt>
           ) : null}
         </View>
       </View>
-      <View accessible accessibilityLabel={`Checked in on ${done.size} of ${target} days`} style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, marginHorizontal: -3 }}>
+      <View accessible accessibilityLabel={words.journeys.challenge.checkedInSpoken(done.size, target)} style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, marginHorizontal: -3 }}>
         {Array.from({ length: target }, (_, i) => i + 1).map((day) => {
           const checked = done.has(day);
           const missed = !checked && day < todayNumber;
@@ -67,7 +67,7 @@ export function ChallengeCard({ journey, days }: { journey: JourneyResponse; day
         })}
       </View>
       <Txt variant="small" weight={500} color="muted" style={{ marginTop: 10 }}>
-        Missed a day? No streaks to lose.
+        {words.journeys.challenge.noStreaks}
       </Txt>
     </Card>
   );

@@ -12,7 +12,6 @@ import { ReportSheet } from '@/features/safety/SafetySheets';
 import { timeAgo } from '@/lib/dates';
 import { newClientId } from '@/lib/ids';
 import { firstName } from '@/lib/names';
-import { plural } from '@/words/en/plural';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { ConfirmSheet } from '@/ui/ConfirmSheet';
@@ -24,6 +23,7 @@ import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
 import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
+import { words } from '@/words';
 
 type Props = { entry: EntryResponse; visible: boolean; onClose: () => void };
 
@@ -93,7 +93,7 @@ function Comments({ entry, visible, onClose }: Props) {
 
   const row = (comment: CommentResponse, reply: boolean) => (
     <View key={comment.id} style={{ flexDirection: 'row', gap: 10, marginTop: reply ? 12 : 16, marginLeft: reply ? 44 : 0 }}>
-      <Tap accessibilityRole="button" accessibilityLabel={`${comment.author.displayName}'s profile`} hitSlop={reply ? 8 : 5} scaleTo={0.94} onPress={() => openProfile(comment.author.username)} style={{ alignSelf: 'flex-start' }}>
+      <Tap accessibilityRole="button" accessibilityLabel={words.common.profileOf(comment.author.displayName)} hitSlop={reply ? 8 : 5} scaleTo={0.94} onPress={() => openProfile(comment.author.username)} style={{ alignSelf: 'flex-start' }}>
         <Avatar uri={comment.author.avatarUrl} name={comment.author.displayName} size={reply ? 28 : 34} />
       </Tap>
       <View style={{ flex: 1 }}>
@@ -104,7 +104,7 @@ function Comments({ entry, visible, onClose }: Props) {
           {comment.byCreator ? (
             <View style={{ paddingVertical: 2, paddingHorizontal: 6, borderRadius: radius.chip, backgroundColor: colors.accentSoft }}>
               <Txt variant="micro" style={{ color: colors.accentText }}>
-                Creator
+                {words.entry.comments.creator}
               </Txt>
             </View>
           ) : null}
@@ -116,23 +116,23 @@ function Comments({ entry, visible, onClose }: Props) {
         {comment.held ? <HeldCommentNote /> : null}
         <View style={{ flexDirection: 'row', gap: 22, marginTop: 6 }}>
           {comment.held ? null : (
-            <Tap accessibilityRole="button" accessibilityLabel={`Reply to ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setReplyTo(comment)}>
+            <Tap accessibilityRole="button" accessibilityLabel={words.entry.comments.replyTo(comment.author.displayName)} hitSlop={WORD_SLOP} onPress={() => setReplyTo(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
-                Reply
+                {words.entry.comments.reply}
               </Txt>
             </Tap>
           )}
           {comment.viewer.canDelete ? (
-            <Tap accessibilityRole="button" accessibilityLabel={`Delete the comment by ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setDeleting(comment)}>
+            <Tap accessibilityRole="button" accessibilityLabel={words.entry.comments.deleteBy(comment.author.displayName)} hitSlop={WORD_SLOP} onPress={() => setDeleting(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
-                Delete
+                {words.entry.comments.delete}
               </Txt>
             </Tap>
           ) : null}
           {comment.author.id !== me?.id ? (
-            <Tap accessibilityRole="button" accessibilityLabel={`Report the comment by ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setReporting(comment)}>
+            <Tap accessibilityRole="button" accessibilityLabel={words.entry.comments.reportBy(comment.author.displayName)} hitSlop={WORD_SLOP} onPress={() => setReporting(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
-                Report
+                {words.entry.comments.report}
               </Txt>
             </Tap>
           ) : null}
@@ -146,8 +146,8 @@ function Comments({ entry, visible, onClose }: Props) {
       visible={visible}
       onClose={onClose}
       tall
-      title={total === 0 ? 'Comments' : plural(total, 'comment')}
-      action={<RoundButton label="Close comments" onPress={onClose} icon={(c) => <X size={18} color={c} />} />}
+      title={words.entry.comments.title(total)}
+      action={<RoundButton label={words.entry.comments.close} onPress={onClose} icon={(c) => <X size={18} color={c} />} />}
       footer={
         <View>
           {failed ? (
@@ -158,9 +158,9 @@ function Comments({ entry, visible, onClose }: Props) {
           {replyTo ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
               <Txt variant="footnote" numberOfLines={1} color="muted" style={{ flex: 1 }}>
-                Replying to {replyTo.author.displayName}
+                {words.entry.comments.replyingTo(replyTo.author.displayName)}
               </Txt>
-              <Tap accessibilityRole="button" accessibilityLabel="Stop replying" hitSlop={14} scaleTo={0.9} onPress={() => setReplyTo(null)}>
+              <Tap accessibilityRole="button" accessibilityLabel={words.entry.comments.stopReplying} hitSlop={14} scaleTo={0.9} onPress={() => setReplyTo(null)}>
                 <X size={16} color={colors.muted} />
               </Tap>
             </View>
@@ -169,10 +169,10 @@ function Comments({ entry, visible, onClose }: Props) {
             <Avatar uri={me?.avatarUrl} name={me?.displayName ?? ' '} size={34} />
             <TextInput
               maxFontSizeMultiplier={MAX_TEXT_SCALE}
-              accessibilityLabel="Add a comment"
+              accessibilityLabel={words.entry.comments.add}
               value={text}
               onChangeText={setText}
-              placeholder={replyTo ? `Reply to ${firstName(replyTo.author.displayName)}…` : `Add a comment for ${first}…`}
+              placeholder={replyTo ? words.entry.comments.replyHint(firstName(replyTo.author.displayName)) : words.entry.comments.addHint(first)}
               placeholderTextColor={colors.muted}
               selectionColor={colors.accent}
               maxLength={500}
@@ -182,7 +182,7 @@ function Comments({ entry, visible, onClose }: Props) {
             />
             <Tap
               accessibilityRole="button"
-              accessibilityLabel="Send comment"
+              accessibilityLabel={words.entry.comments.send}
               accessibilityState={{ disabled: !text.trim() || add.isPending }}
               disabled={!text.trim() || add.isPending}
               hitSlop={4}
@@ -194,13 +194,13 @@ function Comments({ entry, visible, onClose }: Props) {
           </View>
         </View>
       }>
-      <ReportSheet target={reporting ? { type: 'comment', id: reporting.id, word: 'comment' } : null} onClose={() => setReporting(null)} />
+      <ReportSheet target={reporting ? { type: 'comment', id: reporting.id } : null} onClose={() => setReporting(null)} />
       <ConfirmSheet
         visible={!!deleting}
         onClose={() => setDeleting(null)}
-        title="Delete this comment?"
-        body={deleting && all.some((comment) => comment.parentId === deleting.id) ? 'It will be gone for good, and so will the replies to it.' : 'It will be gone for good.'}
-        confirm="Delete comment"
+        title={words.entry.comments.confirmDelete.title}
+        body={deleting && all.some((comment) => comment.parentId === deleting.id) ? words.entry.comments.confirmDelete.bodyWithReplies : words.entry.comments.confirmDelete.body}
+        confirm={words.entry.comments.confirmDelete.confirm}
         busy={remove.isPending}
         problem={remove.isError ? messageFor(remove.error) : null}
         onConfirm={() => deleting && remove.mutate({ id: deleting.id })}
@@ -216,7 +216,7 @@ function Comments({ entry, visible, onClose }: Props) {
           </View>
         ) : threads.length === 0 ? (
           <Txt variant="bodySmall" color="muted" center style={{ marginTop: 40 }}>
-            No comments yet. Say something nice to {first}.
+            {words.entry.comments.none(first)}
           </Txt>
         ) : (
           <>
@@ -226,7 +226,7 @@ function Comments({ entry, visible, onClose }: Props) {
                 {repliesTo(comment.id).map((reply) => row(reply, true))}
               </View>
             ))}
-            <MoreButton pages={comments} label="Show more comments" />
+            <MoreButton pages={comments} label={words.entry.comments.showMore} />
           </>
         )}
       </View>

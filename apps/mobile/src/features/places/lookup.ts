@@ -1,6 +1,8 @@
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 
+import { words } from '@/words';
+
 import { areaName, type FoundPlace, typedName } from './place';
 
 /** The phone can say where it is. (A browser preview can't name the spot, so it doesn't offer this.) */
@@ -24,8 +26,8 @@ async function allowed(ask: boolean): Promise<boolean> {
 const lookupNeedsPermission = Platform.OS === 'android';
 
 /** Places matching what the person typed, found by the phone's own place search. */
-export async function searchPlaces(words: string): Promise<FoundPlace[]> {
-  const query = words.trim();
+export async function searchPlaces(typed: string): Promise<FoundPlace[]> {
+  const query = typed.trim();
   if (query.length < 2) return [];
   if (lookupNeedsPermission && !(await allowed(true))) throw new LocationDenied();
   const points = (await Location.geocodeAsync(query)).slice(0, 4);
@@ -34,7 +36,7 @@ export async function searchPlaces(words: string): Promise<FoundPlace[]> {
     const address = (await Location.reverseGeocodeAsync({ latitude: point.latitude, longitude: point.longitude }).catch(() => []))[0];
     const area = areaName(address);
     // First what they typed, as its own name ("Mount Bromo, Indonesia"); then the town it is in.
-    if (found.length === 0) found.push({ name: typedName(query, address?.country), lat: point.latitude, lng: point.longitude, note: area ? `Near ${area}` : undefined });
+    if (found.length === 0) found.push({ name: typedName(query, address?.country), lat: point.latitude, lng: point.longitude, note: area ? words.places.near(area) : undefined });
     if (area && !found.some((place) => place.name.toLowerCase() === area.toLowerCase())) found.push({ name: area, lat: point.latitude, lng: point.longitude });
   }
   return found.slice(0, 6);

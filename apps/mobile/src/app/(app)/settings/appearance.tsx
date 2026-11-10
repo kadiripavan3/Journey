@@ -7,11 +7,12 @@ import { type Appearance, setAppearance, useAppearance } from '@/theme/appearanc
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Row, RowGroup } from '@/ui/Rows';
+import { words } from '@/words';
 
 const CHOICES: { id: Appearance; label: string; note: string }[] = [
-  { id: 'system', label: 'Automatic', note: 'Follows your phone' },
-  { id: 'light', label: 'Light', note: 'Always light' },
-  { id: 'dark', label: 'Dark', note: 'Always dark' },
+  { id: 'system', ...words.settings.appearancePage.choices.system },
+  { id: 'light', ...words.settings.appearancePage.choices.light },
+  { id: 'dark', ...words.settings.appearancePage.choices.dark },
 ];
 
 /** 10.4 Appearance: light, dark, or whatever the phone is set to. */
@@ -20,9 +21,9 @@ export default function AppearanceSettings() {
   const appearance = useAppearance();
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Appearance" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.appearancePage.title} trailing={<View style={{ width: 40 }} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <GroupLabel style={{ marginHorizontal: layout.gutter }}>Theme</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.appearancePage.theme}</GroupLabel>
         <RowGroup>
           {CHOICES.map((choice, index) => (
             <Row

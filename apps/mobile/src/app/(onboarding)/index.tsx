@@ -150,7 +150,7 @@ export default function CreateProfile() {
           maxLength={21}
           returnKeyType="next"
           error={usernameError}
-          note={checked?.available ? words.onboarding.profile.available(username) : null}
+          note={checked?.available ? words.profile.username.available(username) : null}
           noteTone="ok"
           accessory={checked?.available && !usernameError ? <Check size={18} color={colors.ok} strokeWidth={2.6} /> : null}
         />

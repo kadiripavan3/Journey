@@ -15,6 +15,7 @@ import { GroupLabel } from '@/ui/Heading';
 import { Loading } from '@/ui/Loading';
 import { NoteBox } from '@/ui/NoteBox';
 import { Row, RowGroup, ToggleRow } from '@/ui/Rows';
+import { words } from '@/words';
 
 /** 10.3 Privacy and safety: careful defaults, and you choose who sees each journey. */
 export default function Privacy() {
@@ -28,29 +29,29 @@ export default function Privacy() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Privacy and safety" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.privacyPage.title} trailing={<View style={{ width: 40 }} />} />
       {!s ? (
         settings.isError ? <PageProblem error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isFetching} /> : <Loading offline={settings.isPaused} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>New journeys</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.privacyPage.newJourneys}</GroupLabel>
           <RowGroup>
-            <Row first icon={(c) => <Eye size={18} color={c} />} label="Start them as" note="You can change it for each journey" value={current.label} onPress={() => setChoosing(true)} />
+            <Row first icon={(c) => <Eye size={18} color={c} />} label={words.settings.privacyPage.startAs.label} note={words.settings.privacyPage.startAs.note} value={current.label} onPress={() => setChoosing(true)} />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Photos</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.privacyPage.photos}</GroupLabel>
           <RowGroup>
-            <ToggleRow first locked label="Remove photo locations" note="Location data is stripped from every photo you upload" value />
+            <ToggleRow first locked label={words.settings.privacyPage.removeLocations.label} note={words.settings.privacyPage.removeLocations.note} value />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>People</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.privacyPage.people}</GroupLabel>
           <RowGroup>
-            <Row first icon={(c) => <Ban size={18} color={c} />} label="Blocked accounts" value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
+            <Row first icon={(c) => <Ban size={18} color={c} />} label={words.settings.privacyPage.blocked} value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
           </RowGroup>
-          <NoteBox icon={(c) => <ImageOff size={20} color={c} />} title="Never live" style={{ marginTop: 18, marginHorizontal: layout.barGutter }}>
-            Journey never shares where you are right now. Places come only from entries you post.
+          <NoteBox icon={(c) => <ImageOff size={20} color={c} />} title={words.settings.privacyPage.neverLive.title} style={{ marginTop: 18, marginHorizontal: layout.barGutter }}>
+            {words.settings.privacyPage.neverLive.body}
           </NoteBox>
         </ScrollView>
       )}
-      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title="Start new journeys as" value={current.id} onChange={(defaultVisibility) => change({ defaultVisibility })} />
+      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title={words.settings.privacyPage.startAs.title} value={current.id} onChange={(defaultVisibility) => change({ defaultVisibility })} />
     </SafeAreaView>
   );
 }
