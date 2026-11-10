@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { Pressable, type StyleProp, View, type ViewStyle } from 'react-native';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { layout, radius, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
+import { Tap } from './Motion';
 
 export type WordTab<T extends string> = {
   id: T;
@@ -30,7 +31,7 @@ export function WordTabs<T extends string>({ tabs, value, onChange, style }: Pro
         const on = tab.id === value;
         const color = on ? colors.text : colors.muted;
         return (
-          <Pressable
+          <Tap
             key={tab.id}
             accessibilityRole="tab"
             accessibilityLabel={tab.count === undefined ? tab.label : `${tab.label}, ${tab.count}`}
@@ -47,7 +48,7 @@ export function WordTabs<T extends string>({ tabs, value, onChange, style }: Pro
               </Txt>
             )}
             {on ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 2.5, borderRadius: radius.pill, backgroundColor: colors.text }} /> : null}
-          </Pressable>
+          </Tap>
         );
       })}
     </View>

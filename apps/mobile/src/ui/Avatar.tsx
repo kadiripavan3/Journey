@@ -18,7 +18,7 @@ export function Avatar({ uri, name, size = 40, ring }: Props) {
   }
   return (
     <View accessible accessibilityLabel={name} style={[frame, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill2 }]}>
-      <Txt weight={800} style={{ fontSize: size * 0.34, lineHeight: size * 0.42, letterSpacing: -0.3 }}>
+      <Txt weight={800} allowFontScaling={false} style={{ fontSize: size * 0.34, lineHeight: size * 0.42, letterSpacing: -0.3 }}>
         {initials(name)}
       </Txt>
     </View>

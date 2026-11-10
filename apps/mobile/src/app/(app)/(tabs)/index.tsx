@@ -1,14 +1,15 @@
 import { useRouter } from 'expo-router';
-import { Check, Search } from 'lucide-react-native';
+import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { useGetDiscover, useGetFeed } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
+import { entryEyebrow } from '@/features/entries/labels';
 import { useCatalog } from '@/features/journeys/catalog';
-import { CategoryTabs } from '@/features/journeys/CategoryTabs';
+import { CaughtUp } from '@/features/journeys/CaughtUp';
 import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
@@ -16,7 +17,10 @@ import { followersLabel, plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { EmojiTabs } from '@/ui/EmojiTabs';
 import { EmptyState } from '@/ui/EmptyState';
+import { Loading } from '@/ui/Loading';
+import { Tap } from '@/ui/Motion';
 import { Problem } from '@/ui/Problem';
 import { Rail } from '@/ui/Rail';
 import { Ring } from '@/ui/Ring';
@@ -50,6 +54,8 @@ export default function Home() {
   const groups = (feed.data?.groups ?? []).filter((group) => !category || group.journey.category === category);
   const following = feed.data?.followingCount ?? 0;
   const trending = (discover.data?.trending ?? []).filter((journey) => !journey.viewer.isOwner);
+  // A challenge asks for a check-in a day; everything else just takes an entry.
+  const challenge = !!current?.targetDays;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -57,18 +63,20 @@ export default function Home() {
         contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
-        <Pressable
+        <Tap
           accessibilityRole="button"
           accessibilityLabel="Find a journey"
+          scaleTo={0.985}
           onPress={() => router.push('/search')}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 14,
-            height: 62,
+            minHeight: 62,
             marginTop: 10,
-            marginHorizontal: 16,
-            paddingHorizontal: 22,
+            marginHorizontal: layout.barGutter,
+            paddingHorizontal: layout.gutter,
+            paddingVertical: 10,
             borderRadius: radius.pill,
             backgroundColor: colors.surface,
             boxShadow: shadow.sm,
@@ -82,36 +90,46 @@ export default function Home() {
               Trips, challenges and more, live now
             </Txt>
           </View>
-        </Pressable>
+        </Tap>
 
-        <CategoryTabs tabs={tabs} value={tab} onChange={setTab} />
+        <EmojiTabs tabs={tabs} value={tab} onChange={setTab} />
 
         {current && tab === FOR_YOU ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${current.title}. ${current.progressLabel}. Add an entry.`} onPress={() => router.push(`/journey/${current.id}/add`)}>
+          <Tap
+            accessibilityRole="button"
+            accessibilityLabel={`${current.title}. ${current.progressLabel}. ${challenge ? "Post today's check-in." : 'Add an entry.'}`}
+            scaleTo={0.985}
+            onPress={() => router.push(`/journey/${current.id}/add`)}>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18, marginHorizontal: layout.barGutter, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 }}>
               <View style={{ flex: 1 }}>
                 <Txt variant="headline" numberOfLines={2}>
                   {current.entryCount === 0 ? `Start ${current.title}` : `${current.progressLabel} · ${current.title}`}
                 </Txt>
                 <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ marginTop: 4 }}>
-                  {current.lastEntryAt ? `Last entry ${timeAgo(current.lastEntryAt)}` : 'Add your first entry'}
-                  {current.followerCount > 0 ? ` · ${followersLabel(current.followerCount)}` : ''}
+                  {current.lastEntryAt ? `Last ${challenge ? 'check-in' : 'entry'} ${timeAgo(current.lastEntryAt)}` : challenge ? "Post today's check-in" : 'Add your first entry'}
+                  {current.followerCount > 0 ? ` · ${challenge ? `${plural(current.followerCount, 'person', 'people')} cheering you on` : followersLabel(current.followerCount)}` : ''}
                 </Txt>
               </View>
               <Ring progress={current.targetDays ? current.latestNumber / current.targetDays : 0} emoji={catalog.template(current.template)?.emoji ?? '🧭'} />
             </Card>
-          </Pressable>
+          </Tap>
         ) : null}
 
-        {feed.isPending ? (
-          <>
-            <RailSkeleton />
-            <RailSkeleton size={158} count={3} />
-          </>
-        ) : feed.isError ? (
-          <View style={{ height: 300 }}>
-            <Problem message={messageFor(feed.error)} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />
-          </View>
+        {!feed.data ? (
+          feed.isError ? (
+            <View style={{ height: 300 }}>
+              <Problem message={messageFor(feed.error)} onRetry={() => void feed.refetch()} retrying={feed.isFetching} />
+            </View>
+          ) : feed.isPaused ? (
+            <View style={{ height: 300 }}>
+              <Loading offline />
+            </View>
+          ) : (
+            <>
+              <RailSkeleton />
+              <RailSkeleton size={158} count={3} />
+            </>
+          )
         ) : groups.length > 0 ? (
           <>
             <SectionHeader title="New from journeys you follow" onPress={() => router.push('/following')} />
@@ -121,7 +139,7 @@ export default function Home() {
                   key={journey.id}
                   journey={journey}
                   pill={`${newCount} new`}
-                  detail={entries[0] ? `${entries[0].label}${entries[0].placeName ? ` · ${entries[0].placeName}` : ''}` : journey.progressLabel}
+                  detail={entries[0] ? entryEyebrow(entries[0]) : journey.progressLabel}
                   footnote={`${journey.owner.displayName}${journey.lastEntryAt ? ` · ${timeAgo(journey.lastEntryAt)}` : ''}`}
                   onPress={() => router.push(`/journey/${journey.id}/timeline`)}
                 />
@@ -138,18 +156,11 @@ export default function Home() {
             />
           </View>
         ) : (
-          <View style={{ alignItems: 'center', gap: 6, marginTop: 28, marginHorizontal: 30 }}>
-            <View style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
-              <Check size={26} color={colors.ok} strokeWidth={2.6} />
-            </View>
-            <Txt variant="subtitle" accessibilityRole="header" center style={{ marginTop: 4 }}>
-              You&apos;re all caught up
-            </Txt>
-            <Txt variant="callout" color="muted" center>
-              {category ? 'Nothing new here from the journeys you follow.' : `That's every new entry from the ${plural(following, 'journey')} you follow.`}
-            </Txt>
-            <Button label="See what you follow" variant="line" onPress={() => router.push('/following')} style={{ alignSelf: 'center', marginTop: 8 }} />
-          </View>
+          <CaughtUp
+            style={{ marginTop: 28 }}
+            line={category ? 'Nothing new here from the journeys you follow.' : `That's every new entry from the ${plural(following, 'journey')} you follow.`}
+            action={<Button label="See what you follow" variant="line" onPress={() => router.push('/following')} />}
+          />
         )}
 
         {trending.length > 0 ? (

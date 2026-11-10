@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { createJourney } from '@/api/generated/journey';
+import { createJourney, useGetSettings } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
@@ -15,6 +15,7 @@ import { Button } from '@/ui/Button';
 import { GroupLabel, Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 /** 7.6 Who can see it: step 3 of 3. Public, Unlisted or Private in plain words, and whether entries are labelled by day or by part. */
 export default function Visibility() {
@@ -28,6 +29,10 @@ export default function Visibility() {
 
   const template = catalog.template(draft.template);
   const labelStyle = draft.labelStyle ?? (template?.labelStyle === 'part' ? 'part' : 'day');
+  // Until the person picks here, a new journey starts as they chose in Privacy and safety. Worked out when it
+  // is shown, so the setting arriving late can never replace a choice already made.
+  const startAs = useGetSettings().data?.defaultVisibility;
+  const visibility = draft.visibility ?? (startAs === 'unlisted' || startAs === 'private' ? startAs : 'public');
 
   const create = async () => {
     setProblem(null);
@@ -45,7 +50,7 @@ export default function Visibility() {
         template: draft.template,
         category: draft.category ?? undefined,
         startDate: draft.startDate,
-        visibility: draft.visibility,
+        visibility,
         labelStyle,
         tags: parseTags(draft.tags),
         coverMediaId,
@@ -78,9 +83,9 @@ export default function Visibility() {
       <View accessibilityRole="radiogroup" style={{ gap: 10, marginTop: 16, marginHorizontal: -4 }}>
         {VISIBILITY.map((choice) => {
           const note = `${choice.note} ${choice.hint}`.trim();
-          const on = draft.visibility === choice.id;
+          const on = visibility === choice.id;
           return (
-            <Pressable
+            <Tap
               key={choice.id}
               accessibilityRole="radio"
               accessibilityLabel={`${choice.label}. ${note}`}
@@ -107,7 +112,7 @@ export default function Visibility() {
                 </Txt>
               </View>
               <View style={{ width: 22, height: 22, borderRadius: radius.pill, marginTop: 2, borderWidth: on ? 7 : 2, borderColor: on ? colors.text : colors.lineStrong }} />
-            </Pressable>
+            </Tap>
           );
         })}
       </View>
@@ -117,7 +122,7 @@ export default function Visibility() {
         {(['day', 'part'] as const).map((style) => {
           const on = labelStyle === style;
           return (
-            <Pressable
+            <Tap
               key={style}
               accessibilityRole="radio"
               accessibilityLabel={style === 'day' ? 'Day 1, Day 2 and so on' : 'Part 1, Part 2 and so on'}
@@ -127,7 +132,7 @@ export default function Visibility() {
               <Txt variant="callout" weight={700} style={{ color: on ? colors.text : colors.muted }}>
                 {style === 'day' ? 'Day 1, Day 2…' : 'Part 1, Part 2…'}
               </Txt>
-            </Pressable>
+            </Tap>
           );
         })}
       </View>

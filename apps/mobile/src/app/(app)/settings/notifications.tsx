@@ -7,11 +7,11 @@ import { messageFor } from '@/api/fetcher';
 import { HOURS, hourLabel } from '@/features/notifications/hours';
 import { ThisPhone } from '@/features/notifications/ThisPhone';
 import { useSettingsEditor } from '@/features/settings/useSettingsEditor';
+import { PageProblem } from '@/features/states/PageProblem';
 import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
 import { Row, RowGroup, ToggleRow } from '@/ui/Rows';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
@@ -26,10 +26,8 @@ export default function NotificationSettings() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Notifications" trailing={<View style={{ width: 40 }} />} />
-      {settings.isPending ? (
-        <Loading />
-      ) : settings.isError || !s ? (
-        <Problem message={messageFor(settings.error)} onRetry={() => void settings.refetch()} retrying={settings.isRefetching} />
+      {!s ? (
+        settings.isError ? <PageProblem error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isFetching} /> : <Loading offline={settings.isPaused} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {save.isError ? (

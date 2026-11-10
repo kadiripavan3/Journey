@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { CircleCheck, ShieldAlert } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useCache } from '@/api/cache';
 import { messageFor } from '@/api/fetcher';
@@ -20,6 +20,7 @@ import { Photo } from '@/ui/Photo';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 /**
  * 11.3 Held for review: when the automatic check flags a photo, it is hidden until a person has looked at it.
@@ -98,11 +99,11 @@ export default function HeldForReview() {
       }>
       {entry.isPending ? (
         <View style={{ height: 320 }}>
-          <Loading />
+          <Loading offline={entry.isPaused} />
         </View>
-      ) : entry.isError || !e ? (
+      ) : !e ? (
         <View style={{ height: 320 }}>
-          <Problem message={messageFor(entry.error)} onRetry={() => void entry.refetch()} retrying={entry.isRefetching} />
+          <Problem message={messageFor(entry.error)} onRetry={() => void entry.refetch()} retrying={entry.isFetching} />
         </View>
       ) : (
         <>
@@ -141,11 +142,11 @@ export default function HeldForReview() {
               <NoteBox icon={() => <CircleCheck size={20} color={colors.ok} />} title="Nothing is being reviewed" style={{ marginHorizontal: -4 }}>
                 Every photo in this entry can be seen by everyone who can see the journey.
               </NoteBox>
-              <Pressable accessibilityRole="button" accessibilityLabel="Back to the entry" onPress={leave} style={{ alignSelf: 'center', marginTop: 20 }}>
+              <Tap accessibilityRole="button" accessibilityLabel="Back to the entry" onPress={leave} style={{ alignSelf: 'center', marginTop: 20 }}>
                 <Txt variant="item" weight={800} style={{ color: colors.accentText }}>
                   Back to the entry
                 </Txt>
-              </Pressable>
+              </Tap>
             </>
           )}
         </>

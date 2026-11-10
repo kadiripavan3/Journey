@@ -1,8 +1,10 @@
-import { createContext, type ReactNode, use, useMemo, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useMemo, useState } from 'react';
 
 import type { LocalPhoto } from '@/api/upload';
 import { today } from '@/lib/dates';
 import { newClientId } from '@/lib/ids';
+
+import type { Visibility } from './visibility';
 
 /** What the three "new journey" steps collect before the journey is created. */
 export type NewJourneyDraft = {
@@ -17,7 +19,8 @@ export type NewJourneyDraft = {
   category: string | null;
   tags: string;
   cover: LocalPhoto | null;
-  visibility: 'public' | 'unlisted' | 'private';
+  /** Null until the person picks one; what they chose in Privacy and safety is used until then. */
+  visibility: Visibility | null;
   /** Null until the person picks one; the template's own style is used until then. */
   labelStyle: 'day' | 'part' | null;
 };
@@ -31,7 +34,7 @@ const empty = (): NewJourneyDraft => ({
   category: null,
   tags: '',
   cover: null,
-  visibility: 'public',
+  visibility: null,
   labelStyle: null,
 });
 
@@ -42,14 +45,10 @@ const NewJourneyContext = createContext<Value | null>(null);
 /** Holds the new journey while the person moves between its steps, so going back never loses what they typed. */
 export function NewJourneyProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<NewJourneyDraft>(empty);
-  const value = useMemo<Value>(
-    () => ({
-      draft,
-      change: (patch) => setDraft((now) => ({ ...now, ...patch })),
-      reset: (template) => setDraft({ ...empty(), ...(template ? { template } : {}) }),
-    }),
-    [draft],
-  );
+  // `change` and `reset` stay the same from one drawing to the next, so a step can depend on them.
+  const change = useCallback<Value['change']>((patch) => setDraft((now) => ({ ...now, ...patch })), []);
+  const reset = useCallback<Value['reset']>((template) => setDraft({ ...empty(), ...(template ? { template } : {}) }), []);
+  const value = useMemo<Value>(() => ({ draft, change, reset }), [draft, change, reset]);
   return <NewJourneyContext value={value}>{children}</NewJourneyContext>;
 }
 

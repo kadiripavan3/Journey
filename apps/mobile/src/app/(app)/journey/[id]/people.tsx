@@ -9,6 +9,8 @@ import { type InviteLinkResponse, type MemberResponse, useCreateInviteLink, useG
 import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
 import { useLeave } from '@/features/navigation/useLeave';
+import { PersonRow } from '@/features/people/PersonRow';
+import { PageProblem } from '@/features/states/PageProblem';
 import { MoreButton } from '@/ui/MoreButton';
 import { formatDay, timeAgo } from '@/lib/dates';
 import { firstName } from '@/lib/names';
@@ -16,14 +18,12 @@ import { plural } from '@/lib/plural';
 import { shareLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
-import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { ConfirmSheet } from '@/ui/ConfirmSheet';
 import { GroupLabel } from '@/ui/Heading';
 import { LinkBox } from '@/ui/LinkBox';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
 
 const RULES = [
@@ -84,29 +84,14 @@ export default function JourneyPeople() {
       ) : me ? (
         <Button label="Leave" inline size="sm" variant="line" onPress={() => setGoing(member)} />
       ) : null;
-    return (
-      <View key={member.person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
-        <Avatar uri={member.person.avatarUrl} name={member.person.displayName} size={48} />
-        <View style={{ flex: 1 }}>
-          <Txt variant="item" numberOfLines={1}>
-            {member.person.displayName}
-          </Txt>
-          <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
-            {detail}
-          </Txt>
-        </View>
-        {action}
-      </View>
-    );
+    return <PersonRow key={member.person.id} person={member.person} detail={detail} trailing={action} />;
   };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="People" subtitle={journey.data?.title} trailing={<View style={{ width: 40 }} />} />
-      {members.isPending ? (
-        <Loading />
-      ) : members.isError || !data ? (
-        <Problem message={messageFor(members.error)} onRetry={() => void members.refetch()} retrying={members.isRefetching} />
+      {!data ? (
+        members.isError ? <PageProblem error={members.error} onRetry={() => void members.refetch()} retrying={members.isFetching} /> : <Loading offline={members.isPaused} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {failed ? (
@@ -129,7 +114,7 @@ export default function JourneyPeople() {
               </Txt>
               {data.spotsLeft === 0 ? null : invitable.isPending ? (
                 <View style={{ height: 80 }}>
-                  <Loading />
+                  <Loading offline={invitable.isPaused} />
                 </View>
               ) : candidates.length === 0 ? (
                 <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginTop: 6 }}>
@@ -138,18 +123,7 @@ export default function JourneyPeople() {
               ) : (
                 <>
                   {candidates.map((person) => (
-                  <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
-                    <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
-                    <View style={{ flex: 1 }}>
-                      <Txt variant="item" numberOfLines={1}>
-                        {person.displayName}
-                      </Txt>
-                      <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
-                        @{person.username}
-                      </Txt>
-                    </View>
-                    <Button label="Invite" inline size="sm" onPress={() => invite.mutate({ id, data: { username: person.username } })} />
-                  </View>
+                    <PersonRow key={person.id} person={person} trailing={<Button label="Invite" inline size="sm" onPress={() => invite.mutate({ id, data: { username: person.username } })} />} />
                   ))}
                   <MoreButton pages={invitable} />
                 </>
@@ -159,7 +133,7 @@ export default function JourneyPeople() {
           ) : null}
 
           <GroupLabel style={{ marginHorizontal: layout.gutter }}>Who can do what</GroupLabel>
-          <Card style={{ marginHorizontal: 16, borderRadius: radius.card }}>
+          <Card style={{ marginHorizontal: layout.barGutter, borderRadius: radius.card }}>
             {RULES.map((rule, index) => (
               <View key={rule.what} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: layout.barGutter, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: colors.line }}>
                 <View style={{ flex: 1 }}>

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Camera, Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { ApiError, messageFor } from '@/api/fetcher';
 import { saveProfile, useCheckUsername, useGetMe } from '@/api/generated/journey';
@@ -21,6 +21,7 @@ import { Field } from '@/ui/Field';
 import { GroupLabel } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { Tap } from '@/ui/Motion';
 
 /** 9.3 Edit profile: photo, name, username, a short bio and one link, plus the interests that shape Discover. */
 export default function EditProfile() {
@@ -88,7 +89,7 @@ export default function EditProfile() {
         />
       }>
       <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 18, gap: 10 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
+        <Tap accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
           {photo ? (
             <Image source={{ uri: photo.uri }} style={{ width: 104, height: 104, borderRadius: radius.pill, backgroundColor: colors.fill2 }} contentFit="cover" />
           ) : (
@@ -97,7 +98,7 @@ export default function EditProfile() {
           <View style={{ position: 'absolute', right: -2, bottom: 0, width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.text, borderWidth: 3, borderColor: colors.bg }}>
             <Camera size={16} color={colors.bg} />
           </View>
-        </Pressable>
+        </Tap>
         {picture ? (
           <Button
             label="Remove photo"

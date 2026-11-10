@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import { darkTheme, radius, useTheme } from '@/theme';
+import { darkTheme, layout, radius, useTheme } from '@/theme';
 
 import { Button } from './Button';
 import { Emoji } from './Emoji';
@@ -57,7 +57,7 @@ export function Problem({ message, onRetry, retrying, onHome, title, tone = 'pag
           {message}
         </Txt>
       </View>
-      <View style={{ gap: 10, paddingHorizontal: 20, paddingBottom: 20 }}>
+      <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingBottom: 20 }}>
         {onRetry ? <Button label="Try again" size="lg" block loading={retrying} icon={(c) => <RefreshCw size={18} color={c} />} onPress={onRetry} /> : null}
         <Button label="Go to Home" size="lg" block variant={onPhoto ? 'glass' : 'line'} onPress={onHome} />
       </View>

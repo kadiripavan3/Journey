@@ -1,35 +1,33 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ellipsis, Flag, Pencil, Send, Share2, Trash2, X } from 'lucide-react-native';
-import { useLayoutEffect, useRef, useState } from 'react';
-import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Ellipsis, MapPin, Send, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { FlatList, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { messageFor } from '@/api/fetcher';
-import { useCache } from '@/api/cache';
-import { type EntryResponse, useDeleteEntry, useGetEntry, useGetTimelineInfinite } from '@/api/generated/journey';
+import type { EntryResponse } from '@/api/generated/journey';
 import { CommentsSheet } from '@/features/entries/CommentsSheet';
+import { EntryMenu } from '@/features/entries/EntryMenu';
 import { entryEyebrow } from '@/features/entries/labels';
 import { MilestonePill } from '@/features/entries/MilestonePill';
 import { Reactions } from '@/features/entries/Reactions';
+import { useEntryPager } from '@/features/entries/useEntryPager';
 import { ClipBadge } from '@/features/media/ClipPlayer';
 import { PhotoViewer } from '@/features/media/PhotoViewer';
-import { HeldNote, HeldVeil } from '@/features/safety/Held';
-import { ReportSheet } from '@/features/safety/SafetySheets';
-import { EntryShareSheet } from '@/features/sharing/ShareSheet';
 import { useLeave } from '@/features/navigation/useLeave';
+import { HeldNote, HeldVeil } from '@/features/safety/Held';
+import { EntryShareSheet } from '@/features/sharing/ShareSheet';
+import { PageProblem } from '@/features/states/PageProblem';
 import { formatDay } from '@/lib/dates';
 import { firstName } from '@/lib/names';
 import { darkTheme, layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Button } from '@/ui/Button';
 import { Eyebrow } from '@/ui/Eyebrow';
 import { Frost } from '@/ui/Frost';
 import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
-import { Problem } from '@/ui/Problem';
+import { Tap } from '@/ui/Motion';
 import { RoundButton } from '@/ui/RoundButton';
-import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
 const GAP = 14;
@@ -40,6 +38,8 @@ const REPLY_BAR = 66;
 /**
  * 6.1 Entry: each entry is a card you swipe through like a story, with the next one peeking in. Milestones get a badge.
  * The story is loaded a page at a time around the entry that was opened; swiping towards either end brings the next page.
+ * It is an ordinary screen on the dark stage, so the screens it opens (a profile, the map) open on top of it;
+ * it keeps clear of the notch and the home bar by itself.
  */
 export default function EntryView() {
   const { id, comments: openComments } = useLocalSearchParams<{ id: string; comments?: string }>();
@@ -48,55 +48,17 @@ export default function EntryView() {
   const { width, height } = useWindowDimensions();
   // Coming from Activity, a comment's line opens the entry with its comments showing.
   const [commenting, setCommenting] = useState(openComments === '1');
-  const opened = useGetEntry(id);
-  const journeyId = opened.data?.journeyId ?? '';
-  const timeline = useGetTimelineInfinite(journeyId, { around: id }, {
-    query: {
-      enabled: !!journeyId,
-      initialPageParam: undefined,
-      getNextPageParam: (last) => last.nextCursor ?? undefined,
-      getPreviousPageParam: (first) => first.prevCursor ?? undefined,
-    },
-  });
-  const pages = timeline.data?.pages;
-  const entries = pages ? pages.flatMap((page) => page.items) : opened.data ? [opened.data] : [];
-  const total = pages?.[0]?.total ?? entries.length;
-  const start = Math.max(0, entries.findIndex((entry) => entry.id === id));
-  // The card in view is remembered by its entry, not its place in the list: the list grows at both ends.
-  const [currentId, setCurrentId] = useState(id);
-  const found = entries.findIndex((entry) => entry.id === currentId);
-  const index = found >= 0 ? found : start;
-  const current = entries[index];
   const [menu, setMenu] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const list = useRef<FlatList<EntryResponse>>(null);
 
   const cardWidth = Math.min(width - SIDE * 2 - 20, 460);
   const step = cardWidth + GAP;
-  const { hasNextPage, hasPreviousPage, isFetchingNextPage, isFetchingPreviousPage, fetchNextPage, fetchPreviousPage } = timeline;
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const at = Math.round(event.nativeEvent.contentOffset.x / step);
-    const next = entries[at];
-    if (!next) return;
-    if (next.id !== currentId) setCurrentId(next.id);
-    if (at <= 1 && hasPreviousPage && !isFetchingPreviousPage) void fetchPreviousPage();
-    if (at >= entries.length - 2 && hasNextPage && !isFetchingNextPage) void fetchNextPage();
-  };
-
-  // Earlier entries arriving at the front push every card to the right; move the view by as much, so the
-  // card being read stays where it is.
-  const firstId = entries[0]?.id;
-  const knownFirst = useRef(firstId);
-  useLayoutEffect(() => {
-    if (knownFirst.current && firstId && knownFirst.current !== firstId) {
-      list.current?.scrollToOffset({ offset: index * step, animated: false });
-    }
-    knownFirst.current = firstId;
-  }, [firstId, index, step]);
+  const list = useRef<FlatList<EntryResponse>>(null);
+  const pager = useEntryPager(id, step, list);
+  const { current, load } = pager;
 
   // What is left for a card under the top bar and above the bottom edge.
   const room = height - insets.top - 8 - 42 - 14 - Math.max(insets.bottom, 12) - 14 - REPLY_BAR;
-  const failed = opened.error ?? timeline.error;
   const backdrop = current?.media[0]?.thumbUrl ?? current?.media[0]?.url;
 
   return (
@@ -109,7 +71,7 @@ export default function EntryView() {
         <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
           <Frost tone="dark" />
           <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
-            {current ? `Entry ${current.position} of ${total}` : ' '}
+            {current ? (pager.total ? `Entry ${current.position} of ${pager.total}` : `Entry ${current.position}`) : ' '}
           </Txt>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -118,22 +80,28 @@ export default function EntryView() {
         </View>
       </View>
 
-      {failed ? (
-        <Problem message={messageFor(failed)} onRetry={() => void opened.refetch()} retrying={opened.isRefetching} />
-      ) : !opened.data || (journeyId && timeline.isPending) ? (
-        <Loading />
+      {load.error ? (
+        <View style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 12) }}>
+          <PageProblem tone="onPhoto" error={load.error} onRetry={load.retry} retrying={load.retrying} />
+        </View>
+      ) : !pager.ready ? (
+        <Loading tone="onPhoto" offline={load.offline} />
       ) : (
         <FlatList
           ref={list}
-          data={entries}
+          data={pager.entries}
           keyExtractor={(entry) => entry.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={step}
           decelerationRate="fast"
-          initialScrollIndex={start}
+          initialScrollIndex={pager.start}
           getItemLayout={(_, i) => ({ length: step, offset: step * i, index: i })}
-          onScroll={onScroll}
+          // Only the card in view and its neighbours exist: each holds a full-size photo.
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          onScroll={pager.onScroll}
           scrollEventThrottle={32}
           contentContainerStyle={{ paddingHorizontal: SIDE, paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) + 14 + REPLY_BAR }}
           renderItem={({ item }) => (
@@ -144,17 +112,18 @@ export default function EntryView() {
         />
       )}
 
-      {current && !failed ? (
-        <Pressable
+      {current && !load.error ? (
+        <Tap
           accessibilityRole="button"
           accessibilityLabel={`Comment on this entry by ${current.author.displayName}`}
+          scaleTo={0.985}
           onPress={() => setCommenting(true)}
           style={{
             position: 'absolute',
-            left: 20,
-            right: 20,
+            left: layout.rowGutter,
+            right: layout.rowGutter,
             bottom: Math.max(insets.bottom, 12) + 8,
-            height: 54,
+            minHeight: 54,
             paddingLeft: 20,
             paddingRight: 8,
             borderRadius: radius.pill,
@@ -173,11 +142,11 @@ export default function EntryView() {
           <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: darkTheme.colors.accent }}>
             <Send size={18} color={darkTheme.colors.onAccent} />
           </View>
-        </Pressable>
+        </Tap>
       ) : null}
 
       {current ? <CommentsSheet entry={current} visible={commenting} onClose={() => setCommenting(false)} /> : null}
-      {current ? <EntryMenu entry={current} visible={menu} onClose={() => setMenu(false)} onShare={() => setSharing(true)} /> : null}
+      {current ? <EntryMenu entry={current} visible={menu} onClose={() => setMenu(false)} onShare={() => setSharing(true)} onDeleted={leave} /> : null}
       {current ? <EntryShareSheet entry={current} visible={sharing} onClose={() => setSharing(false)} /> : null}
     </View>
   );
@@ -189,17 +158,20 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
   const [viewing, setViewing] = useState<number | null>(null);
   const shown = entry.media[0];
   const many = entry.media.length > 1;
+  const onMap = entry.lat != null && entry.lng != null;
   return (
     <View style={{ maxHeight, borderRadius: radius.stage, overflow: 'hidden', backgroundColor: colors.surface, boxShadow: shadow.stage }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {shown ? (
-          <Pressable
+          <Tap
             accessibilityRole="button"
             accessibilityLabel={shown.kind === 'video' ? (many ? `A clip and ${entry.media.length - 1} more. Open them full screen.` : 'Open the clip full screen') : many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
             disabled={shown.held}
+            scaleTo={0.99}
             onPress={() => setViewing(0)}
             style={{ height: 268, backgroundColor: colors.fill }}>
-            <Image source={{ uri: shown.url }} style={{ flex: 1 }} contentFit="cover" transition={120} />
+            {/* The small version is there at once (the list it was opened from has it); the full one fades in over it. */}
+            <Image source={{ uri: shown.url }} placeholder={shown.thumbUrl ? { uri: shown.thumbUrl } : undefined} placeholderContentFit="cover" recyclingKey={shown.id} style={{ flex: 1 }} contentFit="cover" transition={120} />
             {shown.held ? <HeldVeil /> : null}
             {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
             {shown.kind === 'video' ? <ClipBadge seconds={shown.durationSeconds} style={{ position: 'absolute', left: 12, bottom: 12 }} /> : null}
@@ -210,11 +182,19 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
                 ))}
               </View>
             ) : null}
-          </Pressable>
+          </Tap>
         ) : null}
         <View style={{ paddingTop: 18, paddingHorizontal: layout.rowGutter, paddingBottom: 20 }}>
           {!shown && entry.isMilestone ? <MilestonePill style={{ marginBottom: 10 }} /> : null}
-          <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
+          {onMap ? (
+            // A place with a spot on the map leads to the journey's map.
+            <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. Show it on the map`} hitSlop={{ top: 14, bottom: 14 }} onPress={() => router.push(`/journey/${entry.journeyId}/map?entry=${entry.id}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' }}>
+              <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
+              <MapPin size={13} color={colors.accentText} />
+            </Tap>
+          ) : (
+            <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
+          )}
           {entry.title ? (
             <Txt variant="title" accessibilityRole="header" style={{ marginTop: 6 }}>
               {entry.title}
@@ -227,9 +207,11 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           ) : null}
           <HeldNote entry={entry} />
           <Reactions entry={entry} onComments={onComments} />
-          <Pressable
+          <Tap
             accessibilityRole="button"
             accessibilityLabel={`${entry.author.displayName}'s profile`}
+            hitSlop={{ top: 8, bottom: 8 }}
+            scaleTo={0.985}
             onPress={() => router.push(`/profile/${entry.author.username}`)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
             <Avatar uri={entry.author.avatarUrl} name={entry.author.displayName} size={28} />
@@ -237,92 +219,10 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
               {entry.author.displayName} · {formatDay(entry.happenedOn)}
               {entry.edited ? ' · Edited' : ''}
             </Txt>
-          </Pressable>
+          </Tap>
         </View>
       </ScrollView>
       <PhotoViewer photos={entry.media.filter((m) => !m.held)} startAt={viewing} onClose={() => setViewing(null)} eyebrow={entryEyebrow(entry)} title={entry.title || undefined} />
     </View>
-  );
-}
-
-/** What you can do with an entry: share it, and change or delete your own (after confirming). */
-function EntryMenu({ entry, visible, onClose, onShare }: { entry: EntryResponse; visible: boolean; onClose: () => void; onShare: () => void }) {
-  const router = useRouter();
-  const leave = useLeave();
-  const cache = useCache();
-  const [confirming, setConfirming] = useState(false);
-  const [reporting, setReporting] = useState(false);
-  const close = () => {
-    setConfirming(false);
-    onClose();
-  };
-  const share = (first: boolean) => (
-    <SheetRow
-      first={first}
-      icon={(c) => <Share2 size={22} color={c} />}
-      label="Share entry"
-      onPress={() => {
-        close();
-        onShare();
-      }}
-    />
-  );
-  const remove = useDeleteEntry({
-    mutation: {
-      onSuccess: async () => {
-        close();
-        leave();
-        await cache.entrySaved(entry.journeyId, entry.id);
-      },
-    },
-  });
-  if (!entry.viewer.canDelete) {
-    return (
-      <>
-        <Sheet visible={visible} onClose={close}>
-          {share(true)}
-          <SheetRow
-            icon={(c) => <Flag size={22} color={c} />}
-            label="Report this entry"
-            onPress={() => {
-              close();
-              setReporting(true);
-            }}
-          />
-        </Sheet>
-        <ReportSheet target={reporting ? { type: 'entry', id: entry.id, word: 'entry' } : null} onClose={() => setReporting(false)} />
-      </>
-    );
-  }
-  return (
-    <Sheet visible={visible} onClose={close} title={confirming ? 'Delete this entry?' : undefined} subtitle={confirming ? "It will be gone for good, for you and everyone following." : undefined}>
-      {remove.isError ? (
-        <Txt variant="caption" color="danger" style={{ paddingHorizontal: layout.gutter, paddingBottom: 8 }}>
-          {messageFor(remove.error)}
-        </Txt>
-      ) : null}
-      {confirming ? (
-        <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-          <Button label="Delete entry" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: entry.id })} />
-          <Button label="Keep it" variant="soft" size="lg" block onPress={() => setConfirming(false)} />
-        </View>
-      ) : (
-        <>
-          {entry.viewer.canEdit ? (
-            <SheetRow
-              first
-              icon={(c) => <Pencil size={22} color={c} />}
-              label="Edit entry"
-              onPress={() => {
-                close();
-                router.push(`/journey/${entry.journeyId}/add?entry=${entry.id}`);
-              }}
-            />
-          ) : null}
-          {share(!entry.viewer.canEdit)}
-          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete entry" onPress={() => setConfirming(true)} />
-        </>
-      )}
-    </Sheet>
   );
 }

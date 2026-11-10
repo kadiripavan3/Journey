@@ -30,6 +30,7 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon, c
       accessibilityRole={filter ? 'button' : 'checkbox'}
       accessibilityState={filter ? { selected: !!selected } : { checked: !!selected }}
       accessibilityLabel={count === undefined ? label : `${label}, ${count}`}
+      hitSlop={{ top: 4, bottom: 4 }}
       onPress={onPress}
       style={{
         flexDirection: 'row',

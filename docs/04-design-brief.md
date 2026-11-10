@@ -23,7 +23,7 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 | Photos | Full-bleed covers. 20 px rounded corners inside cards. A dark gradient under any text that sits on a photo. |
 | Type | Plus Jakarta Sans only. Titles in ExtraBold (800) with tight letter-spacing; body text in Medium (500). Every size is one of the 24 styles in the [type scale](#type-scale); nothing is sized by hand. |
 | Colour | Neutral surfaces with a faint cool tint. The accent only for primary actions, progress and milestones. Pink-red only for likes. |
-| Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass. The one bar, sheet or button a screen has on a photo is blurred (16–24 px). Labels that repeat down a list ("3 new", "1 / 4") are tinted, not blurred: it looks the same at that size and keeps lists smooth. |
+| Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass. The one bar, sheet or button a screen has on a photo is blurred (16–24 px). Labels that repeat down a list ("3 new", "1 / 4") are tinted, not blurred: it looks the same at that size and keeps lists smooth. On Android the glass is a denser tint instead of a blur: a real blur there needs each bar wired to what lies behind it, which the app doesn't do yet. |
 | Shape | Corners come in eleven steps (chip 8 · tile 12 · thumb 14 · field 16 · photo 18 · card 20 · cardLarge 22 · panel 24 · stage 28 · sheet 30 · pill full). Cards 20–22 px, panels 24 px, sheets 30 px. Buttons, chips, pills, avatars and thin bars are fully round. |
 | Icons | 24 px line icons with 2 px rounded strokes. Categories, interests, templates and empty states use 3D icons: Microsoft's Fluent Emoji (free, MIT licence) for now. Custom art can replace them file by file in `design/hub/icons3d`. |
 | Motion | Small and quick, never in the way. Things you press shrink a touch and spring back. A like makes the heart pop. Progress rings fill. Lists arrive one item after another, rising a little. The only thing that repeats is the soft breathing of the grey shapes while something loads. Nothing moves when the phone's Reduce Motion is on. The numbers are in the tokens. |
@@ -94,8 +94,8 @@ When a design needs a size that isn't here, add a style to the tokens (with what
 ## Accessibility
 
 - Text contrast is at least 4.5:1, checked in both themes and with all three accents.
-- Touch targets are at least 44 pt.
-- Dynamic text sizes and screen readers are supported; status is never shown by colour alone (pills always carry a label).
+- Touch targets are at least 44 pt. Where a control is drawn smaller (a 36 pt button, a 24 pt remove cross), the area that takes the touch is still 44 pt.
+- Dynamic text sizes and screen readers are supported; status is never shown by colour alone (pills always carry a label). Text follows the phone's text size up to 1.6 times; bars and rows grow with it instead of cutting it off.
 - Reduced motion is respected.
 
 ## Screens

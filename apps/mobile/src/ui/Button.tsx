@@ -50,10 +50,12 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}
       disabled={inactive}
+      // The small button is drawn 36 pt high; the finger still gets 44.
+      hitSlop={size === 'sm' ? 4 : undefined}
       onPress={onPress}
       style={[
         {
-          height: HEIGHT[size],
+          minHeight: HEIGHT[size],
           paddingHorizontal: PADDING[size],
           borderRadius: radius.pill,
           backgroundColor: bg,

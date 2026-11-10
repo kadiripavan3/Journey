@@ -163,6 +163,9 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   await step('discover', async () => {
     await R('tab', { name: 'Discover' }).click();
     await T('Trending now').waitFor();
+    // Three rails: what is trending, what is new, and what was just completed.
+    await T('New journeys').waitFor();
+    await T('Recently completed').waitFor();
     await shot('discover');
     await R('button', { name: 'Food' }).click();
     await T("My grandmother's recipes").first().waitFor();
@@ -171,12 +174,17 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Couch to 10K').first().click();
     await T('Read the story').waitFor();
     await shot('journey');
-    // Sharing: a browser has no share sheet, so the link is copied; the page behind it opens without signing in.
+    // Sharing: the same sheet as for an entry, with the link as others will see it; the page behind it opens without signing in.
     await R('button', { name: 'Share this journey' }).click();
-    await T('Link copied').waitFor();
+    await R('button', { name: 'Copy link' }).waitFor();
+    await shot('share-journey');
+    await R('button', { name: 'Copy link' }).click();
+    await R('button', { name: 'Copied' }).first().waitFor();
     const shared = await page.evaluate(() => navigator.clipboard.readText());
     const sharePage = await fetch(shared);
     if (!sharePage.ok || !(await sharePage.text()).includes('Couch to 10K')) throw new Error('the share page did not open: ' + shared);
+    await page.mouse.click(195, 60);
+    await R('button', { name: 'Copy link' }).waitFor({ state: 'detached' });
     await R('button', { name: 'Follow', exact: true }).click();
     await T("You follow").waitFor();
     await shot('journey-followed');
@@ -249,6 +257,18 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Milestone').first().waitFor({ timeout: 30000 });
     await T('Skógafoss before breakfast').waitFor();
     await shot('own-timeline');
+    // Two photos: the second is a swipe away, inside the card.
+    await T('1 / 2').waitFor();
+    const strip = await L('2 photos. Swipe to see the next one.').evaluate((labelled) => {
+      const scrolls = (el) => ['auto', 'scroll'].includes(getComputedStyle(el).overflowX);
+      const photos = scrolls(labelled) ? labelled : ([...labelled.querySelectorAll('*')].find(scrolls) ?? labelled);
+      photos.scrollLeft = photos.clientWidth;
+      return `${photos.scrollWidth} wide in ${photos.clientWidth}, at ${photos.scrollLeft}, overflow ${getComputedStyle(photos).overflowX}`;
+    });
+    await T('2 / 2').waitFor({ timeout: 8000 }).catch(() => {
+      throw new Error('swiping to the second photo did not show "2 / 2": the strip is ' + strip);
+    });
+    await shot('own-timeline-second-photo');
     await T('Skógafoss before breakfast').click();
     await T('Entry 1 of 1').waitFor();
     await shot('own-entry');
@@ -387,8 +407,18 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('tab', { name: 'Discover' }).click();
     await T('Southeast Asia by motorbike').click();
     await T(/^Read all 5 entries/).click();
+    // A day's label stays at the top of the story while that day's entries scroll underneath it.
+    await T('Sunrise over Mount Bromo').waitFor();
+    await page.mouse.move(195, 500);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(700);
+    const stuck = await page.getByRole('heading', { name: /^(Day|Part) \d+/ }).evaluateAll((labels) => labels.map((label) => Math.round(label.getBoundingClientRect().top)));
+    if (!stuck.some((top) => top >= 40 && top <= 140)) throw new Error('no day label is held at the top of the story: ' + stuck.join(', '));
+    await shot('timeline-sticky-day');
     await R('button', { name: 'Jump to' }).click();
     await T('Start from the beginning').waitFor();
+    // Every day of the story is one tap away, as well as its milestones.
+    await T('Days', { exact: true }).waitFor();
     await shot('jump-to');
     await T('Newest entry').click();
     await T('Sunrise over Mount Bromo').waitFor();
@@ -697,6 +727,13 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Complete journey' }).click();
     await T('Journey complete').waitFor({ timeout: 20000 });
     await shot('recap');
+    // The recap can be shared: the same sheet as for a journey, with what it added up to.
+    await R('button', { name: 'Share recap' }).click();
+    await T('Share the recap').waitFor();
+    await R('button', { name: 'Copy link' }).waitFor();
+    await shot('share-recap');
+    await page.mouse.click(195, 60);
+    await R('button', { name: 'Copy link' }).waitFor({ state: 'detached' });
     await R('button', { name: 'Close' }).click();
     await T('See the recap').waitFor();
     await shot('completed-journey');

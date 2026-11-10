@@ -2,19 +2,19 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Share2, X } from 'lucide-react-native';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { messageFor } from '@/api/fetcher';
 import { useGetJourney } from '@/api/generated/journey';
 import { visibility } from '@/features/journeys/visibility';
-import { shareLink } from '@/lib/share';
+import { JourneyShareSheet } from '@/features/sharing/ShareSheet';
+import { PageProblem } from '@/features/states/PageProblem';
 import { darkTheme, layout, withAlpha } from '@/theme';
 import { Button } from '@/ui/Button';
 import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Pill } from '@/ui/Pill';
-import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
 
@@ -32,6 +32,7 @@ export default function JourneyLive() {
   const journey = useGetJourney(id);
   const j = journey.data;
   const leave = () => router.replace(`/journey/${id}`);
+  const [sharing, setSharing] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: STAGE }}>
@@ -46,10 +47,8 @@ export default function JourneyLive() {
         <View style={{ paddingTop: 8, marginLeft: -4 }}>
           <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
         </View>
-        {journey.isError ? (
-          <Problem message={messageFor(journey.error)} onRetry={() => void journey.refetch()} retrying={journey.isRefetching} />
-        ) : !j ? (
-          <Loading />
+        {!j ? (
+          journey.isError ? <PageProblem tone="onPhoto" error={journey.error} onRetry={() => void journey.refetch()} retrying={journey.isFetching} /> : <Loading tone="onPhoto" offline={journey.isPaused} />
         ) : (
           <View style={{ gap: 12, paddingBottom: 12 }}>
             <Pill tone="photo" frost="blur" label={`${j.labelStyle === 'day' ? 'Day 1' : 'Part 1'} · ${visibility(j.visibility).label}`} />
@@ -59,13 +58,14 @@ export default function JourneyLive() {
             <Txt variant="lead" style={{ color: darkTheme.colors.onPhoto, opacity: 0.84, marginBottom: 8 }}>{WHO[j.visibility].note}</Txt>
             <Button label="Add your first entry" size="lg" block icon={(c) => <Camera size={19} color={c} strokeWidth={2.4} />} onPress={() => router.replace(`/journey/${id}/add`)} />
             {j.shareUrl ? (
-              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => j.shareUrl && void shareLink(`${j.title} on Journey`, j.shareUrl)} />
+              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => setSharing(true)} />
             ) : (
               <Button label="Maybe later" size="lg" variant="glass" block onPress={leave} />
             )}
           </View>
         )}
       </SafeAreaView>
+      {j ? <JourneyShareSheet journey={j} visible={sharing} onClose={() => setSharing(false)} /> : null}
     </View>
   );
 }

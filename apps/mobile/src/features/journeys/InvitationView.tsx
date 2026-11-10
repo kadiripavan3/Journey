@@ -64,9 +64,9 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
           <RoundButton tone="photo" label="Close" onPress={onClose} icon={(c) => <X size={20} color={c} />} />
         </View>
         {loading ? (
-          <Loading />
+          <Loading tone="onPhoto" />
         ) : loadError ? (
-          <Problem message={messageFor(loadError)} onRetry={onRetry} retrying={retrying} />
+          <Problem tone="onPhoto" message={messageFor(loadError)} onRetry={onRetry} retrying={retrying} />
         ) : !invitation || !j ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
             <Txt variant="body" center style={{ color: ON }}>
