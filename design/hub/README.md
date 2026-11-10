@@ -16,6 +16,7 @@ One page with everything about Journey: the screens, design system, design cues,
 | Roadmap | [`docs/03-roadmap.md`](../../docs/03-roadmap.md) |
 | Tech | [`docs/02-tech-stack.md`](../../docs/02-tech-stack.md); [`src/architecture.html`](src/architecture.html) replaces its mermaid chart |
 | Run it | [`docs/07-run-locally.md`](../../docs/07-run-locally.md) |
+| Go live | [`docs/08-connect-services.md`](../../docs/08-connect-services.md) |
 
 The page shell is [`src/page.html`](src/page.html), with the hub's styles in [`src/styles.css`](src/styles.css), the phone screens' styles in [`src/phone.css`](src/phone.css), behaviour in [`src/app.js`](src/app.js) and icons in [`src/icons.svg`](src/icons.svg). [`build.mjs`](build.mjs) fills the shell's `{{PLACEHOLDERS}}`.
 
