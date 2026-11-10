@@ -65,6 +65,8 @@ function Probe() {
       <Pressable accessibilityRole="button" accessibilityLabel="draft" onPress={() => void outbox.save(input, 'draft')} />
       <Pressable accessibilityRole="button" accessibilityLabel="retry" onPress={() => outbox.retry('c1')} />
       <Pressable accessibilityRole="button" accessibilityLabel="hold" onPress={() => outbox.hold('c1')} />
+      <Pressable accessibilityRole="button" accessibilityLabel="release" onPress={() => outbox.release('c1', 'queued')} />
+      <Pressable accessibilityRole="button" accessibilityLabel="release a draft" onPress={() => outbox.release('c1', 'draft')} />
       <Pressable accessibilityRole="button" accessibilityLabel="discard" onPress={() => void outbox.discard('c1')} />
     </>
   );
@@ -224,6 +226,14 @@ describe('the outbox', () => {
     await user.press(screen.getByRole('button', { name: 'hold' }));
     await waitFor(() => expect(screen.getByText('c1:draft')).toBeOnTheScreen());
     expect(rows.get('c1')?.state).toBe('draft');
+    // Only looked at, and closed without a change: it goes back in line. One that was a draft before stays a draft.
+    await user.press(screen.getByRole('button', { name: 'release a draft' }));
+    expect(screen.getByText('c1:draft')).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'release' }));
+    await waitFor(() => expect(screen.getByText('c1:queued')).toBeOnTheScreen());
+    expect(rows.get('c1')?.state).toBe('queued');
+    await user.press(screen.getByRole('button', { name: 'hold' }));
+    await waitFor(() => expect(screen.getByText('c1:draft')).toBeOnTheScreen());
     await user.press(screen.getByRole('button', { name: 'discard' }));
     await waitFor(() => expect(screen.getByText('empty')).toBeOnTheScreen());
     expect(rows.size).toBe(0);

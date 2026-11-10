@@ -20,6 +20,11 @@ type Value = {
   save: (input: DraftInput, how: 'draft' | 'post') => Promise<void>;
   /** Takes a draft out of the line, so it can be changed. False when it is going up right now. */
   hold: (clientId: string) => boolean;
+  /**
+   * Puts back in line a draft that was only held to be looked at: the composer was closed without a change
+   * and without a choice. `was` is what `hold` took it out of ("queued" or "failed"); a real draft stays one.
+   */
+  release: (clientId: string, was: Draft['state']) => void;
   /** Puts a failed one back in line. */
   retry: (clientId: string) => void;
   /** Forgets a draft and its files. Does nothing while it is going up. */
@@ -145,6 +150,13 @@ export function OutboxProvider({ children, store = draftStore }: { children: Rea
         void store.save(held).catch(() => undefined);
       }
       return true;
+    },
+    release: (clientId, was) => {
+      const draft = all.find((other) => other.clientId === clientId);
+      if (!draft || draft.state !== 'draft' || was === 'draft' || was === 'sending') return;
+      const back: Draft = { ...draft, state: 'queued', problem: undefined };
+      put(back);
+      void store.save(back).catch(() => undefined);
     },
     retry: (clientId) => {
       const draft = all.find((other) => other.clientId === clientId);
