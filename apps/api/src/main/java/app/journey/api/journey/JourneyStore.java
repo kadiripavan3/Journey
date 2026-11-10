@@ -2,7 +2,6 @@ package app.journey.api.journey;
 
 import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
@@ -64,7 +63,7 @@ public class JourneyStore {
                join entry_media em on em.entry_id = e.id
                join media m on m.id = em.media_id
                where e.journey_id = j.id and m.kind = 'photo' and %s and %s
-               order by e.happened_at, em.position limit 1)) as cover_key,
+               order by e.happened_at, e.created_at, e.id, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
              exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
@@ -623,26 +622,43 @@ public class JourneyStore {
                 .single();
     }
 
-    public record NewInJourney(UUID journeyId, int newCount) {}
+    /** A journey with news for one reader: how many entries are new to them, and when the newest was posted. */
+    public record NewInJourney(UUID journeyId, int newCount, Instant latest) {}
 
-    /** Journeys the reader follows or writes in, with entries posted by others since their last visit, most recent first. */
-    public Page<NewInJourney> journeysWithNewEntries(UUID userId, PageRequest page) {
-        List<NewInJourney> rows = jdbc.sql(
-                        """
-            select f.journey_id, count(*) as new_count, max(e.created_at) as latest
-            from journey_follows f
-            join journeys j on j.id = f.journey_id
-            join entries e on e.journey_id = f.journey_id and e.created_at > f.last_read_at and e.author_id <> :user
-            where f.user_id = :user and %s and %s
-            group by f.journey_id
-            order by latest desc, f.journey_id
-            limit :limit offset :offset
-            """.formatted(Rules.visibleJourney("j", ":user"), Rules.entryBy("e", ":user")))
+    /** The entries of the journey {@code f.journey_id} that are new to the reader: by others, since their last visit. */
+    private static final String NEW_TO_READER =
+            " from entries e where e.journey_id = %s and e.created_at > %s and e.author_id <> :user and "
+                    + Rules.entryBy("e", ":user");
+
+    /**
+     * Journeys the reader follows or writes in that have entries posted by others since their last visit, the
+     * one with the newest entry first.
+     *
+     * <p>For each followed journey only its newest unread entry is looked up (one step into the index that
+     * holds a journey's entries by when they were posted), which is enough to order them and cut the page. The
+     * entries are counted only for the journeys on the page. A page starts after the last journey of the page
+     * before.
+     */
+    public Page<NewInJourney> journeysWithNewEntries(UUID userId, Keyset page) {
+        String after = page.first() ? "" : " and (newest.latest, f.journey_id) < (:at, :after)";
+        var query = jdbc.sql("select page.journey_id, page.latest, (select count(*)"
+                        + NEW_TO_READER.formatted("page.journey_id", "page.last_read_at") + ") as new_count"
+                        + " from (select f.journey_id, f.last_read_at, newest.latest from journey_follows f"
+                        + " join journeys j on j.id = f.journey_id"
+                        + " cross join lateral (select e.created_at as latest"
+                        + NEW_TO_READER.formatted("f.journey_id", "f.last_read_at")
+                        + " order by e.created_at desc limit 1) newest"
+                        + " where f.user_id = :user and " + Rules.visibleJourney("j", ":user") + after
+                        + " order by newest.latest desc, f.journey_id desc limit :limit) page"
+                        + " order by page.latest desc, page.journey_id desc")
                 .param("user", userId)
-                .param("limit", page.fetch())
-                .param("offset", page.offset())
-                .query((rs, n) -> new NewInJourney(rs.getObject("journey_id", UUID.class), rs.getInt("new_count")))
+                .param("limit", page.fetch());
+        if (!page.first()) {
+            query = query.param("at", Sql.timestamp(page.instant(0))).param("after", page.uuid(1));
+        }
+        List<NewInJourney> rows = query.query((rs, n) -> new NewInJourney(
+                        rs.getObject("journey_id", UUID.class), rs.getInt("new_count"), Sql.instant(rs, "latest")))
                 .list();
-        return Page.of(rows, page);
+        return page.page(rows, row -> Keyset.cursor(row.latest(), row.journeyId()));
     }
 }

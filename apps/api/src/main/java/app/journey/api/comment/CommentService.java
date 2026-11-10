@@ -2,8 +2,8 @@ package app.journey.api.comment;
 
 import app.journey.api.comment.CommentStore.CommentRow;
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.entry.EntryService;
 import app.journey.api.entry.EntryStore.EntryRow;
 import app.journey.api.media.MediaService;
@@ -61,7 +61,7 @@ public class CommentService {
     }
 
     /** A page of an entry's comments: threads oldest first, each followed by its replies. */
-    public Page<CommentResponse> list(UUID entryId, UUID viewer, PageRequest page) {
+    public Page<CommentResponse> list(UUID entryId, UUID viewer, Keyset page) {
         EntryRow entry = entries.require(entryId, viewer);
         return comments.page(entryId, viewer, page)
                 .map(rows -> rows.stream().map(row -> view(row, entry, viewer)).toList());

@@ -7,6 +7,7 @@ import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaStatus;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,22 +65,72 @@ public class EntryStore {
     /** What is new in a journey for one reader: how many entries, and the first of them in story order. */
     public record NewEntries(int count, UUID firstId) {}
 
+    /** A place in a story: the three things a story is ordered by. A page of a story starts or ends at one. */
+    public record Edge(Instant happenedAt, Instant createdAt, UUID id) {
+
+        public static Edge of(EntryRow entry) {
+            return new Edge(entry.happenedAt(), entry.createdAt(), entry.id());
+        }
+    }
+
+    /** Part of a story on either side of an {@link Edge}, each side in story order. */
+    public record Around(List<EntryRow> before, List<EntryRow> after) {}
+
+    /** An entry on the map, with only what a pin shows. */
+    public record PinRow(
+            UUID id,
+            UUID authorId,
+            String title,
+            String bodyStart,
+            String placeName,
+            Double lat,
+            Double lng,
+            LocationPrecision precision,
+            boolean milestone,
+            LocalDate happenedOn,
+            int dayNumber,
+            int position,
+            LabelStyle labelStyle) {}
+
+    /** The story's first photos, and how many photos it has in all. */
+    public record Photos(List<EntryMediaRow> first, int total) {}
+
     /** The order of a story: when things happened, then when they were written down. The id settles exact ties. */
     private static final String STORY_ORDER = "e.happened_at, e.created_at, e.id";
+
+    private static final String STORY_ORDER_BACKWARDS = "e.happened_at desc, e.created_at desc, e.id desc";
+
+    /**
+     * An entry's place in its story, counting from 1, for an entry looked up by itself: the entries up to it
+     * are counted in the index that holds the story in order (V34).
+     */
+    private static final String COUNTED = """
+      (select count(*) from entries x where x.journey_id = e.journey_id
+        and (x.happened_at, x.created_at, x.id) <= (e.happened_at, e.created_at, e.id))""";
+
+    /**
+     * Every entry's place in the story of the journey {@code :journey}, numbered in one pass over that index.
+     * Reading several entries of one story joins this, instead of counting again for each of them.
+     */
+    private static final String STORY = """
+       join (select x.id as entry_id, row_number() over (order by x.happened_at, x.created_at, x.id) as position
+             from entries x where x.journey_id = :journey) story on story.entry_id = e.id
+      """;
 
     /**
      * An entry with its author, its day number (from the journey's start date), its position (its place in the
      * story, counting from 1), and whether the viewer liked it.
      */
-    private static final String COLUMNS = """
+    private static String columns(String position) {
+        return """
       e.id, e.journey_id, j.title as journey_title, j.owner_id as journey_owner_id, j.label_style, e.author_id,
       p.username as author_username, p.display_name as author_name, pa.storage_key as author_avatar_key,
       e.happened_at, e.happened_on, (e.happened_on - j.start_date + 1) as day_number,
-      (select count(*) from entries x where x.journey_id = e.journey_id
-        and (x.happened_at, x.created_at, x.id) <= (e.happened_at, e.created_at, e.id)) as position,
+      %s as position,
       e.title, e.body, e.place_name, e.lat, e.lng, e.location_precision, e.is_milestone, e.like_count, e.comment_count, e.created_at, e.edited_at,
       exists (select 1 from entry_likes l where l.entry_id = e.id and l.user_id = :viewer) as liked
-      """;
+      """.formatted(position);
+    }
 
     private static final String FROM = """
       from entries e
@@ -87,7 +138,8 @@ public class EntryStore {
       join profiles p on p.id = e.author_id
       """ + Rules.chosenPhoto("pa", "p.avatar_media_id");
 
-    private static final String SELECT = "select " + COLUMNS + FROM;
+    /** One entry, or a few picked by id. */
+    private static final String SELECT = "select " + columns(COUNTED) + FROM;
 
     /** Entries by someone the viewer has blocked, or who has blocked them, are left out of every read. */
     private static final String NOT_BLOCKED = " and " + Rules.entryBy("e", ":viewer");
@@ -161,34 +213,123 @@ public class EntryStore {
     }
 
     /** Only one author's part of a shared story; everyone's when no author is given. */
-    private static final String BY_AUTHOR =
-            " and (cast(:author as uuid) is null or e.author_id = cast(:author as uuid))";
-
-    private static String text(UUID id) {
-        return id == null ? null : id.toString();
+    private static String byAuthor(UUID author) {
+        return author == null ? "" : " and e.author_id = :author";
     }
 
-    /** Part of a journey's story, in the order things happened. With an author, only what that person wrote. */
-    public List<EntryRow> timeline(UUID journeyId, UUID viewer, UUID author, int limit, int offset) {
-        return jdbc.sql(SELECT + " where e.journey_id = :journey" + BY_AUTHOR + NOT_BLOCKED + " order by " + STORY_ORDER
-                        + " limit :limit offset :offset")
+    /** The entries of one journey a viewer may read, with one author's when asked: where every read of a story starts. */
+    private static String inJourney(UUID author) {
+        return "select e.id from entries e where e.journey_id = :journey" + byAuthor(author) + NOT_BLOCKED;
+    }
+
+    /**
+     * Reads entries of one story in two steps inside one statement. {@code pick} chooses which entries (ids
+     * only, through the index that holds the story in order); then each is read in full, with its place in
+     * the story from one numbering pass ({@link #STORY}). They come back in story order.
+     */
+    private JdbcClient.StatementSpec inStory(String select, String pick, UUID journeyId, UUID viewer, UUID author) {
+        var query = jdbc.sql("with page as materialized (" + pick + ") " + select + " join page on page.id = e.id"
+                        + STORY + " order by " + STORY_ORDER)
                 .param("journey", journeyId)
-                .param("viewer", viewer)
-                .param("author", text(author))
-                .param("limit", limit)
-                .param("offset", offset)
+                .param("viewer", viewer);
+        return author == null ? query : query.param("author", author);
+    }
+
+    private static final String ENTRY_IN_STORY = "select " + columns("story.position") + FROM;
+
+    /**
+     * Part of a journey's story on either side of a place in it, for one page of the story.
+     *
+     * <p>Up to {@code before} entries that come before the edge (the nearest ones) and up to {@code after}
+     * entries that come after it, each side in story order. The entry at the edge itself, if the viewer may
+     * read it, belongs to the "after" side when {@code edgeGoesAfter} is true and to the "before" side when it
+     * is false. Without an edge, the story is read from its start. Both sides are read from the index that
+     * holds the story in order (V34), starting at the edge, so the cost doesn't grow with how far into the
+     * story the page is. With an author, only what that person wrote.
+     */
+    public Around around(
+            UUID journeyId, UUID viewer, UUID author, Edge edge, boolean edgeGoesAfter, int before, int after) {
+        String at = " and (e.happened_at, e.created_at, e.id) ";
+        String earlier = "(" + inJourney(author)
+                + (edge == null
+                        ? " and false"
+                        : at + (edgeGoesAfter ? "<" : "<=") + " (:happenedAt, :createdAt, :edge)")
+                + " order by " + STORY_ORDER_BACKWARDS + " limit :before)";
+        String later = "(" + inJourney(author)
+                + (edge == null ? "" : at + (edgeGoesAfter ? ">=" : ">") + " (:happenedAt, :createdAt, :edge)")
+                + " order by " + STORY_ORDER + " limit :after)";
+        var query = inStory(
+                        "select " + columns("story.position") + ", page.earlier " + FROM,
+                        "select s.id, true as earlier from " + earlier + " s union all select s.id, false from " + later
+                                + " s",
+                        journeyId,
+                        viewer,
+                        author)
+                .param("before", before)
+                .param("after", after);
+        if (edge != null) {
+            query = query.param("happenedAt", Sql.timestamp(edge.happenedAt()))
+                    .param("createdAt", Sql.timestamp(edge.createdAt()))
+                    .param("edge", edge.id());
+        }
+        List<EntryRow> earlierRows = new ArrayList<>();
+        List<EntryRow> laterRows = new ArrayList<>();
+        query.query((rs, n) -> {
+                    EntryRow row = ROW.mapRow(rs, n);
+                    (rs.getBoolean("earlier") ? earlierRows : laterRows).add(row);
+                    return row;
+                })
+                .list();
+        return new Around(earlierRows, laterRows);
+    }
+
+    /**
+     * The two ends of a story for a journey's page: its first entry and its newest ones, in story order,
+     * each entry once (a short story's first entry is also one of its newest).
+     */
+    public List<EntryRow> ends(UUID journeyId, UUID viewer, int newest) {
+        return inStory(
+                        ENTRY_IN_STORY,
+                        "(" + inJourney(null) + " order by " + STORY_ORDER + " limit 1) union (" + inJourney(null)
+                                + " order by " + STORY_ORDER_BACKWARDS + " limit :newest)",
+                        journeyId,
+                        viewer,
+                        null)
+                .param("newest", newest)
                 .query(ROW)
                 .list();
     }
 
-    /** The entries that have a place on the map, in story order. */
-    public List<EntryRow> onMap(UUID journeyId, UUID viewer, int limit) {
-        return jdbc.sql(SELECT + " where e.journey_id = :journey and e.lat is not null" + NOT_BLOCKED + " order by "
-                        + STORY_ORDER + " limit :limit")
-                .param("journey", journeyId)
-                .param("viewer", viewer)
+    /**
+     * The entries that have a place on the map, in story order, with only what a pin shows: no author, no
+     * likes, and each entry's place in the story from one numbering pass.
+     */
+    public List<PinRow> pins(UUID journeyId, UUID viewer, int limit) {
+        return inStory(
+                        """
+                select e.id, e.author_id, e.title, left(e.body, 61) as body_start, e.place_name, e.lat, e.lng, e.location_precision,
+                       e.is_milestone, e.happened_on, (e.happened_on - j.start_date + 1) as day_number, story.position, j.label_style
+                from entries e join journeys j on j.id = e.journey_id
+                """,
+                        inJourney(null) + " and e.lat is not null order by " + STORY_ORDER + " limit :limit",
+                        journeyId,
+                        viewer,
+                        null)
                 .param("limit", limit)
-                .query(ROW)
+                .query((rs, n) -> new PinRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("author_id", UUID.class),
+                        rs.getString("title"),
+                        rs.getString("body_start"),
+                        rs.getString("place_name"),
+                        (Double) rs.getObject("lat"),
+                        (Double) rs.getObject("lng"),
+                        LocationPrecision.read(rs.getString("location_precision")),
+                        rs.getBoolean("is_milestone"),
+                        rs.getObject("happened_on", LocalDate.class),
+                        rs.getInt("day_number"),
+                        rs.getInt("position"),
+                        LabelStyle.read(rs.getString("label_style"))))
                 .list();
     }
 
@@ -204,54 +345,37 @@ public class EntryStore {
                 .single();
     }
 
-    /** The newest part of the story, newest first. */
-    public List<EntryRow> latest(UUID journeyId, UUID viewer, int limit) {
-        return jdbc.sql(SELECT + " where e.journey_id = :journey" + NOT_BLOCKED
-                        + " order by e.happened_at desc, e.created_at desc, e.id desc limit :limit")
-                .param("journey", journeyId)
-                .param("viewer", viewer)
-                .param("limit", limit)
-                .query(ROW)
-                .list();
-    }
-
-    /** How many entries of a journey this viewer can read; with an author, how many of theirs. */
+    /** How many entries of a journey one author wrote, as this viewer may read them. */
     public int count(UUID journeyId, UUID viewer, UUID author) {
-        return jdbc.sql("select count(*) from entries e where e.journey_id = :journey" + BY_AUTHOR + NOT_BLOCKED)
+        return jdbc.sql("select count(*) from entries e where e.journey_id = :journey and e.author_id = :author"
+                        + NOT_BLOCKED)
                 .param("journey", journeyId)
                 .param("viewer", viewer)
-                .param("author", text(author))
-                .query(Integer.class)
-                .single();
-    }
-
-    /** How many entries come before this one in the story, as this viewer reads it. */
-    public int countBefore(UUID journeyId, UUID entryId, UUID viewer, UUID author) {
-        return jdbc.sql("""
-            select count(*) from entries e, entries t
-            where t.id = :entry and e.journey_id = :journey and (e.happened_at, e.created_at, e.id) < (t.happened_at, t.created_at, t.id)
-            """ + BY_AUTHOR + NOT_BLOCKED)
-                .param("journey", journeyId)
-                .param("entry", entryId)
-                .param("viewer", viewer)
-                .param("author", text(author))
+                .param("author", author)
                 .query(Integer.class)
                 .single();
     }
 
     /**
      * For each journey, its newest entries by people other than the reader, most recently posted first. One
-     * statement for the whole Home feed, however many journeys are on it.
+     * statement for the whole Home feed, however many journeys are on it, and for each journey only its
+     * newest few are read (from the index that holds a journey's entries by when they were posted).
      */
     public Map<UUID, List<EntryRow>> latestByOthers(List<UUID> journeyIds, UUID reader, int perJourney) {
         if (journeyIds.isEmpty()) {
             return Map.of();
         }
         return jdbc
-                .sql("select * from (select " + COLUMNS
-                        + ", row_number() over (partition by e.journey_id order by e.created_at desc, e.id) as rn "
-                        + FROM + " where e.journey_id in (:journeys) and e.author_id <> :viewer" + NOT_BLOCKED
-                        + ") ranked where rn <= :each order by journey_id, rn")
+                .sql(SELECT + """
+                     where e.id in (
+                      select newest.id from journeys fj
+                      cross join lateral (
+                        select n.id from entries n
+                        where n.journey_id = fj.id and n.author_id <> :viewer and %s
+                        order by n.created_at desc, n.id limit :each) newest
+                      where fj.id in (:journeys))
+                    order by e.journey_id, e.created_at desc, e.id
+                    """.formatted(Rules.entryBy("n", ":viewer")))
                 .param("journeys", journeyIds)
                 .param("viewer", reader)
                 .param("each", perJourney)
@@ -274,29 +398,25 @@ public class EntryStore {
                 .single();
     }
 
-    /** The story's first photos, in story order. */
-    public List<EntryMediaRow> photos(UUID journeyId, UUID viewer, int limit) {
-        return jdbc.sql("""
-            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s, m.held
+    /** The story's first photos, in story order, and how many it has in all: one read for both. */
+    public Photos photos(UUID journeyId, UUID viewer, int limit) {
+        int[] total = {0};
+        List<EntryMediaRow> first = jdbc.sql(
+                        """
+            select em.entry_id, m.id, m.kind, m.status, m.storage_key, m.playback_id, m.width, m.height, m.duration_s, m.held,
+                   count(*) over () as total
             from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
             """ + NOT_BLOCKED + NOT_HELD + " order by " + STORY_ORDER + ", em.position limit :limit")
                 .param("journey", journeyId)
                 .param("viewer", viewer)
                 .param("limit", limit)
-                .query(MEDIA)
+                .query((rs, n) -> {
+                    total[0] = rs.getInt("total");
+                    return MEDIA.mapRow(rs, n);
+                })
                 .list();
-    }
-
-    public int photoCount(UUID journeyId, UUID viewer) {
-        return jdbc.sql("""
-            select count(*) from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
-            where e.journey_id = :journey
-            """ + NOT_BLOCKED + NOT_HELD)
-                .param("journey", journeyId)
-                .param("viewer", viewer)
-                .query(Integer.class)
-                .single();
+        return new Photos(first, total[0]);
     }
 
     /** The day numbers that have at least one entry, for the challenge card's row of ticks. */
@@ -313,15 +433,16 @@ public class EntryStore {
 
     /** The story's big moments, in story order, for "Jump to". */
     public List<MilestoneRow> milestones(UUID journeyId, UUID viewer, int limit) {
-        return jdbc.sql("""
-            select e.id, coalesce(nullif(e.title, ''), left(e.body, 60)) as title, e.happened_on, (e.happened_on - j.start_date + 1) as day_number,
-                   (select count(*) from entries x where x.journey_id = e.journey_id
-                     and (x.happened_at, x.created_at, x.id) <= (e.happened_at, e.created_at, e.id)) as position
-            from entries e join journeys j on j.id = e.journey_id
-            where e.journey_id = :journey and e.is_milestone
-            """ + NOT_BLOCKED + " order by " + STORY_ORDER + " limit :limit")
-                .param("journey", journeyId)
-                .param("viewer", viewer)
+        return inStory(
+                        """
+                select e.id, coalesce(nullif(e.title, ''), left(e.body, 60)) as title, e.happened_on,
+                       (e.happened_on - j.start_date + 1) as day_number, story.position
+                from entries e join journeys j on j.id = e.journey_id
+                """,
+                        inJourney(null) + " and e.is_milestone order by " + STORY_ORDER + " limit :limit",
+                        journeyId,
+                        viewer,
+                        null)
                 .param("limit", limit)
                 .query((rs, n) -> new MilestoneRow(
                         rs.getObject("id", UUID.class),
@@ -457,10 +578,14 @@ public class EntryStore {
                 .update();
     }
 
-    /** A new entry wakes a paused journey. (The entry count and "last entry" are kept by the database.) */
+    /**
+     * A new entry wakes a paused journey. (The entry count and "last entry" are kept by the database.) A
+     * journey that isn't paused has nothing to wake, and its row is left alone: the entry itself has already
+     * changed it once.
+     */
     public void wakeJourney(UUID journeyId) {
         jdbc.sql(
-                        "update journeys set status = case when status = 'paused' then 'active' else status end, auto_paused_at = null, updated_at = now() where id = :journey")
+                        "update journeys set status = 'active', auto_paused_at = null, updated_at = now() where id = :journey and status = 'paused'")
                 .param("journey", journeyId)
                 .update();
     }

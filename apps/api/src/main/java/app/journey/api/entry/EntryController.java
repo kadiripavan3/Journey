@@ -1,7 +1,7 @@
 package app.journey.api.entry;
 
 import app.journey.api.auth.Me;
-import app.journey.api.common.PageRequest;
+import app.journey.api.common.Keyset;
 import app.journey.api.entry.EntryService.EntryResponse;
 import app.journey.api.entry.EntryService.JourneyMapResponse;
 import app.journey.api.entry.EntryService.JourneySummaryResponse;
@@ -170,6 +170,6 @@ class EntryController {
             summary = "Home: what's new in the journeys you follow or write in, grouped per journey, newest first")
     FeedResponse feed(
             @Me UUID me, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-        return feed.feed(me, PageRequest.of(cursor, limit, FeedService.PAGE));
+        return feed.feed(me, Keyset.of(cursor, limit, FeedService.PAGE));
     }
 }

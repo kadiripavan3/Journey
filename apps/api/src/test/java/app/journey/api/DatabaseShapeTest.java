@@ -87,6 +87,56 @@ class DatabaseShapeTest extends ApiTest {
         countsMatchRows();
     }
 
+    @Test
+    void aNewEntryChangesItsJourneysRowOnceAndLeavesRoomForIt() throws Exception {
+        String maya = person("maya");
+        String journey = journey(maya, "Southeast Asia", "public", 9);
+        jdbc.sql("update journeys set updated_at = now() - interval '1 day'").update();
+        java.sql.Timestamp before = jdbc.sql("select updated_at from journeys")
+                .query(java.sql.Timestamp.class)
+                .single();
+
+        entry(maya, journey, "Hoi An", 0);
+
+        // The count moved (the database did that); a journey that isn't paused has nothing to wake, so the
+        // API didn't write the row a second time.
+        assertThat(jdbc.sql("select entry_count from journeys")
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(jdbc.sql("select updated_at from journeys")
+                        .query(java.sql.Timestamp.class)
+                        .single())
+                .isEqualTo(before);
+        // Pages of the two tables whose rows change in place keep room for the changed row.
+        assertThat(jdbc.sql(
+                                "select relname || ' ' || array_to_string(reloptions, ',') from pg_class where relname in ('journeys', 'entries') and relnamespace = current_schema()::regnamespace order by relname")
+                        .query(String.class)
+                        .list())
+                .containsExactly("entries fillfactor=90", "journeys fillfactor=85");
+    }
+
+    @Test
+    void aReplyIsNeverListedBeforeTheCommentItAnswersWhoeverWroteItToTheDatabase() throws Exception {
+        String maya = person("maya");
+        String entry = entry(maya, journey(maya, "Southeast Asia", "public", 9), "Hoi An", 0);
+        // Written straight to the table, as the sample data does, with the very same moment on both.
+        jdbc.sql("""
+            with first as (
+              insert into comments (entry_id, author_id, body, created_at)
+              select e.id, e.author_id, 'First', now() from entries e returning id, entry_id, author_id, created_at)
+            insert into comments (entry_id, author_id, parent_id, body, created_at)
+            select entry_id, author_id, id, 'Answer', created_at from first
+            """).update();
+
+        mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", maya))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("First", "Answer")));
+        assertThat(jdbc.sql("select count(*) from comments c where c.thread_id <> coalesce(c.parent_id, c.id)")
+                        .query(Integer.class)
+                        .single())
+                .isZero();
+    }
+
     private void countsMatchRows() {
         assertThat(jdbc.sql("""
             select count(*) from profiles p

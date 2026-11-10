@@ -1,7 +1,7 @@
 package app.journey.api.entry;
 
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.entry.EntryService.EntryResponse;
 import app.journey.api.journey.JourneyService;
 import app.journey.api.journey.JourneyService.JourneyResponse;
@@ -57,7 +57,7 @@ public class FeedService {
     }
 
     @Transactional(readOnly = true)
-    public FeedResponse feed(UUID reader, PageRequest request) {
+    public FeedResponse feed(UUID reader, Keyset request) {
         Page<NewInJourney> found = journeyStore.journeysWithNewEntries(reader, request);
         List<UUID> ids = found.items().stream().map(NewInJourney::journeyId).toList();
         Map<UUID, JourneyResponse> byId = journeys.views(journeyStore.findAll(ids, reader), reader).stream()
