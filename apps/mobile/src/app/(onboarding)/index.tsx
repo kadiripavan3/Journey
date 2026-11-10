@@ -1,27 +1,35 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { ApiError, messageFor } from '@/api/fetcher';
-import { getGetMeQueryKey, useCheckUsername, useSaveProfile } from '@/api/generated/journey';
+import { getGetMeQueryKey, useCheckUsername, useGetMe, useSaveProfile } from '@/api/generated/journey';
+import { useOnboarding } from '@/auth/onboarding';
 import { useSession } from '@/auth/session';
 import { useDebounced } from '@/lib/useDebounced';
 import { initials, normalizeUsername, usernameProblem } from '@/lib/username';
 import { useTheme } from '@/theme';
+import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
+import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 
-/** 2.1 Create your profile: a name and a username people recognise. The username is checked as you type. */
+/** 2.1 Create your profile: step 1 of 3. A name and a username people recognise. The username is checked as you type. */
 export default function CreateProfile() {
   const { colors } = useTheme();
+  const router = useRouter();
   const session = useSession();
+  const onboarding = useOnboarding();
   const queryClient = useQueryClient();
-  const [displayName, setDisplayName] = useState('');
-  const [rawUsername, setRawUsername] = useState('');
-  const [bio, setBio] = useState('');
+  // Coming back from the next step, the profile already exists and this screen edits it.
+  const existing = useGetMe().data?.profile;
+  const [displayName, setDisplayName] = useState(existing?.displayName ?? '');
+  const [rawUsername, setRawUsername] = useState(existing?.username ?? '');
+  const [bio, setBio] = useState(existing?.bio ?? '');
 
   const username = normalizeUsername(rawUsername);
   const localProblem = username ? usernameProblem(username) : null;
@@ -30,7 +38,12 @@ export default function CreateProfile() {
   const checked = settled === username && check.data?.username === username ? check.data : undefined;
 
   const save = useSaveProfile({
-    mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() }) },
+    mutation: {
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        router.push('/interests');
+      },
+    },
   });
   const failed = save.error instanceof ApiError ? save.error : null;
   const usernameError =
@@ -39,6 +52,7 @@ export default function CreateProfile() {
 
   return (
     <Screen
+      header={<AppBar leading="none" center={<StepProgress step={1} />} />}
       footer={
         <>
           {save.isError && !failed ? (
@@ -52,17 +66,16 @@ export default function CreateProfile() {
             block
             disabled={!canContinue}
             loading={save.isPending}
-            onPress={() => save.mutate({ data: { displayName: displayName.trim(), username, bio: bio.trim() } })}
+            onPress={() => {
+              onboarding.begin(); // stay in the sign-up steps once the profile exists
+              save.mutate({ data: { displayName: displayName.trim(), username, bio: bio.trim() } });
+            }}
           />
           <Button label="Use a different email" variant="quiet" block onPress={() => void session.signOut()} />
         </>
       }>
-      <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 34, letterSpacing: -1.2, marginTop: 28 }}>
-        Create your profile
-      </Txt>
-      <Txt color="muted" style={{ fontSize: 15.5, lineHeight: 23, marginTop: 10 }}>
-        This is how people see you when you share a journey.
-      </Txt>
+      <Heading style={{ marginTop: 6 }}>Create your profile</Heading>
+      <Lead>This is how people see you when you share a journey.</Lead>
 
       <View
         accessible={false}

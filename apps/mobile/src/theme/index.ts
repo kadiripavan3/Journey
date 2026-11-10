@@ -1,6 +1,6 @@
 import { useColorScheme } from 'react-native';
 
-import { palettes, radius, space, type } from './tokens';
+import { palettes, radius, shadows, space, type } from './tokens';
 
 export type Scheme = 'light' | 'dark';
 export type Colors = { [K in keyof (typeof palettes)['light']]: string };
@@ -19,13 +19,15 @@ export type FontWeight = keyof typeof fontFor;
 export type Theme = {
   scheme: Scheme;
   colors: Colors;
+  /** Box shadows: "md" lifts cards and bars, "sm" outlines quiet surfaces. */
+  shadow: { md: string; sm: string };
   radius: typeof radius;
   space: typeof space;
   type: typeof type;
 };
 
 export function themeFor(scheme: Scheme): Theme {
-  return { scheme, colors: palettes[scheme], radius, space, type };
+  return { scheme, colors: palettes[scheme], shadow: shadows[scheme], radius, space, type };
 }
 
 /** The theme for the phone's current light or dark setting. */

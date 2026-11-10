@@ -23,9 +23,15 @@ class FeedTest extends ApiTest {
 
     mvc.perform(put("/v1/journeys/" + trip + "/follow").header("Authorization", reader)).andExpect(status().isOk());
     mvc.perform(put("/v1/journeys/" + guitar + "/follow").header("Authorization", reader)).andExpect(status().isOk());
+    // Following a journey puts its latest entry on your Home; a journey with no entries adds nothing yet.
     mvc.perform(get("/v1/feed").header("Authorization", reader))
-        .andExpect(jsonPath("$.groups", hasSize(0)))
+        .andExpect(jsonPath("$.groups", hasSize(1)))
+        .andExpect(jsonPath("$.groups[0].newCount").value(1))
+        .andExpect(jsonPath("$.groups[0].entries[0].title").value("Before you followed"))
+        .andExpect(jsonPath("$.groups[0].journey.viewer.lastReadAt").isNotEmpty())
         .andExpect(jsonPath("$.followingCount").value(2));
+    mvc.perform(post("/v1/journeys/" + trip + "/read").header("Authorization", reader)).andExpect(status().isNoContent());
+    mvc.perform(get("/v1/feed").header("Authorization", reader)).andExpect(jsonPath("$.groups", hasSize(0)));
 
     entry(maya, trip, "Hoi An", 2);
     entry(maya, trip, "Mount Bromo", 0);

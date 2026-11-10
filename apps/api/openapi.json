@@ -910,9 +910,14 @@
           },
           "canAddEntry" : {
             "type" : "boolean"
+          },
+          "lastReadAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it."
           }
         },
-        "required" : [ "canAddEntry", "isFollowing", "isOwner" ]
+        "required" : [ "canAddEntry", "isFollowing", "isOwner", "lastReadAt" ]
       },
       "PersonResponse" : {
         "type" : "object",

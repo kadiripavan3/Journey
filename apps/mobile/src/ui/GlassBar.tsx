@@ -1,0 +1,18 @@
+import { BlurView } from 'expo-blur';
+import type { ReactNode } from 'react';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
+
+import { useTheme } from '@/theme';
+
+type Props = { children: ReactNode; radius: number; style?: StyleProp<ViewStyle>; contentStyle?: StyleProp<ViewStyle> };
+
+/** A frosted bar that floats over the page: what is underneath shows through, blurred, so the bar's own text stays readable. */
+export function GlassBar({ children, radius, style, contentStyle }: Props) {
+  const { colors, scheme, shadow } = useTheme();
+  return (
+    <View style={[{ borderRadius: radius, overflow: 'hidden', borderWidth: 1, borderColor: colors.glassLine, boxShadow: shadow.md }, style]}>
+      <BlurView intensity={50} tint={scheme} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+      <View style={[{ backgroundColor: colors.glassStrong }, contentStyle]}>{children}</View>
+    </View>
+  );
+}

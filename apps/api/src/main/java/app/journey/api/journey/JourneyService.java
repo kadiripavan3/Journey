@@ -25,7 +25,10 @@ public class JourneyService {
   /** Discover only shows journeys with a cover and at least this many entries. */
   static final int DISCOVER_MIN_ENTRIES = 3;
 
-  public record JourneyViewerResponse(boolean isOwner, boolean isFollowing, boolean canAddEntry) {}
+  public record JourneyViewerResponse(
+      boolean isOwner, boolean isFollowing, boolean canAddEntry,
+      @Schema(nullable = true, description = "When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it.")
+      Instant lastReadAt) {}
 
   public record JourneyResponse(
       UUID id, String title, String description, String category, String template,
@@ -223,7 +226,7 @@ public class JourneyService {
         media.urlFor(j.coverKey()), j.startDate(), j.targetDays(), latest, progressLabel(j, latest), j.entryCount(), j.followerCount(),
         j.lastEntryAt(), j.completedAt(), j.closingNote(),
         new PersonResponse(j.ownerId(), j.ownerUsername(), j.ownerName(), media.urlFor(j.ownerAvatarKey())),
-        new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer)));
+        new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.lastReadAt()));
   }
 
   private static int latestNumber(JourneyRow j) {

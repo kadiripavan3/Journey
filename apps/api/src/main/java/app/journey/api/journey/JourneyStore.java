@@ -18,9 +18,9 @@ public class JourneyStore {
   public record JourneyRow(
       UUID id, UUID ownerId, String title, String description, String category, String template, String labelStyle, String visibility, String status,
       List<String> tags, LocalDate startDate, Integer targetDays, Instant completedAt, String closingNote, Instant lastEntryAt, int entryCount,
-      int followerCount, Instant createdAt, String ownerUsername, String ownerName, String ownerAvatarKey, String coverKey, LocalDate latestOn, boolean following) {}
+      int followerCount, Instant createdAt, String ownerUsername, String ownerName, String ownerAvatarKey, String coverKey, LocalDate latestOn, boolean following, Instant lastReadAt) {}
 
-  /** Every journey with its owner, its cover (the chosen one, or else the first photo) and whether the viewer follows it. */
+  /** Every journey with its owner, its cover (the chosen one, or else the first photo), and whether and since when the viewer follows it. */
   private static final String SELECT =
       """
       select j.id, j.owner_id, j.title, j.description, j.category, j.template, j.label_style, j.visibility, j.status, j.tags,
@@ -33,9 +33,10 @@ public class JourneyStore {
                where e.journey_id = j.id and m.kind = 'photo'
                order by e.happened_at, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
-             exists (select 1 from journey_follows f where f.journey_id = j.id and f.user_id = :viewer) as following
+             vf.user_id is not null as following, vf.last_read_at
       from journeys j
       join profiles p on p.id = j.owner_id
+      left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
       left join media pa on pa.id = p.avatar_media_id
       left join media cm on cm.id = j.cover_media_id
       """;
@@ -47,7 +48,8 @@ public class JourneyStore {
           Sql.strings(rs, "tags"), rs.getObject("start_date", LocalDate.class), (Integer) rs.getObject("target_days"),
           Sql.instant(rs, "completed_at"), rs.getString("closing_note"), Sql.instant(rs, "last_entry_at"), rs.getInt("entry_count"),
           rs.getInt("follower_count"), Sql.instant(rs, "created_at"), rs.getString("owner_username"), rs.getString("owner_name"),
-          rs.getString("owner_avatar_key"), rs.getString("cover_key"), rs.getObject("latest_on", LocalDate.class), rs.getBoolean("following"));
+          rs.getString("owner_avatar_key"), rs.getString("cover_key"), rs.getObject("latest_on", LocalDate.class), rs.getBoolean("following"),
+          Sql.instant(rs, "last_read_at"));
 
   private final JdbcClient jdbc;
 
@@ -112,9 +114,18 @@ public class JourneyStore {
     jdbc.sql("delete from journeys where id = :id").param("id", id).update();
   }
 
-  /** True when the follow is new. */
+  /**
+   * True when the follow is new. A new follower starts with the journey's latest entry unread,
+   * so following a journey puts its newest chapter on their Home straight away.
+   */
   public boolean follow(UUID userId, UUID journeyId) {
-    int added = jdbc.sql("insert into journey_follows (user_id, journey_id) values (:user, :journey) on conflict do nothing")
+    int added = jdbc.sql(
+            """
+            insert into journey_follows (user_id, journey_id, last_read_at)
+            values (:user, :journey,
+                    coalesce((select max(e.created_at) - interval '1 millisecond' from entries e where e.journey_id = :journey and e.author_id <> :user), now()))
+            on conflict do nothing
+            """)
         .param("user", userId).param("journey", journeyId).update();
     if (added > 0) {
       jdbc.sql("update journeys set follower_count = follower_count + 1 where id = :id").param("id", journeyId).update();

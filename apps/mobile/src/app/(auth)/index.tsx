@@ -12,7 +12,6 @@ import { Txt } from '@/ui/Txt';
 /** 1.1 Welcome: one full-bleed photo and one promise. Always dark, so the photo leads. */
 export default function Welcome() {
   const router = useRouter();
-  const start = () => router.push('/sign-in');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#08080A' }}>
@@ -37,8 +36,8 @@ export default function Welcome() {
           <Txt color="onPhoto" style={{ fontSize: 16, lineHeight: 23, opacity: 0.84, marginBottom: 10 }}>
             Trips, challenges and everything in between, told day by day.
           </Txt>
-          <Button label="Get started" size="lg" block onPress={start} />
-          <Button label="I already have an account" size="lg" variant="glass" block onPress={start} />
+          <Button label="Get started" size="lg" block onPress={() => router.push('/how-it-works')} />
+          <Button label="I already have an account" size="lg" variant="glass" block onPress={() => router.push('/sign-in')} />
           <Txt variant="caption" color="onPhoto" center weight={500} style={{ fontSize: 11.5, opacity: 0.62, marginTop: 2 }}>
             By continuing you agree to the Terms and Privacy Policy.
           </Txt>

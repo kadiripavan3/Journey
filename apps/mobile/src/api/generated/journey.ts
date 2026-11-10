@@ -109,6 +109,11 @@ export interface JourneyViewerResponse {
   isOwner: boolean;
   isFollowing: boolean;
   canAddEntry: boolean;
+  /**
+     * When the viewer last read this journey. Entries created after it are new to them. Null unless they follow it.
+     * @nullable
+     */
+  lastReadAt: string | null;
 }
 
 export interface JourneyResponse {

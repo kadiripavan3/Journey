@@ -44,6 +44,13 @@ export const accentName = ${JSON.stringify(accentName)} as const;
 
 export const palettes = ${JSON.stringify({ light: palette('light'), dark: palette('dark') }, null, 2)} as const;
 
+/** Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. */
+export const shadows = ${JSON.stringify(
+  Object.fromEntries(['light', 'dark'].map((mode) => [mode, { md: tokens.shadow[mode].shadow, sm: tokens.shadow[mode]['shadow-sm'] }])),
+  null,
+  2,
+)} as const;
+
 export const radius = ${JSON.stringify(tokens.radius, null, 2)} as const;
 
 /** The spacing scale, in points. */

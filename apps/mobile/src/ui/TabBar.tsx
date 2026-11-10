@@ -1,11 +1,12 @@
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { BlurView } from 'expo-blur';
 import { Bell, Compass, House, Plus, User } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { fontFor, useTheme } from '@/theme';
 
+import { AddSheet } from './AddSheet';
 import { Txt } from './Txt';
 
 const ICONS: Record<string, (color: string) => ReactNode> = {
@@ -17,7 +18,8 @@ const ICONS: Record<string, (color: string) => ReactNode> = {
 
 /** The floating glass tab bar: Home, Discover, the + button, Activity and You. Content scrolls underneath it. */
 export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabBarProps) {
-  const { colors, scheme } = useTheme();
+  const { colors, scheme, shadow } = useTheme();
+  const [adding, setAdding] = useState(false);
 
   const tab = (routeIndex: number) => {
     const route = state.routes[routeIndex];
@@ -50,7 +52,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
           overflow: 'hidden',
           borderWidth: 1,
           borderColor: colors.glassLine,
-          boxShadow: scheme === 'dark' ? '0 12px 32px rgba(0, 0, 0, 0.55)' : '0 12px 32px rgba(20, 20, 32, 0.13)',
+          boxShadow: shadow.md,
         }}>
         <BlurView intensity={40} tint={scheme} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 6, backgroundColor: colors.glass }}>
@@ -59,6 +61,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add an entry or start a journey"
+            onPress={() => setAdding(true)}
             style={({ pressed }) => ({
               width: 54,
               height: 54,
@@ -74,6 +77,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
           {tab(3)}
         </View>
       </View>
+      <AddSheet visible={adding} onClose={() => setAdding(false)} />
     </View>
   );
 }

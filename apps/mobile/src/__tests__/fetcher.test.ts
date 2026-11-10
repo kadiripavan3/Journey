@@ -25,6 +25,11 @@ describe('apiFetch', () => {
     expect(new Headers(init.headers).get('Authorization')).toBe('Bearer token-1');
   });
 
+  it('returns lists as lists', async () => {
+    fetchMock.mockReturnValue(respond(200, [{ id: 'a' }, { id: 'b' }]));
+    await expect(apiFetch('/v1/me/journeys')).resolves.toEqual([{ id: 'a' }, { id: 'b' }]);
+  });
+
   it('returns nothing for an empty answer', async () => {
     fetchMock.mockReturnValue(respond(204));
     await expect(apiFetch('/local-auth/code', { method: 'POST' })).resolves.toBeUndefined();

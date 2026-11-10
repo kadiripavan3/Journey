@@ -40,20 +40,21 @@ export const apiFetch = async <T>(path: string, options?: RequestInit): Promise<
 
   if (!response.ok) {
     if (response.status === 401 && token) hooks.onSignedOut();
+    const problem = isRecord(body) ? body : {};
     throw new ApiError(
       response.status,
-      typeof body?.code === 'string' ? body.code : 'error',
-      typeof body?.detail === 'string' ? body.detail : 'Something went wrong on our side. Try again.',
-      isRecord(body?.fields) ? (body.fields as Record<string, string>) : {},
+      typeof problem.code === 'string' ? problem.code : 'error',
+      typeof problem.detail === 'string' ? problem.detail : 'Something went wrong on our side. Try again.',
+      isRecord(problem.fields) ? (problem.fields as Record<string, string>) : {},
     );
   }
   return body as T;
 };
 
-function safeJson(text: string): Record<string, unknown> | undefined {
+/** The response as JSON (an object or a list), or undefined when it isn't JSON. */
+function safeJson(text: string): unknown {
   try {
-    const value: unknown = JSON.parse(text);
-    return isRecord(value) ? value : undefined;
+    return JSON.parse(text);
   } catch {
     return undefined;
   }

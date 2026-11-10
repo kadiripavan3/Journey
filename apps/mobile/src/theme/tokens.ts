@@ -73,6 +73,18 @@ export const palettes = {
   }
 } as const;
 
+/** Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. */
+export const shadows = {
+  "light": {
+    "md": "0 12px 32px rgba(20, 20, 32, .13), 0 2px 6px rgba(20, 20, 32, .06)",
+    "sm": "0 4px 16px rgba(20, 20, 32, .08), 0 0 0 1px rgba(20, 20, 32, .04)"
+  },
+  "dark": {
+    "md": "0 12px 32px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .4)",
+    "sm": "0 0 0 1px rgba(255, 255, 255, .06)"
+  }
+} as const;
+
 export const radius = {
   "chip": 8,
   "thumb": 14,

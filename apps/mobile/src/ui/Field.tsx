@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { Platform, TextInput, type TextInputProps, type TextStyle, View } from 'react-native';
+import { Platform, Pressable, TextInput, type TextInputProps, type TextStyle, View } from 'react-native';
 
 import { fontFor, useTheme } from '@/theme';
 
@@ -89,5 +89,37 @@ export function Field({ label, error, note, noteTone = 'muted', prefix, accessor
         </Txt>
       ) : null}
     </View>
+  );
+}
+
+/** Looks like a field, but opens a picker when pressed: a date, a category. */
+export function FieldButton({ label, value, icon, onPress }: { label: string; value: string; icon?: ReactNode; onPress?: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}. Change`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: colors.lineStrong,
+        backgroundColor: colors.bg,
+        paddingHorizontal: 16,
+        paddingTop: 9,
+        paddingBottom: 10,
+        opacity: pressed ? 0.8 : 1,
+      })}>
+      <Txt variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
+        {label}
+      </Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 24 }}>
+        {icon}
+        <Txt numberOfLines={1} weight={600} style={{ flex: 1, fontSize: 16, lineHeight: 22 }}>
+          {value}
+        </Txt>
+      </View>
+    </Pressable>
   );
 }

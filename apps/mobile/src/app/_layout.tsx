@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/fetcher';
 import { useGetMe } from '@/api/generated/journey';
+import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
 import { useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
@@ -40,17 +41,20 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <App />
+          <OnboardingProvider>
+            <App />
+          </OnboardingProvider>
         </SessionProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );
 }
 
-/** Decides which part of the app a person sees: sign-in, creating a profile, or the app itself. */
+/** Decides which part of the app a person sees: sign-in, the sign-up steps, or the app itself. */
 function App() {
   const theme = useTheme();
   const session = useSession();
+  const onboarding = useOnboarding();
   const signedIn = session.status === 'signedIn';
   const me = useGetMe({ query: { enabled: signedIn } });
   const [fontsLoaded] = useFonts({
@@ -86,7 +90,8 @@ function App() {
     );
   }
 
-  const stage = !signedIn ? 'auth' : me.data?.profile ? 'app' : 'onboarding';
+  // A new person stays in the sign-up steps until the last one, even though their profile exists after the first.
+  const stage = !signedIn ? 'auth' : !me.data?.profile || onboarding.active ? 'onboarding' : 'app';
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="auto" />
@@ -98,7 +103,7 @@ function App() {
           <Stack.Screen name="(onboarding)" />
         </Stack.Protected>
         <Stack.Protected guard={stage === 'app'}>
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(app)" />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>
