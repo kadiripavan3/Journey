@@ -10,9 +10,25 @@ export const paged = {
   getNextPageParam: (last: { nextCursor: string | null }) => last.nextCursor ?? undefined,
 };
 
-/** Every row loaded so far, in order. Undefined until the first page has arrived. */
+/**
+ * Every row loaded so far, in order, each one once. Undefined until the first page has arrived.
+ *
+ * Pages are fetched one after the other, and the list can change in between: a row that moved down while
+ * the next page was on its way arrives a second time. It is shown where it was first, so a list never has
+ * the same row (and the same key) twice.
+ */
 export function rows<T>(data: InfiniteData<{ items: T[] }> | undefined): T[] | undefined {
-  return data?.pages.flatMap((page) => page.items);
+  if (!data) return undefined;
+  const seen = new Set<unknown>();
+  return data.pages
+    .flatMap((page) => page.items)
+    .filter((row) => {
+      const id = typeof row === 'object' && row !== null ? (row as { id?: unknown }).id : undefined;
+      if (id === undefined) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
 }
 
 /** What a `List` needs to load its next page when the person nears the end of what is there. */

@@ -32,9 +32,13 @@ export default function Uploads() {
   const failed = outbox.drafts.filter((draft) => draft.state === 'failed');
   const drafts = outbox.drafts.filter((draft) => draft.state === 'draft');
 
-  /** Opens a draft in the composer. One that is in line is taken out of it first, so it doesn't go up half changed. */
+  /**
+   * Opens a draft in the composer. One that is in line is taken out of it first, so it doesn't go up half
+   * changed; the composer is told where it was (`was`), so closing it without a change puts it back there.
+   */
   const open = (draft: Draft) => {
-    if (outbox.hold(draft.clientId)) router.push(`/journey/${draft.journeyId}/add?draft=${draft.clientId}`);
+    const was = draft.state;
+    if (outbox.hold(draft.clientId)) router.push(`/journey/${draft.journeyId}/add?draft=${draft.clientId}&was=${was}`);
   };
 
   return (
@@ -74,7 +78,8 @@ export default function Uploads() {
               onRemove={() => setRemoving(draft)}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5 }}>
                 <TriangleAlert size={14} color={colors.warn} style={{ marginTop: 2 }} />
-                <Txt variant="footnote" weight={700} numberOfLines={3} style={{ flex: 1, color: colors.warn }}>
+                {/* The mark carries the warning colour; the sentence is in the text colour, so it reads well on white. */}
+                <Txt variant="footnote" weight={700} numberOfLines={3} style={{ flex: 1 }}>
                   {draft.problem ?? "It couldn't be posted."}
                 </Txt>
               </View>
@@ -183,7 +188,7 @@ function Item({ draft, sub, label, onPress, trailing, onRemove, children }: { dr
       )}
       {trailing}
       {onRemove ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${draftTitle(draft)}`} hitSlop={10} onPress={onRemove}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${draftTitle(draft)}`} hitSlop={13} onPress={onRemove}>
           <Trash2 size={18} color={colors.muted} />
         </Pressable>
       ) : null}
