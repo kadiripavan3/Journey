@@ -21,6 +21,19 @@
     <springdoc.version>3.2.0</springdoc.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <!-- One version for every AWS client the API uses. -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>2.57.12</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -64,6 +77,11 @@
       <groupId>com.bucket4j</groupId>
       <artifactId>bucket4j_jdk17-postgresql</artifactId>
       <version>8.22.0</version>
+    </dependency>
+    <!-- Cloudflare R2 speaks the S3 language; this is the official S3 client. -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
     </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>

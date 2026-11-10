@@ -110,10 +110,12 @@ class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(AuthProperties auth) {
+        if (auth.isSupabase()) {
+            return SupabaseTokens.decoder(auth.supabase());
+        }
         if (!auth.isLocal()) {
             throw new IllegalStateException("journey.auth.mode is '" + auth.mode()
-                    + "'. Only 'local' exists so far: run with the 'local' profile. "
-                    + "Supabase sign-in is connected in a later step.");
+                    + "'. It must be 'supabase', or 'local' together with the 'local' profile.");
         }
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(localKey(auth))
                 .macAlgorithm(MacAlgorithm.HS256)
