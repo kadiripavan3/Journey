@@ -11,10 +11,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class InviteLinkStore {
 
-    public record LinkRow(UUID id, UUID journeyId, UUID createdBy, Instant createdAt, Instant expiresAt, UUID usedBy) {
+    public record LinkRow(
+            UUID id, UUID journeyId, UUID createdBy, Instant createdAt, Instant expiresAt, Instant usedAt) {
 
+        /** A link works once. It stays used when the person who used it later deletes their account. */
         public boolean usable(Instant now) {
-            return usedBy == null && expiresAt.isAfter(now);
+            return usedAt == null && expiresAt.isAfter(now);
         }
     }
 
@@ -26,7 +28,7 @@ public class InviteLinkStore {
 
     /** Makes the journey's link. An earlier link nobody used stops working: a journey has one open link at a time. */
     public void replace(UUID journeyId, UUID createdBy, String tokenHash, Instant expiresAt) {
-        jdbc.sql("delete from invite_links where journey_id = :journey and used_by is null")
+        jdbc.sql("delete from invite_links where journey_id = :journey and used_at is null")
                 .param("journey", journeyId)
                 .update();
         jdbc.sql(
@@ -40,7 +42,7 @@ public class InviteLinkStore {
 
     public Optional<LinkRow> find(String tokenHash) {
         return jdbc.sql(
-                        "select id, journey_id, created_by, created_at, expires_at, used_by from invite_links where token_hash = :hash")
+                        "select id, journey_id, created_by, created_at, expires_at, used_at from invite_links where token_hash = :hash")
                 .param("hash", tokenHash)
                 .query((rs, n) -> new LinkRow(
                         rs.getObject("id", UUID.class),
@@ -48,14 +50,14 @@ public class InviteLinkStore {
                         rs.getObject("created_by", UUID.class),
                         Sql.instant(rs, "created_at"),
                         Sql.instant(rs, "expires_at"),
-                        rs.getObject("used_by", UUID.class)))
+                        Sql.instant(rs, "used_at")))
                 .optional();
     }
 
     /** True for the one person who gets to use the link. A second person, or a second try, gets false. */
     public boolean use(UUID id, UUID userId) {
         return jdbc.sql(
-                                "update invite_links set used_by = :user, used_at = now() where id = :id and used_by is null and expires_at > now()")
+                                "update invite_links set used_by = :user, used_at = now() where id = :id and used_at is null and expires_at > now()")
                         .param("user", userId)
                         .param("id", id)
                         .update()

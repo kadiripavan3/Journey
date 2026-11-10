@@ -86,6 +86,7 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 
 ### Notifications, jobs and outside services
 
+- **A push says what stands when it is sent:** the entries the reader may see, the likes that are still there (each person once), a follow that wasn't undone. `OutboxStore.lockDue` counts them then; a new kind of push that counts something does the same.
 - **A push is never sent from a service.** The service publishes an event (`EntryAdded`, `EntryLiked`, `CommentAdded`, `JourneyFollowed`, …) and `notify/Outbox` writes a row to `notifications` in the same transaction. `PushDelivery` sends the rows that are due and checks switches, blocks and visibility at that moment. A new kind of push is a new `NotificationKind`, a listener in `Outbox`, its words and target in `PushWording`, the path in the app's `features/notifications/target.ts`, and a case in `PushTest`.
 - **Every outside service** has a port, a stand-in and a real adapter behind `journey.<thing>.mode` (`PushSender`, `EmailSender`). The stand-in is the default with the `local` profile and listed in `LocalModeGuard`. The real adapter is tried against a small server in the test itself (`OutsideServicesTest`), so it needs no account.
 - **A scheduled job** claims its `job_runs` row first (`Jobs.claim`), and its work is a public method the tests call directly: no job runs by itself in a test (`journey.jobs.enabled=false`) (`reminders.remindAt(...)`, `autoPause.pauseQuietJourneys()`, `trending.rescore()`). The trending rules are written out in `UpkeepStore` and in `docs/02-tech-stack.md`; change both together.
@@ -99,7 +100,9 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Reviewer actions** go through `ModerationService` and write a line to `review_log`. Nothing is removed automatically.
 - **Web pages the API serves** (share, invitation, legal, the reviewer's queue) are Thymeleaf templates styled by `static/share/page.css` and `pages.css`, with colours from the generated `tokens.css` only. A new page needs its path opened in `SecurityConfig`.
 - **Links people share** come from the API (`shareUrl` on a journey, `/v1/entries/{id}/share-link`, `/v1/me/share-link`, `/v1/journeys/{id}/invite-link`). In the app they are shown with `ShareSheet` (`features/sharing`) or `LinkBox`; `src/lib/links.ts` maps a shared web address to its screen.
-- **Age:** a new profile needs `ageConfirmed: true` (13 and over). Tests and scripts that make a profile through the API send it.
+- **Age:** a new profile needs `ageConfirmed: true` (13 and over). Tests and scripts that make a profile through the API send it. Until the profile exists nothing can be read or changed except what signing up needs (`auth/ProfileGuard`).
+- **A deleted account stays deleted:** its id is remembered (`deleted_accounts`), its sign-in is removed right after and tried again until it is gone, and a token that is still valid gets `account_deleted`. A reviewer deletes an account asked for on the web with the same code as the app's own "Delete account".
+- **Reports:** only what the reporter can see, one open report per person and thing, twenty a day (`AccountService.report`).
 - **The walk-through and reports:** a reported journey leaves Discover until a reviewer has looked, so the walk-through dismisses its own report in the queue. Steps that load the app afresh (opening an invite link) come last.
 
 ## App structure and standards

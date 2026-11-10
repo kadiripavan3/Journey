@@ -328,12 +328,17 @@ class RulesTest extends ApiTest {
         String entry = entry(maya, journey, "Hoi An", 0);
         String half = signIn("half@example.com");
 
-        // They can look around.
-        mvc.perform(get("/v1/feed").header("Authorization", half)).andExpect(status().isOk());
-        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", half))
-                .andExpect(status().isOk());
-        // Every change waits for the profile, and says so.
+        // Until the profile is there (and with it "I am 13 or older"), nothing can be read and nothing changed,
+        // and the answer says what to do.
         for (var change : java.util.List.of(
+                get("/v1/feed"),
+                get("/v1/discover"),
+                get("/v1/journeys/" + journey),
+                get("/v1/entries/" + entry),
+                get("/v1/profiles/maya"),
+                post("/v1/media/uploads")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"video\",\"contentType\":\"video/mp4\",\"durationSeconds\":5}"),
                 post("/v1/journeys")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Mine\",\"template\":\"trip\"}"),
@@ -349,7 +354,11 @@ class RulesTest extends ApiTest {
                     .andExpect(jsonPath("$.code").value("profile_required"))
                     .andExpect(jsonPath("$.detail").value("Finish setting up your profile first."));
         }
-        // The steps of signing up themselves work: a picture, then the profile. Leaving works too.
+        // The steps of signing up themselves work: who am I, is this name free, the lists to choose from, a
+        // picture, then the profile. Leaving works too.
+        mvc.perform(get("/v1/me").header("Authorization", half)).andExpect(status().isOk());
+        mvc.perform(get("/v1/usernames/half").header("Authorization", half)).andExpect(status().isOk());
+        mvc.perform(get("/v1/catalog").header("Authorization", half)).andExpect(status().isOk());
         String photo = uploadPhoto(half);
         mvc.perform(put("/v1/me/profile")
                         .header("Authorization", half)

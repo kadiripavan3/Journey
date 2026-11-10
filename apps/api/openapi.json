@@ -145,13 +145,13 @@
       },
       "put" : {
         "tags" : [ "Account and safety" ],
-        "summary" : "Change your settings. Send all of them.",
+        "summary" : "Change your settings. Send the ones that change; the rest stay as they are.",
         "operationId" : "saveSettings",
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/SettingsResponse"
+                "$ref" : "#/components/schemas/SettingsChange"
               }
             }
           },
@@ -1964,6 +1964,46 @@
         },
         "required" : [ "followsYou", "hasBlocked", "isFollowing", "isMe" ]
       },
+      "SettingsChange" : {
+        "type" : "object",
+        "properties" : {
+          "notifyNewEntries" : {
+            "type" : "boolean"
+          },
+          "notifyCompleted" : {
+            "type" : "boolean"
+          },
+          "notifyComments" : {
+            "type" : "boolean"
+          },
+          "notifyFollowers" : {
+            "type" : "boolean"
+          },
+          "notifyLikes" : {
+            "type" : "boolean"
+          },
+          "weeklyDigest" : {
+            "type" : "boolean"
+          },
+          "digestEmail" : {
+            "type" : "boolean"
+          },
+          "reminders" : {
+            "type" : "boolean"
+          },
+          "defaultVisibility" : {
+            "$ref" : "#/components/schemas/Visibility"
+          },
+          "reminderHour" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "Visibility" : {
+        "type" : "string",
+        "enum" : [ "public", "unlisted", "private" ]
+      },
       "SettingsResponse" : {
         "type" : "object",
         "properties" : {
@@ -2007,10 +2047,6 @@
           }
         },
         "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminderHour", "reminders", "weeklyDigest" ]
-      },
-      "Visibility" : {
-        "type" : "string",
-        "enum" : [ "public", "unlisted", "private" ]
       },
       "SaveProfileRequest" : {
         "type" : "object",

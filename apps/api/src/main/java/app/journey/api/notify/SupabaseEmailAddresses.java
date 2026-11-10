@@ -29,4 +29,12 @@ class SupabaseEmailAddresses implements EmailAddresses {
                 .query(String.class)
                 .optional();
     }
+
+    @Override
+    public Optional<UUID> whose(String email) {
+        return jdbc.sql("select id from auth.users where lower(email) = lower(:email) order by created_at limit 1")
+                .param("email", email.trim())
+                .query(UUID.class)
+                .optional();
+    }
 }

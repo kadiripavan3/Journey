@@ -54,6 +54,7 @@ public class InviteLinkService {
     private final JourneyService journeys;
     private final JourneyStore journeyStore;
     private final MemberStore members;
+    private final MemberService memberService;
     private final PeopleService people;
     private final MediaService media;
     private final PublicUrls urls;
@@ -63,6 +64,7 @@ public class InviteLinkService {
             JourneyService journeys,
             JourneyStore journeyStore,
             MemberStore members,
+            MemberService memberService,
             PeopleService people,
             MediaService media,
             PublicUrls urls) {
@@ -70,6 +72,7 @@ public class InviteLinkService {
         this.journeys = journeys;
         this.journeyStore = journeyStore;
         this.members = members;
+        this.memberService = memberService;
         this.people = people;
         this.media = media;
         this.urls = urls;
@@ -124,8 +127,7 @@ public class InviteLinkService {
             throw gone(); // someone else was a moment faster
         }
         members.join(journey.id(), me, link.createdBy());
-        journeyStore.setAuthor(me, journey.id());
-        return journeys.view(journeys.require(journey.id(), me), me);
+        return memberService.joined(journey.id(), me);
     }
 
     /** For the web page behind the link. Empty when the link has been used, has run out or never existed. */

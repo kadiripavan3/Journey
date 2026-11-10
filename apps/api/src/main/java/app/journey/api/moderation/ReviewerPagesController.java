@@ -71,9 +71,15 @@ class ReviewerPagesController {
         return BACK;
     }
 
-    @PostMapping("/deletion-requests/{id}/done")
-    String deletionDone(@PathVariable UUID id, Principal reviewer) {
-        moderation.deletionDone(id, reviewer.getName());
+    @PostMapping("/deletion-requests/{id}/delete")
+    String deleteRequestedAccount(@PathVariable UUID id, Principal reviewer) {
+        moderation.deleteRequestedAccount(id, reviewer.getName());
+        return BACK;
+    }
+
+    @PostMapping("/deletion-requests/{id}/close")
+    String closeDeletionRequest(@PathVariable UUID id, Principal reviewer) {
+        moderation.closeDeletionRequest(id, reviewer.getName());
         return BACK;
     }
 }

@@ -40,6 +40,14 @@ public class DeviceStore {
                 .update();
     }
 
+    /** Keeps a person's newest phones and forgets the rest. */
+    public void keepNewest(UUID userId, int howMany) {
+        jdbc.sql("""
+            delete from devices where user_id = :user and token not in (
+              select token from devices where user_id = :user order by seen_at desc, token limit :keep)
+            """).param("user", userId).param("keep", howMany).update();
+    }
+
     /** Forgets a device, if it is this person's. */
     public void forget(UUID userId, String token) {
         jdbc.sql("delete from devices where token = :token and user_id = :user")

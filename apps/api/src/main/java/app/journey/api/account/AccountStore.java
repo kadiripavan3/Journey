@@ -3,6 +3,7 @@ package app.journey.api.account;
 import app.journey.api.account.AccountService.SettingsResponse;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.journey.Visibility;
 import java.time.Instant;
@@ -130,20 +131,117 @@ public class AccountStore {
                 .update();
     }
 
-    public UUID report(UUID reporter, ReportTarget target, UUID targetId, ReportReason reason, String note) {
+    /** A person's id by their username, whoever has blocked whom, or empty when nobody has that name. */
+    public Optional<UUID> idOfUsername(String username) {
+        return jdbc.sql("select id from profiles where username = :username")
+                .param("username", username)
+                .query(UUID.class)
+                .optional();
+    }
+
+    /**
+     * True when the thing is there and the reporter may see it. A journey, an entry or a comment must be in a
+     * journey the reporter can open; a person can always be reported, also one who has blocked the reporter.
+     */
+    public boolean canReport(UUID reporter, ReportTarget target, UUID targetId) {
+        String visible = Rules.visibleJourney("j", ":me");
+        String sql = switch (target) {
+            case JOURNEY -> "select exists (select 1 from journeys j where j.id = :id and " + visible + ")";
+            case ENTRY ->
+                "select exists (select 1 from entries e join journeys j on j.id = e.journey_id where e.id = :id and "
+                        + visible + ")";
+            case COMMENT ->
+                "select exists (select 1 from comments c join entries e on e.id = c.entry_id"
+                        + " join journeys j on j.id = e.journey_id where c.id = :id and " + visible + ")";
+            case PROFILE -> "select exists (select 1 from profiles p where p.id = :id and p.id <> :me)";
+        };
+        return jdbc.sql(sql)
+                .param("id", targetId)
+                .param("me", reporter)
+                .query(Boolean.class)
+                .single();
+    }
+
+    public int reportsInTheLastDay(UUID reporter) {
         return jdbc.sql(
-                        "insert into reports (reporter_id, target_type, target_id, reason, note) values (:me, :type, :target, :reason, :note) returning id")
+                        "select count(*) from reports where reporter_id = :me and created_at > now() - interval '24 hours'")
+                .param("me", reporter)
+                .query(Integer.class)
+                .single();
+    }
+
+    /**
+     * Files a report. Someone who already has an open report about the same thing gets that one back: saying
+     * it twice (or tapping twice) doesn't make two.
+     */
+    public UUID report(UUID reporter, ReportTarget target, UUID targetId, ReportReason reason, String note) {
+        return jdbc.sql("""
+            insert into reports (reporter_id, target_type, target_id, reason, note) values (:me, :type, :target, :reason, :note)
+            on conflict (reporter_id, target_type, target_id) where status = 'open' do nothing
+            returning id
+            """)
                 .param("me", reporter)
                 .param("type", target.code())
                 .param("target", targetId)
                 .param("reason", reason.code())
                 .param("note", note)
                 .query(UUID.class)
-                .single();
+                .optional()
+                .orElseGet(() -> jdbc.sql(
+                                "select id from reports where reporter_id = :me and target_type = :type and target_id = :target and status = 'open'")
+                        .param("me", reporter)
+                        .param("type", target.code())
+                        .param("target", targetId)
+                        .query(UUID.class)
+                        .single());
     }
 
     /** Removes the profile. The database removes everything that hangs off it and corrects every count. */
     public void deleteProfile(UUID userId) {
         jdbc.sql("delete from profiles where id = :me").param("me", userId).update();
+    }
+
+    // ---- accounts that were deleted ----
+
+    /** Writes down that this account is gone, in the transaction that deletes it. Its sign-in is removed next. */
+    public void rememberDeleted(UUID userId) {
+        jdbc.sql("insert into deleted_accounts (id) values (:id) on conflict do nothing")
+                .param("id", userId)
+                .update();
+    }
+
+    public boolean wasDeleted(UUID userId) {
+        return jdbc.sql("select exists (select 1 from deleted_accounts where id = :id)")
+                .param("id", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    /**
+     * Accounts whose sign-in is still to be removed. Each is put off as it is taken, a little longer each
+     * time, so a sign-in service that is down is asked again later and not by two copies of the API at once.
+     */
+    public List<UUID> takeSignInsToRemove(int limit) {
+        return jdbc.sql("""
+            update deleted_accounts set attempts = attempts + 1,
+              next_try_at = now() + make_interval(mins => least(2 * power(2, attempts)::int, 720))
+            where id in (select id from deleted_accounts where sign_in_removed_at is null and next_try_at <= now()
+                         order by next_try_at limit :limit for update skip locked)
+            returning id
+            """).param("limit", limit).query(UUID.class).list();
+    }
+
+    public void signInRemoved(UUID userId) {
+        jdbc.sql("update deleted_accounts set sign_in_removed_at = now() where id = :id")
+                .param("id", userId)
+                .update();
+    }
+
+    /** Long after the last token for a deleted account stopped working, the note about it is of no use. */
+    public int forgetDeletedBefore(int days) {
+        return jdbc.sql(
+                        "delete from deleted_accounts where sign_in_removed_at is not null and deleted_at < now() - make_interval(days => :days)")
+                .param("days", days)
+                .update();
     }
 }

@@ -134,11 +134,23 @@ public class PushDelivery {
         List<UUID> dropped = new ArrayList<>();
         for (Due one : due) {
             List<String> phones = tokens.getOrDefault(one.userId(), List.of());
-            if (!one.deliverable() || phones.isEmpty()) {
+            if (!one.deliverable() || one.kind() == null || phones.isEmpty()) {
                 dropped.add(one.id());
                 continue;
             }
-            Wording words = wording.of(one);
+            Wording words;
+            try {
+                words = wording.of(one);
+            } catch (RuntimeException unwordable) {
+                // One message that can't be put into words must not hold up every other one, every half minute.
+                log.error(
+                        "Push {} ({}) couldn't be worded and is dropped: {}",
+                        one.id(),
+                        one.kind(),
+                        unwordable.toString());
+                dropped.add(one.id());
+                continue;
+            }
             ready.add(new Ready(
                     one.id(),
                     phones.stream()

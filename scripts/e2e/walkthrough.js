@@ -634,7 +634,7 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   await step('settings', async () => {
     await R('tab', { name: 'You' }).click();
     await R('button', { name: 'Settings' }).click();
-    await R('button', { name: /^Notifications\. 7 of 8 on/ }).waitFor();
+    await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
     await shot('settings');
     await opened(() => R('button', { name: 'Help and contact' }).click(), 'Contact', 'contact-page');
     await opened(() => R('button', { name: 'Community guidelines' }).click(), 'Community guidelines', 'guidelines-page');
@@ -653,7 +653,7 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: '8:00 pm', exact: true }).click();
     await R('button', { name: /^Challenge check-in time\. 8:00 pm/ }).waitFor();
     await R('button', { name: 'Back' }).click();
-    await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
+    await R('button', { name: /^Notifications\. 5 of 8 on/ }).waitFor();
     await R('button', { name: /^Privacy and safety/ }).click();
     await R('button', { name: /^Start them as/ }).click();
     await T('Only you.').click();

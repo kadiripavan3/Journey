@@ -2,6 +2,7 @@ package app.journey.api.account;
 
 import app.journey.api.account.AccountService.BlockedPersonResponse;
 import app.journey.api.account.AccountService.ReportResponse;
+import app.journey.api.account.AccountService.SettingsChange;
 import app.journey.api.account.AccountService.SettingsResponse;
 import app.journey.api.auth.Me;
 import app.journey.api.common.Page;
@@ -54,9 +55,11 @@ class AccountController {
     }
 
     @PutMapping("/me/settings")
-    @Operation(operationId = "saveSettings", summary = "Change your settings. Send all of them.")
-    SettingsResponse save(@Me UUID me, @RequestBody SettingsResponse settings) {
-        return account.save(me, settings);
+    @Operation(
+            operationId = "saveSettings",
+            summary = "Change your settings. Send the ones that change; the rest stay as they are.")
+    SettingsResponse save(@Me UUID me, @RequestBody SettingsChange change) {
+        return account.save(me, change);
     }
 
     @DeleteMapping("/me")

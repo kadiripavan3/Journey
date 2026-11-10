@@ -175,10 +175,33 @@ class AccountTest extends ApiTest {
                         .query(Integer.class)
                         .single())
                 .isZero();
-        // The old token still says who it was, but there is no profile behind it; the email and username are free
-        // again.
+        // The old token is still good for a while, but the account behind it is gone and stays gone: it can't
+        // read, and it can't make a new profile. The email and the username are free for a fresh start.
         mvc.perform(get("/v1/me").header("Authorization", nora))
-                .andExpect(jsonPath("$.profile").isEmpty());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("account_deleted"))
+                .andExpect(jsonPath("$.detail").value("This account was deleted. Sign in again to start a new one."));
+        mvc.perform(put("/v1/me/profile")
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ageConfirmed\":true,\"displayName\":\"Ghost\",\"username\":\"ghost\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/v1/media/uploads")
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"photo\",\"contentType\":\"image/jpeg\"}"))
+                .andExpect(status().isUnauthorized());
+        // The sign-in went with the account.
+        org.assertj.core.api.Assertions.assertThat(
+                        jdbc.sql("select count(*) from local_users where email = 'nora@example.com'")
+                                .query(Integer.class)
+                                .single())
+                .isZero();
+        org.assertj.core.api.Assertions.assertThat(
+                        jdbc.sql("select sign_in_removed_at is not null from deleted_accounts")
+                                .query(Boolean.class)
+                                .single())
+                .isTrue();
         person("nora");
     }
 

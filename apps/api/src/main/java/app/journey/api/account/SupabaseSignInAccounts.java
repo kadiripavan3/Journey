@@ -1,6 +1,7 @@
 package app.journey.api.account;
 
 import app.journey.api.auth.AuthProperties;
+import app.journey.api.common.Http;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ class SupabaseSignInAccounts implements SignInAccounts {
             throw new IllegalStateException(
                     "Deleting an account needs the Supabase project's secret key. Set SUPABASE_SERVICE_KEY (see docs/08-connect-services.md).");
         }
-        this.supabase = RestClient.builder()
+        this.supabase = Http.client()
                 .baseUrl(project.url().trim().replaceAll("/+$", "") + "/auth/v1")
                 .defaultHeader("apikey", project.serviceKey())
                 .defaultHeader("Authorization", "Bearer " + project.serviceKey())

@@ -1,5 +1,6 @@
 package app.journey.api.moderation;
 
+import app.journey.api.account.AccountService;
 import app.journey.api.account.ReportTarget;
 import app.journey.api.comment.CommentAdded;
 import app.journey.api.common.ApiProblem;
@@ -9,8 +10,10 @@ import app.journey.api.moderation.ModerationStore.DeletionRequestRow;
 import app.journey.api.moderation.ModerationStore.HeldCommentRow;
 import app.journey.api.moderation.ModerationStore.LogRow;
 import app.journey.api.moderation.ModerationStore.ReportRow;
+import app.journey.api.notify.EmailAddresses;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -47,11 +50,20 @@ public class ModerationService {
 
     private final ModerationStore store;
     private final MediaService media;
+    private final AccountService accounts;
+    private final EmailAddresses emails;
     private final ApplicationEventPublisher events;
 
-    ModerationService(ModerationStore store, MediaService media, ApplicationEventPublisher events) {
+    ModerationService(
+            ModerationStore store,
+            MediaService media,
+            AccountService accounts,
+            EmailAddresses emails,
+            ApplicationEventPublisher events) {
         this.store = store;
         this.media = media;
+        this.accounts = accounts;
+        this.emails = emails;
         this.events = events;
     }
 
@@ -174,11 +186,48 @@ public class ModerationService {
         store.addDeletionRequest(address, cut(username, 40), cut(note, 500));
     }
 
-    @Transactional
-    public void deletionDone(UUID requestId, String reviewer) {
-        if (store.markDeletionDone(requestId, reviewer)) {
-            store.log(reviewer, "handled a deletion request", "deletion_request", requestId.toString(), "");
+    /**
+     * The owner asked on the web, and the reviewer has made sure it is really them: the account that signs in
+     * with that address is deleted, exactly as "Delete account" in the app does it. If nobody signs in with
+     * that address, the request is closed and the log says so.
+     */
+    public void deleteRequestedAccount(UUID requestId, String reviewer) {
+        DeletionRequestRow request = store.openDeletionRequest(requestId)
+                .orElseThrow(() -> new ApiProblem(
+                        HttpStatus.NOT_FOUND, "request_closed", "That request has already been handled."));
+        Optional<UUID> who = emails.whose(request.email());
+        who.ifPresent(accounts::delete);
+        if (store.closeDeletionRequest(requestId, reviewer, who.isPresent() ? "deleted" : "no_account")) {
+            store.log(
+                    reviewer,
+                    who.isPresent()
+                            ? "deleted an account at its owner's request"
+                            : "closed a deletion request: nobody signs in with that address",
+                    "deletion_request",
+                    requestId.toString(),
+                    "");
         }
+    }
+
+    /** Closed without deleting anything: the person didn't answer, or it wasn't them. */
+    @Transactional
+    public void closeDeletionRequest(UUID requestId, String reviewer) {
+        if (store.closeDeletionRequest(requestId, reviewer, "closed")) {
+            store.log(
+                    reviewer,
+                    "closed a deletion request without deleting",
+                    "deletion_request",
+                    requestId.toString(),
+                    "");
+        }
+    }
+
+    /**
+     * Once a night: closed deletion requests go after a month; the record of what reviewers did, and reports
+     * that were decided, after half a year.
+     */
+    public int forgetOldRecords() {
+        return store.forgetOldRecords(30, 180);
     }
 
     private static String cut(String text, int max) {

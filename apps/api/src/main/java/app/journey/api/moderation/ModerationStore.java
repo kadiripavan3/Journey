@@ -215,13 +215,50 @@ public class ModerationStore {
                 .list();
     }
 
-    public boolean markDeletionDone(UUID id, String reviewer) {
+    public Optional<DeletionRequestRow> openDeletionRequest(UUID id) {
         return jdbc.sql(
-                                "update deletion_requests set status = 'done', done_by = :reviewer, done_at = now() where id = :id and status = 'open'")
+                        "select id, email, username, note, created_at from deletion_requests where status = 'open' and id = :id")
+                .param("id", id)
+                .query((rs, n) -> new DeletionRequestRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("email"),
+                        rs.getString("username"),
+                        rs.getString("note"),
+                        Sql.instant(rs, "created_at")))
+                .optional();
+    }
+
+    /**
+     * Closes a request, noting what became of it. The address and the note are not kept past this point: a
+     * closed request says that something was asked and what was done, not by whom.
+     */
+    public boolean closeDeletionRequest(UUID id, String reviewer, String outcome) {
+        return jdbc.sql("""
+            update deletion_requests set status = 'done', done_by = :reviewer, done_at = now(), outcome = :outcome,
+              email = '', username = '', note = ''
+            where id = :id and status = 'open'
+            """)
                         .param("reviewer", reviewer)
+                        .param("outcome", outcome)
                         .param("id", id)
                         .update()
                 > 0;
+    }
+
+    /** What reviewers needed to do their work is not kept for ever. Returns how many rows went. */
+    public int forgetOldRecords(int requestDays, int logDays) {
+        int gone = jdbc.sql(
+                        "delete from deletion_requests where status = 'done' and done_at < now() - make_interval(days => :days)")
+                .param("days", requestDays)
+                .update();
+        gone += jdbc.sql("delete from review_log where created_at < now() - make_interval(days => :days)")
+                .param("days", logDays)
+                .update();
+        gone += jdbc.sql(
+                        "delete from reports where status <> 'open' and reviewed_at < now() - make_interval(days => :days)")
+                .param("days", logDays)
+                .update();
+        return gone;
     }
 
     // ---- the record of what reviewers did ----

@@ -139,6 +139,10 @@ public class MediaService {
         if (clip && durationSeconds != null && (durationSeconds < 0 || durationSeconds > MAX_CLIP_SECONDS)) {
             throw ApiProblem.badRequest("clip_too_long", "Keep clips to " + MAX_CLIP_SECONDS + " seconds or less.");
         }
+        if (clip && !store.hasProfile(ownerId)) {
+            // Before the profile exists, the only upload there is a reason for is a profile picture.
+            throw ApiProblem.conflict("profile_required", "Finish setting up your profile first.");
+        }
         MediaStore.Recent recent = store.recentOf(ownerId);
         if (recent.unfinished() >= MAX_UNFINISHED
                 || (clip ? recent.clipsToday() >= MAX_CLIPS_A_DAY : recent.photosToday() >= MAX_PHOTOS_A_DAY)) {

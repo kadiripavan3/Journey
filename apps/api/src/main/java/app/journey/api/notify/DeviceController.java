@@ -8,8 +8,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.DateTimeException;
-import java.time.ZoneId;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,9 +38,9 @@ class DeviceController {
                             "Where the device is, such as Europe/Berlin, so reminders arrive at the right hour. UTC when left out or unknown.")
             String timeZone) {}
 
-    private final DeviceStore devices;
+    private final DeviceService devices;
 
-    DeviceController(DeviceStore devices) {
+    DeviceController(DeviceService devices) {
         this.devices = devices;
     }
 
@@ -52,25 +50,13 @@ class DeviceController {
             operationId = "registerDevice",
             summary = "This device may get pushes for the signed-in person. Sending it again just refreshes it.")
     void register(@Me UUID me, @Valid @RequestBody RegisterDeviceRequest request) {
-        devices.register(me, request.token().trim(), request.platform(), zone(request.timeZone()));
+        devices.register(me, request.token(), request.platform(), request.timeZone());
     }
 
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(operationId = "forgetDevice", summary = "Stop pushing to this device, for example when signing out")
     void forget(@Me UUID me, @RequestParam String token) {
-        devices.forget(me, token.trim());
-    }
-
-    /** A time zone the API knows, or UTC. A wrong one must never stop a device from registering. */
-    private static String zone(String timeZone) {
-        if (timeZone == null || timeZone.isBlank()) {
-            return "UTC";
-        }
-        try {
-            return ZoneId.of(timeZone.trim()).getId();
-        } catch (DateTimeException unknown) {
-            return "UTC";
-        }
+        devices.forget(me, token);
     }
 }

@@ -6,6 +6,7 @@ import app.journey.api.entry.EntryStore.EntryMediaRow;
 import app.journey.api.entry.EntryStore.EntryRow;
 import app.journey.api.journey.JourneyService;
 import app.journey.api.journey.JourneyStatus;
+import app.journey.api.journey.JourneyStore;
 import app.journey.api.journey.JourneyStore.JourneyRow;
 import app.journey.api.journey.LabelStyle;
 import app.journey.api.media.MediaKind;
@@ -82,6 +83,7 @@ public class EntryService {
 
     private final EntryStore entries;
     private final JourneyService journeys;
+    private final JourneyStore journeyStore;
     private final MediaService media;
     private final PeopleService people;
     private final ApplicationEventPublisher events;
@@ -89,11 +91,13 @@ public class EntryService {
     EntryService(
             EntryStore entries,
             JourneyService journeys,
+            JourneyStore journeyStore,
             MediaService media,
             PeopleService people,
             ApplicationEventPublisher events) {
         this.entries = entries;
         this.journeys = journeys;
+        this.journeyStore = journeyStore;
         this.media = media;
         this.people = people;
         this.events = events;
@@ -290,6 +294,9 @@ public class EntryService {
                 return get(existing.get(), author);
             }
         }
+        // Held until this is saved, so the journey can't be completed (or the author removed) between the check and the
+        // entry.
+        journeyStore.lock(journeyId);
         JourneyRow journey = journeys.require(journeyId, author);
         if (!journeys.canAddEntry(journey, author)) {
             throw new ApiProblem(
@@ -338,6 +345,14 @@ public class EntryService {
                     HttpStatus.FORBIDDEN, "not_yours", "Only the person who wrote an entry can change it.");
         }
         JourneyRow journey = journeys.require(entry.journeyId(), viewer);
+        if (!journey.ownerId().equals(viewer) && !journey.member()) {
+            // A friend who has left, or was taken off, the journey. What they wrote stays theirs to delete, not to
+            // rewrite.
+            throw new ApiProblem(
+                    HttpStatus.FORBIDDEN,
+                    "not_on_journey",
+                    "You no longer write in this journey, so its entries can't be changed. You can still delete yours.");
+        }
         Content content = check(
                 journey,
                 viewer,
@@ -353,12 +368,21 @@ public class EntryService {
         return get(id, viewer);
     }
 
+    /**
+     * The author can always delete what they wrote, also in a journey they can no longer open (it went
+     * private, or they were taken off it). The journey's owner can delete any entry in it.
+     */
     @Transactional
     public void delete(UUID id, UUID viewer) {
-        EntryRow entry = require(id, viewer);
-        if (!entry.authorId().equals(viewer) && !entry.journeyOwnerId().equals(viewer)) {
-            throw new ApiProblem(
-                    HttpStatus.FORBIDDEN, "not_yours", "Only the author or the journey's owner can delete an entry.");
+        EntryRow entry = entries.find(id, viewer).orElseThrow(EntryService::notFound);
+        if (!entry.authorId().equals(viewer)) {
+            require(id, viewer);
+            if (!entry.journeyOwnerId().equals(viewer)) {
+                throw new ApiProblem(
+                        HttpStatus.FORBIDDEN,
+                        "not_yours",
+                        "Only the author or the journey's owner can delete an entry.");
+            }
         }
         entries.delete(id);
     }

@@ -24,4 +24,12 @@ class LocalEmailAddresses implements EmailAddresses {
                 .query(String.class)
                 .optional();
     }
+
+    @Override
+    public Optional<UUID> whose(String email) {
+        return jdbc.sql("select id from local_users where lower(email) = lower(:email)")
+                .param("email", email.trim())
+                .query(UUID.class)
+                .optional();
+    }
 }

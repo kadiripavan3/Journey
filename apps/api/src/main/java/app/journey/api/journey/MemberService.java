@@ -190,6 +190,14 @@ public class MemberService {
         if (!members.accept(journeyId, me)) {
             throw new ApiProblem(HttpStatus.NOT_FOUND, "no_invitation", "This invitation isn't there any more.");
         }
+        return joined(journeyId, me);
+    }
+
+    /**
+     * What happens when a friend has joined, whichever way they came (an invitation, or an invite link): they
+     * become an author, so the others' entries reach their Home, and the journey's owner hears about it.
+     */
+    JourneyResponse joined(UUID journeyId, UUID me) {
         journeyStore.setAuthor(me, journeyId);
         events.publishEvent(new FriendJoined(journeyId, me));
         return journeys.view(journeys.require(journeyId, me), me);

@@ -138,16 +138,84 @@ class WebPagesTest extends ApiTest {
         String id = jdbc.sql("select id::text from deletion_requests")
                 .query(String.class)
                 .single();
-        mvc.perform(post("/admin/deletion-requests/" + id + "/done")
+        // Nobody answered the reviewer's email: the request is closed and nothing is deleted.
+        mvc.perform(post("/admin/deletion-requests/" + id + "/close")
                         .with(httpBasic("ada", "review"))
                         .with(csrf()))
                 .andExpect(redirectedUrl("/admin"));
-        assertThat(jdbc.sql("select status || ' by ' || done_by from deletion_requests")
+        // A closed request says that something was asked and what was done, not by whom.
+        assertThat(jdbc.sql(
+                                "select status || ' by ' || done_by || ': ' || outcome || '/' || email || '/' || note from deletion_requests")
                         .query(String.class)
                         .single())
-                .isEqualTo("done by ada");
+                .isEqualTo("done by ada: closed//");
         mvc.perform(get("/admin").with(httpBasic("ada", "review")))
                 .andExpect(content().string(containsString("No requests are waiting.")))
-                .andExpect(content().string(containsString("ada handled a deletion request")));
+                .andExpect(content().string(containsString("ada closed a deletion request without deleting")));
+    }
+
+    @Test
+    void aReviewerDeletesTheAccountSomeoneAskedOnTheWebToDelete() throws Exception {
+        String nora = person("nora");
+        String maya = person("maya");
+        String journey = journey(nora, "Iceland ring road", "public", 4);
+        String photo = uploadPhoto(nora);
+        mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Skogafoss\",\"mediaIds\":[\"%s\"]}".formatted(photo)))
+                .andExpect(status().isCreated());
+        // Two requests: one from Nora (who signs in with this address), one with an address nobody uses.
+        mvc.perform(post("/delete-account").param("email", "Nora@Example.com")).andExpect(status().isOk());
+        mvc.perform(post("/delete-account").param("email", "nobody@example.com"))
+                .andExpect(status().isOk());
+        String noras = jdbc.sql("select id::text from deletion_requests where lower(email) = 'nora@example.com'")
+                .query(String.class)
+                .single();
+        String nobodys = jdbc.sql("select id::text from deletion_requests where email = 'nobody@example.com'")
+                .query(String.class)
+                .single();
+
+        mvc.perform(post("/admin/deletion-requests/" + noras + "/delete")
+                        .with(httpBasic("ada", "review"))
+                        .with(csrf()))
+                .andExpect(redirectedUrl("/admin"));
+
+        // Exactly what "Delete account" in the app does: profile, journeys, photos and the sign-in.
+        mvc.perform(get("/v1/profiles/nora").header("Authorization", maya)).andExpect(status().isNotFound());
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", maya))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.sql("select count(*) from media").query(Integer.class).single())
+                .isZero();
+        assertThat(jdbc.sql("select count(*) from removed_files")
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(jdbc.sql("select count(*) from local_users where email = 'nora@example.com'")
+                        .query(Integer.class)
+                        .single())
+                .isZero();
+        mvc.perform(get("/v1/me").header("Authorization", nora)).andExpect(status().isUnauthorized());
+
+        mvc.perform(post("/admin/deletion-requests/" + nobodys + "/delete")
+                        .with(httpBasic("ada", "review"))
+                        .with(csrf()))
+                .andExpect(redirectedUrl("/admin"));
+        assertThat(jdbc.sql("select outcome from deletion_requests order by outcome")
+                        .query(String.class)
+                        .list())
+                .containsExactly("deleted", "no_account");
+        mvc.perform(get("/admin").with(httpBasic("ada", "review")))
+                .andExpect(content().string(containsString("ada deleted an account at its owner&#39;s request")))
+                .andExpect(content().string(containsString("nobody signs in with that address")));
+        // Pressing it again on a request that is closed changes nothing.
+        mvc.perform(post("/admin/deletion-requests/" + noras + "/delete")
+                        .with(httpBasic("ada", "review"))
+                        .with(csrf()))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.sql("select count(*) from profiles")
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(1);
     }
 }

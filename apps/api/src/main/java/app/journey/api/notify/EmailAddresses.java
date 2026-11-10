@@ -11,4 +11,7 @@ public interface EmailAddresses {
 
     /** The person's email address, or empty when the sign-in service doesn't know one. */
     Optional<String> of(UUID userId);
+
+    /** Who signs in with this address, or empty when nobody does. Capital letters don't matter. */
+    Optional<UUID> whose(String email);
 }

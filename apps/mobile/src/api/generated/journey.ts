@@ -65,6 +65,19 @@ export const Visibility = {
   private: 'private',
 } as const;
 
+export interface SettingsChange {
+  notifyNewEntries?: boolean;
+  notifyCompleted?: boolean;
+  notifyComments?: boolean;
+  notifyFollowers?: boolean;
+  notifyLikes?: boolean;
+  weeklyDigest?: boolean;
+  digestEmail?: boolean;
+  reminders?: boolean;
+  defaultVisibility?: Visibility;
+  reminderHour?: number;
+}
+
 export interface SettingsResponse {
   /** New entries in journeys you follow, grouped per journey */
   notifyNewEntries: boolean;
@@ -1428,9 +1441,9 @@ export const getSaveSettingsUrl = () => {
 }
 
 /**
- * @summary Change your settings. Send all of them.
+ * @summary Change your settings. Send the ones that change; the rest stay as they are.
  */
-export const saveSettings = async (settingsResponse: SettingsResponse, options?: Parameters<typeof apiFetch>[1]): Promise<SettingsResponse> => {
+export const saveSettings = async (settingsChange: SettingsChange, options?: Parameters<typeof apiFetch>[1]): Promise<SettingsResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1451,7 +1464,7 @@ return apiFetch<SettingsResponse>(getSaveSettingsUrl(),
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(settingsResponse)
+    body: JSON.stringify(settingsChange)
   }
 );}
 
@@ -1489,11 +1502,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SaveSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof saveSettings>>>
-    export type SaveSettingsMutationBody = SettingsResponse
+    export type SaveSettingsMutationBody = SettingsChange
     export type SaveSettingsMutationError = unknown
-    export type SaveSettingsMutationVariables = {data: SettingsResponse}
+    export type SaveSettingsMutationVariables = {data: SettingsChange}
 
-    /** @summary Change your settings. Send all of them. */
+    /** @summary Change your settings. Send the ones that change; the rest stay as they are. */
 export const useSaveSettings = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSettings>>, TError,SaveSettingsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<

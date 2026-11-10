@@ -63,6 +63,13 @@ public class MediaStore {
                 .update();
     }
 
+    public boolean hasProfile(UUID userId) {
+        return jdbc.sql("select exists (select 1 from profiles where id = :id)")
+                .param("id", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
     /** What a person has on the way and has sent lately, for the ceilings on uploads. */
     public record Recent(int unfinished, int photosToday, int clipsToday) {}
 

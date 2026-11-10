@@ -69,9 +69,10 @@
       <p class="eyebrow" th:text="${'Asked on the web · ' + @reviewTimes.utc(d.createdAt)}">Asked</p>
       <p class="what" th:text="${d.email + (d.username != '' ? ' · @' + d.username : '')}">email</p>
       <p class="meta" th:if="${d.note != ''}" th:text="${'They wrote: “' + d.note + '”'}">Note</p>
-      <p class="meta">Check that the request really comes from the account's owner (write to the address and wait for a reply), delete the account, then mark this done.</p>
+      <p class="meta">First make sure the request really comes from the account's owner: write to the address and wait for a reply. Deleting removes the profile, journeys, entries, photos and the sign-in for good; it can't be undone.</p>
       <div class="actions">
-        <form method="post" th:action="@{'/admin/deletion-requests/' + ${d.id} + '/done'}"><button class="btn line" type="submit">Done</button></form>
+        <form method="post" th:action="@{'/admin/deletion-requests/' + ${d.id} + '/close'}"><button class="btn line" type="submit">Close without deleting</button></form>
+        <form method="post" th:action="@{'/admin/deletion-requests/' + ${d.id} + '/delete'}"><button class="btn danger" type="submit">They confirmed: delete the account</button></form>
       </div>
     </section>
 
