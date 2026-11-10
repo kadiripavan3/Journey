@@ -61,23 +61,12 @@ class LocalMediaController {
         if (bytes == 0) {
             throw ApiProblem.badRequest("empty_file", "The file arrived empty. Try again.");
         }
-        int[] size = clip ? null : LocalDiskStorage.dimensions(storage.resolve(row.storageKey()));
-        if (size != null && (long) size[0] * size[1] > LocalDiskStorage.MAX_PIXELS) {
-            // A small file can still unpack into an enormous picture; nothing good comes of keeping it.
-            storage.delete(row.storageKey());
-            throw new ApiProblem(
-                    HttpStatus.CONTENT_TOO_LARGE, "too_large", "That photo is too large. Try a smaller one.");
-        }
-        media.markReady(id, bytes, size == null ? null : size[0], size == null ? null : size[1]);
+        // The file is here. The app now tells the API the upload is done, and the API checks it and makes it ready.
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/media/{year}/{month}/{file}")
-    ResponseEntity<Resource> serve(
-            @PathVariable String year,
-            @PathVariable String month,
-            @PathVariable String file,
-            @RequestParam(name = "w", required = false) Integer width) {
+    ResponseEntity<Resource> serve(@PathVariable String year, @PathVariable String month, @PathVariable String file) {
         String key = year + "/" + month + "/" + file;
         Path path;
         try {
@@ -88,10 +77,6 @@ class LocalMediaController {
         if (!Files.isRegularFile(path)) {
             return ResponseEntity.notFound().build();
         }
-        // Only the sizes the API itself hands out; any other number gets the original.
-        path = MediaSize.ofWidth(width)
-                .map(size -> storage.resolveSized(key, size))
-                .orElse(path);
         Resource resource = new FileSystemResource(path);
         return ResponseEntity.ok()
                 .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))

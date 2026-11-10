@@ -70,8 +70,22 @@ public class MediaStore {
                 .list();
     }
 
+    /** Ready photos that were uploaded before smaller versions were made at upload, oldest first. */
+    public List<StoredFile> withoutSizes(int limit) {
+        return jdbc.sql(
+                        "select id, storage_key from media where kind = 'photo' and status = 'ready' and not sized order by created_at limit :limit")
+                .param("limit", limit)
+                .query((rs, n) -> new StoredFile(rs.getObject("id", UUID.class), rs.getString("storage_key")))
+                .list();
+    }
+
+    public void markSized(UUID id) {
+        jdbc.sql("update media set sized = true where id = :id").param("id", id).update();
+    }
+
     public void markReady(UUID id, long bytes, Integer width, Integer height) {
-        jdbc.sql("update media set status = 'ready', bytes = :bytes, width = :w, height = :h where id = :id")
+        jdbc.sql(
+                        "update media set status = 'ready', sized = true, bytes = :bytes, width = :w, height = :h where id = :id")
                 .param("bytes", bytes)
                 .param("w", width)
                 .param("h", height)

@@ -1,7 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import { ApiError } from './fetcher';
-import { startUpload } from './generated/journey';
+import { completeUpload, startUpload } from './generated/journey';
 
 /** The longest side a photo is uploaded at. Bigger photos are resized on the phone first. */
 const MAX_SIDE = 2048;
@@ -32,5 +32,7 @@ export async function uploadPhoto(photo: LocalPhoto): Promise<string> {
   if (!response.ok) {
     throw new ApiError(response.status, 'upload_failed', "A photo couldn't be uploaded. Try again.");
   }
+  // Tell the API the file is there. It checks it and makes the smaller versions; only then can it be used.
+  await completeUpload(target.mediaId);
   return target.mediaId;
 }

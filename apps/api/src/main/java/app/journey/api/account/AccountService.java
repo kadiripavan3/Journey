@@ -92,7 +92,10 @@ public class AccountService {
                 row.blockedAt());
     }
 
-    /** Blocks someone and undoes every tie between the two people, in both directions. They aren't told. */
+    /**
+     * Blocks someone, undoes every tie between the two people in both directions, and removes the comments the
+     * blocked person left on the blocker's journeys. They aren't told.
+     */
     @Transactional
     public void block(UUID me, String username) {
         UUID them = people.idOf(username, me);
@@ -100,6 +103,7 @@ public class AccountService {
             throw ApiProblem.badRequest("thats_you", "You can't block yourself.");
         }
         accounts.block(me, them);
+        accounts.removeCommentsOn(me, them);
     }
 
     @Transactional

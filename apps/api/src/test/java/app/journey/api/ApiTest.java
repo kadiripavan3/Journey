@@ -73,7 +73,10 @@ public abstract class ApiTest {
                         .contentType(MediaType.IMAGE_JPEG)
                         .content(jpeg.toByteArray()))
                 .andExpect(status().isNoContent());
-        return JsonPath.read(target, "$.mediaId");
+        String id = JsonPath.read(target, "$.mediaId");
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", token))
+                .andExpect(status().isNoContent());
+        return id;
     }
 
     /** Creates a public trip that started `daysAgo` days ago. Returns its id. */

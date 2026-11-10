@@ -2169,6 +2169,78 @@ export const useStartUpload = <TError = unknown,
       return useMutation(getStartUploadMutationOptions(options), queryClient);
     }
 
+export const getCompleteUploadUrl = (id: string,) => {
+
+
+
+
+  return `/v1/media/uploads/${id}/complete`
+}
+
+/**
+ * @summary Say that the file has been sent. The API checks it and makes it ready to use.
+ */
+export const completeUpload = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getCompleteUploadUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompleteUploadMutationKey = () => ['completeUpload'] as const;
+
+export const getCompleteUploadMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,CompleteUploadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,CompleteUploadMutationVariables, TContext> => {
+
+const mutationKey = getCompleteUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeUpload>>, CompleteUploadMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  completeUpload(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteUploadMutationResult = NonNullable<Awaited<ReturnType<typeof completeUpload>>>
+
+    export type CompleteUploadMutationError = unknown
+    export type CompleteUploadMutationVariables = {id: string}
+
+    /** @summary Say that the file has been sent. The API checks it and makes it ready to use. */
+export const useCompleteUpload = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeUpload>>, TError,CompleteUploadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof completeUpload>>,
+        TError,
+        CompleteUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteUploadMutationOptions(options), queryClient);
+    }
+
 export const getCreateJourneyUrl = () => {
 
 

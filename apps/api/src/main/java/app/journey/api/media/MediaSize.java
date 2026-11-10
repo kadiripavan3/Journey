@@ -1,30 +1,27 @@
 package app.journey.api.media;
 
-import java.util.Arrays;
-import java.util.Optional;
-
 /**
- * The smaller versions of a photo the app asks for, so a list of faces or a row of cards doesn't download
- * full-size pictures. Small is for profile pictures and little squares; medium for cards and grids.
+ * The smaller versions of a photo, so a list of faces or a row of cards doesn't download full-size pictures.
+ * Small is for profile pictures and little squares; medium for cards and grids. Each is made once, when the
+ * upload finishes, and stored next to the original under its own key.
  */
 public enum MediaSize {
     SMALL(320),
     MEDIUM(800);
 
-    private final int width;
+    private final int side;
 
-    MediaSize(int width) {
-        this.width = width;
+    MediaSize(int side) {
+        this.side = side;
     }
 
     /** The longest side, in pixels. */
-    public int width() {
-        return width;
+    public int side() {
+        return side;
     }
 
-    public static Optional<MediaSize> ofWidth(Integer width) {
-        return Arrays.stream(values())
-                .filter(size -> width != null && size.width == width)
-                .findFirst();
+    /** Where this size of a photo is stored: next to the original, always as a JPEG. */
+    public String keyFor(String storageKey) {
+        return storageKey + ".w" + side + ".jpg";
     }
 }

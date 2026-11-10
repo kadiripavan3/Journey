@@ -108,6 +108,17 @@ public class AccountStore {
             """).param("me", me).param("them", them).update();
     }
 
+    /**
+     * Removes what the blocked person wrote under the blocker's journeys: their comments there, and with each
+     * the replies under it. (The database corrects the comment counts.)
+     */
+    public void removeCommentsOn(UUID owner, UUID commenter) {
+        jdbc.sql("""
+            delete from comments c using entries e, journeys j
+            where e.id = c.entry_id and j.id = e.journey_id and j.owner_id = :owner and c.author_id = :commenter
+            """).param("owner", owner).param("commenter", commenter).update();
+    }
+
     public void unblock(UUID me, String username) {
         jdbc.sql(
                         "delete from blocks where blocker_id = :me and blocked_id = (select id from profiles where username = :username)")

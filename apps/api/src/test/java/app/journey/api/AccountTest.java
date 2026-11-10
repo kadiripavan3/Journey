@@ -87,6 +87,12 @@ class AccountTest extends ApiTest {
         mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", nora))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].body").value("Lovely"));
+        // What Ray wrote under Nora's journey is gone for everyone, not only hidden from her, and stays gone.
+        mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", kai))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].body").value("Lovely"));
+        mvc.perform(get("/v1/entries/" + entry).header("Authorization", kai))
+                .andExpect(jsonPath("$.commentCount").value(1));
         mvc.perform(get("/v1/activity").header("Authorization", nora))
                 .andExpect(jsonPath("$.items", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].actors[0].username").value("kai"));

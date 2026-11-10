@@ -299,22 +299,19 @@ class ShapeTest extends ApiTest {
                         .content("{\"title\":\"Hoi An\",\"mediaIds\":[\"%s\"]}".formatted(big)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.media[0].width").value(1600))
-                .andExpect(jsonPath("$.media[0].thumbUrl", containsString("w=800")))
-                .andExpect(jsonPath("$.author.avatarUrl", containsString("w=320")))
+                .andExpect(jsonPath("$.media[0].thumbUrl", containsString(".w800.jpg")))
+                .andExpect(jsonPath("$.author.avatarUrl", containsString(".w320.jpg")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
         mvc.perform(get("/v1/journeys/" + journey).header("Authorization", maya))
-                .andExpect(jsonPath("$.coverThumbUrl", containsString("w=800")))
-                .andExpect(jsonPath("$.coverUrl", org.hamcrest.Matchers.not(containsString("w="))));
+                .andExpect(jsonPath("$.coverThumbUrl", containsString(".w800.jpg")))
+                .andExpect(jsonPath("$.coverUrl", org.hamcrest.Matchers.not(containsString(".w800"))));
 
         assertThat(widthOf(JsonPath.read(body, "$.media[0].url"))).isEqualTo(1600);
         assertThat(widthOf(JsonPath.read(body, "$.media[0].thumbUrl"))).isEqualTo(800);
         assertThat(widthOf(JsonPath.read(body, "$.author.avatarUrl"))).isEqualTo(320);
-        // Only the sizes the API hands out are made; any other number gets the original. A small photo is never blown
-        // up.
-        assertThat(widthOf(JsonPath.<String>read(body, "$.media[0].url") + "?w=123"))
-                .isEqualTo(1600);
+        // A small photo is never blown up: its smaller versions are the photo itself.
         String small = uploadPhoto(maya);
         String tiny = mvc.perform(post("/v1/journeys/" + journey + "/entries")
                         .header("Authorization", maya)
@@ -464,8 +461,15 @@ class ShapeTest extends ApiTest {
         mvc.perform(put(URI.create(JsonPath.<String>read(target, "$.uploadUrl")))
                         .contentType(MediaType.IMAGE_PNG)
                         .content(png.toByteArray()))
+                .andExpect(status().isNoContent());
+        // The file arrives; the API refuses it when it looks at it, and doesn't keep it.
+        String id = JsonPath.read(target, "$.mediaId");
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", maya))
                 .andExpect(status().isContentTooLarge())
                 .andExpect(jsonPath("$.code").value("too_large"));
+        mvc.perform(get(URI.create(JsonPath.<String>read(target, "$.uploadUrl").replaceAll("/local-media/.*", "/media/")
+                        + storageKeyOf(id))))
+                .andExpect(status().isNotFound());
         String journey = journey(maya, "Southeast Asia", "public", 3);
         mvc.perform(post("/v1/journeys/" + journey + "/entries")
                         .header("Authorization", maya)
@@ -473,6 +477,65 @@ class ShapeTest extends ApiTest {
                         .content("{\"mediaIds\":[\"%s\"]}".formatted(JsonPath.<String>read(target, "$.mediaId"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("media_not_ready"));
+    }
+
+    private String storageKeyOf(String mediaId) {
+        return jdbc.sql("select storage_key from media where id = cast(:id as uuid)")
+                .param("id", mediaId)
+                .query(String.class)
+                .single();
+    }
+
+    @Test
+    void anUploadIsOnlyUsableOnceItIsCompleteAndOnlyItsOwnerCanCompleteIt() throws Exception {
+        String maya = person("maya");
+        String nora = person("nora");
+        String target = mvc.perform(post("/v1/media/uploads")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"photo\",\"contentType\":\"image/jpeg\"}"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String id = JsonPath.read(target, "$.mediaId");
+        // Nothing has been sent yet.
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", maya))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("upload_missing"));
+        ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(1000, 500, BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
+        mvc.perform(put(URI.create(JsonPath.<String>read(target, "$.uploadUrl")))
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .content(jpeg.toByteArray()))
+                .andExpect(status().isNoContent());
+        String journey = journey(maya, "Southeast Asia", "public", 3);
+        String attach = "{\"mediaIds\":[\"%s\"]}".formatted(id);
+        mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attach))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("media_not_ready"));
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", nora))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("unknown_media"));
+
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", maya))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", maya))
+                .andExpect(status().isNoContent()); // saying it twice is fine
+        mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attach))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.media[0].width").value(1000))
+                .andExpect(jsonPath("$.media[0].height").value(500));
+
+        // A photo from before sizes were made at upload gets them when the API next starts.
+        jdbc.sql("update media set sized = false").update();
+        assertThat(media.makeMissingSizes()).isEqualTo(1);
+        assertThat(media.makeMissingSizes()).isZero();
     }
 
     /** Uploads a JPEG of the given size the way the app does. Returns the media id. */
@@ -491,7 +554,10 @@ class ShapeTest extends ApiTest {
                         .contentType(MediaType.IMAGE_JPEG)
                         .content(jpeg.toByteArray()))
                 .andExpect(status().isNoContent());
-        return JsonPath.read(target, "$.mediaId");
+        String id = JsonPath.read(target, "$.mediaId");
+        mvc.perform(post("/v1/media/uploads/" + id + "/complete").header("Authorization", token))
+                .andExpect(status().isNoContent());
+        return id;
     }
 
     private int widthOf(String url) throws Exception {

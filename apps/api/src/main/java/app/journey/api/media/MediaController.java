@@ -10,9 +10,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -49,5 +52,14 @@ class MediaController {
                 upload.target().url(),
                 upload.target().method(),
                 upload.target().headers());
+    }
+
+    @PostMapping("/uploads/{id}/complete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            operationId = "completeUpload",
+            summary = "Say that the file has been sent. The API checks it and makes it ready to use.")
+    void completeUpload(@Me UUID me, @PathVariable UUID id) {
+        media.completeUpload(id, me);
     }
 }

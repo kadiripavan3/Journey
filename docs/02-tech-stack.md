@@ -62,7 +62,7 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Animation and gestures | **Reanimated 4**, **Gesture Handler** | The standard pair, included with Expo |
 | Long lists | **FlashList 2** | Smooth feeds and timelines |
 | Images | **expo-image** | Caching and blurred placeholders |
-| Photos | **expo-image-picker**, **expo-image-manipulator** | Resize to about 2048 px on the phone before upload. The smaller versions for lists are made by the storage side when first asked for (see below). |
+| Photos | **expo-image-picker**, **expo-image-manipulator** | Resize to about 2048 px on the phone before upload. The API makes the smaller versions for lists when the upload finishes (see below). |
 | Video | **expo-video** to play; **react-native-compressor** to shrink clips before upload | Mux has an official guide for expo-video. The compressor needs a development build (see [testing](#testing-without-the-store-accounts)). |
 | Maps | **react-native-maps** | Supports our custom "Day 14" pins and works in Expo Go. Expo's own maps library needs iOS 17 or later. |
 | Sign-in | **Supabase Auth** client with **expo-apple-authentication**, native Google sign-in, and email codes | Apple and email codes work in Expo Go. Google sign-in needs a development build. |
@@ -104,7 +104,7 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 | Lists | A list that can grow without end is a page: `{ items, nextCursor }`, with `cursor` and `limit` (100 at most). The cursor is opaque to the app. Today it holds a position, which can repeat or skip an item if the list changes between two pages; because nobody outside `PageRequest` reads it, it can become "after this row" later without changing the app. "Top of" answers (Discover, search, Activity, the digest) are capped and say so. |
 | A story | `GET /v1/journeys/{id}/entries` is read in pages from the start, or around any entry (`around`), with a way back (`prevCursor`). A journey's page uses `GET /v1/journeys/{id}/summary` and never loads the whole story. |
 | Sending twice | Creating a journey, an entry or a comment takes a `clientId` the app makes up. The same `clientId` again gives back the first one. |
-| Photos | Every photo has a full address and a smaller one (`thumbUrl`, `coverThumbUrl`; profile pictures are always small). Locally the API makes the smaller file the first time it is asked for. With the real storage this becomes image resizing in front of R2, or files made at upload: to be decided when storage is connected. |
+| Photos | The phone asks for an upload target, sends the file there, then says it is done (`POST /v1/media/uploads/{id}/complete`). The API checks what arrived, makes two smaller versions (320 and 800 pixels) and stores them next to the original; only then can the photo be used. Every photo has a full address and a smaller one (`thumbUrl`, `coverThumbUrl`; profile pictures are always small). The same code runs with local files and with R2. |
 | Failures | Always a `code` and a sentence a person can read, also for the ones nobody planned for. The app shows the sentence as it is. |
 | Stand-ins | Local sign-in, local files and sample data work only with the `local` (or `test`) profile. The API refuses to start if one of them is switched on without it. |
 | Scheduled jobs | A job writes a row to `job_runs` first; with several copies of the API running, only the copy that gets the row does the work. |

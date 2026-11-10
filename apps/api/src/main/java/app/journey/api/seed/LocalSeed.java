@@ -5,7 +5,7 @@ import app.journey.api.entry.EntryStore;
 import app.journey.api.journey.FriendInvited;
 import app.journey.api.journey.JourneyStore;
 import app.journey.api.media.LocalDiskStorage;
-import java.awt.image.BufferedImage;
+import app.journey.api.media.MediaSizes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -464,6 +463,7 @@ public class LocalSeed implements ApplicationRunner {
 
     private final JdbcClient jdbc;
     private final LocalDiskStorage storage;
+    private final MediaSizes sizes;
     private final EntryStore entries;
     private final JourneyStore journeys;
     private final TransactionTemplate transaction;
@@ -472,12 +472,14 @@ public class LocalSeed implements ApplicationRunner {
     LocalSeed(
             JdbcClient jdbc,
             LocalDiskStorage storage,
+            MediaSizes sizes,
             EntryStore entries,
             JourneyStore journeys,
             TransactionTemplate transaction,
             @Value("${journey.seed.enabled:false}") boolean enabled) {
         this.jdbc = jdbc;
         this.storage = storage;
+        this.sizes = sizes;
         this.entries = entries;
         this.journeys = journeys;
         this.transaction = transaction;
@@ -755,28 +757,23 @@ public class LocalSeed implements ApplicationRunner {
         ClassPathResource resource = new ClassPathResource("seed/img/" + name + ".jpg");
         String key = "seed/img/" + name + ".jpg";
         long bytes;
-        BufferedImage image;
-        try {
-            try (InputStream in = resource.getInputStream()) {
-                bytes = storage.store(key, in, Long.MAX_VALUE);
-            }
-            try (InputStream in = resource.getInputStream()) {
-                image = ImageIO.read(in);
-            }
+        try (InputStream in = resource.getInputStream()) {
+            bytes = storage.store(key, in, Long.MAX_VALUE);
         } catch (IOException e) {
             throw new UncheckedIOException("Could not read the sample photo " + name, e);
         }
+        MediaSizes.Dimensions size = sizes.make(key);
         UUID id = jdbc.sql("""
-            insert into media (owner_id, kind, content_type, storage_key, bytes, width, height, status)
-            values (:owner, 'photo', 'image/jpeg', :key, :bytes, :w, :h, 'ready')
-            on conflict (storage_key) do update set status = 'ready'
+            insert into media (owner_id, kind, content_type, storage_key, bytes, width, height, status, sized)
+            values (:owner, 'photo', 'image/jpeg', :key, :bytes, :w, :h, 'ready', true)
+            on conflict (storage_key) do update set status = 'ready', sized = true
             returning id
             """)
                 .param("owner", owner)
                 .param("key", key)
                 .param("bytes", bytes)
-                .param("w", image == null ? null : image.getWidth())
-                .param("h", image == null ? null : image.getHeight())
+                .param("w", size.width())
+                .param("h", size.height())
                 .query(UUID.class)
                 .single();
         done.put(name, id);

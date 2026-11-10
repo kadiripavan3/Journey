@@ -1,10 +1,5 @@
 package app.journey.api.media;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -13,16 +8,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.UUID;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -36,14 +26,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @ConditionalOnProperty(name = "journey.media.mode", havingValue = "local")
 public class LocalDiskStorage implements MediaStorage {
 
-    /** The biggest picture this stand-in will keep or unpack: 50 megapixels, well above any phone camera. */
-    public static final long MAX_PIXELS = 50_000_000L;
-
-    private static final Semaphore RESIZING = new Semaphore(2);
-
-    /** The folder, inside the storage folder, that holds the smaller versions. */
-    private static final String SIZED = ".sized";
-
     private final Path root;
     private final byte[] secret;
 
@@ -56,7 +38,7 @@ public class LocalDiskStorage implements MediaStorage {
     }
 
     @Override
-    public UploadTarget uploadTarget(UUID mediaId, String contentType) {
+    public UploadTarget uploadTarget(UUID mediaId, String storageKey, String contentType) {
         String url = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/local-media/{id}")
                 .queryParam("token", tokenFor(mediaId))
@@ -74,99 +56,23 @@ public class LocalDiskStorage implements MediaStorage {
     }
 
     @Override
-    public String publicUrl(String storageKey, MediaSize size) {
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path("/media/")
-                .path(storageKey)
-                .queryParam("w", size.width())
-                .toUriString();
-    }
-
-    /**
-     * The smaller version of a photo, made the first time it is asked for and kept next to the originals.
-     * Falls back to the original when Java can't read the format (HEIC, WebP) or the photo is already small.
-     */
-    public Path resolveSized(String storageKey, MediaSize size) {
-        Path original = resolve(storageKey);
-        Path sized = root.resolve(SIZED)
-                .resolve(String.valueOf(size.width()))
-                .resolve(storageKey + ".jpg")
-                .normalize();
-        if (Files.isRegularFile(sized)) {
-            return sized;
-        }
-        int[] full = dimensions(original);
-        if (full == null || Math.max(full[0], full[1]) <= size.width() || (long) full[0] * full[1] > MAX_PIXELS) {
-            return original; // not a picture Java can read, already small, or too big to unpack safely
-        }
-        boolean free = false;
+    public OptionalLong size(String storageKey) {
         try {
-            // Unpacking a photo takes a lot of memory, so only a couple are worked on at a time.
-            free = RESIZING.tryAcquire(10, TimeUnit.SECONDS);
-            if (!free) {
-                return original;
-            }
-            if (Files.isRegularFile(sized)) {
-                return sized; // someone else made it while we waited
-            }
-            BufferedImage image = ImageIO.read(original.toFile());
-            if (image == null) {
-                return original;
-            }
-            double scale = (double) size.width() / Math.max(image.getWidth(), image.getHeight());
-            BufferedImage small = new BufferedImage(
-                    Math.max(1, (int) Math.round(image.getWidth() * scale)),
-                    Math.max(1, (int) Math.round(image.getHeight() * scale)),
-                    BufferedImage.TYPE_INT_RGB);
-            Graphics2D g = small.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            // Drawing through a pre-shrunk copy keeps a big photo from turning grainy when it is made much smaller.
-            g.drawImage(
-                    image.getScaledInstance(small.getWidth(), small.getHeight(), Image.SCALE_SMOOTH),
-                    0,
-                    0,
-                    Color.WHITE,
-                    null);
-            g.dispose();
-            Files.createDirectories(sized.getParent());
-            Path temp = Files.createTempFile(sized.getParent(), "sized-", ".part");
-            try {
-                ImageIO.write(small, "jpg", temp.toFile());
-                Files.move(temp, sized, StandardCopyOption.REPLACE_EXISTING);
-            } finally {
-                Files.deleteIfExists(temp);
-            }
-            return sized;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return original;
-        } catch (IOException | RuntimeException | OutOfMemoryError e) {
-            return original;
-        } finally {
-            if (free) {
-                RESIZING.release();
-            }
+            Path file = resolve(storageKey);
+            return Files.isRegularFile(file) ? OptionalLong.of(Files.size(file)) : OptionalLong.empty();
+        } catch (IOException | RuntimeException e) {
+            return OptionalLong.empty();
         }
     }
 
-    /** Width and height of an image, read from its header without unpacking it. Null when the format isn't one Java can read. */
-    public static int[] dimensions(Path file) {
-        try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
-            Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
-            if (readers == null || !readers.hasNext()) {
-                return null;
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(in);
-                return new int[] {reader.getWidth(0), reader.getHeight(0)};
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException | RuntimeException e) {
-            return null;
-        }
+    @Override
+    public InputStream open(String storageKey) throws IOException {
+        return Files.newInputStream(resolve(storageKey));
+    }
+
+    @Override
+    public void put(String storageKey, byte[] bytes, String contentType) throws IOException {
+        store(storageKey, new java.io.ByteArrayInputStream(bytes), Long.MAX_VALUE);
     }
 
     /** Proof that the API itself issued this upload link. */
@@ -206,12 +112,6 @@ public class LocalDiskStorage implements MediaStorage {
     public void delete(String storageKey) {
         try {
             Files.deleteIfExists(resolve(storageKey));
-            for (MediaSize size : MediaSize.values()) {
-                Files.deleteIfExists(root.resolve(SIZED)
-                        .resolve(String.valueOf(size.width()))
-                        .resolve(storageKey + ".jpg")
-                        .normalize());
-            }
         } catch (IOException | RuntimeException e) {
             // A file left behind is tidied up later; it must not stop an account from being deleted.
         }

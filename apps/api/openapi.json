@@ -446,6 +446,27 @@
         }
       }
     },
+    "/v1/media/uploads/{id}/complete" : {
+      "post" : {
+        "tags" : [ "media" ],
+        "summary" : "Say that the file has been sent. The API checks it and makes it ready to use.",
+        "operationId" : "completeUpload",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/v1/journeys" : {
       "post" : {
         "tags" : [ "journeys" ],
