@@ -1,5 +1,6 @@
-import type { MutationCache } from '@tanstack/react-query';
 import { Platform } from 'react-native';
+
+import { onAnswer } from '@/api/fetcher';
 
 import { eventFor, type EventName, type EventProps } from './events';
 
@@ -8,6 +9,9 @@ import { eventFor, type EventName, type EventProps } from './events';
  * builds have. Without the key nothing is loaded and every function here does nothing, which is how the app
  * runs on a developer's computer, in Expo Go and in tests. The browser version is for trying things out, so
  * it never counts either.
+ *
+ * Only the events named in `events.ts` are sent, with kinds and counts. Everything the library would add by
+ * itself that says more is switched off below.
  */
 const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
@@ -32,11 +36,20 @@ function load(): Promise<Counter | null> {
       const { default: PostHog } = require('posthog-react-native') as typeof import('posthog-react-native');
       return new PostHog(KEY, {
         host: HOST,
-        // "Opened the app" is what coming back after 7 and 30 days is measured with.
-        captureAppLifecycleEvents: true,
+        // The library's own "Application Opened" carries the link that opened the app, and a link names a
+        // person or holds an invitation. `app_opened` is counted by hand instead, with nothing attached.
+        captureAppLifecycleEvents: false,
         // A person is a made-up id until they sign in, then their account's id. Nothing else is known about them.
         personProfiles: 'identified_only',
+        // No place worked out from the phone's internet address.
+        disableGeoip: true,
         enableSessionReplay: false,
+        // Nothing of PostHog's is used but counting: no flags, no surveys, nothing about notifications.
+        preloadFeatureFlags: false,
+        disableRemoteFeatureFlags: true,
+        disableSurveys: true,
+        capturePushNotificationSubscriptions: false,
+        capturePushNotificationOpened: false,
       });
     })
     .catch(() => null); // counting must never get in the way of the app
@@ -54,15 +67,14 @@ export function track(event: EventName, properties: EventProps = {}): void {
 }
 
 /**
- * Counts the changes the API accepts. Every one of them passes through the app's list of changes in flight;
- * the ones worth counting are named in `events.ts`, by the API call that makes them. Returns a function that stops it.
+ * Counts the changes the API accepts. Every call the app makes goes through one place (`api/fetcher`), and
+ * that place tells this about each one the API said yes to: whichever screen, hook or background job made
+ * it. The ones worth counting are named in `events.ts`. Returns a function that stops it.
  */
-export function countChanges(changes: MutationCache): () => void {
+export function countChanges(): () => void {
   if (!analyticsOn()) return () => {};
-  return changes.subscribe((event) => {
-    if (event.type !== 'updated' || event.action.type !== 'success') return;
-    const call = event.mutation.options.mutationKey?.[0];
-    const counted = typeof call === 'string' ? eventFor(call, event.mutation.state.data) : null;
+  return onAnswer((method, path, answer, sent) => {
+    const counted = eventFor(method, path, answer, sent);
     if (counted) track(...counted);
   });
 }

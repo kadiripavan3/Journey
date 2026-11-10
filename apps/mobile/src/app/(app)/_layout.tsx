@@ -5,6 +5,7 @@ import { useOnboarding } from '@/auth/onboarding';
 import { OutboxProvider } from '@/features/drafts/outbox';
 import { NewJourneyProvider } from '@/features/journeys/draft';
 import { OfflineStrip } from '@/features/navigation/OfflineStrip';
+import { AskAboutNotifications } from '@/features/notifications/AskAboutNotifications';
 import { usePushNotifications } from '@/features/notifications/usePushNotifications';
 import { RecentSearchesProvider } from '@/features/search/recent';
 import { takeLink } from '@/lib/links';
@@ -62,6 +63,8 @@ export default function AppLayout() {
               <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
             </Stack>
           </OfflineStrip>
+          {/* Someone who never saw the question about notifications is asked once, after following or posting. */}
+          <AskAboutNotifications />
         </OutboxProvider>
       </NewJourneyProvider>
     </RecentSearchesProvider>

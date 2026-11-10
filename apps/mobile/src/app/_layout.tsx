@@ -16,7 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { makeQueryClient } from '@/api/client';
 import { useGetMe } from '@/api/generated/journey';
-import { useOnline, watchConnection } from '@/api/online';
+import { useOnline, watchConnection, watchFocus } from '@/api/online';
 import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
 import { useTelemetry } from '@/features/analytics/useTelemetry';
@@ -30,8 +30,10 @@ export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
 void loadAppearance();
-// Before the first request: without a connection, reading waits instead of failing.
+// Before the first request: without a connection, reading waits instead of failing; and what is on screen
+// is asked for again when the app comes back from being put away.
 watchConnection();
+watchFocus();
 
 export default function RootLayout() {
   const [queryClient] = useState(makeQueryClient);

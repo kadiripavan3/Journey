@@ -1,6 +1,7 @@
-import { onlineManager } from '@tanstack/react-query';
+import { focusManager, onlineManager } from '@tanstack/react-query';
 import * as Network from 'expo-network';
 import { useSyncExternalStore } from 'react';
+import { AppState, Platform } from 'react-native';
 
 /**
  * Tells the data layer when the phone has no connection. Without a connection, reading waits instead of
@@ -16,6 +17,21 @@ export function watchConnection() {
     void Network.getNetworkStateAsync()
       .then(heard)
       .catch(() => undefined);
+    return () => subscription.remove();
+  });
+}
+
+/**
+ * Tells the data layer when the app is in front. Coming back from being put away, whatever is on screen and
+ * out of date is asked for again; while the app is away nothing is asked at all, also not what is otherwise
+ * checked every minute. (A browser tells the data layer this by itself.) Called once from the root layout.
+ */
+export function watchFocus() {
+  if (Platform.OS === 'web') return;
+  focusManager.setEventListener((setFocused) => {
+    // "Inactive" is an iPhone showing something of its own on top for a moment (a question, the app
+    // switcher): the app is still in front.
+    const subscription = AppState.addEventListener('change', (state) => setFocused(state !== 'background'));
     return () => subscription.remove();
   });
 }

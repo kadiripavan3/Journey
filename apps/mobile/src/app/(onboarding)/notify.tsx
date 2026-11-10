@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { track } from '@/features/analytics/analytics';
-import { turnOnPush } from '@/features/notifications/device';
+import { askedAboutPush, turnOnPush } from '@/features/notifications/device';
 import { pushSupport, WHY_NOT } from '@/features/notifications/support';
 import { radius, useTheme, withAlpha } from '@/theme';
 import { BrandMark } from '@/ui/Brand';
@@ -25,17 +25,19 @@ export default function NotifyAsk() {
   const { colors } = useTheme();
   const support = pushSupport();
   const [asking, setAsking] = useState(false);
+  // Seen here, the question isn't put again later inside the app.
+  useEffect(() => void askedAboutPush(), []);
 
   const next = () => router.push('/ready');
   const turnOn = async () => {
     setAsking(true);
     const answer = await turnOnPush();
-    track('notifications_answered', { answer });
+    track('notifications_answered', { answer, during: 'sign_up' });
     setAsking(false);
     next();
   };
   const notNow = () => {
-    track('notifications_answered', { answer: 'later' });
+    track('notifications_answered', { answer: 'later', during: 'sign_up' });
     next();
   };
 
