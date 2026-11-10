@@ -1,11 +1,13 @@
 package app.journey.api.profile;
 
+import app.journey.api.account.AccountService;
 import app.journey.api.common.ApiProblem;
 import app.journey.api.media.MediaService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +19,12 @@ public class ProfileService {
 
     private final ProfileStore profiles;
     private final MediaService media;
+    private final AccountService accounts;
 
-    ProfileService(ProfileStore profiles, MediaService media) {
+    ProfileService(ProfileStore profiles, MediaService media, AccountService accounts) {
         this.profiles = profiles;
         this.media = media;
+        this.accounts = accounts;
     }
 
     /** The address of a profile's picture, or null when it has none. */
@@ -63,6 +67,13 @@ public class ProfileService {
             throw taken();
         }
         Optional<Profile> current = profiles.find(userId);
+        if (current.isEmpty() && accounts.isBanned(userId)) {
+            throw new ApiProblem(
+                    HttpStatus.FORBIDDEN,
+                    "not_welcome",
+                    "An account with this sign-in was removed for breaking the community guidelines, so it can't be used"
+                            + " on Journey. If you think that's a mistake, write to us.");
+        }
         if (current.isEmpty() && !ageConfirmed) {
             throw ApiProblem.badRequest(
                     "age_required", "Journey is for people aged 13 and over. Confirm your age to continue.");

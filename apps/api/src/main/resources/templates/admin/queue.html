@@ -32,7 +32,9 @@
       <div class="actions">
         <form method="post" th:action="@{'/admin/reports/' + ${r.id} + '/dismiss'}"><button class="btn line" type="submit">Nothing wrong, keep it</button></form>
         <form method="post" th:if="${r.targetType.code() != 'profile' and r.what != null}" th:action="@{'/admin/reports/' + ${r.id} + '/remove'}"><button class="btn danger" type="submit" th:text="${'Remove the ' + r.targetType.code()}">Remove</button></form>
+        <form method="post" th:if="${r.targetType.code() == 'profile' and r.what != null}" th:action="@{'/admin/reports/' + ${r.id} + '/remove-person'}"><button class="btn danger" type="submit">Remove this person's account</button></form>
       </div>
+      <p class="meta" th:if="${r.targetType.code() == 'profile' and r.what != null}">Removing a person deletes their profile and everything they posted, for good, and the address they signed in with can't be used to sign up again. For one bad entry or comment, remove that instead.</p>
     </section>
 
     <h2>Held photos and clips <span class="count" th:text="${#lists.size(queue.photos)}">0</span></h2>

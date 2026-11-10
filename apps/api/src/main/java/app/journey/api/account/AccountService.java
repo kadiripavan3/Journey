@@ -7,9 +7,15 @@ import app.journey.api.common.PageRequest;
 import app.journey.api.journey.Visibility;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
+import app.journey.api.notify.EmailAddresses;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,13 +105,19 @@ public class AccountService {
     private final AccountStore accounts;
     private final MediaService media;
     private final List<SignInAccounts> signIns;
+    private final EmailAddresses emails;
     private final TransactionTemplate transaction;
 
     AccountService(
-            AccountStore accounts, MediaService media, List<SignInAccounts> signIns, TransactionTemplate transaction) {
+            AccountStore accounts,
+            MediaService media,
+            List<SignInAccounts> signIns,
+            EmailAddresses emails,
+            TransactionTemplate transaction) {
         this.accounts = accounts;
         this.media = media;
         this.signIns = signIns;
+        this.emails = emails;
         this.transaction = transaction;
     }
 
@@ -190,6 +202,34 @@ public class AccountService {
             accounts.rememberDeleted(me);
         });
         removeSignIn(me);
+    }
+
+    /**
+     * A reviewer removes a person who broke the guidelines: their account is deleted like any other, and the
+     * address they signed in with can't be used to make a new profile. Only a fingerprint of the address is
+     * kept for that.
+     */
+    public void removeForGood(UUID userId, String reviewer) {
+        emails.of(userId).map(AccountService::fingerprint).ifPresent(hash -> accounts.ban(hash, reviewer));
+        delete(userId);
+    }
+
+    /** True when this person signs in with an address a reviewer has removed an account for. */
+    public boolean isBanned(UUID userId) {
+        return emails.of(userId)
+                .map(AccountService::fingerprint)
+                .map(accounts::isBanned)
+                .orElse(false);
+    }
+
+    private static String fingerprint(String email) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(email.trim().toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     /** True when the account was deleted a while ago and its sign-in is, or should soon be, gone. */

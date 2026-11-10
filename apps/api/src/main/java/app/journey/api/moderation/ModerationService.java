@@ -122,18 +122,37 @@ public class ModerationService {
                 report.reason());
     }
 
-    /** The journey, entry or comment a report points at is removed for good. A person is never removed from here. */
+    /** The journey, entry or comment a report points at is removed for good. (A person: see {@link #removePerson}.) */
     @Transactional
     public void removeReported(UUID reportId, String reviewer) {
         ReportRow report = requireOpen(reportId);
         if (report.targetType() == ReportTarget.PROFILE) {
-            throw ApiProblem.badRequest("cannot_remove_person", "A person can't be removed from the queue.");
+            throw ApiProblem.badRequest("cannot_remove_person", "A person is removed with their whole account.");
         }
         store.removeTarget(report.targetType(), report.targetId());
         store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, "removed");
         store.log(
                 reviewer,
                 "removed reported content",
+                report.targetType().code(),
+                report.targetId().toString(),
+                "%s: %s".formatted(report.reason(), report.what() == null ? "already gone" : report.what()));
+    }
+
+    /**
+     * The person a report is about is removed for good: their account and everything they posted, exactly as
+     * if they had deleted it themselves, and the address they signed in with can't make a new profile.
+     */
+    public void removePerson(UUID reportId, String reviewer) {
+        ReportRow report = requireOpen(reportId);
+        if (report.targetType() != ReportTarget.PROFILE) {
+            throw ApiProblem.badRequest("not_a_person", "This report is not about a person.");
+        }
+        accounts.removeForGood(report.targetId(), reviewer);
+        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, "removed");
+        store.log(
+                reviewer,
+                "removed a person's account",
                 report.targetType().code(),
                 report.targetId().toString(),
                 "%s: %s".formatted(report.reason(), report.what() == null ? "already gone" : report.what()));

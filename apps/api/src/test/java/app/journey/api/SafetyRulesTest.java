@@ -2,6 +2,8 @@ package app.journey.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -308,6 +310,58 @@ class SafetyRulesTest extends ApiTest {
                 .andExpect(status().isNotFound());
         mvc.perform(get("/v1/journeys/" + journey + "/members").header("Authorization", owner))
                 .andExpect(jsonPath("$.members", hasSize(1)));
+    }
+
+    @Test
+    void aReviewerCanRemoveAPersonAndTheirAddressCannotSignUpAgain() throws Exception {
+        String troll = person("troll");
+        String nora = person("nora");
+        String journey = journey(troll, "Nasty things", "public", 3);
+        String trollId = jdbc.sql("select id::text from profiles where username = 'troll'")
+                .query(String.class)
+                .single();
+        String reportId = report(nora, "profile", trollId, 201);
+
+        mvc.perform(post("/admin/reports/" + reportId + "/remove-person")
+                        .with(httpBasic("ada", "review"))
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        // Gone like any deleted account: the profile, what they posted, the sign-in. The report is closed.
+        mvc.perform(get("/v1/profiles/troll").header("Authorization", nora)).andExpect(status().isNotFound());
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", nora))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.sql("select count(*) from local_users where email = 'troll@example.com'")
+                        .query(Integer.class)
+                        .single())
+                .isZero();
+        assertThat(jdbc.sql("select status || ':' || outcome from reports")
+                        .query(String.class)
+                        .single())
+                .isEqualTo("reviewed:removed");
+        // The address itself is not kept, only a fingerprint of it.
+        assertThat(jdbc.sql("select email_hash from banned_sign_ins")
+                        .query(String.class)
+                        .single())
+                .hasSize(64)
+                .doesNotContain("troll");
+
+        // Signing in with the same address again (capital letters don't matter) gets no further than the profile.
+        String back = signIn("Troll@Example.com");
+        mvc.perform(put("/v1/me/profile")
+                        .header("Authorization", back)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ageConfirmed\":true,\"displayName\":\"Troll\",\"username\":\"troll2\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("not_welcome"));
+        // Everyone else signs up as before.
+        person("newcomer");
+        // A report about a journey can't be used to remove a person, and the other way round.
+        String other = report(nora, "journey", journey(nora, "Mine", "public", 1), 201);
+        mvc.perform(post("/admin/reports/" + other + "/remove-person")
+                        .with(httpBasic("ada", "review"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
     }
 
     private int count(String where) {

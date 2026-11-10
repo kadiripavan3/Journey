@@ -244,4 +244,20 @@ public class AccountStore {
                 .param("days", days)
                 .update();
     }
+
+    // ---- people a reviewer removed ----
+
+    public void ban(String emailHash, String reviewer) {
+        jdbc.sql("insert into banned_sign_ins (email_hash, banned_by) values (:hash, :by) on conflict do nothing")
+                .param("hash", emailHash)
+                .param("by", reviewer)
+                .update();
+    }
+
+    public boolean isBanned(String emailHash) {
+        return jdbc.sql("select exists (select 1 from banned_sign_ins where email_hash = :hash)")
+                .param("hash", emailHash)
+                .query(Boolean.class)
+                .single();
+    }
 }
