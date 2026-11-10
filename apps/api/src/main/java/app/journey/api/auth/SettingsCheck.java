@@ -54,6 +54,13 @@ final class SettingsCheck {
             need(env, missing, "journey.moderation.rekognition.access-key-id", "AWS_ACCESS_KEY_ID", or);
             need(env, missing, "journey.moderation.rekognition.secret-access-key", "AWS_SECRET_ACCESS_KEY", or);
         }
+        if ("apple".equals(env.getProperty("journey.apple.mode"))) {
+            String or = "\"Continue with Apple\" (step 5), or JOURNEY_APPLE_MODE=off";
+            need(env, missing, "journey.apple.team-id", "APPLE_TEAM_ID", or);
+            need(env, missing, "journey.apple.key-id", "APPLE_KEY_ID", or);
+            need(env, missing, "journey.apple.client-id", "APPLE_CLIENT_ID", or);
+            need(env, missing, "journey.apple.private-key", "APPLE_PRIVATE_KEY", or);
+        }
         String address = env.getProperty("journey.public-url", "").trim();
         if (!address.startsWith("https://")) {
             missing.add("JOURNEY_PUBLIC_URL: the https address people reach the API at (step 3). Links in emails and"

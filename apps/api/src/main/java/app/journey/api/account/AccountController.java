@@ -8,8 +8,10 @@ import app.journey.api.auth.Me;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
@@ -60,6 +62,21 @@ class AccountController {
             summary = "Change your settings. Send the ones that change; the rest stay as they are.")
     SettingsResponse save(@Me UUID me, @RequestBody SettingsChange change) {
         return account.save(me, change);
+    }
+
+    record AppleSignInRequest(
+            @NotBlank(message = "Apple's code is missing.")
+            @Schema(description = "The one-time authorization code Apple gives the app at sign-in")
+            String authorizationCode) {}
+
+    @PutMapping("/me/apple-sign-in")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            operationId = "rememberAppleSignIn",
+            summary =
+                    "After \"Continue with Apple\": hand over Apple's one-time code, so deleting the account can tell Apple too")
+    void appleSignIn(@Me UUID me, @Valid @RequestBody AppleSignInRequest request) {
+        account.signedInWithApple(me, request.authorizationCode());
     }
 
     @DeleteMapping("/me")

@@ -171,6 +171,14 @@ export interface RegisterDeviceRequest {
   timeZone?: string;
 }
 
+export interface AppleSignInRequest {
+  /**
+     * The one-time authorization code Apple gives the app at sign-in
+     * @minLength 1
+     */
+  authorizationCode: string;
+}
+
 export type LabelStyle = typeof LabelStyle[keyof typeof LabelStyle];
 
 
@@ -1767,6 +1775,92 @@ export const useForgetDevice = <TError = unknown,
         TContext
       > => {
       return useMutation(getForgetDeviceMutationOptions(options), queryClient);
+    }
+
+export const getRememberAppleSignInUrl = () => {
+
+
+
+
+  return `/v1/me/apple-sign-in`
+}
+
+/**
+ * @summary After "Continue with Apple": hand over Apple's one-time code, so deleting the account can tell Apple too
+ */
+export const rememberAppleSignIn = async (appleSignInRequest: AppleSignInRequest, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<void>(getRememberAppleSignInUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(appleSignInRequest)
+  }
+);}
+
+
+
+
+
+export const getRememberAppleSignInMutationKey = () => ['rememberAppleSignIn'] as const;
+
+export const getRememberAppleSignInMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rememberAppleSignIn>>, TError,RememberAppleSignInMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rememberAppleSignIn>>, TError,RememberAppleSignInMutationVariables, TContext> => {
+
+const mutationKey = getRememberAppleSignInMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rememberAppleSignIn>>, RememberAppleSignInMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  rememberAppleSignIn(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RememberAppleSignInMutationResult = NonNullable<Awaited<ReturnType<typeof rememberAppleSignIn>>>
+    export type RememberAppleSignInMutationBody = AppleSignInRequest
+    export type RememberAppleSignInMutationError = unknown
+    export type RememberAppleSignInMutationVariables = {data: AppleSignInRequest}
+
+    /** @summary After "Continue with Apple": hand over Apple's one-time code, so deleting the account can tell Apple too */
+export const useRememberAppleSignIn = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rememberAppleSignIn>>, TError,RememberAppleSignInMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rememberAppleSignIn>>,
+        TError,
+        RememberAppleSignInMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRememberAppleSignInMutationOptions(options), queryClient);
     }
 
 export const getFollowJourneyUrl = (id: string,) => {

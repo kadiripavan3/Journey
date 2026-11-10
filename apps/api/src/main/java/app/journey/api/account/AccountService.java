@@ -106,6 +106,7 @@ public class AccountService {
     private final MediaService media;
     private final List<SignInAccounts> signIns;
     private final EmailAddresses emails;
+    private final AppleSignIn apple;
     private final TransactionTemplate transaction;
 
     AccountService(
@@ -113,12 +114,22 @@ public class AccountService {
             MediaService media,
             List<SignInAccounts> signIns,
             EmailAddresses emails,
+            AppleSignIn apple,
             TransactionTemplate transaction) {
         this.accounts = accounts;
         this.media = media;
         this.signIns = signIns;
         this.emails = emails;
+        this.apple = apple;
         this.transaction = transaction;
+    }
+
+    /** Someone signed in with Apple: what is needed to tell Apple when they delete their account is kept. */
+    public void signedInWithApple(UUID me, String authorizationCode) {
+        if (authorizationCode == null || authorizationCode.isBlank() || authorizationCode.length() > 2000) {
+            throw ApiProblem.badRequest("apple_code_refused", "Apple didn't accept that sign-in. Sign in again.");
+        }
+        apple.remember(me, authorizationCode.trim());
     }
 
     public SettingsResponse settings(UUID me) {
@@ -249,6 +260,7 @@ public class AccountService {
 
     private boolean removeSignIn(UUID userId) {
         try {
+            apple.forget(userId); // Apple asks to be told; see AppleSignIn
             signIns.forEach(signIn -> signIn.remove(userId));
             accounts.signInRemoved(userId);
             return true;

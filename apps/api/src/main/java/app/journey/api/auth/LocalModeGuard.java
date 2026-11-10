@@ -36,7 +36,8 @@ public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmen
             "journey.places.mode", List.of("device", "local"),
             "journey.push.mode", List.of("expo", "off", "local"),
             "journey.email.mode", List.of("resend", "off", "local"),
-            "journey.moderation.mode", List.of("rekognition", "off", "local"));
+            "journey.moderation.mode", List.of("rekognition", "off", "local"),
+            "journey.apple.mode", List.of("apple", "off"));
 
     static void check(Environment environment) {
         List<String> unknown = new ArrayList<>();

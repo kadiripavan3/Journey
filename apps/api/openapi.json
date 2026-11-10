@@ -240,6 +240,28 @@
         }
       }
     },
+    "/v1/me/apple-sign-in" : {
+      "put" : {
+        "tags" : [ "Account and safety" ],
+        "summary" : "After \"Continue with Apple\": hand over Apple's one-time code, so deleting the account can tell Apple too",
+        "operationId" : "rememberAppleSignIn",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AppleSignInRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/follow" : {
       "put" : {
         "tags" : [ "journeys" ],
@@ -2152,6 +2174,17 @@
           }
         },
         "required" : [ "platform", "token" ]
+      },
+      "AppleSignInRequest" : {
+        "type" : "object",
+        "properties" : {
+          "authorizationCode" : {
+            "type" : "string",
+            "description" : "The one-time authorization code Apple gives the app at sign-in",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "authorizationCode" ]
       },
       "JourneyResponse" : {
         "type" : "object",

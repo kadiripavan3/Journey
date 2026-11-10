@@ -110,7 +110,21 @@ Expo Go keeps working for everything that doesn't need a real build. Short clips
 1. In the Apple Developer account, switch on "Sign in with Apple" for the app's identifier.
 2. In Supabase, Authentication, Providers, switch on Apple and enter the app's identifier as the client id. Nothing else is needed for the native sign-in the app uses.
 
-The app shows "Continue with Apple" on iPhones. It is already in `app.json`.
+3. Apple requires that deleting an account also ends the link between that person's Apple ID and the app. The API does that if it has a key of its own: in the Apple Developer account, under Keys, create a key with "Sign in with Apple" ticked, tied to the app's identifier, and download the `.p8` file (it can be downloaded once). Then set:
+
+| Value | Where it goes | Name |
+|---|---|---|
+| `apple` | `[env]` in `fly.toml` | `JOURNEY_APPLE_MODE` |
+| The team id (top right in the Developer account, ten characters) | Fly secrets | `APPLE_TEAM_ID` |
+| The key's id (shown beside the key, ten characters) | Fly secrets | `APPLE_KEY_ID` |
+| The app's identifier (`ios.bundleIdentifier` in `app.json`) | Fly secrets | `APPLE_CLIENT_ID` |
+| The whole contents of the `.p8` file | Fly secrets | `APPLE_PRIVATE_KEY` |
+
+   `fly secrets set APPLE_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"` keeps the line breaks. Then delete the file from your Mac.
+
+The app shows "Continue with Apple" on iPhones. It is already in `app.json`. Without step 3 signing in works all the same; only the App Store's rule about deleting accounts isn't met, so do it before the first submission.
+
+**Check:** sign in with Apple on a real build, delete the account in Settings, then look at Settings, your name, Sign in with Apple on the iPhone: Journey is no longer in the list.
 
 **Google** (needs a Google Cloud project):
 
@@ -267,6 +281,8 @@ When an account exists and you want me to check it from a session like this one,
 | `JOURNEY_PUBLIC_URL` | 3, 11 | no |
 | `JOURNEY_AUTH_MODE`, `JOURNEY_MEDIA_MODE`, `JOURNEY_FORWARD_HEADERS` | already in `fly.toml` | no |
 | `JOURNEY_VIDEO_MODE`, `JOURNEY_PUSH_MODE`, `JOURNEY_EMAIL_MODE`, `JOURNEY_MODERATION_MODE` (`off` until connected) | 3 | no |
+| `JOURNEY_APPLE_MODE` (`apple` once the key is there) | 5 | no |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY` | 5 | yes |
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_WEBHOOK_SECRET` | 6 | yes |
 | `EXPO_ACCESS_TOKEN` (only with enhanced push security) | 7 | yes |
 | `RESEND_API_KEY` | 8 | yes |

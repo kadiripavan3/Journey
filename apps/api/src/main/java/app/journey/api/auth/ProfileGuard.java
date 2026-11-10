@@ -43,6 +43,7 @@ class ProfileGuard implements HandlerInterceptor, WebMvcConfigurer {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         return path.equals("/v1/me")
                 || path.equals("/v1/me/profile")
+                || path.equals("/v1/me/apple-sign-in")
                 || path.startsWith("/v1/usernames/")
                 || path.equals("/v1/catalog")
                 || path.startsWith("/v1/media/");
