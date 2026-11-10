@@ -32,6 +32,12 @@ class R2StorageTest {
             switch (exchange.getRequestMethod()) {
                 case "PUT" -> {
                     byte[] sent = exchange.getRequestBody().readAllBytes();
+                    // Like R2: a link is good only with every header it was signed for.
+                    if (!signedHeadersPresent(exchange)) {
+                        exchange.sendResponseHeaders(403, -1);
+                        exchange.close();
+                        return;
+                    }
                     // Over plain http the client wraps the file in signed chunks; over https (the real R2) it doesn't.
                     boolean chunked = exchange.getRequestHeaders().containsKey("X-amz-decoded-content-length");
                     objects.put(key, chunked ? unwrap(sent) : sent);
@@ -73,6 +79,27 @@ class R2StorageTest {
         s3.stop(0);
     }
 
+    /** The names in a signed link's X-Amz-SignedHeaders. */
+    private static java.util.List<String> signedHeaders(String url) {
+        String query = URI.create(url).getRawQuery();
+        if (query == null) {
+            return java.util.List.of();
+        }
+        for (String pair : query.split("&")) {
+            if (pair.startsWith("X-Amz-SignedHeaders=")) {
+                return java.util.List.of(java.net.URLDecoder.decode(
+                                pair.substring("X-Amz-SignedHeaders=".length()), StandardCharsets.UTF_8)
+                        .split(";"));
+            }
+        }
+        return java.util.List.of();
+    }
+
+    private static boolean signedHeadersPresent(com.sun.net.httpserver.HttpExchange exchange) {
+        return signedHeaders("http://localhost" + exchange.getRequestURI()).stream()
+                .allMatch(name -> exchange.getRequestHeaders().containsKey(name));
+    }
+
     @Test
     void thePhoneGetsALinkForOneFileAndTheFileIsReadFromThePublicAddress() throws Exception {
         MediaStorage.UploadTarget target = storage.uploadTarget(UUID.randomUUID(), "2026/11/photo.jpg", "image/jpeg");
@@ -82,6 +109,19 @@ class R2StorageTest {
                 .contains("X-Amz-Signature=")
                 .contains("X-Amz-Expires=900");
         assertThat(target.headers()).containsEntry("Content-Type", "image/jpeg");
+        // The kind of file is part of what was signed: the link can't be used to put something else there.
+        assertThat(signedHeaders(target.url())).contains("content-type", "cache-control", "host");
+        assertThat(target.headers().keySet())
+                .map(name -> name.toLowerCase(java.util.Locale.ROOT))
+                .containsAll(signedHeaders(target.url()).stream()
+                        .filter(name -> !name.equals("host"))
+                        .toList());
+        HttpURLConnection bare =
+                (HttpURLConnection) URI.create(target.url()).toURL().openConnection();
+        bare.setRequestMethod("PUT");
+        bare.setDoOutput(true);
+        bare.getOutputStream().write("something else".getBytes(StandardCharsets.UTF_8));
+        assertThat(bare.getResponseCode()).isEqualTo(403);
 
         // The phone sends the file to the link, with the headers it was told to use.
         HttpURLConnection upload =

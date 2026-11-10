@@ -440,6 +440,41 @@ class MuxClipsTest extends ApiTest {
     }
 
     @Test
+    void messagesThatComeTwiceOrLateChangeNothing() throws Exception {
+        String kai = person("kai");
+        String id = JsonPath.read(startClip(kai), "$.mediaId");
+        mvc.perform(fromMux(ready(id, "asset_1", "playback_1", 12), Instant.now(), SECRET))
+                .andExpect(status().isNoContent());
+        assertThat(statusOf(id)).isEqualTo("ready");
+
+        // Mux promises each message at least once, in no particular order.
+        int callsSoFar = CALLS.size();
+        mvc.perform(fromMux(ready(id, "asset_1", "playback_1", 12), Instant.now(), SECRET))
+                .andExpect(status().isNoContent());
+        assertThat(CALLS).as("a clip that is ready is not looked at again").hasSize(callsSoFar);
+        String errored = ("{\"type\":\"video.asset.errored\",\"data\":{\"id\":\"asset_1\",\"passthrough\":\"%s\"}}")
+                .formatted(id);
+        mvc.perform(fromMux(errored, Instant.now(), SECRET)).andExpect(status().isNoContent());
+        String cancelled =
+                ("{\"type\":\"video.upload.cancelled\",\"data\":{\"new_asset_settings\":{\"passthrough\":\"%s\"}}}")
+                        .formatted(id);
+        mvc.perform(fromMux(cancelled, Instant.now(), SECRET)).andExpect(status().isNoContent());
+        assertThat(statusOf(id))
+                .as("a late message can't undo a clip people can watch")
+                .isEqualTo("ready");
+
+        // The other way round: it failed first, and "ready" is heard afterwards. The clip can be watched.
+        String second = JsonPath.read(startClip(kai), "$.mediaId");
+        String failedFirst = ("{\"type\":\"video.asset.errored\",\"data\":{\"id\":\"asset_2\",\"passthrough\":\"%s\"}}")
+                .formatted(second);
+        mvc.perform(fromMux(failedFirst, Instant.now(), SECRET)).andExpect(status().isNoContent());
+        assertThat(statusOf(second)).isEqualTo("failed");
+        mvc.perform(fromMux(ready(second, "asset_2", "playback_2", 9), Instant.now(), SECRET))
+                .andExpect(status().isNoContent());
+        assertThat(statusOf(second)).isEqualTo("ready");
+    }
+
+    @Test
     void whenMuxIsDownTheAppGetsAClearAnswer() throws Exception {
         String kai = person("kai");
         down = true;

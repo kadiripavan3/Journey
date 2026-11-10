@@ -43,6 +43,8 @@ Never put a key in a file in the repository, in a chat, or in an app build setti
 | Project URL | App build settings (safe to be public) | `EXPO_PUBLIC_SUPABASE_URL` |
 | Publishable key | App build settings (safe to be public) | `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 
+The API reads one of Supabase's own tables: `auth.users`, to find the email address a digest or a deletion request belongs to. The default `postgres` user may. If you make a database user of your own for the API, run `grant usage on schema auth to <user>; grant select on auth.users to <user>;` in Supabase's SQL editor; without it the API's log says exactly that.
+
 The API checks every sign-in token against the project's public keys, which it fetches from the project by itself. An older project that still signs tokens with a shared secret also works: set `SUPABASE_JWT_SECRET` in Fly secrets.
 
 **Check:** after step 3, sign in with your email in a `preview` build of the app. A code arrives by email; the app opens on "Create your profile".

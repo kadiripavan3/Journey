@@ -147,12 +147,14 @@ class OutsideServicesTest {
     }
 
     @Test
-    void whenExpoCannotBeReachedTheSenderSaysSoRatherThanPretending() {
-        status = 503;
+    void whenExpoCannotBeReachedOrSaysSlowDownTheSenderSaysSoRatherThanPretending() {
         ExpoPushSender expo = new ExpoPushSender(address("/push"), "");
-        assertThatThrownBy(() -> expo.send(List.of(
-                        new PushMessage("ExponentPushToken[a]", "t", "b", "/digest", NotificationKind.WEEKLY_DIGEST))))
-                .isInstanceOf(RuntimeException.class);
+        for (int answer : new int[] {503, 429}) {
+            status = answer;
+            assertThatThrownBy(() -> expo.send(List.of(new PushMessage(
+                            "ExponentPushToken[a]", "t", "b", "/digest", NotificationKind.WEEKLY_DIGEST))))
+                    .isInstanceOf(RuntimeException.class);
+        }
     }
 
     @Test

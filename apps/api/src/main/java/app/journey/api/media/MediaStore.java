@@ -145,8 +145,10 @@ public class MediaStore {
                 .update();
     }
 
+    /** The clip couldn't be used. A clip that can already be watched stays as it is: this message came late. */
     public void markFailed(UUID id, String assetId) {
-        jdbc.sql("update media set status = 'failed', video_asset_id = coalesce(:asset, video_asset_id) where id = :id")
+        jdbc.sql(
+                        "update media set status = 'failed', video_asset_id = coalesce(:asset, video_asset_id) where id = :id and status <> 'ready'")
                 .param("asset", assetId)
                 .param("id", id)
                 .update();
