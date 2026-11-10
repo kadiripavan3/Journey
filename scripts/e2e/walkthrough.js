@@ -1,7 +1,8 @@
 // Walks through the app the way a new person would, in the web build, against the local API:
 // sign-up, following, Home, Discover, a journey and its story, starting a journey, posting and
 // editing an entry with photos, the profile, Activity, likes, comments, following a creator, search,
-// settings, completing a journey, reporting, blocking, and at the end deleting the account.
+// shared journeys (inviting a friend, and being invited), settings, completing a journey, reporting,
+// blocking, and at the end deleting the account.
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
 // Before running: the API on port 8080 with the local profile, and the web build served on 8081
@@ -250,15 +251,70 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await shot('you-with-followers');
   });
 
+  await step('shared', async () => {
+    // The sample creator who follows the new person can be invited; in local mode they accept and add an entry.
+    await T('Iceland ring road').click();
+    await R('button', { name: 'Journey options' }).click();
+    await T('People on this journey').click();
+    await T('Add people').waitFor();
+    await R('button', { name: 'Invite' }).waitFor();
+    await shot('people-invite');
+    await R('button', { name: 'Invite' }).click();
+    await T(/Can add entries/).waitFor({ timeout: 20000 });
+    await shot('people');
+    await R('button', { name: 'Back' }).click();
+    await T('Shared journey').waitFor();
+    await shot('shared-journey');
+    await T(/^Read (the story|all)/).click();
+    await T('Along for the ride').waitFor();
+    await shot('shared-timeline');
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Back' }).click();
+  });
+
+  // A second person, made through the API, invites the new person to their journey.
+  const api = async (token, method, path, body) => {
+    const response = await fetch('http://localhost:8080' + path, {
+      method,
+      headers: { 'content-type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) throw new Error(`${method} ${path} gave ${response.status}`);
+    return response.status === 204 ? null : response.json();
+  };
+  let host;
+  await step('invited', async () => {
+    host = (await api(null, 'POST', '/local-auth/token', { email: `alex.${tag}@example.com`, code: '123456' })).accessToken;
+    await api(host, 'PUT', '/v1/me/profile', { displayName: 'Alex Strand', username: `alex.${tag}` });
+    await R('tab', { name: 'Home' }).click();
+    await R('button', { name: 'Find a journey' }).click();
+    await R('textbox', { name: 'Search journeys, people and tags' }).fill(`alex.${tag}`);
+    await R('tab', { name: /^People/ }).click();
+    await R('button', { name: 'Follow', exact: true }).click();
+    await R('button', { name: 'Following' }).waitFor();
+    await T('Cancel').click();
+    const journey = await api(host, 'POST', '/v1/journeys', { title: 'Faroe ferry', template: 'trip', startDate: new Date().toISOString().slice(0, 10), visibility: 'public' });
+    await api(host, 'POST', `/v1/journeys/${journey.id}/members`, { username: `nora.${tag}` });
+    await R('tab', { name: /Activity/ }).click();
+    await T(/invited you to add to/).waitFor({ timeout: 20000 });
+    await T(/invited you to add to/).click();
+    await T('Add to Faroe ferry?').waitFor();
+    await shot('invitation');
+    await R('button', { name: 'Join the journey' }).click();
+    await T('You write in this journey').waitFor({ timeout: 20000 });
+    await shot('joined-journey');
+    await R('button', { name: 'Back' }).click();
+  });
+
   await step('search', async () => {
     await R('tab', { name: 'Home' }).click();
     await R('button', { name: 'Find a journey' }).click();
     await T('Popular tags').waitFor();
     await shot('search-start');
-    await L('Search journeys, people and tags').fill('asia');
+    await R('textbox', { name: 'Search journeys, people and tags' }).fill('asia');
     await T('Southeast Asia by motorbike').waitFor();
     await shot('search-results');
-    await L('Search journeys, people and tags').fill('@lea');
+    await R('textbox', { name: 'Search journeys, people and tags' }).fill('@lea');
     await R('tab', { name: /^People/ }).click();
     await T('@lea.plays').waitFor();
     await shot('search-people');
@@ -349,6 +405,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await R('button', { name: 'Delete my account' }).click();
     await T('Get started').waitFor({ timeout: 20000 });
     await shot('after-delete');
+    if (host) await api(host, 'DELETE', '/v1/me');
   });
 
   console.log('errors', JSON.stringify(errors.slice(0, 10), null, 1));

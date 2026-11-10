@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetDiscover, useGetFeed, useGetMyJourneys } from '@/api/generated/journey';
+import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { useCatalog } from '@/journey/catalog';
 import { timeAgo } from '@/lib/dates';
 import { followersLabel, plural } from '@/lib/plural';
@@ -30,6 +31,7 @@ export default function Home() {
   const feed = useGetFeed();
   const mine = useGetMyJourneys();
   const discover = useGetDiscover(category ? { category } : undefined);
+  useRefetchOnFocus(feed.refetch, mine.refetch);
   const [pulling, setPulling] = useState(false);
   const reload = async () => {
     setPulling(true);

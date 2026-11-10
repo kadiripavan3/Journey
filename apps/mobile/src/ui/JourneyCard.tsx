@@ -22,7 +22,7 @@ type Props = {
 /** A journey as a photo card: cover, title, and where it has got to. */
 export function JourneyCard({ journey, onPress, size = 'lg', pill, detail, footnote }: Props) {
   const side = size === 'lg' ? 232 : size === 'sm' ? 158 : undefined;
-  const label = pill ?? (journey.status === 'completed' ? 'Completed' : journey.status === 'paused' ? 'Paused' : null);
+  const label = pill ?? (journey.status === 'completed' ? 'Completed' : journey.status === 'paused' ? 'Paused' : journey.authors.length > 1 ? 'Shared' : null);
   const line = detail ?? `${journey.progressLabel} · ${journey.owner.displayName}`;
   const second = size === 'lg' ? (footnote ?? followersLabel(journey.followerCount)) : null;
   return (

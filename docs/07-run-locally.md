@@ -14,13 +14,14 @@ The app opens with **ten sample creators and their journeys**, so there is somet
 - **People:** like and comment on entries (with replies), creator profiles, following people, followers and following, and Activity with a dot on its tab
 - **Finishing:** challenge journeys show their progress and a grid of days; complete a journey with a closing note and get its recap; change a journey's details later
 - **Finding:** search for journeys and people, with popular tags
+- **Together:** shared journeys. Invite people who follow you to add their own entries, accept an invitation, see who writes in a journey, leave or remove someone
 - **You:** your profile with your journeys, editing it (photo, name, username, bio, link, interests), and Settings: notifications, privacy, appearance, your account, and deleting it
 - **Safety:** report a journey, an entry, a comment or a person; block and unblock people
 - Light and dark mode, following your phone or your own choice
 
-**Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. That is only so you can see likes, comments and Activity work with one phone.
+**Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. Invite that follower to one of your journeys (the ⋯ menu, then People on this journey) and they accept and add an entry. That is only so you can see likes, comments, Activity and shared journeys work with one phone.
 
-Not built yet: shared journeys, the map, the weekly digest, share links, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
+Not built yet: the map, the weekly digest, share links, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
 
 ## One-time setup
 

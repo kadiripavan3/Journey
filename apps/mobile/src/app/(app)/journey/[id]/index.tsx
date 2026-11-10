@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Sparkles, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Sparkles, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import { useCatalog } from '@/journey/catalog';
 import { compact, plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Loading, Photo, Problem } from '@/ui/Bits';
+import { Loading, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { ChallengeCard } from '@/ui/ChallengeCard';
 import { EntryRow } from '@/ui/EntryBits';
@@ -64,6 +64,9 @@ export default function JourneyPage() {
   const category = catalog.category(j.category);
   const openStory = () => router.push(`/journey/${j.id}/timeline` as never);
   const openOwner = () => router.push(`/profile/${j.owner.username}` as never);
+  const shared = j.authors.length > 1;
+  const authorNames = j.authors.length <= 2 ? j.authors.map((a) => a.displayName).join(' and ') : `${j.owner.displayName} and ${j.authors.length - 1} others`;
+  const writes = j.viewer.isOwner || j.viewer.isMember;
   const statusColor = j.status === 'active' ? colors.ok : j.status === 'completed' ? colors.done : colors.warn;
 
   return (
@@ -90,9 +93,22 @@ export default function JourneyPage() {
             </Txt>
           ) : null}
           <Txt center weight={700} onPress={openOwner} style={{ fontSize: 13, lineHeight: 18, marginTop: 10 }}>
-            {j.owner.displayName}
+            {authorNames}
             {category ? <Txt color="muted" weight={500} style={{ fontSize: 13, lineHeight: 18 }}>{` · ${category.label}`}</Txt> : null}
           </Txt>
+
+          {shared ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Shared journey. ${authorNames}. See the people`} onPress={() => router.push(`/journey/${j.id}/people` as never)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <View style={{ flexDirection: 'row' }}>
+                {j.authors.slice(0, 4).map((author, index) => (
+                  <View key={author.id} style={{ marginLeft: index === 0 ? 0 : -8, borderRadius: 14, borderWidth: 2, borderColor: colors.bg }}>
+                    <Avatar uri={author.avatarUrl} name={author.displayName} size={24} />
+                  </View>
+                ))}
+              </View>
+              <Pill label="Shared journey" style={{ backgroundColor: colors.fill }} />
+            </Pressable>
+          ) : null}
 
           <View style={{ flexDirection: 'row', alignSelf: 'stretch', marginTop: 18, paddingVertical: 13, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line }}>
             <Stat value={j.progressLabel} label={STATUS[j.status]} dot={statusColor} />
@@ -135,7 +151,7 @@ export default function JourneyPage() {
               </Txt>
             ) : entries.length === 0 ? (
               <Txt color="muted" center style={{ fontSize: 14.5, lineHeight: 22, marginVertical: 20 }}>
-                {j.viewer.isOwner ? 'Your story starts with the first entry.' : `${firstName} hasn't added an entry yet. Follow to hear about the first one.`}
+                {j.viewer.isOwner ? 'Your story starts with the first entry.' : j.viewer.isMember ? 'The story starts with the first entry. It could be yours.' : `${firstName} hasn't added an entry yet. Follow to hear about the first one.`}
               </Txt>
             ) : (
               <>
@@ -168,10 +184,10 @@ export default function JourneyPage() {
         contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingLeft: 20, paddingRight: 10 }}>
         <View style={{ flex: 1 }}>
           <Txt numberOfLines={1} weight={800} style={{ fontSize: 15, lineHeight: 20, letterSpacing: -0.2 }}>
-            {j.viewer.isOwner ? 'Your journey' : j.viewer.isFollowing ? `You follow ${firstName}'s journey` : `Follow ${firstName}'s journey`}
+            {j.viewer.isOwner ? 'Your journey' : j.viewer.isMember ? 'You write in this journey' : j.viewer.isFollowing ? `You follow ${firstName}'s journey` : `Follow ${firstName}'s journey`}
           </Txt>
           <Txt numberOfLines={1} color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
-            {j.viewer.isOwner
+            {writes
               ? j.status === 'completed'
                 ? 'Completed'
                 : j.status === 'paused'
@@ -184,7 +200,7 @@ export default function JourneyPage() {
                 : 'New entries land on your Home'}
           </Txt>
         </View>
-        {j.viewer.isOwner ? (
+        {writes ? (
           j.viewer.canAddEntry ? (
             <Button label="Entry" inline icon={(c) => <Plus size={19} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add` as never)} />
           ) : null
@@ -197,8 +213,20 @@ export default function JourneyPage() {
         <OwnerMenu journey={j} visible={menu} onClose={() => setMenu(false)} />
       ) : (
         <Sheet visible={menu} onClose={() => setMenu(false)} title={j.title}>
+          {shared ? (
+            <SheetRow
+              first
+              icon={(c) => <Users size={22} color={c} />}
+              label="People on this journey"
+              note={j.viewer.isMember ? 'See who writes here, or leave' : undefined}
+              onPress={() => {
+                setMenu(false);
+                router.push(`/journey/${j.id}/people` as never);
+              }}
+            />
+          ) : null}
           <SheetRow
-            first
+            first={!shared}
             icon={(c) => <Flag size={22} color={c} />}
             label="Report this journey"
             onPress={() => {
@@ -281,6 +309,16 @@ function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; vi
               }}
             />
           ) : null}
+          <SheetRow
+            first={journey.status === 'completed'}
+            icon={(c) => <Users size={22} color={c} />}
+            label="People on this journey"
+            note={journey.status === 'completed' ? undefined : 'Invite friends to add their own entries'}
+            onPress={() => {
+              close();
+              router.push(`/journey/${journey.id}/people` as never);
+            }}
+          />
           {journey.status !== 'completed' && journey.entryCount > 0 ? (
             <SheetRow
               icon={(c) => <CircleCheck size={22} color={c} />}
@@ -297,7 +335,7 @@ function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; vi
           ) : journey.status === 'paused' ? (
             <SheetRow icon={(c) => <Play size={22} color={c} />} label="Resume journey" onPress={() => update.mutate({ id: journey.id, data: { status: 'active' } })} />
           ) : null}
-          <SheetRow first={journey.status === 'completed'} danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete journey" onPress={() => setConfirming(true)} />
+          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete journey" onPress={() => setConfirming(true)} />
         </>
       )}
     </Sheet>

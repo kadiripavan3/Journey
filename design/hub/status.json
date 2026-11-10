@@ -1,10 +1,10 @@
 {
   "phase": "Phase 1 · Build",
   "updated": "2026-11-10",
-  "summary": "Most of the app now works, running on one computer with stand-ins for the outside services: sign up, follow and read journeys, start your own, post entries with photos, like, comment, follow people, Activity, search, settings, report and block, and completing a journey with its recap. Ten sample creators make it feel alive while you test alone.",
+  "summary": "Most of the app now works, running on one computer with stand-ins for the outside services: sign up, follow and read journeys, start your own, post entries with photos, like, comment, follow people, Activity, search, settings, report and block, completing a journey with its recap, and shared journeys. Ten sample creators make it feel alive while you test alone.",
   "next": [
     "Run it on your Mac and open it on your iPhone in Expo Go (the Run it page has the steps). Sign up, follow a few journeys, start one and post an entry with a photo. Tell me what you see and what feels wrong.",
-    "I continue with: shared journeys, the map, the weekly digest, share pages, clips and offline drafts.",
+    "I continue with: the map, the weekly digest, share pages, clips and offline drafts.",
     "Review the 66 screens on the Screens page and comment on anything to change.",
     "Confirm the accent colour once the screens are reviewed (Sun for now)."
   ],
@@ -23,6 +23,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-10",
+      "text": "**Shared journeys work.** Invite up to three people who follow you; they join only by accepting, add their own entries, and the journey shows every author. The owner stays in charge; a friend can leave at any time. 46 API tests."
+    },
     {
       "date": "2026-11-10",
       "text": "**Search, settings, safety and finishing a journey.** Search for journeys and people; settings with a switch per notification, privacy, appearance and deleting your account; report and block; challenge progress; completing a journey with a closing note and its recap. The API has 44 tests, and the browser walk-through now covers 54 screens and states in light and dark."

@@ -4,6 +4,7 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type ActivityItemResponse, useGetActivity, useMarkActivitySeen } from '@/api/generated/journey';
+import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { timeAgo } from '@/lib/dates';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
@@ -17,7 +18,7 @@ const FILTERS = [
   { id: 'all', label: 'All', kinds: null },
   { id: 'journeys', label: 'Journeys', kinds: ['new_entries', 'journey_completed'] },
   { id: 'comments', label: 'Comments', kinds: ['comment', 'reply', 'likes'] },
-  { id: 'followers', label: 'Followers', kinds: ['journey_follow', 'profile_follow'] },
+  { id: 'followers', label: 'People', kinds: ['journey_follow', 'profile_follow', 'invitation', 'friend_joined'] },
 ] as const;
 
 /** 8.1 Activity: one calm inbox. New entries are grouped per journey and likes are batched into a single line. */
@@ -25,6 +26,7 @@ export default function Activity() {
   const { colors } = useTheme();
   const activity = useGetActivity();
   const markSeen = useMarkActivitySeen();
+  useRefetchOnFocus(activity.refetch);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [pulling, setPulling] = useState(false);
   // What was new when the tab was opened stays highlighted while it is on screen.
@@ -160,6 +162,14 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
     case 'reply':
       what = <> replied to your comment: “{item.text}”</>;
       href = `/entry/${item.entryId}?comments=1`;
+      break;
+    case 'invitation':
+      what = <> invited you to add to {bold(item.journeyTitle)}</>;
+      href = `/invitation/${item.journeyId}`;
+      break;
+    case 'friend_joined':
+      what = <> joined {bold(item.journeyTitle)}</>;
+      href = `/journey/${item.journeyId}`;
       break;
     case 'journey_follow':
       what = <> started following {bold(item.journeyTitle)}</>;

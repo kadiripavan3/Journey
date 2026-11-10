@@ -10,6 +10,7 @@ import { formatDay } from '@/lib/dates';
 import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
+import { Avatar } from '@/ui/Avatar';
 import { Card, Loading, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { entryHeadline } from '@/ui/EntryBits';
@@ -52,7 +53,7 @@ export default function Timeline() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ borderBottomWidth: 1, borderBottomColor: colors.line }}>
-        <AppBar title={j?.title ?? ''} subtitle={j ? `${j.owner.displayName} · ${plural(j.entryCount, 'entry', 'entries')}` : undefined} trailing={<View style={{ width: 40 }} />} />
+        <AppBar title={j?.title ?? ''} subtitle={j ? `${j.authors.length > 1 ? `${j.owner.displayName} and ${plural(j.authors.length - 1, 'friend')}` : j.owner.displayName} · ${plural(j.entryCount, 'entry', 'entries')}` : undefined} trailing={<View style={{ width: 40 }} />} />
       </View>
       {failed ? (
         <Problem error={failed} onRetry={() => void Promise.all([journey.refetch(), timeline.refetch()])} retrying={journey.isRefetching || timeline.isRefetching} />
@@ -88,7 +89,7 @@ export default function Timeline() {
                   </View>
                 ) : null}
                 {newDay ? <DayMarker entry={entry} /> : null}
-                <EntryCard entry={entry} fresh={isNew(entry)} onPress={() => router.push(`/entry/${entry.id}` as never)} />
+                <EntryCard entry={entry} fresh={isNew(entry)} showAuthor={j.authors.length > 1} onPress={() => router.push(`/entry/${entry.id}` as never)} />
               </View>
             );
           })}
@@ -134,12 +135,20 @@ function DayMarker({ entry }: { entry: EntryResponse }) {
   );
 }
 
-function EntryCard({ entry, fresh, onPress }: { entry: EntryResponse; fresh: boolean; onPress: () => void }) {
+function EntryCard({ entry, fresh, showAuthor, onPress }: { entry: EntryResponse; fresh: boolean; showAuthor: boolean; onPress: () => void }) {
   const { colors } = useTheme();
   const cover = entry.media[0];
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${entryHeadline(entry)}${fresh ? '. New' : ''}`} onPress={onPress} style={({ pressed }) => ({ marginLeft: 34, marginBottom: 14, opacity: pressed ? 0.88 : 1 })}>
       <Card style={{ padding: fresh ? 8 : 10, borderWidth: fresh ? 2 : 0, borderColor: colors.accent }}>
+        {showAuthor ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 4, marginBottom: 8, marginTop: 2 }}>
+            <Avatar uri={entry.author.avatarUrl} name={entry.author.displayName} size={24} />
+            <Txt numberOfLines={1} weight={700} style={{ flex: 1, fontSize: 13, lineHeight: 18 }}>
+              {entry.author.displayName}
+            </Txt>
+          </View>
+        ) : null}
         {cover ? (
           <Photo uri={cover.url} radius={16} style={{ height: 176 }}>
             {entry.media.length > 1 ? <Pill label={`1 / ${entry.media.length}`} style={{ position: 'absolute', top: 10, right: 10 }} /> : null}
