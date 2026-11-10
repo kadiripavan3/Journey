@@ -15,6 +15,8 @@ export const dates = {
     const long = `${day} ${MONTHS[month]}`;
     return year === undefined ? long : `${long} ${year}`;
   },
+  /** "3 Apr to 20 Apr". Both days are already written out. */
+  range: (from: string, to: string) => `${from} to ${to}`,
   /** "April 2026": the month a calendar shows. */
   month: (month: number, year: number) => `${MONTHS[month]} ${year}`,
 

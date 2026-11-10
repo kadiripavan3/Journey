@@ -16,4 +16,12 @@ export const discover = {
   trendingPill: 'Trending',
   fresh: 'New journeys',
   completed: 'Recently completed',
+
+  // 4.4 Category
+  category: {
+    /** The heading when the category itself isn't known. */
+    title: 'Journeys',
+    lead: 'Journeys that are going on now, and the ones that were just completed.',
+    none: 'Nothing here yet',
+  },
 } as const;

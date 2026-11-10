@@ -7,6 +7,7 @@ import type { MapPinResponse } from '@/api/generated/journey';
 import { mapsAvailable } from '@/lib/build';
 import { radius, useTheme } from '@/theme';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { regionOf, type Stop, stopLabel } from './stops';
 
@@ -81,7 +82,7 @@ export function JourneyMap({ pins, stops, selected, onSelect, inset }: Props) {
             coordinate={{ latitude: stop.lat, longitude: stop.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={on ? 2 : 1}
-            accessibilityLabel={`${stopLabel(stop)}${stop.pins[0]?.placeName ? `, ${stop.pins[0].placeName}` : ''}${milestone ? ', milestone' : ''}`}
+            accessibilityLabel={words.map.pinSpoken(stopLabel(stop), stop.pins[0]?.placeName, milestone)}
             onPress={(event) => {
               event.stopPropagation();
               onSelect(stop.key);

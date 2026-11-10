@@ -4,12 +4,12 @@ import { View } from 'react-native';
 import type { JourneySummaryResponse } from '@/api/generated/journey';
 import { entryDayLine } from '@/features/entries/labels';
 import { formatDay } from '@/lib/dates';
-import { plural } from '@/words/en/plural';
 import { layout, useTheme } from '@/theme';
 import { GroupLabel } from '@/ui/Heading';
 import { Tap } from '@/ui/Motion';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import type { StoryRow } from './rows';
 
@@ -35,30 +35,30 @@ export function JumpSheet({ visible, onClose, summary, fresh, days, everyDay, on
   const { colors } = useTheme();
   if (!summary.first) return null;
   return (
-    <Sheet visible={visible} onClose={onClose} title="Jump to" tall={days.length > 4}>
+    <Sheet visible={visible} onClose={onClose} title={words.story.jump.title} tall={days.length > 4}>
       {fresh?.firstNew ? (
-        <SheetRow first icon={(c) => <ArrowDown size={22} color={c} />} label="Continue where you left off" note={`${fresh.newCount} new since your last visit`} onPress={() => onJump(fresh.firstNew)} />
+        <SheetRow first icon={(c) => <ArrowDown size={22} color={c} />} label={words.story.jump.resume} note={words.story.newSinceVisit(fresh.newCount)} onPress={() => onJump(fresh.firstNew)} />
       ) : null}
-      <SheetRow first={!fresh?.firstNew} label="Start from the beginning" note={entryDayLine(summary.first)} onPress={() => onJump(null)} />
-      {summary.latest[0] ? <SheetRow label="Newest entry" note={entryDayLine(summary.latest[0])} onPress={() => onJump(summary.latest[0]?.id ?? null)} /> : null}
-      {summary.milestones.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>Milestones</GroupLabel> : null}
+      <SheetRow first={!fresh?.firstNew} label={words.story.jump.start} note={entryDayLine(summary.first)} onPress={() => onJump(null)} />
+      {summary.latest[0] ? <SheetRow label={words.story.jump.newest} note={entryDayLine(summary.latest[0])} onPress={() => onJump(summary.latest[0]?.id ?? null)} /> : null}
+      {summary.milestones.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.story.jump.milestones}</GroupLabel> : null}
       {summary.milestones.map((milestone, index) => (
         <SheetRow
           key={milestone.entryId}
           first={index === 0}
           icon={(c) => <Star size={20} color={c} />}
           label={milestone.title || milestone.label}
-          note={`${milestone.label} · ${formatDay(milestone.happenedOn)}`}
+          note={words.common.join([milestone.label, formatDay(milestone.happenedOn)])}
           onPress={() => onJump(milestone.entryId)}
         />
       ))}
-      {days.length > 1 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{everyDay ? 'Days' : 'Days around here'}</GroupLabel> : null}
+      {days.length > 1 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{everyDay ? words.story.jump.days : words.story.jump.daysAround}</GroupLabel> : null}
       {days.length > 1
         ? days.map(({ entry, count }, index) => (
             <Tap
               key={entry.id}
               accessibilityRole="button"
-              accessibilityLabel={`${entry.label}${entry.placeName ? `, ${entry.placeName}` : ''}. ${plural(count, 'entry', 'entries')}`}
+              accessibilityLabel={words.story.jump.daySpoken(entry.label, entry.placeName, count)}
               scaleTo={0.985}
               onPress={() => onJump(entry.id)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingVertical: 11, paddingHorizontal: layout.gutter, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: colors.line }}>
@@ -69,7 +69,7 @@ export function JumpSheet({ visible, onClose, summary, fresh, days, everyDay, on
                 {entry.placeName ?? formatDay(entry.happenedOn)}
               </Txt>
               <Txt variant="footnote" color="muted">
-                {plural(count, 'entry', 'entries')}
+                {words.story.jump.entries(count)}
               </Txt>
             </Tap>
           ))

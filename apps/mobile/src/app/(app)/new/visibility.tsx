@@ -16,6 +16,7 @@ import { GroupLabel, Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 import { Tap } from '@/ui/Motion';
+import { words } from '@/words';
 
 /** 7.6 Who can see it: step 3 of 3. Public, Unlisted or Private in plain words, and whether entries are labelled by day or by part. */
 export default function Visibility() {
@@ -39,10 +40,10 @@ export default function Visibility() {
     try {
       let coverMediaId: string | undefined;
       if (draft.cover) {
-        setProgress('Uploading the cover');
+        setProgress(words.newJourney.visibility.uploadingCover);
         coverMediaId = await uploadPhoto(draft.cover);
       }
-      setProgress('Creating your journey');
+      setProgress(words.newJourney.visibility.creating);
       const journey = await createJourney({
         clientId: draft.clientId,
         title: draft.title.trim(),
@@ -75,20 +76,20 @@ export default function Visibility() {
               {problem ?? progress}
             </Txt>
           ) : null}
-          <Button label="Create journey" size="lg" block loading={progress !== null} onPress={() => void create()} />
+          <Button label={words.newJourney.visibility.create} size="lg" block loading={progress !== null} onPress={() => void create()} />
         </>
       }>
-      <Heading style={{ marginTop: 6 }}>Who can see it?</Heading>
-      <Lead>You can change this any time.</Lead>
+      <Heading style={{ marginTop: 6 }}>{words.newJourney.visibility.title}</Heading>
+      <Lead>{words.newJourney.visibility.lead}</Lead>
       <View accessibilityRole="radiogroup" style={{ gap: 10, marginTop: 16, marginHorizontal: -4 }}>
         {VISIBILITY.map((choice) => {
-          const note = `${choice.note} ${choice.hint}`.trim();
+          const note = choice.longNote;
           const on = visibility === choice.id;
           return (
             <Tap
               key={choice.id}
               accessibilityRole="radio"
-              accessibilityLabel={`${choice.label}. ${note}`}
+              accessibilityLabel={words.common.spoken([choice.label, note])}
               accessibilityState={{ checked: on }}
               onPress={() => change({ visibility: choice.id })}
               style={{
@@ -117,7 +118,7 @@ export default function Visibility() {
         })}
       </View>
 
-      <GroupLabel>Label entries as</GroupLabel>
+      <GroupLabel>{words.newJourney.visibility.labelAs}</GroupLabel>
       <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', marginHorizontal: -4, padding: 4, borderRadius: radius.field, backgroundColor: colors.fill }}>
         {(['day', 'part'] as const).map((style) => {
           const on = labelStyle === style;
@@ -125,19 +126,19 @@ export default function Visibility() {
             <Tap
               key={style}
               accessibilityRole="radio"
-              accessibilityLabel={style === 'day' ? 'Day 1, Day 2 and so on' : 'Part 1, Part 2 and so on'}
+              accessibilityLabel={style === 'day' ? words.newJourney.visibility.byDaySpoken : words.newJourney.visibility.byPartSpoken}
               accessibilityState={{ checked: on }}
               onPress={() => change({ labelStyle: style })}
               style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 6, borderRadius: radius.tile, alignItems: 'center', backgroundColor: on ? colors.bg : 'transparent', boxShadow: on ? shadow.knob : undefined }}>
               <Txt variant="callout" weight={700} style={{ color: on ? colors.text : colors.muted }}>
-                {style === 'day' ? 'Day 1, Day 2…' : 'Part 1, Part 2…'}
+                {style === 'day' ? words.newJourney.visibility.byDay : words.newJourney.visibility.byPart}
               </Txt>
             </Tap>
           );
         })}
       </View>
       <Txt variant="footnote" color="muted" style={{ marginTop: 8, marginHorizontal: 4 }}>
-        {labelStyle === 'day' ? 'Days count from the start date, so a quiet day leaves a gap.' : 'Parts count your entries, one after another.'}
+        {labelStyle === 'day' ? words.newJourney.visibility.byDayNote : words.newJourney.visibility.byPartNote}
       </Txt>
     </Screen>
   );

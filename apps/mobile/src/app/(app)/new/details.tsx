@@ -8,6 +8,7 @@ import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Heading } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
+import { words } from '@/words';
 
 /** 7.5 Journey details: step 2 of 3. A title and a start date are enough; the first photo is the cover until you choose one. */
 export default function JourneyDetails() {
@@ -19,8 +20,8 @@ export default function JourneyDetails() {
   return (
     <Screen
       header={<AppBar center={<StepProgress step={2} />} />}
-      footer={<Button label="Continue" size="lg" block disabled={draft.title.trim().length === 0} onPress={() => router.push('/new/visibility')} />}>
-      <Heading style={{ marginTop: 6 }}>Tell us about it</Heading>
+      footer={<Button label={words.common.continue} size="lg" block disabled={draft.title.trim().length === 0} onPress={() => router.push('/new/visibility')} />}>
+      <Heading style={{ marginTop: 6 }}>{words.newJourney.details.title}</Heading>
       <View style={{ height: 18 }} />
       <DetailsForm
         // Until the person picks a category, the template's own is shown.
@@ -28,8 +29,8 @@ export default function JourneyDetails() {
         onChange={change}
         coverUri={draft.cover?.uri}
         onCover={(cover) => change({ cover })}
-        titlePlaceholder={template?.id === 'challenge30' ? '30 days of…' : undefined}
-        dayTitle="When does it start?"
+        titlePlaceholder={template?.id === 'challenge30' ? words.newJourney.details.challengeTitleHint : undefined}
+        dayTitle={words.newJourney.details.dayTitle}
       />
     </Screen>
   );

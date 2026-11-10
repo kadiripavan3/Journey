@@ -5,7 +5,6 @@ import { View } from 'react-native';
 import { messageFor } from '@/api/fetcher';
 import { useCompleteJourney, useGetRecap } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
-import { plural } from '@/words/en/plural';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -16,6 +15,7 @@ import { Photo } from '@/ui/Photo';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 5.7 Complete a journey: one last note. It becomes the last page of the story, and the recap is made for you. */
 export default function CompleteJourney() {
@@ -36,7 +36,7 @@ export default function CompleteJourney() {
 
   return (
     <Screen
-      header={<AppBar title="Complete journey" trailing={<View style={{ width: 40 }} />} />}
+      header={<AppBar title={words.journey.complete.title} trailing={<View style={{ width: 40 }} />} />}
       footer={
         <>
           {complete.isError ? (
@@ -44,7 +44,7 @@ export default function CompleteJourney() {
               {messageFor(complete.error)}
             </Txt>
           ) : null}
-          <Button label="Complete journey" size="lg" block disabled={!r} loading={complete.isPending} onPress={() => complete.mutate({ id, data: { closingNote: note.trim() } })} />
+          <Button label={words.journey.complete.title} size="lg" block disabled={!r} loading={complete.isPending} onPress={() => complete.mutate({ id, data: { closingNote: note.trim() } })} />
         </>
       }>
       {recap.isPending ? (
@@ -64,17 +64,17 @@ export default function CompleteJourney() {
                 {r.journey.title}
               </Txt>
               <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
-                {plural(r.dayCount, 'day')} · {plural(r.entryCount, 'entry', 'entries')} · {plural(r.placeCount, 'place')}
+                {words.journey.complete.summary(r.dayCount, r.entryCount, r.placeCount)}
               </Txt>
             </View>
           </Card>
-          <Heading style={{ marginTop: 22 }}>How did it end?</Heading>
-          <Lead>A closing note for your followers. It becomes the last page of the story.</Lead>
+          <Heading style={{ marginTop: 22 }}>{words.journey.complete.heading}</Heading>
+          <Lead>{words.journey.complete.lead}</Lead>
           <View style={{ marginTop: 16 }}>
-            <Field label={`Closing note · ${note.length} of 500`} value={note} onChangeText={setNote} multiline maxLength={500} />
+            <Field label={words.journey.complete.note(note.length, 500)} value={note} onChangeText={setNote} multiline maxLength={500} />
           </View>
           <Txt variant="footnote" color="muted" style={{ marginTop: 12, marginHorizontal: 4 }}>
-            A completed journey takes no new entries. Everyone who follows it sees that it&apos;s finished.
+            {words.journey.complete.footnote}
           </Txt>
         </>
       )}

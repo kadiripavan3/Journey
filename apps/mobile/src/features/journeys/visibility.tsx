@@ -1,6 +1,8 @@
 import { Globe, Link as LinkIcon, Lock } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 
+import { words } from '@/words';
+
 /** Who can see a journey. */
 export type Visibility = 'public' | 'unlisted' | 'private';
 
@@ -9,18 +11,18 @@ type Choice = {
   label: string;
   /** Who sees it, in a few words. */
   note: string;
-  /** One more thought, shown where a new journey's visibility is chosen. */
-  hint: string;
+  /** The same with one more thought, shown where a new journey's visibility is chosen. */
+  longNote: string;
   /** What a card says in place of a follower count. */
   badge: string;
   icon: (color: string) => ReactNode;
 };
 
-/** The three ways a journey can be seen, in the words the app uses everywhere. */
+/** The three ways a journey can be seen, in the words the app uses everywhere (`words.journeys.visibility`). */
 export const VISIBILITY: readonly Choice[] = [
-  { id: 'public', label: 'Public', note: 'Anyone. It can appear in Discover.', hint: '', badge: 'Public', icon: (c) => <Globe size={20} color={c} /> },
-  { id: 'unlisted', label: 'Unlisted', note: 'Only people with the link.', hint: 'Good for family.', badge: 'Unlisted', icon: (c) => <LinkIcon size={20} color={c} /> },
-  { id: 'private', label: 'Private', note: 'Only you and friends you invite.', hint: 'A journal you can publish later.', badge: 'Private', icon: (c) => <Lock size={20} color={c} /> },
+  { id: 'public', ...words.journeys.visibility.public, icon: (c) => <Globe size={20} color={c} /> },
+  { id: 'unlisted', ...words.journeys.visibility.unlisted, icon: (c) => <LinkIcon size={20} color={c} /> },
+  { id: 'private', ...words.journeys.visibility.private, icon: (c) => <Lock size={20} color={c} /> },
 ];
 
 export function visibility(id: string): Choice {

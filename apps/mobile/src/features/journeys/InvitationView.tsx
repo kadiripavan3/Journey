@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import type { JourneyResponse, PersonResponse } from '@/api/generated/journey';
-import { plural } from '@/words/en/plural';
 import { darkTheme, layout, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
@@ -15,10 +14,10 @@ import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const STAGE = darkTheme.colors.stage;
 const ON = darkTheme.colors.onPhoto;
-const WHO = { public: "It's public", unlisted: 'Only people with the link see it', private: 'Only its authors see it' } as const;
 
 type Props = {
   /** What the person is invited to and by whom. Null when the invitation isn't there (any more). */
@@ -47,10 +46,10 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
   const j = invitation?.journey;
   const points = j
     ? [
-        'Post your own entries and photos',
-        'It shows on your profile as a shared journey',
-        j.visibility === 'public' && j.followerCount > 0 ? `${WHO.public}, and ${plural(j.followerCount, 'person follows', 'people follow')} it` : WHO[j.visibility],
-        'Leave whenever you like',
+        words.shared.invitation.points.post,
+        words.shared.invitation.points.onProfile,
+        j.visibility === 'public' && j.followerCount > 0 ? words.shared.invitation.points.publicFollowed(j.followerCount) : words.shared.invitation.points.who[j.visibility],
+        words.shared.invitation.points.leave,
       ]
     : [];
 
@@ -61,7 +60,7 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
       <LinearGradient colors={[withAlpha(STAGE, 0.45), withAlpha(STAGE, 0.05), withAlpha(STAGE, 0.8), withAlpha(STAGE, 0.96)]} locations={[0, 0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: layout.rowGutter }}>
         <View style={{ paddingTop: 8, marginLeft: -4 }}>
-          <RoundButton tone="photo" label="Close" onPress={onClose} icon={(c) => <X size={20} color={c} />} />
+          <RoundButton tone="photo" label={words.common.close} onPress={onClose} icon={(c) => <X size={20} color={c} />} />
         </View>
         {loading ? (
           <Loading tone="onPhoto" />
@@ -78,11 +77,11 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Avatar uri={invitation.invitedBy.avatarUrl} name={invitation.invitedBy.displayName} size={36} />
               <Txt variant="item" style={{ color: ON }}>
-                {invitation.invitedBy.displayName} invited you
+                {words.shared.invitation.invitedYou(invitation.invitedBy.displayName)}
               </Txt>
             </View>
             <Txt variant="display" accessibilityRole="header" style={{ color: ON }}>
-              Add to {j.title}?
+              {words.shared.invitation.title(j.title)}
             </Txt>
             <View style={{ gap: 9, marginVertical: 6 }}>
               {points.map((point) => (
@@ -99,8 +98,8 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
                 {messageFor(failed)}
               </Txt>
             ) : null}
-            <Button label="Join the journey" size="lg" block loading={joining} onPress={onJoin} />
-            <Button label="Not now" size="lg" variant="glass" block loading={declining} onPress={onDecline} />
+            <Button label={words.shared.invitation.join} size="lg" block loading={joining} onPress={onJoin} />
+            <Button label={words.shared.invitation.notNow} size="lg" variant="glass" block loading={declining} onPress={onDecline} />
           </View>
         )}
       </SafeAreaView>
