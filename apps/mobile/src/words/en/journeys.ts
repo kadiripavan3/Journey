@@ -2,6 +2,11 @@
 import { compact, plural } from './plural';
 
 export const journeys = {
+  /** The question that Public, Unlisted and Private answer. */
+  whoCanSee: 'Who can see it?',
+  /** The button that starts a new entry. */
+  addEntry: 'Entry',
+
   /** What each state of a journey is called. */
   status: { active: 'Active', paused: 'Paused', completed: 'Completed' },
 
@@ -44,13 +49,11 @@ export const journeys = {
     youWrite: 'You write in this journey',
     youFollow: (firstName: string) => `You follow ${firstName}'s journey`,
     follow: (firstName: string) => `Follow ${firstName}'s journey`,
-    completed: 'Completed',
     paused: 'Paused. A new entry starts it again.',
     addFirst: 'Add the first entry',
     soFar: (entries: number) => `${plural(entries, 'entry', 'entries')} so far`,
     readerCompleted: 'This journey is completed',
     readerActive: 'New entries land on your Home',
-    entry: 'Entry',
   },
 
   // A paused journey says so on its page
@@ -81,10 +84,8 @@ export const journeys = {
     /** After a journey's progress on the same line. `ago` is already written out. */
     paused: 'paused',
     lastEntry: (ago: string) => `last entry ${ago}`,
-    entry: 'Entry',
     startNew: 'Start a new journey',
     startNewNote: 'A trip, a challenge, anything with a story',
-    drafts: 'Drafts and uploads',
     waitingToUpload: (entries: number) => `${plural(entries, 'entry', 'entries')} waiting to upload`,
     draftCount: (drafts: number) => plural(drafts, 'draft'),
   },
@@ -112,7 +113,6 @@ export const journeys = {
     people: 'People on this journey',
     peopleNote: 'Invite friends to add their own entries',
     peopleNoteMember: 'See who writes here, or leave',
-    complete: 'Complete journey',
     completeNote: 'Add a closing note and get the recap',
     pause: 'Pause journey',
     pauseNote: "Followers see it's on hold. A new entry starts it again.",

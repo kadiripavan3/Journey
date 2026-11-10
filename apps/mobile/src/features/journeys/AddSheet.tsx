@@ -62,7 +62,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
                 </Txt>
               </View>
               <Button
-                label={words.journeys.add.entry}
+                label={words.journeys.addEntry}
                 inline
                 size="sm"
                 variant={index === 0 ? 'primary' : 'soft'}
@@ -82,7 +82,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
           {waiting.length > 0 ? (
             <SheetRow
               icon={(c) => <CloudUpload size={22} color={c} />}
-              label={words.journeys.add.drafts}
+              label={words.drafts.title}
               note={waitingLine}
               trailing={<ChevronRight size={18} color={colors.muted} />}
               onPress={() => go('/uploads')}

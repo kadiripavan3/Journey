@@ -11,6 +11,8 @@ export const common = {
   done: 'Done',
   save: 'Save',
   saving: 'Saving…',
+  notNow: 'Not now',
+  signOut: 'Sign out',
   follow: 'Follow',
   following: 'Following',
   tryAgain: 'Try again',
@@ -35,20 +37,19 @@ export const common = {
     journeys: (count: number) => (count === 1 ? 'journey' : 'journeys'),
     followers: (count: number) => (count === 1 ? 'follower' : 'followers'),
   },
-  /** What a screen reader says for a row: its parts one after another, each ending its own sentence. */
-  spoken: (parts: readonly (string | null | undefined | false)[]) => parts.filter(Boolean).join('. '),
   /** 1200 becomes "1.2k". */
   compact: (count: number) => compact(count),
 
-  // The tab bar
+  /** The tabs. Discover and Activity also stand at the top of their own pages. */
   tabs: { home: 'Home', discover: 'Discover', activity: 'Activity', you: 'You' },
-  /** What a screen reader says for a tab with something new in it. */
+
+  // What a screen reader says
+  /** A row or a card: its parts one after another, each ending its own sentence. Parts that are empty are left out. */
+  spoken: (parts: readonly (string | null | undefined | false)[]) => parts.filter(Boolean).join('. '),
+  /** A tab with something new in it. */
   tabWithNews: (tab: string) => `${tab}, new`,
-
-  /** What a screen reader says for a person's picture that opens their profile. */
+  /** A person's picture that opens their profile. */
   profileOf: (name: string) => `${name}'s profile`,
-
-  // What a screen reader says for the design system's own pieces
   /** A number over a word: "14 entries". */
   stat: (value: string | number, label: string) => `${value} ${label}`,
   /** A tab or a chip with a count after it: "Journeys, 3". */

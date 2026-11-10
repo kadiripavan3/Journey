@@ -154,8 +154,8 @@ export default function Home() {
             <EmptyState
               emoji="🧭"
               title={words.home.quiet.title}
-              body={words.home.quiet.body}
-              action={<Button label={words.home.quiet.explore} onPress={() => router.navigate('/discover')} />}
+              body={words.following.none.body}
+              action={<Button label={words.following.none.explore} onPress={() => router.navigate('/discover')} />}
             />
           </View>
         ) : (

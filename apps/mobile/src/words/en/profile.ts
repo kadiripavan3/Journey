@@ -4,11 +4,10 @@ export const profile = {
   // 9.1 Your profile
   you: {
     share: 'Share your profile',
-    settings: 'Settings',
-    stats: { journeys: 'Journeys', followers: 'Followers', following: 'Following' },
+    /** The word under how many journeys you have. (Followers and Following are `people` below.) */
+    journeys: 'Journeys',
     edit: 'Edit profile',
     newJourney: 'New journey',
-    shelves: { active: 'Active', completed: 'Completed', private: 'Private' },
     first: {
       title: 'Start your first journey',
       body: "A trip, a 30-day challenge, something you're building. Add to it as it happens.",
@@ -22,15 +21,15 @@ export const profile = {
     },
   },
 
+  /** The shelves of journeys on a profile. Private is on your own only. */
+  shelves: { active: 'Active', completed: 'Completed', private: 'Private' },
+
   // 9.2 Someone's profile. `firstName` is what to call them.
   page: {
     followsYou: 'Follows you',
-    edit: 'Edit profile',
-    unblock: 'Unblock',
     blocked: (firstName: string) => `You've blocked ${firstName}. Neither of you sees the other's journeys in the app.`,
     following: (firstName: string) => `You'll get ${firstName}'s next journeys.`,
     notFollowing: (firstName: string) => `Following ${firstName} also brings their next journeys.`,
-    shelves: { active: 'Active', completed: 'Completed' },
     emptyShelf: {
       active: (firstName: string) => `${firstName} has no journeys in progress.`,
       completed: (firstName: string) => `${firstName} hasn't completed a journey yet.`,

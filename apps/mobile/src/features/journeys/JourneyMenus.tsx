@@ -82,7 +82,7 @@ function OwnerMenu({ journey, visible, onClose }: Props) {
             onPress={() => go('people')}
           />
           {journey.status !== 'completed' && journey.entryCount > 0 ? (
-            <SheetRow icon={(c) => <CircleCheck size={22} color={c} />} label={words.journeys.menu.complete} note={words.journeys.menu.completeNote} onPress={() => go('complete')} />
+            <SheetRow icon={(c) => <CircleCheck size={22} color={c} />} label={words.journey.complete.title} note={words.journeys.menu.completeNote} onPress={() => go('complete')} />
           ) : null}
           {journey.status === 'active' ? (
             <SheetRow icon={(c) => <Pause size={22} color={c} />} label={words.journeys.menu.pause} note={words.journeys.menu.pauseNote} onPress={() => update.mutate({ id: journey.id, data: { status: 'paused' } })} />

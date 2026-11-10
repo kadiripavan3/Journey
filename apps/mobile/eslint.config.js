@@ -37,7 +37,7 @@ const emoji = [
 // Every word a person reads or hears lives in the catalog (src/words/en), so the app can be translated. These
 // rules keep sentences out of screens and components: there, text comes from `words` (import it from '@/words').
 const SAY = 'Put words people read or hear in src/words/en and use words.… here. A sentence with a number or a name in it is a function there.';
-// Props and object keys that hold words. Add a new one here when a component gets a prop for text.
+// Props that hold words: any text in one of them belongs in the catalog. Add a prop here when a component gets one for text.
 const WORDY =
   '^(label|title|subtitle|heading|placeholder|note|hint|body|message|text|caption|detail|line|badge|pill|tag|footnote|description|value|spoken|confirm|cancel|gone|problem|error|emptyTitle|emptyBody|confirmLabel|cancelLabel|copyLabel|dayTitle|titlePlaceholder|accessibilityLabel|accessibilityHint|aria-label)$';
 const LETTER = '[A-Za-z]';

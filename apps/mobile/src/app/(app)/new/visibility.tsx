@@ -79,7 +79,7 @@ export default function Visibility() {
           <Button label={words.newJourney.visibility.create} size="lg" block loading={progress !== null} onPress={() => void create()} />
         </>
       }>
-      <Heading style={{ marginTop: 6 }}>{words.newJourney.visibility.title}</Heading>
+      <Heading style={{ marginTop: 6 }}>{words.journeys.whoCanSee}</Heading>
       <Lead>{words.newJourney.visibility.lead}</Lead>
       <View accessibilityRole="radiogroup" style={{ gap: 10, marginTop: 16, marginHorizontal: -4 }}>
         {VISIBILITY.map((choice) => {

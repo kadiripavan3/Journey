@@ -99,7 +99,7 @@ export function InvitationView({ invitation, loading, loadError, onRetry, retryi
               </Txt>
             ) : null}
             <Button label={words.shared.invitation.join} size="lg" block loading={joining} onPress={onJoin} />
-            <Button label={words.shared.invitation.notNow} size="lg" variant="glass" block loading={declining} onPress={onDecline} />
+            <Button label={words.common.notNow} size="lg" variant="glass" block loading={declining} onPress={onDecline} />
           </View>
         )}
       </SafeAreaView>

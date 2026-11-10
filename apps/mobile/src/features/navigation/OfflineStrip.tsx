@@ -50,7 +50,8 @@ function Strip({ dark }: { dark: boolean }) {
   const insets = useSafeAreaInsets();
   // A like or a follow that couldn't be sent has no room to say so itself; for a few seconds the strip does.
   const notSent = useChangeNotSent();
-  const { headline, rest } = notSent ? words.states.strip.notSent : words.states.strip.offline;
+  const headline = notSent ? words.states.strip.notSent.headline : words.states.offline.title;
+  const rest = notSent ? words.states.strip.notSent.rest : words.states.strip.offlineRest;
   return (
     <Animated.View
       entering={FadeIn.duration(200)}

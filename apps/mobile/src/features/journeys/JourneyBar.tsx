@@ -22,7 +22,7 @@ export function JourneyBar({ journey: j, style }: { journey: JourneyResponse; st
   const title = j.viewer.isOwner ? words.journeys.bar.yours : j.viewer.isMember ? words.journeys.bar.youWrite : j.viewer.isFollowing ? words.journeys.bar.youFollow(first) : words.journeys.bar.follow(first);
   const line = writes
     ? j.status === 'completed'
-      ? words.journeys.bar.completed
+      ? words.journeys.status.completed
       : j.status === 'paused'
         ? words.journeys.bar.paused
         : j.entryCount === 0
@@ -43,7 +43,7 @@ export function JourneyBar({ journey: j, style }: { journey: JourneyResponse; st
       </View>
       {writes ? (
         j.viewer.canAddEntry ? (
-          <Button label={words.journeys.bar.entry} inline icon={(c) => <Plus size={19} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
+          <Button label={words.journeys.addEntry} inline icon={(c) => <Plus size={19} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
         ) : null
       ) : (
         <FollowButton journey={j} size="md" />

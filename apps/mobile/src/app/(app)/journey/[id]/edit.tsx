@@ -96,7 +96,7 @@ export default function EditJourney() {
           </DetailsForm>
         </>
       )}
-      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title={words.journey.edit.whoCanSeeTitle} value={visibility} onChange={setVisibility} />
+      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title={words.journeys.whoCanSee} value={visibility} onChange={setVisibility} />
     </Screen>
   );
 }

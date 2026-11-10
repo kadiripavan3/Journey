@@ -115,10 +115,10 @@ export default function CreatorProfile() {
 
           <View style={{ alignSelf: 'stretch', marginTop: 16, marginHorizontal: layout.gutter, gap: 8 }}>
             {p.viewer.isMe ? (
-              <Button label={words.profile.page.edit} variant="soft" block onPress={() => router.push('/edit-profile')} />
+              <Button label={words.profile.you.edit} variant="soft" block onPress={() => router.push('/edit-profile')} />
             ) : p.viewer.hasBlocked ? (
               <>
-                <Button label={words.profile.page.unblock} variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
+                <Button label={words.people.unblock} variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
                 <Txt variant="small" weight={500} color="muted" center>
                   {words.profile.page.blocked(first)}
                 </Txt>
@@ -135,8 +135,8 @@ export default function CreatorProfile() {
 
           <WordTabs
             tabs={[
-              { id: 'active', label: words.profile.page.shelves.active, count: active.length },
-              { id: 'completed', label: words.profile.page.shelves.completed, count: completed.length },
+              { id: 'active', label: words.profile.shelves.active, count: active.length },
+              { id: 'completed', label: words.profile.shelves.completed, count: completed.length },
             ]}
             value={shelf}
             onChange={setShelf}

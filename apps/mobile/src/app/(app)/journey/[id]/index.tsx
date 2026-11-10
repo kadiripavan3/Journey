@@ -174,7 +174,7 @@ export default function JourneyPage() {
               )
             ) : latest.length === 0 ? (
               <Txt variant="bodySmall" color="muted" center style={{ marginVertical: 20 }}>
-                {j.viewer.isOwner ? words.journey.page.noEntries.owner : j.viewer.isMember ? words.journey.page.noEntries.member : words.journey.page.noEntries.reader(first)}
+                {j.viewer.isOwner ? words.story.none.owner : j.viewer.isMember ? words.journey.page.noEntries.member : words.journey.page.noEntries.reader(first)}
               </Txt>
             ) : (
               <>
@@ -202,7 +202,7 @@ export default function JourneyPage() {
       <View style={{ position: 'absolute', top: insets.top + 8, left: layout.barGutter, right: layout.barGutter, flexDirection: 'row', justifyContent: 'space-between' }}>
         <RoundButton tone="photo" label={words.common.back} onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {j.shareUrl ? <RoundButton tone="photo" label={words.journey.page.share} icon={(c) => <Share2 size={19} color={c} />} onPress={() => setSharing(true)} /> : null}
+          {j.shareUrl ? <RoundButton tone="photo" label={words.sharing.journey.theirs} icon={(c) => <Share2 size={19} color={c} />} onPress={() => setSharing(true)} /> : null}
           <RoundButton tone="photo" label={words.journey.page.options} onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />
         </View>
       </View>

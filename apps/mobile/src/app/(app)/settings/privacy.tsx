@@ -44,7 +44,7 @@ export default function Privacy() {
           </RowGroup>
           <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.privacyPage.people}</GroupLabel>
           <RowGroup>
-            <Row first icon={(c) => <Ban size={18} color={c} />} label={words.settings.privacyPage.blocked} value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
+            <Row first icon={(c) => <Ban size={18} color={c} />} label={words.settings.blocked.title} value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
           </RowGroup>
           <NoteBox icon={(c) => <ImageOff size={20} color={c} />} title={words.settings.privacyPage.neverLive.title} style={{ marginTop: 18, marginHorizontal: layout.barGutter }}>
             {words.settings.privacyPage.neverLive.body}

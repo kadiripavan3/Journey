@@ -155,7 +155,7 @@ export default function JourneyPeople() {
         onClose={() => setGoing(null)}
         title={going?.person.id === myId ? words.shared.people.confirmLeave.title : words.shared.people.confirmRemove.title(firstName(going?.person.displayName ?? ''))}
         body={going?.person.id === myId ? words.shared.people.confirmLeave.body : words.shared.people.confirmRemove.body}
-        confirm={going?.person.id === myId ? words.shared.people.confirmLeave.confirm : words.shared.people.confirmRemove.confirm}
+        confirm={going?.person.id === myId ? words.shared.people.confirmLeave.confirm : words.shared.people.remove}
         cancel={going?.person.id === myId ? words.shared.people.confirmLeave.cancel : words.shared.people.confirmRemove.cancel}
         busy={remove.isPending}
         problem={remove.isError ? messageFor(remove.error) : null}

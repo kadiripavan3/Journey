@@ -48,7 +48,7 @@ export default function NotifyAsk() {
         support === 'ready' ? (
           <>
             <Button label={words.notifications.ask.turnOn} size="lg" block loading={asking} onPress={() => void turnOn()} />
-            <Button label={words.notifications.ask.notNow} size="lg" variant="quiet" block disabled={asking} onPress={notNow} />
+            <Button label={words.common.notNow} size="lg" variant="quiet" block disabled={asking} onPress={notNow} />
           </>
         ) : (
           <Button label={words.common.continue} size="lg" block onPress={next} />

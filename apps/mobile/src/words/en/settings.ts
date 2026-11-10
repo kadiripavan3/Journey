@@ -5,26 +5,19 @@ export const settings = {
   // 10.1 Settings
   title: 'Settings',
   you: 'You',
-  account: 'Account',
-  notifications: 'Notifications',
   /** How many of the notification switches are on: "5 of 8 on". */
   switchesOn: (on: number, of: number) => `${on} of ${of} on`,
-  privacy: 'Privacy and safety',
-  appearance: 'Appearance',
   help: 'Help',
   helpAndContact: 'Help and contact',
   guidelines: 'Community guidelines',
   terms: 'Terms of use',
   privacyPolicy: 'Privacy policy',
-  signOut: 'Sign out',
 
   // 10.5 Account
   accountPage: {
     title: 'Account',
     signInWith: 'Sign in with',
     signedInAs: 'Signed in as',
-    /** What each way of signing in is called. */
-    ways: { apple: 'Apple', google: 'Google', email: 'Email code' },
     yourAccount: 'Your account',
     delete: 'Delete account',
   },
@@ -66,7 +59,6 @@ export const settings = {
     photos: 'Photos',
     removeLocations: { label: 'Remove photo locations', note: 'Location data is stripped from every photo you upload' },
     people: 'People',
-    blocked: 'Blocked accounts',
     neverLive: { title: 'Never live', body: 'Journey never shares where you are right now. Places come only from entries you post.' },
   },
 
@@ -77,7 +69,6 @@ export const settings = {
     none: "You haven't blocked anyone.",
     /** After the person's @name on the same line. `ago` is already written out. */
     since: (ago: string) => `blocked ${ago}`,
-    unblock: 'Unblock',
   },
 
   // 10.4 Appearance

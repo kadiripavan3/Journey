@@ -45,7 +45,7 @@ export default function Uploads() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title={words.drafts.page.title} trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.drafts.title} trailing={<View style={{ width: 40 }} />} />
       {outbox.drafts.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
           <EmptyState emoji="📓" title={words.drafts.page.none.title} body={words.drafts.page.none.body} />
@@ -53,8 +53,8 @@ export default function Uploads() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingTop: 4, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {!outbox.online ? (
-            <Note icon={<WifiOff size={20} color={colors.warn} />} title={words.drafts.page.offline.title}>
-              {words.drafts.page.offline.body}
+            <Note icon={<WifiOff size={20} color={colors.warn} />} title={words.states.offline.title}>
+              {words.drafts.page.offline}
             </Note>
           ) : going.length > 0 ? (
             <Note icon={<CloudUpload size={20} color={colors.text} />} title={words.drafts.page.onTheirWay.title}>
@@ -102,7 +102,7 @@ export default function Uploads() {
       <Sheet visible={!!removing} onClose={() => setRemoving(null)} title={words.drafts.page.confirmDelete.title} subtitle={words.drafts.page.confirmDelete.body}>
         <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
           <Button
-            label={words.drafts.page.confirmDelete.confirm}
+            label={words.drafts.delete}
             variant="danger"
             size="lg"
             block

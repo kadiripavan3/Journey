@@ -3,7 +3,6 @@ import { mark, type Rich } from '../rich';
 import { plural } from './plural';
 
 export const activity = {
-  title: 'Activity',
   tabs: { all: 'All', journeys: 'Journeys', comments: 'Comments', followers: 'People' },
 
   // The weekly digest's card at the top

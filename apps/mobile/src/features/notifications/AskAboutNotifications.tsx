@@ -77,7 +77,7 @@ export function AskAboutNotifications() {
       subtitle={words.notifications.ask.bodyInApp}>
       <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
         <Button label={words.notifications.ask.turnOn} size="lg" block loading={asking} onPress={() => void turnOn()} />
-        <Button label={words.notifications.ask.notNow} variant="soft" size="lg" block disabled={asking} onPress={notNow} />
+        <Button label={words.common.notNow} variant="soft" size="lg" block disabled={asking} onPress={notNow} />
       </View>
     </Sheet>
   );

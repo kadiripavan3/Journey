@@ -51,15 +51,15 @@ export default function Settings() {
 
         <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.you}</GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <UserRound size={18} color={c} />} label={words.settings.account} onPress={() => router.push('/settings/account')} />
+          <Row first icon={(c) => <UserRound size={18} color={c} />} label={words.settings.accountPage.title} onPress={() => router.push('/settings/account')} />
           <Row
             icon={(c) => <Bell size={18} color={c} />}
-            label={words.settings.notifications}
+            label={words.settings.notificationsPage.title}
             value={switches ? words.settings.switchesOn(switches.filter(Boolean).length, switches.length) : undefined}
             onPress={() => router.push('/settings/notifications')}
           />
-          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label={words.settings.privacy} onPress={() => router.push('/settings/privacy')} />
-          <Row icon={(c) => <Palette size={18} color={c} />} label={words.settings.appearance} value={words.settings.appearancePage.choices[appearance].label} onPress={() => router.push('/settings/appearance')} />
+          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label={words.settings.privacyPage.title} onPress={() => router.push('/settings/privacy')} />
+          <Row icon={(c) => <Palette size={18} color={c} />} label={words.settings.appearancePage.title} value={words.settings.appearancePage.choices[appearance].label} onPress={() => router.push('/settings/appearance')} />
         </RowGroup>
 
         <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.help}</GroupLabel>
@@ -72,7 +72,7 @@ export default function Settings() {
 
         <GroupLabel style={{ marginHorizontal: layout.gutter }}> </GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.settings.signOut} onPress={() => void session.signOut()} trailing={<View />} />
+          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.common.signOut} onPress={() => void session.signOut()} trailing={<View />} />
         </RowGroup>
       </ScrollView>
     </SafeAreaView>

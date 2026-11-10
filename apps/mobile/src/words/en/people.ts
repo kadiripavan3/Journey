@@ -2,6 +2,7 @@
 
 export const people = {
   followBack: 'Follow back',
+  unblock: 'Unblock',
   /** `name` is a first name. */
   followName: (name: string) => `Follow ${name}`,
   /** What a screen reader says for a person in a list. */

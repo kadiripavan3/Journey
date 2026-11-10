@@ -92,13 +92,13 @@ function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', gap: 12, padding: 32, backgroundColor: theme.colors.bg }}>
         <Txt variant="title" center accessibilityRole="header">
-          {online ? words.states.cantOpen.unreachable.title : words.states.cantOpen.offline.title}
+          {online ? words.states.cantOpen.unreachable.title : words.states.offline.title}
         </Txt>
         <Txt color="muted" center>
-          {online ? words.states.cantOpen.unreachable.body : words.states.cantOpen.offline.body}
+          {online ? words.states.cantOpen.unreachable.body : words.states.cantOpen.offline}
         </Txt>
         <Button label={words.common.tryAgain} block loading={me.isRefetching} onPress={() => void me.refetch()} style={{ marginTop: 12 }} />
-        <Button label={words.states.cantOpen.signOut} variant="quiet" block onPress={() => void session.signOut()} />
+        <Button label={words.common.signOut} variant="quiet" block onPress={() => void session.signOut()} />
       </View>
     );
   }

@@ -20,7 +20,6 @@ export const newJourney = {
 
   // 7.6 Who can see it
   visibility: {
-    title: 'Who can see it?',
     lead: 'You can change this any time.',
     create: 'Create journey',
     uploadingCover: 'Uploading the cover',

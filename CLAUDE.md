@@ -88,7 +88,7 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 ### Notifications, jobs and outside services
 
 - **A push says what stands when it is sent:** the entries the reader may see, the likes that are still there (each person once), a follow that wasn't undone. `OutboxStore.lockDue` counts them then; a new kind of push that counts something does the same.
-- **A push is never sent from a service.** The service publishes an event (`EntryAdded`, `EntryLiked`, `CommentAdded`, `JourneyFollowed`, …) and `notify/Outbox` writes a row to `notifications` in the same transaction. `PushDelivery` sends the rows that are due and checks switches, blocks and visibility at that moment. A new kind of push is a new `NotificationKind`, a listener in `Outbox`, its words and target in `PushWording`, the path in the app's `features/notifications/target.ts`, its line in Activity in `features/activity/kinds.tsx` (the one table from a kind to its words and its screen; it doesn't compile until a new kind has them), and a case in `PushTest`.
+- **A push is never sent from a service.** The service publishes an event (`EntryAdded`, `EntryLiked`, `CommentAdded`, `JourneyFollowed`, …) and `notify/Outbox` writes a row to `notifications` in the same transaction. `PushDelivery` sends the rows that are due and checks switches, blocks and visibility at that moment. A new kind of push is a new `NotificationKind`, a listener in `Outbox`, its words and target in `PushWording`, the path in the app's `features/notifications/target.ts`, its line in Activity (its sentence in `words.activity.says` and its screen in `features/activity/kinds.tsx`, the one table from a kind to both; it doesn't compile until a new kind has them), and a case in `PushTest`.
 - **An email is never sent from a service.** It is put in `EmailOutbox` in the same transaction as the reason for it; a job sends what waits, a couple a second, and tries again when the email service is busy. The weekly digest (`DigestJob`) goes out on each person's own Sunday evening.
 - **Every outside service** has a port, a stand-in and a real adapter behind `journey.<thing>.mode` (`PushSender`, `EmailSender`, `VideoService`, `MediaStorage`, `MediaScreening`), and where it makes sense an `off`. The stand-in is the default with the `local` profile and listed in `LocalModeGuard`. The real adapter is tried against a small server in the test itself (`OutsideServicesTest`), so it needs no account.
 - **A scheduled job** runs through `Jobs.run(job, period, work)` (one copy of the API does it, a failure is logged by name, and when it finished is written down), and its work is a public method the tests call directly: no job runs by itself in a test (`journey.jobs.enabled=false`). Work that must survive a deploy in the middle keeps its own per-row mark (the digest's `digest_sent`, the queues `removed_files`, `emails`, `notifications`), so the next run simply continues (`reminders.remindAt(...)`, `autoPause.pauseQuietJourneys()`, `trending.rescore()`). The trending rules are written out in `UpkeepStore` and in `docs/02-tech-stack.md`; change both together.
@@ -120,7 +120,8 @@ Where things live in `apps/mobile/src`:
 | `ui/` | The design system: `Txt`, `Button`, `Sheet`, `Field`, `Photo`, `Pill`, `Stat`, `WordTabs`, `Frost` and so on. Nothing here knows about journeys, people or the API. |
 | `features/<name>/` | Everything that does: `journeys`, `entries`, `composer`, `story`, `activity`, `people`, `safety`, `sharing`, `settings`, `media`, `search`, `states`, `navigation`. Components, hooks and words shared by more than one screen. A big screen's data and rules are a hook here (`useComposer`, `useStory`, `useEntryPager`), and the screen only lays out. |
 | `api/` | The generated client, the fetcher, uploads, and when to fetch again. |
-| `auth/`, `theme/`, `lib/` | The session and sign-up state; the generated tokens and `useTheme`; small pure helpers (dates, plurals, names). |
+| `auth/`, `theme/`, `lib/` | The session and sign-up state; the generated tokens and `useTheme`; small pure helpers (dates, names, links). |
+| `words/` | Every word a person reads or hears. `words` is the catalog of the phone's language and `locale` its tag; `en/` is the English catalog, one file per area. |
 | `test/` | Helpers for tests. Tests sit next to what they test, in `__tests__`. |
 
 The linter (`npm run lint`) refuses, outside `src/theme`:
@@ -129,7 +130,17 @@ The linter (`npm run lint`) refuses, outside `src/theme`:
 - **A corner written as a number.** Use `radius.card`, `radius.sheet`, … and `radius.pill` for anything fully round. `Photo`, `Sk` and `GlassBar` take the name: `<Photo radius="field">`.
 - **A colour or shadow written by hand** (`#…`, `rgba(…)`). Use `colors.…` and `shadow.…` from `useTheme()`, and `withAlpha(colors.stage, 0.45)` for a see-through shade.
 - **An emoji inside text or a label.** Pass it to `Emoji`, or to a prop named `emoji` (`EmptyState`, `Chip`, `Ring`, `JourneyCard`'s `pillEmoji`).
-- **`src/ui` importing from `features`, `api` or `auth`**, and features importing from `app`.
+- **Words written where they are shown**, outside `src/words` (and tests): text between tags, a string in a prop that holds words (`label`, `title`, `note`, `placeholder`, `accessibilityLabel`, …; the list is `WORDY` in `eslint.config.js`), and anything that reads like a sentence wherever it is kept (`'Add a place'`, `` `Day ${n}` ``, `setProgress('Saving')`). Use `words.…`.
+- **`src/ui` importing from `features`, `api` or `auth`**, and features importing from `app`. Anything outside `src/words` importing from `@/words/en`: only `words` from `@/words`.
+
+Words:
+
+- **Words people read or hear live in `src/words/en`**, grouped by area and screen (`words.settings.blocked.title`), and a screen reads them from `words` (`import { words } from '@/words'`; like the theme, it needs no hook). That includes what a screen reader says. A key is named for what the words are for, not for what they say; a sentence used in two places has one key.
+- **A sentence with a number, a name or any other moving part is a function there**: `words.story.quietDays(3)`, `words.profile.page.blocked(firstName)`. The whole sentence, with its plural and its word order, is the catalog's; a screen never glues pieces together or picks a word with a ternary. `plural()` exists only inside `src/words/en`. Facts that stand side by side ("Day 14 · Hoi An") are joined with `words.common.join([…])`, which leaves out the missing ones.
+- **A sentence with a part drawn differently** (a title in bold, a link in the middle) is a list of parts from the catalog, drawn with `rich()` (`src/ui/rich`): `rich(words.signIn.welcome.agree, { terms: (text) => <Txt onPress={…}>{text}</Txt> })`.
+- **Days and times** are written by `lib/dates` (`formatDay`, `timeAgo`, …) with the words in `words.dates`; no month name or "ago" anywhere else. `compact()` (`lib/compact`) writes "1.2k" the catalog's way.
+- **What the API says** (`ApiProblem`, a category's or a template's name, an entry's "Day 14") is shown as it is and is not in the catalog.
+- **To add a language**, write `src/words/<tag>/` typed as `Words` and add it to `catalogs` in `src/words/index.ts`; the type refuses a missing key. The phone's language picks the catalog once, at start-up; English is the fallback.
 
 Also true, by habit rather than by the linter:
 

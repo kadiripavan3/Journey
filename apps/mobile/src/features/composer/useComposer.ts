@@ -202,7 +202,7 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
   const hand = async (how: 'post' | 'draft') => {
     if (!j) return;
     setProblem(null);
-    setProgress(how === 'post' ? words.composer.progress.posting : words.composer.progress.saving);
+    setProgress(how === 'post' ? words.drafts.progress.posting : words.composer.progress.saving);
     try {
       const draft: DraftInput = { clientId, journeyId, journey: j, title, body, day, dayLabel: j.labelStyle === 'day' ? words.composer.dayNumber(dayNumber) : formatDay(day), place, milestone, media: shots };
       await outbox.save(draft, how);

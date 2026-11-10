@@ -11,7 +11,7 @@ import { GroupLabel } from '@/ui/Heading';
 import { Row, RowGroup } from '@/ui/Rows';
 import { words } from '@/words';
 
-const WAYS: Record<string, string | undefined> = words.settings.accountPage.ways;
+const WAYS: Record<string, string | undefined> = words.signIn.providers;
 
 /** 10.5 Account: how you sign in, and the way out. Deleting the account is right here in the app. */
 export default function Account() {
@@ -32,7 +32,7 @@ export default function Account() {
         </RowGroup>
         <View style={{ height: 24 }} />
         <RowGroup>
-          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.settings.signOut} onPress={() => void session.signOut()} trailing={<View />} />
+          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.common.signOut} onPress={() => void session.signOut()} trailing={<View />} />
           <Row danger icon={(c) => <Trash2 size={18} color={c} />} label={words.settings.accountPage.delete} onPress={() => router.push('/settings/delete-account')} />
         </RowGroup>
       </ScrollView>

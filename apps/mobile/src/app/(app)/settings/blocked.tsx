@@ -48,7 +48,7 @@ export default function Blocked() {
               key={person.id}
               person={person}
               detail={words.common.join([`@${person.username}`, words.settings.blocked.since(timeAgo(person.blockedAt))])}
-              trailing={<Button label={words.settings.blocked.unblock} inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />}
+              trailing={<Button label={words.people.unblock} inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />}
             />
           ))}
           <MoreButton pages={blocked} />

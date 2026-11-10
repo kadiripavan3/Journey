@@ -39,7 +39,6 @@ export const shared = {
     confirmRemove: {
       title: (firstName: string) => `Remove ${firstName} from this journey?`,
       body: "They won't be able to add entries any more. The ones they wrote stay unless they delete them.",
-      confirm: 'Remove',
       cancel: 'Keep them',
     },
   },
@@ -71,7 +70,6 @@ export const shared = {
       leave: 'Leave whenever you like',
     },
     join: 'Join the journey',
-    notNow: 'Not now',
     gone: "This invitation isn't there any more.",
     linkGone: 'This invitation link has been used or has run out. Ask your friend for a new one.',
   },

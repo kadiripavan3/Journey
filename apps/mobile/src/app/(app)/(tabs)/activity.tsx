@@ -62,7 +62,7 @@ export default function Activity() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
-        {words.activity.title}
+        {words.common.tabs.activity}
       </Txt>
       <WordTabs tabs={GROUPS} value={filter} onChange={setFilter} style={{ marginTop: 6 }} />
 

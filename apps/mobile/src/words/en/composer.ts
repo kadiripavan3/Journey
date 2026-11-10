@@ -61,7 +61,6 @@ export const composer = {
 
   // What is going on while it is sent or saved
   progress: {
-    posting: 'Posting',
     saving: 'Saving',
     /** "Uploading 2 of 5" */
     uploading: (at: number, of: number) => `Uploading ${at} of ${of}`,
@@ -85,7 +84,6 @@ export const composer = {
     saveAsDraft: 'Save as a draft',
     saveDraft: 'Save draft',
     discard: 'Discard',
-    deleteDraft: 'Delete draft',
     keepWriting: 'Keep writing',
   },
 } as const;

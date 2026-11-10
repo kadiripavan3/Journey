@@ -7,7 +7,6 @@ export const notifications = {
     body: "Only for journeys you follow, grouped so you're never flooded. Turn off any type whenever you like.",
     bodyInApp: "New entries from the journeys you follow, and likes and comments on yours. Grouped so you're never flooded; turn off any type whenever you like.",
     turnOn: 'Turn on notifications',
-    notNow: 'Not now',
     /** The two made-up notifications drawn on the photo. */
     examples: {
       trip: { title: 'Southeast Asia by motorbike', line: 'Maya posted Day 23: “Roads that look like rivers”', when: 'now' },

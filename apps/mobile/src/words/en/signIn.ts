@@ -31,9 +31,7 @@ export const signIn = {
     apple: 'Continue with Apple',
     google: 'Continue with Google',
     email: 'Continue with email',
-    /** What the two companies are called in the sentences below. */
-    names: { apple: 'Apple', google: 'Google' },
-    /** `name` is one of `names`. */
+    /** `name` is "Apple" or "Google" (`providers` below). */
     later: (name: string) => `${name} sign-in is switched on later. Use your email for now.`,
     notOnThisPhone: (name: string) => `${name} sign-in isn't available on this phone. Use your email.`,
     /** "terms" and "privacy" mark the two links. */
@@ -58,6 +56,9 @@ export const signIn = {
     sendAgain: 'Send the code again',
     testMode: (code: string) => `Test mode: no email is sent. The code is ${code}.`,
   },
+
+  /** What each way of signing in is called. */
+  providers: { apple: 'Apple', google: 'Google', email: 'Email code' },
 
   // What the app says when signing in itself didn't work
   problems: {

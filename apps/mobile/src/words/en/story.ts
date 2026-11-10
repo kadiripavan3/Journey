@@ -15,10 +15,6 @@ export const story = {
     reader: 'No entries yet. The first one will show up here.',
   },
   addFirst: 'Add the first entry',
-  /** Under the last entry of a finished journey; its date follows. */
-  completed: 'Completed',
-  jumpTo: 'Jump to',
-  addEntry: 'Entry',
 
   // Where a day starts on the line
   /** What a screen reader says for a day's marker. `detail` is its place and date. */

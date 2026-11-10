@@ -49,17 +49,17 @@ export default function Discover() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
         <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
-          {words.discover.title}
+          {words.common.tabs.discover}
         </Txt>
         <Tap
           accessibilityRole="button"
-          accessibilityLabel={words.discover.search.spoken}
+          accessibilityLabel={words.search.spoken}
           scaleTo={0.985}
           onPress={() => router.push('/search')}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, marginTop: 12, marginHorizontal: layout.barGutter, paddingHorizontal: 18, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
           <Search size={18} color={colors.text} />
           <Txt variant="control">
-            {words.discover.search.hint}
+            {words.discover.searchHint}
           </Txt>
         </Tap>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 14 }}>

@@ -57,7 +57,7 @@ export function ShareSheet({ visible, onClose, heading, link, problem, children 
         { label: words.sharing.ways.messages, icon: (c: string) => <MessageCircle size={22} color={c} />, go: () => void Linking.openURL(messageLink(`${link.text}\n${link.url}`)).catch(() => undefined) },
         { label: words.sharing.ways.mail, icon: (c: string) => <Mail size={22} color={c} />, go: () => void Linking.openURL(mailLink(link.text, `${link.text}\n${link.url}`)).catch(() => undefined) },
         {
-          label: copied ? words.sharing.ways.copied : words.sharing.ways.copy,
+          label: copied ? words.common.copied : words.sharing.ways.copy,
           icon: (c: string) => (copied ? <Check size={22} color={c} strokeWidth={2.6} /> : <LinkIcon size={22} color={c} />),
           go: () => void copyText(link.url).then(setCopied),
         },

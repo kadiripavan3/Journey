@@ -3,7 +3,7 @@ import { plural } from './plural';
 
 export const sharing = {
   /** The places a link can be sent to. */
-  ways: { messages: 'Messages', mail: 'Mail', copy: 'Copy link', copied: 'Copied', more: 'More' },
+  ways: { messages: 'Messages', mail: 'Mail', copy: 'Copy link', more: 'More' },
 
   entry: {
     mine: 'Share your entry',

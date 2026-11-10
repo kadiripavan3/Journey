@@ -19,7 +19,8 @@ export const states = {
 
   // The strip across the top of the app while there is no connection
   strip: {
-    offline: { headline: "You're offline", rest: "Showing what's saved on this phone" },
+    /** After "You're offline" (`offline.title` above). */
+    offlineRest: "Showing what's saved on this phone",
     /** For a few seconds after a like or a follow couldn't be sent. */
     notSent: { headline: "That didn't go through", rest: "Try again when you're back online" },
     spoken: (headline: string, rest: string) => `${headline}. ${rest}.`,
@@ -28,8 +29,8 @@ export const states = {
   // Signed in, but the app can't open: nothing is known about the person and the API can't be asked
   cantOpen: {
     unreachable: { title: "We can't reach Journey", body: "Check your connection and try again. You're still signed in." },
-    offline: { title: "You're offline", body: "Journey opens as soon as you're back online. You're still signed in." },
-    signOut: 'Sign out',
+    /** Under "You're offline" (`offline.title` above). */
+    offline: "Journey opens as soon as you're back online. You're still signed in.",
   },
 
   // An address the app has no screen for

@@ -233,7 +233,7 @@ export default function Composer() {
         <Sheet visible={c.asking} onClose={c.keepWriting} title={c.mode === 'draft' ? words.composer.leave.titleDraft : words.composer.leave.title} subtitle={words.composer.leave.body}>
           <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
             <Button label={c.mode === 'draft' ? words.composer.leave.saveDraft : words.composer.leave.saveAsDraft} size="lg" block loading={c.busy} onPress={c.saveDraft} />
-            <Button label={c.mode === 'draft' ? words.composer.leave.deleteDraft : words.composer.leave.discard} variant="danger" size="lg" block onPress={c.discard} />
+            <Button label={c.mode === 'draft' ? words.drafts.delete : words.composer.leave.discard} variant="danger" size="lg" block onPress={c.discard} />
             <Button label={words.composer.leave.keepWriting} variant="soft" size="lg" block onPress={c.keepWriting} />
           </View>
         </Sheet>

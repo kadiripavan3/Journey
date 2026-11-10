@@ -29,7 +29,7 @@ export default function SignIn() {
   const [busy, setBusy] = useState<string | null>(null);
   const with_ = (which: 'apple' | 'google', start: (() => Promise<void>) | null) => () => {
     if (!start) {
-      const name = words.signIn.choose.names[which];
+      const name = words.signIn.providers[which];
       setNote(authMode === 'local' ? words.signIn.choose.later(name) : words.signIn.choose.notOnThisPhone(name));
       return;
     }

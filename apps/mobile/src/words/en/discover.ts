@@ -1,11 +1,8 @@
 /** 4.1 Discover and a category's own page. */
 
 export const discover = {
-  title: 'Discover',
-  search: {
-    spoken: 'Search journeys, people and tags',
-    hint: 'Search journeys, people, #tags',
-  },
+  /** The search bar at the top; what a screen reader says for it is `search.spoken`. */
+  searchHint: 'Search journeys, people, #tags',
   none: {
     /** `category` is the category's name as the API gives it: "Travel". */
     inCategory: (category: string) => `No ${category.toLowerCase()} journeys yet`,

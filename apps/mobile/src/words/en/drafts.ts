@@ -2,6 +2,10 @@
 import { plural } from './plural';
 
 export const drafts = {
+  /** The page they are all on, and every way to it. */
+  title: 'Drafts and uploads',
+  delete: 'Delete draft',
+
   // What a draft is called and what it holds
   untitled: 'Untitled entry',
   /** "2 photos · 1 clip", or "Text only". */
@@ -36,7 +40,6 @@ export const drafts = {
 
   // On your own profile: the way to Drafts and uploads
   link: {
-    title: 'Drafts and uploads',
     onTheWay: (count: number) => `${count} on ${count === 1 ? 'its' : 'their'} way`,
     failed: (count: number) => `${count} couldn't upload`,
     drafts: (count: number) => plural(count, 'draft'),
@@ -46,15 +49,12 @@ export const drafts = {
 
   // Drafts and uploads
   page: {
-    title: 'Drafts and uploads',
     none: {
       title: 'Nothing waiting',
       body: 'Drafts you save, and entries you write without a signal, wait here until they are posted.',
     },
-    offline: {
-      title: "You're offline",
-      body: "Everything here is saved on this phone. Entries post by themselves when you're back.",
-    },
+    /** Under "You're offline" (`states.offline.title`). */
+    offline: "Everything here is saved on this phone. Entries post by themselves when you're back.",
     onTheirWay: {
       title: 'On their way',
       body: 'Entries go up while Journey is open. If you close it, they carry on from where they stopped next time.',
@@ -71,7 +71,6 @@ export const drafts = {
     confirmDelete: {
       title: 'Delete this draft?',
       body: 'It only exists on this phone, so it will be gone for good.',
-      confirm: 'Delete draft',
     },
   },
 } as const;

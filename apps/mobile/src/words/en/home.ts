@@ -19,11 +19,8 @@ export const home = {
   },
 
   newFromFollowed: 'New from journeys you follow',
-  quiet: {
-    title: 'Your Home is quiet',
-    body: 'Follow a journey and its new entries land here, newest first.',
-    explore: 'Explore journeys',
-  },
+  /** Following nothing yet. (What it says under the title, and its button, are `following.none`.) */
+  quiet: { title: 'Your Home is quiet' },
   caughtUp: {
     inCategory: 'Nothing new here from the journeys you follow.',
     all: (following: number) => `That's every new entry from the ${plural(following, 'journey')} you follow.`,

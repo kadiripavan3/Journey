@@ -80,7 +80,7 @@ export function OutboxLink() {
       {failed > 0 ? <TriangleAlert size={20} color={colors.warn} /> : <CloudUpload size={20} color={colors.text} />}
       <View style={{ flex: 1 }}>
         <Txt variant="control" weight={800}>
-          {words.drafts.link.title}
+          {words.drafts.title}
         </Txt>
         <Txt variant="footnote" color="muted" numberOfLines={1}>
           {words.common.join(parts)}

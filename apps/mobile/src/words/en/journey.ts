@@ -16,8 +16,8 @@ export const journey = {
     checkIn: "Post today's check-in",
     seeRecap: 'See the recap',
     photosSpoken: (count: number) => `${plural(count, 'photo')}. Open the story.`,
+    /** The owner reads `story.none.owner`. */
     noEntries: {
-      owner: 'Your story starts with the first entry.',
       member: 'The story starts with the first entry. It could be yours.',
       reader: (firstName: string) => `${firstName} hasn't added an entry yet. Follow to hear about the first one.`,
     },
@@ -25,7 +25,6 @@ export const journey = {
     readStory: 'Read the story',
     map: 'Map',
     closingNote: 'Closing note',
-    share: 'Share this journey',
     options: 'Journey options',
   },
 
@@ -34,7 +33,6 @@ export const journey = {
     title: 'Edit journey',
     dayTitle: 'When did it start?',
     whoCanSee: 'Who can see it',
-    whoCanSeeTitle: 'Who can see it?',
   },
 
   // 5.7 Complete a journey

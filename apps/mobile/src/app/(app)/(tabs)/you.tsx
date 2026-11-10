@@ -64,7 +64,7 @@ export default function You() {
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingHorizontal: layout.barGutter, paddingBottom: 8 }}>
           <RoundButton label={words.profile.you.share} onPress={() => setSharing(true)} icon={(c) => <Share2 size={19} color={c} />} />
-          <RoundButton label={words.profile.you.settings} onPress={() => router.push('/settings')} icon={(c) => <Gear size={20} color={c} />} />
+          <RoundButton label={words.settings.title} onPress={() => router.push('/settings')} icon={(c) => <Gear size={20} color={c} />} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: layout.barGutter, paddingVertical: 22, paddingHorizontal: 18, borderRadius: radius.panel, backgroundColor: colors.surface, boxShadow: shadow.md }}>
           <View style={{ flex: 1.15, alignItems: 'center' }}>
@@ -77,9 +77,9 @@ export default function You() {
             </Txt>
           </View>
           <View style={{ flex: 1 }}>
-            <Stat layout="stack" size="titleSmall" value={compact(journeys.length)} spoken={journeys.length} label={words.profile.you.stats.journeys} />
-            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followerCount ?? 0)} spoken={counts.data?.followerCount ?? 0} label={words.profile.you.stats.followers} divider onPress={() => openPeople('followers')} />
-            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followingCount ?? 0)} spoken={counts.data?.followingCount ?? 0} label={words.profile.you.stats.following} divider onPress={() => openPeople('following')} />
+            <Stat layout="stack" size="titleSmall" value={compact(journeys.length)} spoken={journeys.length} label={words.profile.you.journeys} />
+            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followerCount ?? 0)} spoken={counts.data?.followerCount ?? 0} label={words.profile.people.followers} divider onPress={() => openPeople('followers')} />
+            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followingCount ?? 0)} spoken={counts.data?.followingCount ?? 0} label={words.profile.people.following} divider onPress={() => openPeople('following')} />
           </View>
         </View>
 
@@ -99,9 +99,9 @@ export default function You() {
 
         <WordTabs
           tabs={[
-            { id: 'active', label: words.profile.you.shelves.active, count: shelves.active.length },
-            { id: 'completed', label: words.profile.you.shelves.completed, count: shelves.completed.length },
-            { id: 'private', label: words.profile.you.shelves.private, count: shelves.private.length, icon: (c) => <Lock size={13} color={c} /> },
+            { id: 'active', label: words.profile.shelves.active, count: shelves.active.length },
+            { id: 'completed', label: words.profile.shelves.completed, count: shelves.completed.length },
+            { id: 'private', label: words.profile.shelves.private, count: shelves.private.length, icon: (c) => <Lock size={13} color={c} /> },
           ]}
           value={shelf}
           onChange={setShelf}

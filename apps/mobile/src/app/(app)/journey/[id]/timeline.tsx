@@ -144,7 +144,7 @@ export default function Timeline() {
           footer={
             j.status === 'completed' && story.atEnd ? (
               <Txt variant="caption" color="muted" weight={700} style={{ marginLeft: layout.barGutter + 34, marginTop: 2 }}>
-                {words.common.join([words.story.completed, j.completedAt ? formatDay(j.completedAt.slice(0, 10)) : null])}
+                {words.common.join([words.journeys.status.completed, j.completedAt ? formatDay(j.completedAt.slice(0, 10)) : null])}
               </Txt>
             ) : null
           }
@@ -153,7 +153,7 @@ export default function Timeline() {
       )}
       {(story.who ? (j?.entryCount ?? 0) : story.total) > 3 ? (
         <View style={{ position: 'absolute', left: layout.barGutter, bottom: Math.max(insets.bottom, 12) + 12 }}>
-          <Button label={words.story.jumpTo} size="lg" variant="ink" icon={(c) => <ListIcon size={19} color={c} />} onPress={() => setJumping(true)} />
+          <Button label={words.story.jump.title} size="lg" variant="ink" icon={(c) => <ListIcon size={19} color={c} />} onPress={() => setJumping(true)} />
         </View>
       ) : null}
       {s ? (
@@ -172,7 +172,7 @@ export default function Timeline() {
       ) : null}
       {j?.viewer.canAddEntry && story.total > 0 ? (
         <View style={{ position: 'absolute', right: layout.barGutter, bottom: Math.max(insets.bottom, 12) + 12 }}>
-          <Button label={words.story.addEntry} size="lg" icon={(c) => <Plus size={20} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
+          <Button label={words.journeys.addEntry} size="lg" icon={(c) => <Plus size={20} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
         </View>
       ) : null}
     </SafeAreaView>
