@@ -4,14 +4,11 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
-    "@expo/ui": "~58.0.27",
     "@tanstack/react-query": "^5.107.1",
     "expo": "~58.0.23",
     "expo-blur": "~58.0.5",
     "expo-constants": "~58.0.15",
-    "expo-device": "~58.0.5",
     "expo-font": "~58.0.11",
-    "expo-glass-effect": "~58.0.5",
     "expo-image": "~58.0.18",
     "expo-image-manipulator": "~58.0.16",
     "expo-image-picker": "~58.0.10",
@@ -22,9 +19,7 @@
     "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.13",
     "expo-status-bar": "~58.0.4",
-    "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
-    "expo-web-browser": "~58.0.7",
     "lucide-react-native": "^1.70.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -56,7 +51,8 @@
     "theme": "node scripts/build-theme.mjs",
     "icons": "node scripts/build-icons.mjs",
     "api:generate": "orval --config orval.config.ts",
-    "typecheck": "tsc --noEmit",
+    "routes": "expo customize tsconfig.json",
+    "typecheck": "npm run -s routes && tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",
     "check": "npm run typecheck && npm run lint && npm test"
@@ -67,6 +63,13 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/dist/"
-    ]
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "resolver": "react-native-reanimated/jest/resolver",
+    "moduleNameMapper": {
+      "^lucide-react-native$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js"
+    }
   }
 }

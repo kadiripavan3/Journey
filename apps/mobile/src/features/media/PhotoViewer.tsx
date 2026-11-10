@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { Modal, type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { darkTheme } from '@/theme';
-
-import { Frost } from './Frost';
-import { RoundButton } from './RoundButton';
-import { Txt } from './Txt';
+import { darkTheme, radius } from '@/theme';
+import { Frost } from '@/ui/Frost';
+import { RoundButton } from '@/ui/RoundButton';
+import { Txt } from '@/ui/Txt';
 
 type Props = {
   photos: { id: string; url: string }[];
@@ -36,7 +35,7 @@ export function PhotoViewer({ photos, startAt, onClose, eyebrow, title }: Props)
 
   return (
     <Modal visible={startAt !== null} animationType="fade" onRequestClose={close} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={{ flex: 1, backgroundColor: darkTheme.colors.black }}>
         <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} contentOffset={{ x: (startAt ?? 0) * width, y: 0 }} onScroll={onScroll} scrollEventThrottle={32}>
           {photos.map((photo, i) => (
             <ScrollView key={photo.id} maximumZoomScale={3} minimumZoomScale={1} centerContent showsHorizontalScrollIndicator={false} showsVerticalScrollIndicator={false} style={{ width, height }}>
@@ -48,9 +47,9 @@ export function PhotoViewer({ photos, startAt, onClose, eyebrow, title }: Props)
         <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <RoundButton tone="photo" label="Close photos" onPress={close} icon={(c) => <X size={20} color={c} />} />
           {photos.length > 1 ? (
-            <View style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 18, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
+            <View style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
               <Frost tone="dark" />
-              <Txt accessibilityLiveRegion="polite" weight={700} style={{ fontSize: 13, lineHeight: 17, color: darkTheme.colors.onPhoto }}>
+              <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
                 {index + 1} of {photos.length}
               </Txt>
             </View>
@@ -66,7 +65,7 @@ export function PhotoViewer({ photos, startAt, onClose, eyebrow, title }: Props)
               </Txt>
             ) : null}
             {title ? (
-              <Txt numberOfLines={2} weight={800} style={{ fontSize: 19, lineHeight: 24, letterSpacing: -0.4, color: darkTheme.colors.onPhoto }}>
+              <Txt variant="subtitle" numberOfLines={2} style={{ color: darkTheme.colors.onPhoto }}>
                 {title}
               </Txt>
             ) : null}

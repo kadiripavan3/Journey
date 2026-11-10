@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { fontFor, useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
 import { Emoji } from './Emoji';
 import { Tap } from './Motion';
@@ -35,7 +35,7 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
         gap: filter ? 6 : 8,
         paddingVertical: filter ? 9 : 10,
         paddingHorizontal: filter ? 14 : 15,
-        borderRadius: 24,
+        borderRadius: radius.pill,
         backgroundColor: bg,
         borderWidth: selected && !filter ? 2 : 1.5,
         borderColor: selected ? colors.text : colors.line,
@@ -43,7 +43,9 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
       }}>
       {icon}
       {emoji ? <Emoji char={emoji} size={filter ? 20 : 24} /> : null}
-      <Txt style={{ fontFamily: fontFor[700], fontSize: filter ? 13.5 : 14.5, lineHeight: 20, color: fg }}>{label}</Txt>
+      <Txt variant={filter ? 'note' : 'control'} weight={700} style={{ color: fg }}>
+        {label}
+      </Txt>
     </Tap>
   );
 }

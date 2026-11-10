@@ -8,25 +8,22 @@ import { ApiError, messageFor } from '@/api/fetcher';
 import { updateJourney, useGetJourney } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
-import { useCatalog } from '@/journey/catalog';
-import { parseTags } from '@/journey/draft';
-import { pickPhotos } from '@/journey/pick';
+import { useCatalog } from '@/features/journeys/catalog';
+import { parseTags } from '@/features/journeys/draft';
+import { VISIBILITY } from '@/features/journeys/visibility';
+import { pickPhotos } from '@/features/media/pick';
 import { addDays, formatDayLong, today } from '@/lib/dates';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
-import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { DayPicker } from '@/ui/DayPicker';
+import { Emoji } from '@/ui/Emoji';
 import { Field, FieldButton } from '@/ui/Field';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
-
-const VISIBILITY = [
-  { id: 'public', label: 'Public', note: 'Anyone. It can appear in Discover.' },
-  { id: 'unlisted', label: 'Unlisted', note: 'Only people with the link.' },
-  { id: 'private', label: 'Private', note: 'Only you.' },
-] as const;
 
 /** Change a journey's details after it has started: the same fields as when it was made. */
 export default function EditJourney() {
@@ -85,7 +82,7 @@ export default function EditJourney() {
 
   const shownCover = cover?.uri ?? j?.coverUrl;
   const chosenCategory = catalog.category(category);
-  const chosenVisibility = VISIBILITY.find((v) => v.id === visibility) ?? VISIBILITY[0];
+  const chosenVisibility = VISIBILITY.find((v) => v.id === visibility) ?? VISIBILITY[0]!;
 
   return (
     <Screen
@@ -102,11 +99,11 @@ export default function EditJourney() {
         </View>
       ) : journey.isError ? (
         <View style={{ height: 280 }}>
-          <Problem error={journey.error} onRetry={() => void journey.refetch()} retrying={journey.isRefetching} />
+          <Problem message={messageFor(journey.error)} onRetry={() => void journey.refetch()} retrying={journey.isRefetching} />
         </View>
       ) : (
         <>
-          <View style={{ height: 168, marginTop: 10, marginBottom: 16, borderRadius: 22, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ height: 168, marginTop: 10, marginBottom: 16, borderRadius: radius.cardLarge, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
             {shownCover ? <Image source={{ uri: shownCover }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" accessibilityLabel="The journey's cover" /> : null}
             <View style={shownCover ? { position: 'absolute', right: 12, bottom: 12 } : undefined}>
               <Button label={shownCover ? 'Change cover' : 'Add a cover'} size="sm" variant={shownCover ? 'glass' : 'soft'} icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} />
@@ -121,7 +118,7 @@ export default function EditJourney() {
             <Field label="Title" value={title} onChangeText={setTitle} maxLength={80} />
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <FieldButton label="Starts" value={formatDayLong(startDate)} icon={<CalendarDays size={18} color={colors.text} />} onPress={() => setPicking('day')} />
-              <FieldButton label="Category" value={chosenCategory ? `${chosenCategory.emoji} ${chosenCategory.label}` : 'Choose'} onPress={() => setPicking('category')} />
+              <FieldButton label="Category" value={chosenCategory ? chosenCategory.label : 'Choose'} icon={chosenCategory ? <Emoji char={chosenCategory.emoji} size={20} /> : undefined} onPress={() => setPicking('category')} />
             </View>
             <Field label="What's it about? · optional" value={description} onChangeText={setDescription} multiline maxLength={300} />
             <Field label="Tags · up to 5" value={tags} onChangeText={setTags} autoCapitalize="none" autoCorrect={false} note="Separate tags with spaces." />
@@ -136,7 +133,8 @@ export default function EditJourney() {
           <SheetRow
             key={c.id}
             first={index === 0}
-            label={`${c.emoji}  ${c.label}`}
+            icon={() => <Emoji char={c.emoji} size={24} />}
+            label={c.label}
             trailing={c.id === category ? <Check size={20} color={colors.text} strokeWidth={2.6} /> : undefined}
             onPress={() => {
               setCategory(c.id);

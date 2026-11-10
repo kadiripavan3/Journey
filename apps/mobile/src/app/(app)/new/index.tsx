@@ -3,17 +3,19 @@ import { ChevronRight } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { messageFor } from '@/api/fetcher';
 import { useGetSettings } from '@/api/generated/journey';
-import { useCatalog } from '@/journey/catalog';
-import { useNewJourney } from '@/journey/draft';
-import { useTheme } from '@/theme';
+import { useCatalog } from '@/features/journeys/catalog';
+import { useNewJourney } from '@/features/journeys/draft';
+import { TemplateCard } from '@/features/journeys/TemplateCard';
+import { radius, useTheme } from '@/theme';
 import { AppBar, StepProgress } from '@/ui/AppBar';
-import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { Emoji } from '@/ui/Emoji';
 import { Heading, Lead } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
-import { TemplateCard } from '@/ui/TemplateCard';
 import { Txt } from '@/ui/Txt';
 
 const POPULAR = ['trip', 'challenge30'];
@@ -45,7 +47,7 @@ export default function ChooseTemplate() {
   return (
     <Screen
       header={<AppBar leading="close" center={<StepProgress step={1} />} />}
-      footer={<Button label="Continue" size="lg" block disabled={!catalog.template(draft.template)} onPress={() => router.push('/new/details' as never)} />}>
+      footer={<Button label="Continue" size="lg" block disabled={!catalog.template(draft.template)} onPress={() => router.push('/new/details')} />}>
       <Heading style={{ marginTop: 6 }}>What kind of journey?</Heading>
       <Lead>Pick a starting point. You can change anything later.</Lead>
       {catalog.query.isPending ? (
@@ -54,7 +56,7 @@ export default function ChooseTemplate() {
         </View>
       ) : catalog.query.isError ? (
         <View style={{ height: 280 }}>
-          <Problem error={catalog.query.error} onRetry={() => void catalog.query.refetch()} retrying={catalog.query.isRefetching} />
+          <Problem message={messageFor(catalog.query.error)} onRetry={() => void catalog.query.refetch()} retrying={catalog.query.isRefetching} />
         </View>
       ) : (
         <View style={{ marginTop: 16, marginHorizontal: -4, gap: 10 }}>
@@ -86,14 +88,14 @@ export default function ChooseTemplate() {
                 marginTop: 2,
                 paddingVertical: 14,
                 paddingHorizontal: 16,
-                borderRadius: 18,
+                borderRadius: radius.photo,
                 backgroundColor: colors.fill,
                 borderWidth: 2,
                 borderColor: draft.template === journal.id ? colors.text : colors.fill,
               }}>
               <Emoji char={journal.emoji} size={28} />
-              <Txt style={{ flex: 1, fontSize: 14, lineHeight: 20 }}>
-                <Txt weight={800} style={{ fontSize: 14, lineHeight: 20 }}>
+              <Txt variant="callout" style={{ flex: 1 }}>
+                <Txt variant="callout" weight={800}>
                   {journal.name}
                 </Txt>
                 {` · ${journal.description.charAt(0).toLowerCase()}${journal.description.slice(1)}`}

@@ -35,7 +35,12 @@ export const palettes = {
     "accentSoft": "#FFF3CC",
     "onPhoto": "#FFFFFF",
     "photoGlass": "rgba(16, 16, 20, .36)",
-    "photoGlassLine": "rgba(255, 255, 255, .24)"
+    "photoGlassLine": "rgba(255, 255, 255, .24)",
+    "photoTint": "rgba(16, 16, 20, .22)",
+    "stage": "#08080A",
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "scrim": "rgba(0, 0, 0, .44)"
   },
   "dark": {
     "bg": "#0B0B0E",
@@ -69,27 +74,48 @@ export const palettes = {
     "accentSoft": "#33290A",
     "onPhoto": "#FFFFFF",
     "photoGlass": "rgba(16, 16, 20, .36)",
-    "photoGlassLine": "rgba(255, 255, 255, .24)"
+    "photoGlassLine": "rgba(255, 255, 255, .24)",
+    "photoTint": "rgba(16, 16, 20, .22)",
+    "stage": "#08080A",
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "scrim": "rgba(0, 0, 0, .44)"
   }
 } as const;
 
-/** Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. */
+/**
+ * Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. The rest are the same
+ * in light and dark: under a sheet, under a switch's knob, around a picture that overlaps a photo, under a card on the stage.
+ */
 export const shadows = {
   "light": {
     "md": "0 12px 32px rgba(20, 20, 32, .13), 0 2px 6px rgba(20, 20, 32, .06)",
-    "sm": "0 4px 16px rgba(20, 20, 32, .08), 0 0 0 1px rgba(20, 20, 32, .04)"
+    "sm": "0 4px 16px rgba(20, 20, 32, .08), 0 0 0 1px rgba(20, 20, 32, .04)",
+    "sheet": "0 -12px 40px rgba(0, 0, 0, .2)",
+    "knob": "0 2px 4px rgba(0, 0, 0, .2)",
+    "float": "0 6px 16px rgba(0, 0, 0, .16)",
+    "stage": "0 30px 60px -20px rgba(0, 0, 0, .6)"
   },
   "dark": {
     "md": "0 12px 32px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .4)",
-    "sm": "0 0 0 1px rgba(255, 255, 255, .06)"
+    "sm": "0 0 0 1px rgba(255, 255, 255, .06)",
+    "sheet": "0 -12px 40px rgba(0, 0, 0, .2)",
+    "knob": "0 2px 4px rgba(0, 0, 0, .2)",
+    "float": "0 6px 16px rgba(0, 0, 0, .16)",
+    "stage": "0 30px 60px -20px rgba(0, 0, 0, .6)"
   }
 } as const;
 
 export const radius = {
   "chip": 8,
+  "tile": 12,
   "thumb": 14,
+  "field": 16,
+  "photo": 18,
   "card": 20,
+  "cardLarge": 22,
   "panel": 24,
+  "stage": 28,
   "sheet": 30,
   "pill": 999
 } as const;
@@ -97,12 +123,39 @@ export const radius = {
 /** The spacing scale, in points. */
 export const space = [4,8,12,16,20,24,32,40,48] as const;
 
+/** Where a screen's content starts from the edge ("gutter" for text and cards, "rowGutter" for full-width rows, "barGutter" for bars and rails), and the room above a section. */
+export const layout = {"gutter":22,"rowGutter":20,"barGutter":16,"section":24} as const;
+
 export const type = {
+  "hero": {
+    "fontSize": 41,
+    "lineHeight": 42,
+    "weight": 800,
+    "letterSpacing": -1.6
+  },
+  "displayLarge": {
+    "fontSize": 36,
+    "lineHeight": 38,
+    "weight": 800,
+    "letterSpacing": -1.3
+  },
   "display": {
     "fontSize": 34,
     "lineHeight": 36,
     "weight": 800,
     "letterSpacing": -1.36
+  },
+  "heading": {
+    "fontSize": 31,
+    "lineHeight": 35,
+    "weight": 800,
+    "letterSpacing": -1.2
+  },
+  "titleLarge": {
+    "fontSize": 27,
+    "lineHeight": 30,
+    "weight": 800,
+    "letterSpacing": -0.95
   },
   "title": {
     "fontSize": 23,
@@ -110,15 +163,75 @@ export const type = {
     "weight": 800,
     "letterSpacing": -0.69
   },
+  "titleSmall": {
+    "fontSize": 20,
+    "lineHeight": 25,
+    "weight": 800,
+    "letterSpacing": -0.5
+  },
+  "subtitle": {
+    "fontSize": 19,
+    "lineHeight": 24,
+    "weight": 800,
+    "letterSpacing": -0.4
+  },
+  "subheading": {
+    "fontSize": 17,
+    "lineHeight": 22,
+    "weight": 800,
+    "letterSpacing": -0.34
+  },
   "headline": {
     "fontSize": 16,
     "lineHeight": 21,
     "weight": 700,
     "letterSpacing": -0.24
   },
+  "bodyLarge": {
+    "fontSize": 16,
+    "lineHeight": 24,
+    "weight": 500,
+    "letterSpacing": 0
+  },
+  "lead": {
+    "fontSize": 15.5,
+    "lineHeight": 23,
+    "weight": 500,
+    "letterSpacing": 0
+  },
   "body": {
     "fontSize": 15,
     "lineHeight": 22,
+    "weight": 500,
+    "letterSpacing": 0
+  },
+  "item": {
+    "fontSize": 15,
+    "lineHeight": 20,
+    "weight": 700,
+    "letterSpacing": 0
+  },
+  "bodySmall": {
+    "fontSize": 14.5,
+    "lineHeight": 22,
+    "weight": 500,
+    "letterSpacing": 0
+  },
+  "control": {
+    "fontSize": 14.5,
+    "lineHeight": 20,
+    "weight": 700,
+    "letterSpacing": 0
+  },
+  "callout": {
+    "fontSize": 14,
+    "lineHeight": 20,
+    "weight": 500,
+    "letterSpacing": 0
+  },
+  "note": {
+    "fontSize": 13.5,
+    "lineHeight": 19,
     "weight": 500,
     "letterSpacing": 0
   },
@@ -128,12 +241,36 @@ export const type = {
     "weight": 600,
     "letterSpacing": 0
   },
+  "footnote": {
+    "fontSize": 12.5,
+    "lineHeight": 17,
+    "weight": 500,
+    "letterSpacing": 0
+  },
+  "small": {
+    "fontSize": 12,
+    "lineHeight": 16,
+    "weight": 600,
+    "letterSpacing": 0
+  },
+  "tiny": {
+    "fontSize": 11.5,
+    "lineHeight": 14,
+    "weight": 700,
+    "letterSpacing": 0
+  },
   "label": {
     "fontSize": 11.5,
     "lineHeight": 14,
     "weight": 800,
     "letterSpacing": 0.81,
     "uppercase": true
+  },
+  "micro": {
+    "fontSize": 10.5,
+    "lineHeight": 13,
+    "weight": 800,
+    "letterSpacing": 0
   }
 } as const;
 

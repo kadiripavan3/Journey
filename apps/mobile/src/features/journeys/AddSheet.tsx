@@ -1,15 +1,17 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { ChevronRight, Plus, Route } from 'lucide-react-native';
 import { View } from 'react-native';
 
+import { messageFor } from '@/api/fetcher';
 import { useGetMyJourneys } from '@/api/generated/journey';
 import { timeAgo } from '@/lib/dates';
-import { useTheme } from '@/theme';
-
-import { Loading, Photo, Problem } from './Bits';
-import { Button } from './Button';
-import { Sheet, SheetRow } from './Sheet';
-import { Txt } from './Txt';
+import { layout, radius, useTheme } from '@/theme';
+import { Button } from '@/ui/Button';
+import { Loading } from '@/ui/Loading';
+import { Photo } from '@/ui/Photo';
+import { Problem } from '@/ui/Problem';
+import { Sheet, SheetRow } from '@/ui/Sheet';
+import { Txt } from '@/ui/Txt';
 
 /** 7.1 The + button: your journeys first, so today's entry is two taps away; a new journey is one row below. */
 export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -18,9 +20,9 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const mine = useGetMyJourneys({ query: { enabled: visible } });
   const open = (mine.data ?? []).filter((journey) => journey.viewer.canAddEntry);
 
-  const go = (href: string) => {
+  const go = (href: Href) => {
     onClose();
-    router.push(href as never);
+    router.push(href);
   };
 
   return (
@@ -31,25 +33,25 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
         </View>
       ) : mine.isError ? (
         <View style={{ height: 220 }}>
-          <Problem error={mine.error} onRetry={() => void mine.refetch()} retrying={mine.isRefetching} />
+          <Problem message={messageFor(mine.error)} onRetry={() => void mine.refetch()} retrying={mine.isRefetching} />
         </View>
       ) : (
         <>
           {open.length === 0 ? (
-            <Txt color="muted" style={{ fontSize: 14, lineHeight: 20, paddingHorizontal: 22, paddingBottom: 10 }}>
+            <Txt variant="callout" color="muted" style={{ paddingHorizontal: layout.gutter, paddingBottom: 10 }}>
               Every entry belongs to a journey: a trip, a challenge, anything with a story.
             </Txt>
           ) : null}
           {open.map((journey, index) => (
             <View
               key={journey.id}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 4, marginBottom: 8, padding: 10, borderRadius: 20, backgroundColor: colors.fill }}>
-              <Photo uri={journey.coverUrl} radius={14} style={{ width: 56, height: 56, backgroundColor: colors.fill2 }} />
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 4, marginBottom: 8, padding: 10, borderRadius: radius.card, backgroundColor: colors.fill }}>
+              <Photo uri={journey.coverUrl} radius="thumb" style={{ width: 56, height: 56, backgroundColor: colors.fill2 }} />
               <View style={{ flex: 1 }}>
-                <Txt numberOfLines={1} weight={800} style={{ fontSize: 15, lineHeight: 20 }}>
+                <Txt variant="item" numberOfLines={1} weight={800}>
                   {journey.title}
                 </Txt>
-                <Txt numberOfLines={1} color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+                <Txt variant="footnote" numberOfLines={1} color="muted">
                   {journey.progressLabel}
                   {journey.status === 'paused' ? ' · paused' : journey.lastEntryAt ? ` · last entry ${timeAgo(journey.lastEntryAt)}` : ''}
                 </Txt>

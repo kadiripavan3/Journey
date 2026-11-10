@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { View } from 'react-native';
 
 import { initials } from '@/lib/username';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
 
@@ -11,7 +11,7 @@ type Props = { uri?: string | null; name: string; size?: number; ring?: string }
 /** A person's picture, or their initials when they have none. */
 export function Avatar({ uri, name, size = 40, ring }: Props) {
   const { colors } = useTheme();
-  const frame = { width: size, height: size, borderRadius: size / 2, borderWidth: ring ? Math.max(2, size / 19) : 0, borderColor: ring };
+  const frame = { width: size, height: size, borderRadius: radius.pill, borderWidth: ring ? Math.max(2, size / 19) : 0, borderColor: ring };
   if (uri) {
     return <Image source={{ uri }} style={[frame, { backgroundColor: colors.fill2 }]} contentFit="cover" accessibilityLabel={name} />;
   }

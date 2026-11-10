@@ -6,10 +6,11 @@ import { messageFor } from '@/api/fetcher';
 import { useGetCatalog, useGetMe, useSaveProfile } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { AppBar, StepProgress } from '@/ui/AppBar';
-import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { Heading, Lead } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 
@@ -64,7 +65,7 @@ export default function Interests() {
         </View>
       ) : catalog.isError ? (
         <View style={{ height: 260 }}>
-          <Problem error={catalog.error} onRetry={() => void catalog.refetch()} retrying={catalog.isRefetching} />
+          <Problem message={messageFor(catalog.error)} onRetry={() => void catalog.refetch()} retrying={catalog.isRefetching} />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 24 }}>

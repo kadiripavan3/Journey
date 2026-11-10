@@ -1,10 +1,9 @@
 import { View } from 'react-native';
 
-import { useTheme } from '@/theme';
-
-import { Emoji } from './Emoji';
-import { Tap } from './Motion';
-import { Txt } from './Txt';
+import { radius, useTheme } from '@/theme';
+import { Emoji } from '@/ui/Emoji';
+import { Tap } from '@/ui/Motion';
+import { Txt } from '@/ui/Txt';
 
 type Props = { emoji: string; name: string; description: string; selected?: boolean; tag?: string; onPress?: () => void };
 
@@ -21,14 +20,14 @@ export function TemplateCard({ emoji, name, description, selected, tag, onPress 
         flex: 1,
         gap: 4,
         padding: selected ? 15.5 : 16,
-        borderRadius: 22,
+        borderRadius: radius.cardLarge,
         backgroundColor: colors.bg,
         borderWidth: selected ? 2 : 1.5,
         borderColor: selected ? colors.text : colors.line,
       }}>
       {tag ? (
-        <View style={{ position: 'absolute', top: 12, right: 12, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 9, backgroundColor: colors.accent }}>
-          <Txt weight={800} style={{ fontSize: 10.5, lineHeight: 13, letterSpacing: 0.4, color: colors.onAccent }}>
+        <View style={{ position: 'absolute', top: 12, right: 12, paddingVertical: 4, paddingHorizontal: 8, borderRadius: radius.chip, backgroundColor: colors.accent }}>
+          <Txt variant="micro" style={{ color: colors.onAccent }}>
             {tag}
           </Txt>
         </View>
@@ -36,10 +35,10 @@ export function TemplateCard({ emoji, name, description, selected, tag, onPress 
       <View style={{ marginBottom: 6 }}>
         <Emoji char={emoji} size={44} />
       </View>
-      <Txt weight={800} style={{ fontSize: 16, lineHeight: 21, letterSpacing: -0.25 }}>
+      <Txt variant="headline" weight={800}>
         {name}
       </Txt>
-      <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17.5 }}>
+      <Txt variant="footnote" color="muted">
         {description}
       </Txt>
     </Tap>

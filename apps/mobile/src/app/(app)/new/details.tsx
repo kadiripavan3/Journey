@@ -4,14 +4,15 @@ import { CalendarDays, Camera, Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { useCatalog } from '@/journey/catalog';
-import { parseTags, useNewJourney } from '@/journey/draft';
-import { pickPhotos } from '@/journey/pick';
+import { useCatalog } from '@/features/journeys/catalog';
+import { parseTags, useNewJourney } from '@/features/journeys/draft';
+import { pickPhotos } from '@/features/media/pick';
 import { addDays, formatDayLong, today } from '@/lib/dates';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { DayPicker } from '@/ui/DayPicker';
+import { Emoji } from '@/ui/Emoji';
 import { Field, FieldButton } from '@/ui/Field';
 import { Heading } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
@@ -45,10 +46,10 @@ export default function JourneyDetails() {
   return (
     <Screen
       header={<AppBar center={<StepProgress step={2} />} />}
-      footer={<Button label="Continue" size="lg" block disabled={draft.title.trim().length === 0} onPress={() => router.push('/new/visibility' as never)} />}>
+      footer={<Button label="Continue" size="lg" block disabled={draft.title.trim().length === 0} onPress={() => router.push('/new/visibility')} />}>
       <Heading style={{ marginTop: 6 }}>Tell us about it</Heading>
 
-      <View style={{ height: 168, marginTop: 18, marginBottom: 16, borderRadius: 22, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ height: 168, marginTop: 18, marginBottom: 16, borderRadius: radius.cardLarge, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
         {draft.cover ? <Image source={{ uri: draft.cover.uri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" accessibilityLabel="The cover you chose" /> : null}
         {draft.cover ? (
           <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
@@ -57,7 +58,7 @@ export default function JourneyDetails() {
         ) : (
           <>
             <Button label="Add a cover" size="sm" variant="soft" icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} style={{ alignSelf: 'center', backgroundColor: colors.bg }} />
-            <Txt color="muted" center style={{ fontSize: 12.5, lineHeight: 17, marginTop: 8, marginHorizontal: 30 }}>
+            <Txt variant="footnote" color="muted" center style={{ marginTop: 8, marginHorizontal: 30 }}>
               Optional. Your first photo is the cover until you choose one.
             </Txt>
           </>
@@ -73,7 +74,7 @@ export default function JourneyDetails() {
         <Field label="Title" value={draft.title} onChangeText={(title) => change({ title })} maxLength={80} autoCapitalize="sentences" returnKeyType="next" placeholder={template?.id === 'challenge30' ? '30 days of…' : undefined} />
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <FieldButton label="Starts" value={formatDayLong(draft.startDate)} icon={<CalendarDays size={18} color={colors.text} />} onPress={() => setPickingDay(true)} />
-          <FieldButton label="Category" value={category ? `${category.emoji} ${category.label}` : 'Choose'} onPress={() => setPickingCategory(true)} />
+          <FieldButton label="Category" value={category ? category.label : 'Choose'} icon={category ? <Emoji char={category.emoji} size={20} /> : undefined} onPress={() => setPickingCategory(true)} />
         </View>
         <Field label="What's it about? · optional" value={draft.description} onChangeText={(description) => change({ description })} multiline maxLength={300} />
         <Field
@@ -101,7 +102,8 @@ export default function JourneyDetails() {
           <SheetRow
             key={c.id}
             first={index === 0}
-            label={`${c.emoji}  ${c.label}`}
+            icon={() => <Emoji char={c.emoji} size={24} />}
+            label={c.label}
             trailing={c.id === category?.id ? <Check size={20} color={colors.text} strokeWidth={2.6} /> : undefined}
             onPress={() => {
               change({ category: c.id });

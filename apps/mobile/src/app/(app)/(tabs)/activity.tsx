@@ -1,22 +1,25 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { messageFor } from '@/api/fetcher';
 import { type ActivityItemResponse, useGetActivity, useGetDigest, useMarkActivitySeen } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
+import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { timeAgo } from '@/lib/dates';
 import { plural } from '@/lib/plural';
-import { useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Photo, Problem } from '@/ui/Bits';
 import { Emoji } from '@/ui/Emoji';
 import { EmptyState } from '@/ui/EmptyState';
 import { GroupLabel } from '@/ui/Heading';
 import { Rise } from '@/ui/Motion';
+import { Photo } from '@/ui/Photo';
+import { Problem } from '@/ui/Problem';
 import { ListSkeleton } from '@/ui/Skeleton';
-import { PersonFollowButton } from '@/ui/PersonFollowButton';
 import { Txt } from '@/ui/Txt';
+import { WordTabs } from '@/ui/WordTabs';
 
 const FILTERS = [
   { id: 'all', label: 'All', kinds: null },
@@ -51,6 +54,9 @@ export default function Activity() {
     }, [newCount, seen]),
   );
 
+  // Leaving the tab forgets them: next time only what is new then is marked.
+  useFocusEffect(useCallback(() => () => setFresh(new Set()), []));
+
   const kinds = FILTERS.find((f) => f.id === filter)?.kinds;
   const shown = (items ?? []).filter((item) => !kinds || (kinds as readonly string[]).includes(item.kind));
   const isFresh = (item: ActivityItemResponse) => item.isNew || fresh.has(item.id);
@@ -64,27 +70,15 @@ export default function Activity() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 36, letterSpacing: -1.2, marginTop: 10, marginHorizontal: 20 }}>
+      <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
         Activity
       </Txt>
-      <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 24, marginTop: 6, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.line }}>
-        {FILTERS.map((f) => {
-          const on = f.id === filter;
-          return (
-            <Pressable key={f.id} accessibilityRole="tab" accessibilityLabel={f.label} accessibilityState={{ selected: on }} onPress={() => setFilter(f.id)} style={{ paddingVertical: 12 }}>
-              <Txt weight={700} style={{ fontSize: 15, lineHeight: 20, color: on ? colors.text : colors.muted }}>
-                {f.label}
-              </Txt>
-              {on ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 2.5, borderRadius: 2, backgroundColor: colors.text }} /> : null}
-            </Pressable>
-          );
-        })}
-      </View>
+      <WordTabs tabs={FILTERS} value={filter} onChange={setFilter} style={{ marginTop: 6 }} />
 
       {activity.isPending ? (
         <ListSkeleton />
       ) : activity.isError ? (
-        <Problem error={activity.error} onRetry={() => void activity.refetch()} retrying={activity.isRefetching} />
+        <Problem message={messageFor(activity.error)} onRetry={() => void activity.refetch()} retrying={activity.isRefetching} />
       ) : (
         <ScrollView
           contentContainerStyle={{ paddingBottom: 130, flexGrow: 1 }}
@@ -94,14 +88,14 @@ export default function Activity() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`This week: ${plural(week.entryCount, 'new entry', 'new entries')} in ${plural(week.journeys.length, 'journey')}. Open the weekly digest.`}
-              onPress={() => router.push('/digest' as never)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, marginHorizontal: 16, padding: 14, borderRadius: 20, backgroundColor: colors.fill }}>
+              onPress={() => router.push('/digest')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, marginHorizontal: 16, padding: 14, borderRadius: radius.card, backgroundColor: colors.fill }}>
               <Emoji char="🗞️" size={34} />
               <View style={{ flex: 1 }}>
-                <Txt weight={800} style={{ fontSize: 15, lineHeight: 20 }}>
+                <Txt variant="item" weight={800}>
                   This week in the journeys you follow
                 </Txt>
-                <Txt color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+                <Txt variant="caption" weight={500} color="muted">
                   {plural(week.entryCount, 'new entry', 'new entries')} in {plural(week.journeys.length, 'journey')}
                 </Txt>
               </View>
@@ -117,13 +111,13 @@ export default function Activity() {
             </View>
           ) : (
             <>
-              {recent.length > 0 ? <GroupLabel style={{ marginHorizontal: 22 }}>New</GroupLabel> : null}
+              {recent.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>New</GroupLabel> : null}
               {recent.map((item, index) => (
                 <Rise key={item.id} index={index}>
                   <Line item={item} fresh />
                 </Rise>
               ))}
-              {earlier.length > 0 ? <GroupLabel style={{ marginHorizontal: 22 }}>{recent.length > 0 ? 'Earlier' : 'This month'}</GroupLabel> : null}
+              {earlier.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{recent.length > 0 ? 'Earlier' : 'This month'}</GroupLabel> : null}
               {earlier.map((item, index) => (
                 <Rise key={item.id} index={index}>
                   <Line item={item} />
@@ -145,7 +139,7 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
   if (!first) return null;
 
   const bold = (text: string | null) => (
-    <Txt weight={800} style={{ fontSize: 14, lineHeight: 20 }}>
+    <Txt variant="callout" weight={800}>
       {text}
     </Txt>
   );
@@ -163,7 +157,7 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
     );
 
   let what: React.ReactNode;
-  let href: string;
+  let href: Href;
   switch (item.kind) {
     case 'new_entries':
       what = (
@@ -175,7 +169,12 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
       href = `/journey/${item.journeyId}/timeline`;
       break;
     case 'journey_completed':
-      what = <> completed {bold(item.journeyTitle)} 🎉</>;
+      what = (
+        <>
+          {' '}
+          completed {bold(item.journeyTitle)} <Emoji char="🎉" size={16} />
+        </>
+      );
       href = `/journey/${item.journeyId}`;
       break;
     case 'likes':
@@ -209,13 +208,13 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 11, paddingHorizontal: 20, backgroundColor: fresh ? colors.accentSoft : 'transparent' }}>
-      <Pressable accessibilityRole="button" onPress={() => router.push(href as never)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12, opacity: pressed ? 0.8 : 1 })}>
+      <Pressable accessibilityRole="button" onPress={() => router.push(href)} style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12, opacity: pressed ? 0.8 : 1 })}>
         {second && item.actorCount > 1 ? (
           <View style={{ width: 44, height: 44 }}>
             <View style={{ position: 'absolute', left: 0, top: 0 }}>
               <Avatar uri={first.avatarUrl} name={first.displayName} size={30} />
             </View>
-            <View style={{ position: 'absolute', right: 0, bottom: 0, borderRadius: 17, borderWidth: 2, borderColor: fresh ? colors.accentSoft : colors.bg }}>
+            <View style={{ position: 'absolute', right: 0, bottom: 0, borderRadius: radius.field, borderWidth: 2, borderColor: fresh ? colors.accentSoft : colors.bg }}>
               <Avatar uri={second.avatarUrl} name={second.displayName} size={28} />
             </View>
           </View>
@@ -223,15 +222,15 @@ function Line({ item, fresh }: { item: ActivityItemResponse; fresh?: boolean }) 
           <Avatar uri={first.avatarUrl} name={first.displayName} size={44} />
         )}
         <View style={{ flex: 1 }}>
-          <Txt numberOfLines={4} style={{ fontSize: 14, lineHeight: 20 }}>
+          <Txt variant="callout" numberOfLines={4}>
             {who}
             {what}
           </Txt>
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17, marginTop: 3 }}>
+          <Txt variant="footnote" color="muted" style={{ marginTop: 3 }}>
             {timeAgo(item.at)}
           </Txt>
         </View>
-        {item.thumbUrl ? <Photo uri={item.thumbUrl} radius={12} style={{ width: 48, height: 48 }} /> : null}
+        {item.thumbUrl ? <Photo uri={item.thumbUrl} radius="tile" style={{ width: 48, height: 48 }} /> : null}
       </Pressable>
       {item.kind === 'profile_follow' && !item.followsActor ? <PersonFollowButton username={first.username} isFollowing={false} followsYou /> : null}
     </View>

@@ -1,12 +1,13 @@
 import { Text, type TextProps } from 'react-native';
 
-import { type Colors, fontFor, type FontWeight, type TypeVariant, useTheme } from '@/theme';
+import { type Colors, type FontWeight, textStyle, type TypeVariant, useTheme } from '@/theme';
 
 type Props = TextProps & {
-  /** One of the type styles from the design tokens. */
+  /** One of the text styles from the design tokens. It sets the size, line height, weight and letter spacing. */
   variant?: TypeVariant;
   /** A colour name from the theme, or any colour value. */
   color?: keyof Colors | (string & {});
+  /** A different weight than the variant's own. */
   weight?: FontWeight;
   center?: boolean;
 };
@@ -14,19 +15,15 @@ type Props = TextProps & {
 /** All text in the app goes through here, so every size, weight and colour comes from the tokens. */
 export function Txt({ variant = 'body', color = 'text', weight, center, style, ...rest }: Props) {
   const theme = useTheme();
-  const t = theme.type[variant];
   const resolved = color in theme.colors ? theme.colors[color as keyof Colors] : color;
   return (
     <Text
       {...rest}
       style={[
+        textStyle(variant, weight),
         {
-          fontFamily: fontFor[weight ?? (t.weight as FontWeight)],
-          fontSize: t.fontSize,
-          lineHeight: t.lineHeight,
-          letterSpacing: t.letterSpacing,
           color: resolved,
-          textTransform: 'uppercase' in t ? 'uppercase' : undefined,
+          textTransform: 'uppercase' in theme.type[variant] ? 'uppercase' : undefined,
           textAlign: center ? 'center' : undefined,
         },
         style,

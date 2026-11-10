@@ -2,7 +2,7 @@ import { Check } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme';
+import { layout, useTheme } from '@/theme';
 import { type Appearance, setAppearance, useAppearance } from '@/theme/appearance';
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
@@ -22,7 +22,7 @@ export default function AppearanceSettings() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Appearance" trailing={<View style={{ width: 40 }} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <GroupLabel style={{ marginHorizontal: 22 }}>Theme</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>Theme</GroupLabel>
         <RowGroup>
           {CHOICES.map((choice, index) => (
             <Row

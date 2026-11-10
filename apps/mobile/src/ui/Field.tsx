@@ -1,9 +1,10 @@
 import { type ReactNode, useState } from 'react';
-import { Platform, Pressable, TextInput, type TextInputProps, type TextStyle, View } from 'react-native';
+import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
 
-import { fontFor, useTheme } from '@/theme';
+import { radius, textStyle, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
+import { webNoOutline } from './web';
 
 type Props = Omit<TextInputProps, 'style'> & {
   label: string;
@@ -18,9 +19,6 @@ type Props = Omit<TextInputProps, 'style'> & {
   accessory?: ReactNode;
 };
 
-// Browsers draw their own focus ring inside the box; the box's border already shows focus.
-const webNoOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
-
 /** A text field with its label inside the box, as in the designs. */
 export function Field({ label, error, note, noteTone = 'muted', prefix, accessory, multiline, onFocus, onBlur, ...input }: Props) {
   const { colors } = useTheme();
@@ -31,7 +29,7 @@ export function Field({ label, error, note, noteTone = 'muted', prefix, accessor
     <View style={{ gap: 6 }}>
       <View
         style={{
-          borderRadius: 16,
+          borderRadius: radius.field,
           borderWidth: focused || error ? 2 : 1.5,
           borderColor,
           backgroundColor: colors.bg,
@@ -39,12 +37,12 @@ export function Field({ label, error, note, noteTone = 'muted', prefix, accessor
           paddingTop: focused || error ? 8.5 : 9,
           paddingBottom: focused || error ? 9.5 : 10,
         }}>
-        <Txt variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
+        <Txt variant="small" color="muted">
           {label}
         </Txt>
         <View style={{ flexDirection: 'row', alignItems: multiline ? 'flex-start' : 'center', gap: 2 }}>
           {prefix ? (
-            <Txt weight={600} style={{ fontSize: 16, lineHeight: 24 }}>
+            <Txt variant="bodyLarge" weight={600}>
               {prefix}
             </Txt>
           ) : null}
@@ -64,15 +62,13 @@ export function Field({ label, error, note, noteTone = 'muted', prefix, accessor
             }}
             style={[
               webNoOutline,
+              textStyle('bodyLarge', multiline ? 500 : 600, { oneLine: !multiline }),
               {
-              flex: 1,
-              minHeight: multiline ? 66 : 24,
-              padding: 0,
-              fontFamily: fontFor[multiline ? 500 : 600],
-              fontSize: 16,
-              lineHeight: multiline ? 23 : undefined,
-              color: colors.text,
-              textAlignVertical: multiline ? 'top' : 'center',
+                flex: 1,
+                minHeight: multiline ? 66 : 24,
+                padding: 0,
+                color: colors.text,
+                textAlignVertical: multiline ? 'top' : 'center',
               },
             ]}
           />
@@ -102,7 +98,7 @@ export function FieldButton({ label, value, icon, onPress }: { label: string; va
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
-        borderRadius: 16,
+        borderRadius: radius.field,
         borderWidth: 1.5,
         borderColor: colors.lineStrong,
         backgroundColor: colors.bg,
@@ -111,12 +107,12 @@ export function FieldButton({ label, value, icon, onPress }: { label: string; va
         paddingBottom: 10,
         opacity: pressed ? 0.8 : 1,
       })}>
-      <Txt variant="caption" color="muted" style={{ fontSize: 12, lineHeight: 16 }}>
+      <Txt variant="small" color="muted">
         {label}
       </Txt>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 24 }}>
         {icon}
-        <Txt numberOfLines={1} weight={600} style={{ flex: 1, fontSize: 16, lineHeight: 22 }}>
+        <Txt variant="headline" numberOfLines={1} weight={600} style={{ flex: 1 }}>
           {value}
         </Txt>
       </View>

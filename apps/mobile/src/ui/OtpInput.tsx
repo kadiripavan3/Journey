@@ -1,9 +1,10 @@
 import { type ComponentRef, useRef } from 'react';
-import { Platform, Pressable, TextInput, type TextStyle, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
+import { webNoOutline } from './web';
 
 type Props = {
   value: string;
@@ -36,14 +37,14 @@ export function OtpInput({ value, onChange, onComplete, length = 6, disabled }: 
               style={{
                 flex: 1,
                 height: 60,
-                borderRadius: 14,
+                borderRadius: radius.thumb,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: active ? colors.bg : colors.fill,
                 borderWidth: active ? 2 : 0,
                 borderColor: colors.text,
               }}>
-              <Txt weight={800} style={{ fontSize: 26, lineHeight: 32 }}>
+              <Txt variant="titleLarge">
                 {value[i] ?? ''}
               </Txt>
             </View>
@@ -62,7 +63,7 @@ export function OtpInput({ value, onChange, onComplete, length = 6, disabled }: 
         maxLength={length}
         caretHidden
         accessibilityLabel={`${length}-digit code`}
-        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.01, color: 'transparent' }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null]}
+        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.01, color: 'transparent' }, webNoOutline]}
       />
     </Pressable>
   );

@@ -2,8 +2,7 @@ import { Check } from 'lucide-react-native';
 
 import { useFollowProfile, useUnfollowProfile } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
-
-import { Button } from './Button';
+import { Button } from '@/ui/Button';
 
 type Props = {
   username: string;

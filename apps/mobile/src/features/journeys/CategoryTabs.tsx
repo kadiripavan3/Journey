@@ -1,9 +1,8 @@
 import { Pressable, View } from 'react-native';
 
-import { useTheme } from '@/theme';
-
-import { Emoji } from './Emoji';
-import { Txt } from './Txt';
+import { radius, useTheme } from '@/theme';
+import { Emoji } from '@/ui/Emoji';
+import { Txt } from '@/ui/Txt';
 
 type Tab = { id: string; label: string; emoji: string };
 
@@ -23,10 +22,10 @@ export function CategoryTabs({ tabs, value, onChange }: { tabs: Tab[]; value: st
             onPress={() => onChange(tab.id)}
             style={{ flex: 1, alignItems: 'center', gap: 3, paddingBottom: 11 }}>
             <Emoji char={tab.emoji} size={36} />
-            <Txt numberOfLines={1} weight={on ? 700 : 600} style={{ fontSize: 12, lineHeight: 16, color: on ? colors.text : colors.muted }}>
+            <Txt variant="small" numberOfLines={1} weight={on ? 700 : 600} style={{ color: on ? colors.text : colors.muted }}>
               {tab.label}
             </Txt>
-            {on ? <View style={{ position: 'absolute', left: '20%', right: '20%', bottom: -1, height: 2.5, borderRadius: 2, backgroundColor: colors.text }} /> : null}
+            {on ? <View style={{ position: 'absolute', left: '20%', right: '20%', bottom: -1, height: 2.5, borderRadius: radius.pill, backgroundColor: colors.text }} /> : null}
           </Pressable>
         );
       })}

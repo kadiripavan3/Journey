@@ -6,7 +6,7 @@ import { Txt } from './Txt';
 /** The big title at the top of a screen. */
 export function Heading({ children, center, style }: { children: ReactNode; center?: boolean; style?: StyleProp<TextStyle> }) {
   return (
-    <Txt accessibilityRole="header" weight={800} center={center} style={[{ fontSize: 31, lineHeight: 34, letterSpacing: -1.2 }, style]}>
+    <Txt variant="heading" accessibilityRole="header" center={center} style={style}>
       {children}
     </Txt>
   );
@@ -15,7 +15,7 @@ export function Heading({ children, center, style }: { children: ReactNode; cent
 /** The sentence under a screen's title. */
 export function Lead({ children, center, style }: { children: ReactNode; center?: boolean; style?: StyleProp<TextStyle> }) {
   return (
-    <Txt color="muted" center={center} style={[{ fontSize: 15.5, lineHeight: 23, marginTop: 10 }, style]}>
+    <Txt variant="lead" color="muted" center={center} style={[{ marginTop: 10 }, style]}>
       {children}
     </Txt>
   );

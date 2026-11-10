@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { fromISODate, monthTitle, toISODate } from '@/lib/dates';
-import { useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 
 import { Sheet } from './Sheet';
 import { Txt } from './Txt';
@@ -27,6 +27,12 @@ export function DayPicker({ visible, onClose, title, value, onChange, min, max }
   const { colors } = useTheme();
   const chosen = fromISODate(value);
   const [shown, setShown] = useState({ year: chosen.getFullYear(), month: chosen.getMonth() });
+  // Each time the sheet opens it starts on the month of the chosen day, not on the month it was left on.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setShown({ year: chosen.getFullYear(), month: chosen.getMonth() });
+  }
 
   const first = new Date(shown.year, shown.month, 1);
   const blanks = (first.getDay() + 6) % 7; // weeks start on Monday
@@ -45,10 +51,10 @@ export function DayPicker({ visible, onClose, title, value, onChange, min, max }
 
   return (
     <Sheet visible={visible} onClose={onClose} title={title}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 6 }}>
+      <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, paddingBottom: 8 }}>
           <MonthButton label="Previous month" disabled={!canGoBack} onPress={() => move(-1)} icon={<ChevronLeft size={20} color={colors.text} />} />
-          <Txt accessibilityLiveRegion="polite" weight={800} style={{ fontSize: 16, lineHeight: 22, letterSpacing: -0.2 }}>
+          <Txt variant="headline" accessibilityLiveRegion="polite" weight={800}>
             {monthTitle(shown.year, shown.month)}
           </Txt>
           <MonthButton label="Next month" disabled={!canGoForward} onPress={() => move(1)} icon={<ChevronRight size={20} color={colors.text} />} />
@@ -78,8 +84,8 @@ export function DayPicker({ visible, onClose, title, value, onChange, min, max }
                   onClose();
                 }}
                 style={{ width: `${100 / 7}%`, height: 46, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? colors.accent : 'transparent' }}>
-                  <Txt weight={on ? 800 : 600} style={{ fontSize: 15, lineHeight: 20, color: on ? colors.onAccent : colors.text, opacity: off ? 0.3 : 1 }}>
+                <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? colors.accent : 'transparent' }}>
+                  <Txt variant="item" weight={on ? 800 : 600} style={{ color: on ? colors.onAccent : colors.text, opacity: off ? 0.3 : 1 }}>
                     {day}
                   </Txt>
                 </View>
@@ -102,7 +108,7 @@ function MonthButton({ label, disabled, onPress, icon }: { label: string; disabl
       disabled={disabled}
       hitSlop={6}
       onPress={onPress}
-      style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill, opacity: disabled ? 0.35 : 1 }}>
+      style={{ width: 38, height: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill, opacity: disabled ? 0.35 : 1 }}>
       {icon}
     </Pressable>
   );

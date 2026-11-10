@@ -7,7 +7,7 @@ import { messageFor } from '@/api/fetcher';
 import { useCreateLocalToken, useRequestLocalCode } from '@/api/generated/journey';
 import { authMode, LOCAL_TEST_CODE } from '@/auth/mode';
 import { useSession } from '@/auth/session';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { OtpInput } from '@/ui/OtpInput';
 import { RoundButton } from '@/ui/RoundButton';
 import { Screen } from '@/ui/Screen';
@@ -36,12 +36,12 @@ export default function Code() {
           <RoundButton label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
         </View>
       }>
-      <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 34, letterSpacing: -1.2, marginTop: 6 }}>
+      <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 6 }}>
         Check your email
       </Txt>
-      <Txt color="muted" style={{ fontSize: 15.5, lineHeight: 23, marginTop: 10, marginBottom: 28 }}>
+      <Txt variant="lead" color="muted" style={{ marginTop: 10, marginBottom: 28 }}>
         Enter the code we sent to{' '}
-        <Txt weight={700} style={{ fontSize: 15.5, lineHeight: 23 }}>
+        <Txt variant="lead" weight={700}>
           {email}
         </Txt>
         .
@@ -53,12 +53,12 @@ export default function Code() {
         </Txt>
       ) : null}
       <Pressable accessibilityRole="button" onPress={() => resend.mutate({ data: { email } })} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
-        <Txt variant="caption" color="accentText" weight={700} style={{ fontSize: 14, lineHeight: 20 }}>
+        <Txt variant="callout" color="accentText" weight={700}>
           {resend.isSuccess ? 'Code sent again' : 'Send the code again'}
         </Txt>
       </Pressable>
       {authMode === 'local' ? (
-        <View style={{ marginTop: 24, padding: 13, borderRadius: 16, backgroundColor: colors.fill }}>
+        <View style={{ marginTop: 24, padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>
           <Txt variant="caption" weight={600}>
             Test mode: no email is sent. The code is {LOCAL_TEST_CODE}.
           </Txt>

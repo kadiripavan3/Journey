@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
-import { Pill } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { Heading, Lead } from '@/ui/Heading';
+import { Pill } from '@/ui/Pill';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 
@@ -33,10 +33,10 @@ export default function HowItWorks() {
               top: card.top,
               width: 226,
               height: 312,
-              borderRadius: 26,
+              borderRadius: radius.stage,
               overflow: 'hidden',
               backgroundColor: colors.fill,
-              boxShadow: '0 26px 44px -20px rgba(0, 0, 0, 0.5)',
+              boxShadow: shadow.stage,
               transform: [{ translateX: card.left }, { rotate: card.rotate }],
             }}>
             <Image source={card.photo} style={{ flex: 1 }} contentFit="cover" />
@@ -52,14 +52,14 @@ export default function HowItWorks() {
             gap: 6,
             paddingVertical: 8,
             paddingHorizontal: 14,
-            borderRadius: 22,
+            borderRadius: radius.cardLarge,
             backgroundColor: colors.surface,
             boxShadow: shadow.md,
           }}>
-          <Txt weight={800} style={{ fontSize: 13, lineHeight: 18 }}>
+          <Txt variant="caption" weight={800}>
             1.2k
           </Txt>
-          <Txt color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+          <Txt variant="caption" weight={500} color="muted">
             following along
           </Txt>
         </View>

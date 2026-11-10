@@ -32,10 +32,10 @@ export default function Email() {
         </View>
       }
       footer={<Button label="Send code" size="lg" block disabled={!looksLikeEmail(email)} loading={requestCode.isPending} onPress={send} />}>
-      <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 34, letterSpacing: -1.2, marginTop: 6 }}>
+      <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 6 }}>
         What&apos;s your email?
       </Txt>
-      <Txt color="muted" style={{ fontSize: 15.5, lineHeight: 23, marginTop: 10, marginBottom: 24 }}>
+      <Txt variant="lead" color="muted" style={{ marginTop: 10, marginBottom: 24 }}>
         We&apos;ll send a 6-digit code to sign you in. No password needed.
       </Txt>
       <Field

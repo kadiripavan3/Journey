@@ -2,11 +2,12 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { useSettingsEditor } from '@/journey/settings';
-import { useTheme } from '@/theme';
+import { useSettingsEditor } from '@/features/settings/useSettingsEditor';
+import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
-import { Loading, Problem } from '@/ui/Bits';
 import { GroupLabel } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { RowGroup, ToggleRow } from '@/ui/Rows';
 import { Txt } from '@/ui/Txt';
 
@@ -22,7 +23,7 @@ export default function NotificationSettings() {
       {settings.isPending ? (
         <Loading />
       ) : settings.isError || !s ? (
-        <Problem error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isRefetching} />
+        <Problem message={messageFor(settings.error)} onRetry={() => void settings.refetch()} retrying={settings.isRefetching} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {save.isError ? (
@@ -30,7 +31,7 @@ export default function NotificationSettings() {
               {messageFor(save.error)}
             </Txt>
           ) : null}
-          <GroupLabel style={{ marginHorizontal: 22 }}>Tell me about</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Tell me about</GroupLabel>
           <RowGroup>
             <ToggleRow first label="New entries" note="Grouped per journey" value={s.notifyNewEntries} onChange={(v) => change({ notifyNewEntries: v })} />
             <ToggleRow label="Finished journeys" note="With the recap" value={s.notifyCompleted} onChange={(v) => change({ notifyCompleted: v })} />
@@ -38,16 +39,16 @@ export default function NotificationSettings() {
             <ToggleRow label="Followers" value={s.notifyFollowers} onChange={(v) => change({ notifyFollowers: v })} />
             <ToggleRow label="Likes" note="In one batch" value={s.notifyLikes} onChange={(v) => change({ notifyLikes: v })} />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: 22 }}>Once a week</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Once a week</GroupLabel>
           <RowGroup>
             <ToggleRow first label="Weekly digest" note="In one message" value={s.weeklyDigest} onChange={(v) => change({ weeklyDigest: v })} />
             <ToggleRow label="Also send it by email" value={s.digestEmail} onChange={(v) => change({ digestEmail: v })} />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: 22 }}>Reminders</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Reminders</GroupLabel>
           <RowGroup>
             <ToggleRow first label="Gentle reminders" note="To add an entry. At most one a day." value={s.reminders} onChange={(v) => change({ reminders: v })} />
           </RowGroup>
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 18, marginTop: 14, marginHorizontal: 22 }}>
+          <Txt variant="footnote" color="muted" style={{ marginTop: 14, marginHorizontal: layout.gutter }}>
             Your choices are saved now. Notifications on your phone arrive when push is connected; until then everything shows in Activity.
           </Txt>
         </ScrollView>

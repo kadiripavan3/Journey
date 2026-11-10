@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router/tabs';
 
-import { TabBar } from '@/ui/TabBar';
+import { TabBar } from '@/features/navigation/TabBar';
 
 export default function TabsLayout() {
   return (

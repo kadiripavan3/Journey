@@ -2,14 +2,15 @@ import { ChevronRight } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
-import { Card, Toggle } from './Bits';
+import { Card } from './Card';
+import { Toggle } from './Toggle';
 import { Txt } from './Txt';
 
 /** A group of settings rows on one raised card. */
 export function RowGroup({ children }: { children: ReactNode }) {
-  return <Card style={{ marginHorizontal: 16, borderRadius: 20, overflow: 'hidden' }}>{children}</Card>;
+  return <Card style={{ marginHorizontal: 16, borderRadius: radius.card, overflow: 'hidden' }}>{children}</Card>;
 }
 
 type RowProps = {
@@ -31,19 +32,19 @@ export function Row({ icon, label, note, value, onPress, danger, first, trailing
   const color = danger ? colors.danger : colors.text;
   const content = (
     <>
-      {icon ? <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>{icon(color)}</View> : null}
+      {icon ? <View style={{ width: 34, height: 34, borderRadius: radius.tile, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>{icon(color)}</View> : null}
       <View style={{ flex: 1, gap: 1 }}>
-        <Txt weight={600} style={{ fontSize: 15, lineHeight: 20, color }}>
+        <Txt variant="item" weight={600} style={{ color }}>
           {label}
         </Txt>
         {note ? (
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+          <Txt variant="footnote" color="muted">
             {note}
           </Txt>
         ) : null}
       </View>
       {value ? (
-        <Txt color="muted" style={{ fontSize: 14, lineHeight: 19 }}>
+        <Txt variant="callout" color="muted">
           {value}
         </Txt>
       ) : null}

@@ -10,7 +10,7 @@ import { useOnboarding } from '@/auth/onboarding';
 import { useSession } from '@/auth/session';
 import { useDebounced } from '@/lib/useDebounced';
 import { initials, normalizeUsername, usernameProblem } from '@/lib/username';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
@@ -79,8 +79,8 @@ export default function CreateProfile() {
 
       <View
         accessible={false}
-        style={{ alignSelf: 'center', width: 104, height: 104, borderRadius: 52, marginVertical: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill2 }}>
-        <Txt weight={800} style={{ fontSize: 34, lineHeight: 40, letterSpacing: -1 }}>
+        style={{ alignSelf: 'center', width: 104, height: 104, borderRadius: radius.pill, marginVertical: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill2 }}>
+        <Txt variant="display">
           {initials(displayName) || ' '}
         </Txt>
       </View>

@@ -23,6 +23,9 @@ import { loadAppearance } from '@/theme/appearance';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
 
+// A screen that breaks while drawing shows a friendly page with a way to try again.
+export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
+
 void SplashScreen.preventAutoHideAsync();
 void loadAppearance();
 

@@ -7,10 +7,13 @@ import { useCompleteJourney, useGetRecap } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { plural } from '@/lib/plural';
 import { AppBar } from '@/ui/AppBar';
-import { Card, Loading, Photo, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
 import { Heading, Lead } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Photo } from '@/ui/Photo';
+import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 
@@ -25,7 +28,7 @@ export default function CompleteJourney() {
     mutation: {
       onSuccess: async () => {
         await refresh();
-        router.replace(`/journey/${id}/recap` as never);
+        router.replace(`/journey/${id}/recap`);
       },
     },
   });
@@ -50,17 +53,17 @@ export default function CompleteJourney() {
         </View>
       ) : recap.isError || !r ? (
         <View style={{ height: 260 }}>
-          <Problem error={recap.error} onRetry={() => void recap.refetch()} retrying={recap.isRefetching} />
+          <Problem message={messageFor(recap.error)} onRetry={() => void recap.refetch()} retrying={recap.isRefetching} />
         </View>
       ) : (
         <>
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, marginTop: 6, marginHorizontal: -4 }}>
-            <Photo uri={r.journey.coverUrl} radius={14} style={{ width: 64, height: 64 }} />
+            <Photo uri={r.journey.coverUrl} radius="thumb" style={{ width: 64, height: 64 }} />
             <View style={{ flex: 1 }}>
-              <Txt numberOfLines={1} weight={800} style={{ fontSize: 16, lineHeight: 21 }}>
+              <Txt variant="headline" numberOfLines={1} weight={800}>
                 {r.journey.title}
               </Txt>
-              <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+              <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
                 {plural(r.dayCount, 'day')} · {plural(r.entryCount, 'entry', 'entries')} · {plural(r.placeCount, 'place')}
               </Txt>
             </View>
@@ -70,7 +73,7 @@ export default function CompleteJourney() {
           <View style={{ marginTop: 16 }}>
             <Field label={`Closing note · ${note.length} of 500`} value={note} onChangeText={setNote} multiline maxLength={500} />
           </View>
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 18, marginTop: 12, marginHorizontal: 4 }}>
+          <Txt variant="footnote" color="muted" style={{ marginTop: 12, marginHorizontal: 4 }}>
             A completed journey takes no new entries. Everyone who follows it sees that it&apos;s finished.
           </Txt>
         </>
