@@ -3,6 +3,7 @@ import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, us
 
 import { connectSession } from '@/api/fetcher';
 
+import { runBeforeSignOut } from './beforeSignOut';
 import { clearToken, loadToken, saveToken } from './storage';
 
 type SessionState = { status: 'loading' } | { status: 'signedOut' } | { status: 'signedIn' };
@@ -21,6 +22,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const token = useRef<string | null>(null);
 
   const signOut = useCallback(async () => {
+    await runBeforeSignOut(); // while still signed in: this phone stops getting the person's notifications
     token.current = null;
     await clearToken();
     queryClient.clear(); // nothing of the previous person stays in memory

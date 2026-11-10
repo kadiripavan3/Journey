@@ -18,6 +18,7 @@ import { ApiError } from '@/api/fetcher';
 import { useGetMe } from '@/api/generated/journey';
 import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
+import { useTelemetry } from '@/features/analytics/useTelemetry';
 import { useTheme } from '@/theme';
 import { loadAppearance } from '@/theme/appearance';
 import { Button } from '@/ui/Button';
@@ -62,6 +63,8 @@ function App() {
   const onboarding = useOnboarding();
   const signedIn = session.status === 'signedIn';
   const me = useGetMe({ query: { enabled: signedIn } });
+  // Counting and crash reports, in builds that have the keys for them. Elsewhere this does nothing.
+  useTelemetry(signedIn ? me.data?.profile?.id : undefined);
   const [fontsLoaded] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,

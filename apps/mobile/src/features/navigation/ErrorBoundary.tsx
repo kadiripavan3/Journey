@@ -1,6 +1,7 @@
 import type { ErrorBoundaryProps } from 'expo-router';
 import { useEffect } from 'react';
 
+import { reportCrash } from '@/features/analytics/crashes';
 import { ErrorScreen } from '@/ui/ErrorScreen';
 
 /**
@@ -11,6 +12,7 @@ import { ErrorScreen } from '@/ui/ErrorScreen';
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
     console.error(error);
+    reportCrash(error);
   }, [error]);
   return <ErrorScreen onRetry={() => void retry()} detail={__DEV__ ? error.message : undefined} />;
 }
