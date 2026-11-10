@@ -87,6 +87,9 @@ public class JourneyService {
     }
     UUID id = journeys.insert(owner, title.trim(), clean(description), chosenCategory, template.id(),
         labelStyle == null ? template.labelStyle() : labelStyle, visibility, cleanTags(tags), coverMediaId, startDate, template.targetDays());
+    if ("public".equals(visibility)) {
+      journeys.followForFollowersOf(owner, id); // people who follow the creator get their new journeys
+    }
     return view(require(id, owner), owner);
   }
 
@@ -123,6 +126,9 @@ public class JourneyService {
         cover,
         startDate == null ? current.startDate() : startDate,
         status == null ? current.status() : status);
+    if ("public".equals(visibility) && !"public".equals(current.visibility())) {
+      journeys.followForFollowersOf(current.ownerId(), id); // it just became public
+    }
     return view(require(id, viewer), viewer);
   }
 

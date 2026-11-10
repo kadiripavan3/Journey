@@ -1,5 +1,6 @@
 package app.journey.api.seed;
 
+import app.journey.api.entry.EntryAdded;
 import app.journey.api.entry.EntryStore;
 import app.journey.api.media.LocalDiskStorage;
 import java.awt.image.BufferedImage;
@@ -24,12 +25,16 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Local mode only: fills an empty database with a handful of made-up creators and journeys, so that
- * Home, Discover and the sign-up suggestions have something to show. The people and stories are the
- * ones in the designs. Nothing here runs against a real database.
+ * Home, Discover and the sign-up suggestions have something to show, and has those creators react when
+ * the person testing posts something. The people and stories are the ones in the designs. Nothing here
+ * runs against a real database.
  */
 @Component
 @ConditionalOnProperty(name = "journey.media.mode", havingValue = "local")
@@ -133,6 +138,9 @@ public class LocalSeed implements ApplicationRunner {
       if (seedIfEmpty()) {
         log.info("Added the sample creators and journeys ({} journeys).", TRIPS.size());
       }
+      if (addReactionsIfMissing()) {
+        log.info("Added sample likes and comments.");
+      }
     } catch (RuntimeException | IOException e) {
       log.warn("Could not add the sample journeys: {}", e.toString());
     }
@@ -207,6 +215,87 @@ public class LocalSeed implements ApplicationRunner {
       entries.refreshJourneyCounters(journey, false);
     }
     return true;
+  }
+
+  private static final List<String> REMARKS = List.of(
+      "This looks amazing.", "Following along from here!", "Can't wait for the next one.", "Saving this for my own trip one day.",
+      "How long did that take?", "Brilliant. Keep going.");
+  private static final List<String> ANSWERS = List.of("Thank you! More soon.", "Longer than planned, as always.", "Come along next time!");
+
+  /** The sample creators like and comment on each other's entries, so counts and comment threads have something to show. */
+  @Transactional
+  public boolean addReactionsIfMissing() {
+    List<UUID> sample = samplePeople();
+    if (sample.size() < 3 || jdbc.sql("select count(*) from comments").query(Integer.class).single() > 0) {
+      return false;
+    }
+    record Target(UUID entry, UUID author, Instant at) {}
+    List<Target> targets = jdbc.sql("select e.id, e.author_id, e.created_at from entries e where e.author_id in (:sample) order by e.created_at")
+        .param("sample", sample)
+        .query((rs, n) -> new Target(rs.getObject("id", UUID.class), rs.getObject("author_id", UUID.class), rs.getTimestamp("created_at").toInstant()))
+        .list();
+    int turn = 0;
+    for (Target target : targets) {
+      List<UUID> others = sample.stream().filter(id -> !id.equals(target.author())).toList();
+      int likes = 2 + turn % 5;
+      for (int i = 0; i < likes; i++) {
+        jdbc.sql("insert into entry_likes (entry_id, user_id, created_at) values (:entry, :user, :at) on conflict do nothing")
+            .param("entry", target.entry()).param("user", others.get((turn + i) % others.size()))
+            .param("at", Timestamp.from(target.at().plus(20L + i, ChronoUnit.MINUTES))).update();
+      }
+      if (turn % 2 == 0) {
+        UUID remark = jdbc.sql("insert into comments (entry_id, author_id, body, created_at) values (:entry, :author, :body, :at) returning id")
+            .param("entry", target.entry()).param("author", others.get(turn % others.size())).param("body", REMARKS.get(turn % REMARKS.size()))
+            .param("at", Timestamp.from(target.at().plus(40, ChronoUnit.MINUTES))).query(UUID.class).single();
+        if (turn % 4 == 0) {
+          jdbc.sql("insert into comments (entry_id, author_id, parent_id, body, created_at) values (:entry, :author, :parent, :body, :at)")
+              .param("entry", target.entry()).param("author", target.author()).param("parent", remark).param("body", ANSWERS.get(turn % ANSWERS.size()))
+              .param("at", Timestamp.from(target.at().plus(70, ChronoUnit.MINUTES))).update();
+        }
+      }
+      turn++;
+    }
+    jdbc.sql("update entries e set like_count = (select count(*) from entry_likes l where l.entry_id = e.id), comment_count = (select count(*) from comments c where c.entry_id = e.id)")
+        .update();
+    return true;
+  }
+
+  /**
+   * So that one person testing alone sees likes, comments and Activity work: when they post to a public
+   * journey, two of the sample creators like the entry, one says something, and the first time one follows along.
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void sampleCreatorsReact(EntryAdded added) {
+    if (!enabled) {
+      return;
+    }
+    List<UUID> sample = samplePeople();
+    boolean isPublic = jdbc.sql("select visibility = 'public' from journeys where id = :id").param("id", added.journeyId()).query(Boolean.class).optional().orElse(false);
+    if (sample.size() < 3 || sample.contains(added.authorId()) || !isPublic) {
+      return;
+    }
+    int pick = Math.floorMod(added.entryId().hashCode(), sample.size());
+    UUID first = sample.get(pick);
+    UUID second = sample.get((pick + 1) % sample.size());
+    entries.like(added.entryId(), first);
+    entries.like(added.entryId(), second);
+    jdbc.sql("insert into comments (entry_id, author_id, body) values (:entry, :author, :body)")
+        .param("entry", added.entryId()).param("author", second).param("body", REMARKS.get(pick % REMARKS.size())).update();
+    entries.refreshCommentCount(added.entryId());
+    boolean followed = jdbc.sql("insert into journey_follows (user_id, journey_id) values (:user, :journey) on conflict do nothing")
+        .param("user", first).param("journey", added.journeyId()).update() > 0;
+    if (followed) {
+      jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
+          .param("id", added.journeyId()).update();
+      jdbc.sql("insert into profile_follows (follower_id, followee_id) values (:follower, :followee) on conflict do nothing")
+          .param("follower", first).param("followee", added.authorId()).update();
+    }
+  }
+
+  private List<UUID> samplePeople() {
+    return jdbc.sql("select p.id from profiles p join local_users u on u.id = p.id where u.email like '%@demo.journey' order by p.username")
+        .query(UUID.class).list();
   }
 
   /** Copies one of the bundled photos into storage (once) and returns its media id. */

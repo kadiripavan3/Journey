@@ -17,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ public class EntryService {
 
   static final int TIMELINE_LIMIT = 500;
 
-  public record EntryViewerResponse(boolean canEdit, boolean canDelete) {}
+  public record EntryViewerResponse(boolean canEdit, boolean canDelete, boolean hasLiked) {}
 
   public record EntryResponse(
       UUID id, UUID journeyId, String journeyTitle, PersonResponse author, Instant happenedAt, LocalDate happenedOn,
@@ -39,17 +40,19 @@ public class EntryService {
   private final EntryStore entries;
   private final JourneyService journeys;
   private final MediaService media;
+  private final ApplicationEventPublisher events;
 
-  EntryService(EntryStore entries, JourneyService journeys, MediaService media) {
+  EntryService(EntryStore entries, JourneyService journeys, MediaService media, ApplicationEventPublisher events) {
     this.entries = entries;
     this.journeys = journeys;
     this.media = media;
+    this.events = events;
   }
 
   /** A journey's story, in the order things happened. */
   public List<EntryResponse> timeline(UUID journeyId, UUID viewer) {
     journeys.require(journeyId, viewer);
-    return views(entries.timeline(journeyId, TIMELINE_LIMIT), viewer);
+    return views(entries.timeline(journeyId, viewer, TIMELINE_LIMIT), viewer);
   }
 
   public EntryResponse get(UUID id, UUID viewer) {
@@ -68,6 +71,7 @@ public class EntryService {
     UUID id = entries.insert(journeyId, author, content.happenedAt, content.happenedOn, content.title, content.body, content.placeName, milestone);
     entries.replaceMedia(id, content.mediaIds);
     entries.refreshJourneyCounters(journeyId, true);
+    events.publishEvent(new EntryAdded(id, journeyId, author));
     return get(id, author);
   }
 
@@ -100,8 +104,22 @@ public class EntryService {
     return views(entries.latestByOthers(journeyId, reader, limit), reader);
   }
 
-  private EntryRow require(UUID id, UUID viewer) {
-    EntryRow entry = entries.find(id).orElseThrow(EntryService::notFound);
+  /** One heart per person. Liking twice changes nothing. */
+  @Transactional
+  public EntryResponse like(UUID id, UUID viewer) {
+    entries.like(require(id, viewer).id(), viewer);
+    return get(id, viewer);
+  }
+
+  @Transactional
+  public EntryResponse unlike(UUID id, UUID viewer) {
+    entries.unlike(require(id, viewer).id(), viewer);
+    return get(id, viewer);
+  }
+
+  /** The entry, or "not found" when the viewer may not see its journey. */
+  public EntryRow require(UUID id, UUID viewer) {
+    EntryRow entry = entries.find(id, viewer).orElseThrow(EntryService::notFound);
     try {
       journeys.require(entry.journeyId(), viewer);
     } catch (ApiProblem hidden) {
@@ -159,7 +177,7 @@ public class EntryService {
           new PersonResponse(e.authorId(), e.authorUsername(), e.authorName(), media.urlFor(e.authorAvatarKey())),
           e.happenedAt(), e.happenedOn(), (day ? "Day " : "Part ") + number, number, e.title(), e.body(), e.placeName(), e.milestone(), files,
           e.likeCount(), e.commentCount(), e.createdAt(), e.editedAt() != null,
-          new EntryViewerResponse(e.authorId().equals(viewer), e.authorId().equals(viewer) || e.journeyOwnerId().equals(viewer)));
+          new EntryViewerResponse(e.authorId().equals(viewer), e.authorId().equals(viewer) || e.journeyOwnerId().equals(viewer), e.liked()));
     }).toList();
   }
 }

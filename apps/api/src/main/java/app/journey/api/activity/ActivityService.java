@@ -1,0 +1,253 @@
+package app.journey.api.activity;
+
+import app.journey.api.common.Sql;
+import app.journey.api.media.MediaService;
+import app.journey.api.people.PeopleService;
+import app.journey.api.profile.PersonResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The Activity inbox. Nothing is stored for it: each kind of line is read straight from what happened
+ * (entries, likes, comments, follows) over the last 30 days, grouped so a busy day stays one line.
+ */
+@Service
+public class ActivityService {
+
+  static final int PER_KIND = 30;
+  static final int TOTAL = 60;
+  private static final String RECENT = "now() - interval '30 days'";
+
+  public record ActivityItemResponse(
+      @Schema(description = "Stable for the same line, so the app can keep its place in a list") String id,
+      @Schema(description = "new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow") String kind,
+      Instant at,
+      @Schema(description = "True when it happened after the person last opened Activity") boolean isNew,
+      @Schema(description = "Who did it, most recent first; at most two") List<PersonResponse> actors,
+      @Schema(description = "How many people did it, for \"and 46 others\"") int actorCount,
+      @Schema(description = "How many entries, for new_entries") int count,
+      @Schema(nullable = true) UUID journeyId,
+      @Schema(nullable = true) String journeyTitle,
+      @Schema(nullable = true) UUID entryId,
+      @Schema(nullable = true, description = "The entry's title, or the start of its text") String entryTitle,
+      @Schema(nullable = true, description = "The words of a comment or reply") String text,
+      @Schema(nullable = true) String thumbUrl,
+      @Schema(description = "For profile_follow: true when the person already follows them back") boolean followsActor) {}
+
+  public record ActivityResponse(List<ActivityItemResponse> items, @Schema(description = "How many lines are new") int newCount) {}
+
+  /** One line before the people and pictures are looked up. */
+  private record Line(String id, String kind, Instant at, List<UUID> actors, int actorCount, int count, UUID journeyId, String journeyTitle,
+      UUID entryId, String entryTitle, String text, boolean followsActor) {}
+
+  private final JdbcClient jdbc;
+  private final PeopleService people;
+  private final MediaService media;
+
+  ActivityService(JdbcClient jdbc, PeopleService people, MediaService media) {
+    this.jdbc = jdbc;
+    this.people = people;
+    this.media = media;
+  }
+
+  @Transactional(readOnly = true)
+  public ActivityResponse inbox(UUID me) {
+    List<Line> lines = new ArrayList<>();
+    lines.addAll(newEntries(me));
+    lines.addAll(completedJourneys(me));
+    lines.addAll(likes(me));
+    lines.addAll(comments(me));
+    lines.addAll(journeyFollows(me));
+    lines.addAll(profileFollows(me));
+    lines.sort(Comparator.comparing(Line::at).reversed());
+    List<Line> shown = lines.subList(0, Math.min(lines.size(), TOTAL));
+
+    Instant seenAt = jdbc.sql("select activity_seen_at from profiles where id = :me").param("me", me)
+        .query((rs, n) -> Sql.instant(rs, "activity_seen_at")).optional().orElse(Instant.EPOCH);
+    Set<UUID> actorIds = new HashSet<>();
+    shown.forEach(line -> actorIds.addAll(line.actors()));
+    Map<UUID, PersonResponse> persons = people.persons(actorIds);
+    Map<UUID, String> entryThumbs = entryThumbs(shown.stream().map(Line::entryId).filter(Objects::nonNull).distinct().toList());
+    Map<UUID, String> journeyThumbs =
+        journeyThumbs(shown.stream().filter(l -> l.entryId() == null).map(Line::journeyId).filter(Objects::nonNull).distinct().toList());
+
+    List<ActivityItemResponse> items = shown.stream()
+        .map(l -> new ActivityItemResponse(
+            l.id(), l.kind(), l.at(), l.at().isAfter(seenAt),
+            l.actors().stream().map(persons::get).filter(Objects::nonNull).toList(), l.actorCount(), l.count(),
+            l.journeyId(), l.journeyTitle(), l.entryId(), l.entryTitle(), l.text(),
+            media.urlFor(l.entryId() != null ? entryThumbs.get(l.entryId()) : journeyThumbs.get(l.journeyId())), l.followsActor()))
+        .toList();
+    return new ActivityResponse(items, (int) items.stream().filter(ActivityItemResponse::isNew).count());
+  }
+
+  @Transactional
+  public void markSeen(UUID me) {
+    jdbc.sql("update profiles set activity_seen_at = now() where id = :me").param("me", me).update();
+  }
+
+  /** "Maya added 3 entries to Southeast Asia by motorbike": one line per journey per day, for journeys the person follows. */
+  private List<Line> newEntries(UUID me) {
+    return jdbc.sql(
+            """
+            select e.journey_id, j.title as journey_title, (e.created_at at time zone 'UTC')::date as day, count(*) as n, max(e.created_at) as at,
+                   (array_agg(e.id order by e.created_at desc))[1] as entry_id,
+                   (array_agg(e.author_id order by e.created_at desc))[1] as actor,
+                   (array_agg(coalesce(nullif(e.title, ''), left(e.body, 80)) order by e.created_at desc))[1] as entry_title
+            from entries e
+            join journey_follows f on f.journey_id = e.journey_id and f.user_id = :me
+            join journeys j on j.id = e.journey_id
+            where e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s
+            group by e.journey_id, j.title, day
+            order by at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "entries:" + rs.getString("journey_id") + ":" + rs.getString("day"), "new_entries", Sql.instant(rs, "at"),
+            List.of(rs.getObject("actor", UUID.class)), 1, rs.getInt("n"), rs.getObject("journey_id", UUID.class), rs.getString("journey_title"),
+            rs.getObject("entry_id", UUID.class), rs.getString("entry_title"), null, false))
+        .list();
+  }
+
+  /** "Jonas completed Cappadocia by balloon", for journeys the person follows. */
+  private List<Line> completedJourneys(UUID me) {
+    return jdbc.sql(
+            """
+            select j.id, j.title, j.owner_id, j.completed_at
+            from journeys j join journey_follows f on f.journey_id = j.id and f.user_id = :me
+            where j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s
+            order by j.completed_at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "completed:" + rs.getString("id"), "journey_completed", Sql.instant(rs, "completed_at"), List.of(rs.getObject("owner_id", UUID.class)), 1, 0,
+            rs.getObject("id", UUID.class), rs.getString("title"), null, null, null, false))
+        .list();
+  }
+
+  /** "Lena, Kai and 46 others liked Skógafoss in the rain": one line per entry of the person's. */
+  private List<Line> likes(UUID me) {
+    return jdbc.sql(
+            """
+            select l.entry_id, e.journey_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title, count(*) as n, max(l.created_at) as at,
+                   (array_agg(l.user_id order by l.created_at desc))[1\\:2] as actors
+            from entry_likes l join entries e on e.id = l.entry_id
+            where e.author_id = :me and l.user_id <> :me and l.created_at > %s
+            group by l.entry_id, e.journey_id, e.title, e.body
+            order by at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "likes:" + rs.getString("entry_id"), "likes", Sql.instant(rs, "at"), uuids(rs, "actors"), rs.getInt("n"), 0,
+            rs.getObject("journey_id", UUID.class), null, rs.getObject("entry_id", UUID.class), rs.getString("entry_title"), null, false))
+        .list();
+  }
+
+  /** Comments on the person's entries and journeys, and replies to their comments. */
+  private List<Line> comments(UUID me) {
+    return jdbc.sql(
+            """
+            select c.id, c.entry_id, e.journey_id, c.body, c.created_at, c.author_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title,
+                   coalesce(pc.author_id = :me, false) as reply_to_me
+            from comments c
+            join entries e on e.id = c.entry_id
+            join journeys j on j.id = e.journey_id
+            left join comments pc on pc.id = c.parent_id
+            where c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s
+            order by c.created_at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "comment:" + rs.getString("id"), rs.getBoolean("reply_to_me") ? "reply" : "comment", Sql.instant(rs, "created_at"),
+            List.of(rs.getObject("author_id", UUID.class)), 1, 0, rs.getObject("journey_id", UUID.class), null, rs.getObject("entry_id", UUID.class),
+            rs.getString("entry_title"), rs.getString("body"), false))
+        .list();
+  }
+
+  /** "Theo started following Iceland ring road". Follows made automatically for a creator's followers are left out. */
+  private List<Line> journeyFollows(UUID me) {
+    return jdbc.sql(
+            """
+            select f.journey_id, j.title, f.user_id, f.created_at
+            from journey_follows f join journeys j on j.id = f.journey_id
+            where j.owner_id = :me and f.user_id <> :me and not f.auto and f.created_at > %s
+            order by f.created_at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "jfollow:" + rs.getString("journey_id") + ":" + rs.getString("user_id"), "journey_follow", Sql.instant(rs, "created_at"),
+            List.of(rs.getObject("user_id", UUID.class)), 1, 0, rs.getObject("journey_id", UUID.class), rs.getString("title"), null, null, null, false))
+        .list();
+  }
+
+  /** "Theo started following you", with whether the person follows them back. */
+  private List<Line> profileFollows(UUID me) {
+    return jdbc.sql(
+            """
+            select f.follower_id, f.created_at,
+                   exists (select 1 from profile_follows b where b.follower_id = :me and b.followee_id = f.follower_id) as follows_back
+            from profile_follows f
+            where f.followee_id = :me and f.created_at > %s
+            order by f.created_at desc limit :limit
+            """.formatted(RECENT))
+        .param("me", me).param("limit", PER_KIND)
+        .query((rs, n) -> new Line(
+            "pfollow:" + rs.getString("follower_id"), "profile_follow", Sql.instant(rs, "created_at"), List.of(rs.getObject("follower_id", UUID.class)), 1, 0,
+            null, null, null, null, null, rs.getBoolean("follows_back")))
+        .list();
+  }
+
+  /** The first photo of each entry. */
+  private Map<UUID, String> entryThumbs(List<UUID> entryIds) {
+    Map<UUID, String> keys = new HashMap<>();
+    if (!entryIds.isEmpty()) {
+      jdbc.sql(
+              """
+              select distinct on (em.entry_id) em.entry_id as id, m.storage_key
+              from entry_media em join media m on m.id = em.media_id
+              where em.entry_id in (:ids) and m.kind = 'photo'
+              order by em.entry_id, em.position
+              """)
+          .param("ids", entryIds)
+          .query((rs, n) -> keys.put(rs.getObject("id", UUID.class), rs.getString("storage_key"))).list();
+    }
+    return keys;
+  }
+
+  /** The first photo of each journey. */
+  private Map<UUID, String> journeyThumbs(List<UUID> journeyIds) {
+    Map<UUID, String> keys = new HashMap<>();
+    if (!journeyIds.isEmpty()) {
+      jdbc.sql(
+              """
+              select distinct on (e.journey_id) e.journey_id as id, m.storage_key
+              from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id
+              where e.journey_id in (:ids) and m.kind = 'photo'
+              order by e.journey_id, e.happened_at, em.position
+              """)
+          .param("ids", journeyIds)
+          .query((rs, n) -> keys.put(rs.getObject("id", UUID.class), rs.getString("storage_key"))).list();
+    }
+    return keys;
+  }
+
+  private static List<UUID> uuids(ResultSet rs, String column) throws SQLException {
+    java.sql.Array array = rs.getArray(column);
+    return array == null ? List.of() : Arrays.asList((UUID[]) array.getArray());
+  }
+}

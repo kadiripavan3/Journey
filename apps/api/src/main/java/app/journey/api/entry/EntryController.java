@@ -86,6 +86,18 @@ class EntryController {
     entries.delete(id, me(jwt));
   }
 
+  @PutMapping("/entries/{id}/like")
+  @Operation(operationId = "likeEntry", summary = "Like an entry")
+  EntryResponse like(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+    return entries.like(id, me(jwt));
+  }
+
+  @DeleteMapping("/entries/{id}/like")
+  @Operation(operationId = "unlikeEntry", summary = "Take a like back")
+  EntryResponse unlike(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+    return entries.unlike(id, me(jwt));
+  }
+
   @GetMapping("/feed")
   @Operation(operationId = "getFeed", summary = "Home: what's new in the journeys you follow, grouped per journey, newest first")
   FeedResponse feed(@AuthenticationPrincipal Jwt jwt) {

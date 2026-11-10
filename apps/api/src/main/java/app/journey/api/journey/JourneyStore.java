@@ -133,6 +133,19 @@ public class JourneyStore {
     return added > 0;
   }
 
+  /** Everyone who follows the owner starts following this journey too, with nothing marked as new yet. */
+  public void followForFollowersOf(UUID ownerId, UUID journeyId) {
+    jdbc.sql(
+            """
+            insert into journey_follows (user_id, journey_id, auto)
+            select pf.follower_id, :journey, true from profile_follows pf where pf.followee_id = :owner
+            on conflict do nothing
+            """)
+        .param("owner", ownerId).param("journey", journeyId).update();
+    jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
+        .param("id", journeyId).update();
+  }
+
   public void unfollow(UUID userId, UUID journeyId) {
     int removed = jdbc.sql("delete from journey_follows where user_id = :user and journey_id = :journey")
         .param("user", userId).param("journey", journeyId).update();

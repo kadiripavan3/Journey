@@ -32,6 +32,58 @@
     "description" : "The fixed lists the app offers"
   } ],
   "paths" : {
+    "/v1/profiles/{username}/follow" : {
+      "put" : {
+        "tags" : [ "People" ],
+        "summary" : "Follow a person. Their future public journeys are followed for you.",
+        "operationId" : "followProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "People" ],
+        "summary" : "Stop following a person. Journeys you already follow stay followed.",
+        "operationId" : "unfollowProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/profile" : {
       "put" : {
         "tags" : [ "me" ],
@@ -194,6 +246,60 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/v1/entries/{id}/like" : {
+      "put" : {
+        "tags" : [ "entries" ],
+        "summary" : "Like an entry",
+        "operationId" : "likeEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "entries" ],
+        "summary" : "Take a like back",
+        "operationId" : "unlikeEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -382,6 +488,85 @@
         }
       }
     },
+    "/v1/entries/{entryId}/comments" : {
+      "get" : {
+        "tags" : [ "Comments" ],
+        "summary" : "An entry's comments, oldest first",
+        "operationId" : "getComments",
+        "parameters" : [ {
+          "name" : "entryId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CommentResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Comments" ],
+        "summary" : "Comment on an entry, or reply to a comment",
+        "operationId" : "addComment",
+        "parameters" : [ {
+          "name" : "entryId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddCommentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CommentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/activity/seen" : {
+      "post" : {
+        "tags" : [ "Activity" ],
+        "summary" : "Everything in Activity so far has been seen",
+        "operationId" : "markActivitySeen",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/local-auth/token" : {
       "post" : {
         "tags" : [ "local-auth" ],
@@ -545,6 +730,33 @@
         }
       }
     },
+    "/v1/profiles/{username}" : {
+      "get" : {
+        "tags" : [ "People" ],
+        "summary" : "Someone's profile, with their counts and whether you follow them",
+        "operationId" : "getProfile",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PublicProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/profiles/{username}/journeys" : {
       "get" : {
         "tags" : [ "journeys" ],
@@ -567,6 +779,66 @@
                   "type" : "array",
                   "items" : {
                     "$ref" : "#/components/schemas/JourneyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/{username}/following" : {
+      "get" : {
+        "tags" : [ "People" ],
+        "summary" : "The people someone follows, newest first",
+        "operationId" : "getFollowing",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ListedPersonResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/profiles/{username}/followers" : {
+      "get" : {
+        "tags" : [ "People" ],
+        "summary" : "The people who follow someone, newest first",
+        "operationId" : "getFollowers",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ListedPersonResponse"
                   }
                 }
               }
@@ -734,10 +1006,111 @@
           }
         }
       }
+    },
+    "/v1/activity" : {
+      "get" : {
+        "tags" : [ "Activity" ],
+        "summary" : "The inbox: new entries per journey, likes batched per entry, comments, replies and new followers",
+        "operationId" : "getActivity",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/comments/{id}" : {
+      "delete" : {
+        "tags" : [ "Comments" ],
+        "summary" : "Delete a comment and its replies",
+        "operationId" : "deleteComment",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
     }
   },
   "components" : {
     "schemas" : {
+      "PublicProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "bio" : {
+            "type" : "string"
+          },
+          "link" : {
+            "type" : [ "string", "null" ]
+          },
+          "avatarUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "journeyCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Journeys the viewer may see: all of your own, the public ones of anyone else"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "followingCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "viewer" : {
+            "$ref" : "#/components/schemas/PublicProfileViewerResponse"
+          }
+        },
+        "required" : [ "avatarUrl", "bio", "displayName", "entryCount", "followerCount", "followingCount", "id", "journeyCount", "link", "username", "viewer" ]
+      },
+      "PublicProfileViewerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "isMe" : {
+            "type" : "boolean"
+          },
+          "isFollowing" : {
+            "type" : "boolean"
+          },
+          "followsYou" : {
+            "type" : "boolean",
+            "description" : "True when this person follows the viewer"
+          }
+        },
+        "required" : [ "followsYou", "isFollowing", "isMe" ]
+      },
       "SaveProfileRequest" : {
         "type" : "object",
         "properties" : {
@@ -1058,9 +1431,12 @@
           },
           "canDelete" : {
             "type" : "boolean"
+          },
+          "hasLiked" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "canDelete", "canEdit" ]
+        "required" : [ "canDelete", "canEdit", "hasLiked" ]
       },
       "MediaResponse" : {
         "type" : "object",
@@ -1189,6 +1565,67 @@
           }
         }
       },
+      "AddCommentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          },
+          "parentId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The comment being replied to, if any"
+          }
+        },
+        "required" : [ "body" ]
+      },
+      "CommentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "entryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "parentId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "The comment this one replies to. Replies are one level deep."
+          },
+          "author" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "byCreator" : {
+            "type" : "boolean",
+            "description" : "True when the journey's creator wrote it"
+          },
+          "viewer" : {
+            "$ref" : "#/components/schemas/CommentViewerResponse"
+          }
+        },
+        "required" : [ "author", "body", "byCreator", "createdAt", "entryId", "id", "parentId", "viewer" ]
+      },
+      "CommentViewerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "canDelete" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "canDelete" ]
+      },
       "TokenRequest" : {
         "type" : "object",
         "properties" : {
@@ -1302,6 +1739,44 @@
           }
         },
         "required" : [ "available", "reason", "username" ]
+      },
+      "ListedPersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "avatarUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "latestJourney" : {
+            "type" : [ "string", "null" ],
+            "description" : "The title of their newest public journey"
+          },
+          "viewer" : {
+            "$ref" : "#/components/schemas/ListedPersonViewerResponse"
+          }
+        },
+        "required" : [ "avatarUrl", "displayName", "id", "latestJourney", "username", "viewer" ]
+      },
+      "ListedPersonViewerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "isMe" : {
+            "type" : "boolean"
+          },
+          "isFollowing" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "isFollowing", "isMe" ]
       },
       "MeResponse" : {
         "type" : "object",
@@ -1473,6 +1948,88 @@
           }
         },
         "required" : [ "defaultCategory", "description", "emoji", "id", "labelStyle", "name", "prompts", "targetDays" ]
+      },
+      "ActivityItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "Stable for the same line, so the app can keep its place in a list"
+          },
+          "kind" : {
+            "type" : "string",
+            "description" : "new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow"
+          },
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "isNew" : {
+            "type" : "boolean",
+            "description" : "True when it happened after the person last opened Activity"
+          },
+          "actors" : {
+            "type" : "array",
+            "description" : "Who did it, most recent first; at most two",
+            "items" : {
+              "$ref" : "#/components/schemas/PersonResponse"
+            }
+          },
+          "actorCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many people did it, for \"and 46 others\""
+          },
+          "count" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries, for new_entries"
+          },
+          "journeyId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "journeyTitle" : {
+            "type" : [ "string", "null" ]
+          },
+          "entryId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "entryTitle" : {
+            "type" : [ "string", "null" ],
+            "description" : "The entry's title, or the start of its text"
+          },
+          "text" : {
+            "type" : [ "string", "null" ],
+            "description" : "The words of a comment or reply"
+          },
+          "thumbUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "followsActor" : {
+            "type" : "boolean",
+            "description" : "For profile_follow: true when the person already follows them back"
+          }
+        },
+        "required" : [ "actorCount", "actors", "at", "count", "entryId", "entryTitle", "followsActor", "id", "isNew", "journeyId", "journeyTitle", "kind", "text", "thumbUrl" ]
+      },
+      "ActivityResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ActivityItemResponse"
+            }
+          },
+          "newCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many lines are new"
+          }
+        },
+        "required" : [ "items", "newCount" ]
       }
     },
     "securitySchemes" : {

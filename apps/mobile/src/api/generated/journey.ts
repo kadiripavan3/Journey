@@ -25,6 +25,30 @@ import type {
 } from '@tanstack/react-query';
 
 import { apiFetch } from '../fetcher';
+export interface PublicProfileViewerResponse {
+  isMe: boolean;
+  isFollowing: boolean;
+  /** True when this person follows the viewer */
+  followsYou: boolean;
+}
+
+export interface PublicProfileResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  bio: string;
+  /** @nullable */
+  link: string | null;
+  /** @nullable */
+  avatarUrl: string | null;
+  /** Journeys the viewer may see: all of your own, the public ones of anyone else */
+  journeyCount: number;
+  entryCount: number;
+  followerCount: number;
+  followingCount: number;
+  viewer: PublicProfileViewerResponse;
+}
+
 export interface SaveProfileRequest {
   /**
      * @minLength 0
@@ -196,6 +220,7 @@ export interface MediaResponse {
 export interface EntryViewerResponse {
   canEdit: boolean;
   canDelete: boolean;
+  hasLiked: boolean;
 }
 
 export interface EntryResponse {
@@ -312,6 +337,36 @@ export interface CompleteJourneyRequest {
   closingNote?: string;
 }
 
+export interface AddCommentRequest {
+  /**
+     * @minLength 0
+     * @maxLength 500
+     */
+  body: string;
+  /** The comment being replied to, if any */
+  parentId?: string;
+}
+
+export interface CommentViewerResponse {
+  canDelete: boolean;
+}
+
+export interface CommentResponse {
+  id: string;
+  entryId: string;
+  /**
+     * The comment this one replies to. Replies are one level deep.
+     * @nullable
+     */
+  parentId: string | null;
+  author: PersonResponse;
+  body: string;
+  createdAt: string;
+  /** True when the journey's creator wrote it */
+  byCreator: boolean;
+  viewer: CommentViewerResponse;
+}
+
 export interface TokenRequest {
   /**
      * @minLength 0
@@ -403,6 +458,25 @@ export interface UsernameCheckResponse {
   reason: string | null;
 }
 
+export interface ListedPersonViewerResponse {
+  isMe: boolean;
+  isFollowing: boolean;
+}
+
+export interface ListedPersonResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  /**
+     * The title of their newest public journey
+     * @nullable
+     */
+  latestJourney: string | null;
+  viewer: ListedPersonViewerResponse;
+}
+
 export interface MeResponse {
   id: string;
   email: string;
@@ -458,6 +532,48 @@ export interface CatalogResponse {
   templates: TemplateResponse[];
 }
 
+export interface ActivityItemResponse {
+  /** Stable for the same line, so the app can keep its place in a list */
+  id: string;
+  /** new_entries, journey_completed, likes, comment, reply, journey_follow or profile_follow */
+  kind: string;
+  at: string;
+  /** True when it happened after the person last opened Activity */
+  isNew: boolean;
+  /** Who did it, most recent first; at most two */
+  actors: PersonResponse[];
+  /** How many people did it, for "and 46 others" */
+  actorCount: number;
+  /** How many entries, for new_entries */
+  count: number;
+  /** @nullable */
+  journeyId: string | null;
+  /** @nullable */
+  journeyTitle: string | null;
+  /** @nullable */
+  entryId: string | null;
+  /**
+     * The entry's title, or the start of its text
+     * @nullable
+     */
+  entryTitle: string | null;
+  /**
+     * The words of a comment or reply
+     * @nullable
+     */
+  text: string | null;
+  /** @nullable */
+  thumbUrl: string | null;
+  /** For profile_follow: true when the person already follows them back */
+  followsActor: boolean;
+}
+
+export interface ActivityResponse {
+  items: ActivityItemResponse[];
+  /** How many lines are new */
+  newCount: number;
+}
+
 export type GetSuggestedJourneysParams = {
   limit?: number;
 };
@@ -484,6 +600,150 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getFollowProfileUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/follow`
+}
+
+/**
+ * @summary Follow a person. Their future public journeys are followed for you.
+ */
+export const followProfile = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<PublicProfileResponse> => {
+
+  return apiFetch<PublicProfileResponse>(getFollowProfileUrl(username),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getFollowProfileMutationKey = () => ['followProfile'] as const;
+
+export const getFollowProfileMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof followProfile>>, TError,FollowProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof followProfile>>, TError,FollowProfileMutationVariables, TContext> => {
+
+const mutationKey = getFollowProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof followProfile>>, FollowProfileMutationVariables> = (props) => {
+          const {username} = props ?? {};
+
+          return  followProfile(username,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FollowProfileMutationResult = NonNullable<Awaited<ReturnType<typeof followProfile>>>
+
+    export type FollowProfileMutationError = unknown
+    export type FollowProfileMutationVariables = {username: string}
+
+    /** @summary Follow a person. Their future public journeys are followed for you. */
+export const useFollowProfile = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof followProfile>>, TError,FollowProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof followProfile>>,
+        TError,
+        FollowProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getFollowProfileMutationOptions(options), queryClient);
+    }
+
+export const getUnfollowProfileUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/follow`
+}
+
+/**
+ * @summary Stop following a person. Journeys you already follow stay followed.
+ */
+export const unfollowProfile = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<PublicProfileResponse> => {
+
+  return apiFetch<PublicProfileResponse>(getUnfollowProfileUrl(username),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnfollowProfileMutationKey = () => ['unfollowProfile'] as const;
+
+export const getUnfollowProfileMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfollowProfile>>, TError,UnfollowProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unfollowProfile>>, TError,UnfollowProfileMutationVariables, TContext> => {
+
+const mutationKey = getUnfollowProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unfollowProfile>>, UnfollowProfileMutationVariables> = (props) => {
+          const {username} = props ?? {};
+
+          return  unfollowProfile(username,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnfollowProfileMutationResult = NonNullable<Awaited<ReturnType<typeof unfollowProfile>>>
+
+    export type UnfollowProfileMutationError = unknown
+    export type UnfollowProfileMutationVariables = {username: string}
+
+    /** @summary Stop following a person. Journeys you already follow stay followed. */
+export const useUnfollowProfile = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfollowProfile>>, TError,UnfollowProfileMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unfollowProfile>>,
+        TError,
+        UnfollowProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnfollowProfileMutationOptions(options), queryClient);
+    }
 
 export const getSaveProfileUrl = () => {
 
@@ -973,6 +1233,150 @@ export const useDeleteEntry = <TError = unknown,
         TContext
       > => {
       return useMutation(getDeleteEntryMutationOptions(options), queryClient);
+    }
+
+export const getLikeEntryUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}/like`
+}
+
+/**
+ * @summary Like an entry
+ */
+export const likeEntry = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse> => {
+
+  return apiFetch<EntryResponse>(getLikeEntryUrl(id),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getLikeEntryMutationKey = () => ['likeEntry'] as const;
+
+export const getLikeEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof likeEntry>>, TError,LikeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof likeEntry>>, TError,LikeEntryMutationVariables, TContext> => {
+
+const mutationKey = getLikeEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof likeEntry>>, LikeEntryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  likeEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LikeEntryMutationResult = NonNullable<Awaited<ReturnType<typeof likeEntry>>>
+
+    export type LikeEntryMutationError = unknown
+    export type LikeEntryMutationVariables = {id: string}
+
+    /** @summary Like an entry */
+export const useLikeEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof likeEntry>>, TError,LikeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof likeEntry>>,
+        TError,
+        LikeEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLikeEntryMutationOptions(options), queryClient);
+    }
+
+export const getUnlikeEntryUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}/like`
+}
+
+/**
+ * @summary Take a like back
+ */
+export const unlikeEntry = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse> => {
+
+  return apiFetch<EntryResponse>(getUnlikeEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnlikeEntryMutationKey = () => ['unlikeEntry'] as const;
+
+export const getUnlikeEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlikeEntry>>, TError,UnlikeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlikeEntry>>, TError,UnlikeEntryMutationVariables, TContext> => {
+
+const mutationKey = getUnlikeEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlikeEntry>>, UnlikeEntryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  unlikeEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlikeEntryMutationResult = NonNullable<Awaited<ReturnType<typeof unlikeEntry>>>
+
+    export type UnlikeEntryMutationError = unknown
+    export type UnlikeEntryMutationVariables = {id: string}
+
+    /** @summary Take a like back */
+export const useUnlikeEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlikeEntry>>, TError,UnlikeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unlikeEntry>>,
+        TError,
+        UnlikeEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnlikeEntryMutationOptions(options), queryClient);
     }
 
 export const getStartUploadUrl = () => {
@@ -1492,6 +1896,266 @@ export const useCompleteJourney = <TError = unknown,
         TContext
       > => {
       return useMutation(getCompleteJourneyMutationOptions(options), queryClient);
+    }
+
+export const getGetCommentsUrl = (entryId: string,) => {
+
+
+
+
+  return `/v1/entries/${entryId}/comments`
+}
+
+/**
+ * @summary An entry's comments, oldest first
+ */
+export const getComments = async (entryId: string, options?: Parameters<typeof apiFetch>[1]): Promise<CommentResponse[]> => {
+
+  return apiFetch<CommentResponse[]>(getGetCommentsUrl(entryId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCommentsQueryKey = (entryId: string,) => {
+    return [
+    `/v1/entries/${entryId}/comments`
+    ] as const;
+    }
+
+
+export const getGetCommentsQueryOptions = <TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommentsQueryKey(entryId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComments>>> = ({ signal }) => getComments(entryId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: entryId !== null && entryId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCommentsQueryResult = NonNullable<Awaited<ReturnType<typeof getComments>>>
+export type GetCommentsQueryError = unknown
+
+
+/** @summary An entry's comments, oldest first */
+export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
+ entryId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComments>>,
+          TError,
+          Awaited<ReturnType<typeof getComments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
+ entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComments>>,
+          TError,
+          Awaited<ReturnType<typeof getComments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
+ entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
+ entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCommentsQueryOptions(entryId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddCommentUrl = (entryId: string,) => {
+
+
+
+
+  return `/v1/entries/${entryId}/comments`
+}
+
+/**
+ * @summary Comment on an entry, or reply to a comment
+ */
+export const addComment = async (entryId: string,
+    addCommentRequest: AddCommentRequest, options?: Parameters<typeof apiFetch>[1]): Promise<CommentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<CommentResponse>(getAddCommentUrl(entryId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(addCommentRequest)
+  }
+);}
+
+
+
+
+
+export const getAddCommentMutationKey = () => ['addComment'] as const;
+
+export const getAddCommentMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addComment>>, TError,AddCommentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addComment>>, TError,AddCommentMutationVariables, TContext> => {
+
+const mutationKey = getAddCommentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addComment>>, AddCommentMutationVariables> = (props) => {
+          const {entryId,data} = props ?? {};
+
+          return  addComment(entryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddCommentMutationResult = NonNullable<Awaited<ReturnType<typeof addComment>>>
+    export type AddCommentMutationBody = AddCommentRequest
+    export type AddCommentMutationError = unknown
+    export type AddCommentMutationVariables = {entryId: string;data: AddCommentRequest}
+
+    /** @summary Comment on an entry, or reply to a comment */
+export const useAddComment = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addComment>>, TError,AddCommentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addComment>>,
+        TError,
+        AddCommentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddCommentMutationOptions(options), queryClient);
+    }
+
+export const getMarkActivitySeenUrl = () => {
+
+
+
+
+  return `/v1/activity/seen`
+}
+
+/**
+ * @summary Everything in Activity so far has been seen
+ */
+export const markActivitySeen = async ( options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getMarkActivitySeenUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkActivitySeenMutationKey = () => ['markActivitySeen'] as const;
+
+export const getMarkActivitySeenMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markActivitySeen>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markActivitySeen>>, TError,void, TContext> => {
+
+const mutationKey = getMarkActivitySeenMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markActivitySeen>>, void> = () => {
+
+
+          return  markActivitySeen(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkActivitySeenMutationResult = NonNullable<Awaited<ReturnType<typeof markActivitySeen>>>
+
+    export type MarkActivitySeenMutationError = unknown
+
+
+    /** @summary Everything in Activity so far has been seen */
+export const useMarkActivitySeen = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markActivitySeen>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markActivitySeen>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkActivitySeenMutationOptions(options), queryClient);
     }
 
 export const getCreateLocalTokenUrl = () => {
@@ -2027,6 +2691,107 @@ export function useCheckUsername<TData = Awaited<ReturnType<typeof checkUsername
 
 
 
+export const getGetProfileUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}`
+}
+
+/**
+ * @summary Someone's profile, with their counts and whether you follow them
+ */
+export const getProfile = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<PublicProfileResponse> => {
+
+  return apiFetch<PublicProfileResponse>(getGetProfileUrl(username),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfileQueryKey = (username: string,) => {
+    return [
+    `/v1/profiles/${username}`
+    ] as const;
+    }
+
+
+export const getGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof getProfile>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfileQueryKey(username);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfile>>> = ({ signal }) => getProfile(username, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getProfile>>>
+export type GetProfileQueryError = unknown
+
+
+/** @summary Someone's profile, with their counts and whether you follow them */
+export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TError = unknown>(
+ username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's profile, with their counts and whether you follow them */
+export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProfile>>,
+          TError,
+          Awaited<ReturnType<typeof getProfile>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's profile, with their counts and whether you follow them */
+export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's profile, with their counts and whether you follow them */
+export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetProfileQueryOptions(username,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetJourneysByUsernameUrl = (username: string,) => {
 
 
@@ -2116,6 +2881,208 @@ export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJo
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetJourneysByUsernameQueryOptions(username,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFollowingUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/following`
+}
+
+/**
+ * @summary The people someone follows, newest first
+ */
+export const getFollowing = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<ListedPersonResponse[]> => {
+
+  return apiFetch<ListedPersonResponse[]>(getGetFollowingUrl(username),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFollowingQueryKey = (username: string,) => {
+    return [
+    `/v1/profiles/${username}/following`
+    ] as const;
+    }
+
+
+export const getGetFollowingQueryOptions = <TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowingQueryKey(username);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowing>>> = ({ signal }) => getFollowing(username, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowingQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowing>>>
+export type GetFollowingQueryError = unknown
+
+
+/** @summary The people someone follows, newest first */
+export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
+ username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowing>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowing>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowingQueryOptions(username,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFollowersUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/followers`
+}
+
+/**
+ * @summary The people who follow someone, newest first
+ */
+export const getFollowers = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<ListedPersonResponse[]> => {
+
+  return apiFetch<ListedPersonResponse[]>(getGetFollowersUrl(username),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFollowersQueryKey = (username: string,) => {
+    return [
+    `/v1/profiles/${username}/followers`
+    ] as const;
+    }
+
+
+export const getGetFollowersQueryOptions = <TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowersQueryKey(username);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowers>>> = ({ signal }) => getFollowers(username, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowersQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowers>>>
+export type GetFollowersQueryError = unknown
+
+
+/** @summary The people who follow someone, newest first */
+export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
+ username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowers>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowers>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowersQueryOptions(username,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -2842,3 +3809,182 @@ export function useGetCatalog<TData = Awaited<ReturnType<typeof getCatalog>>, TE
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetActivityUrl = () => {
+
+
+
+
+  return `/v1/activity`
+}
+
+/**
+ * @summary The inbox: new entries per journey, likes batched per entry, comments, replies and new followers
+ */
+export const getActivity = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ActivityResponse> => {
+
+  return apiFetch<ActivityResponse>(getGetActivityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActivityQueryKey = () => {
+    return [
+    `/v1/activity`
+    ] as const;
+    }
+
+
+export const getGetActivityQueryOptions = <TData = Awaited<ReturnType<typeof getActivity>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActivityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivity>>> = ({ signal }) => getActivity({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getActivity>>>
+export type GetActivityQueryError = unknown
+
+
+/** @summary The inbox: new entries per journey, likes batched per entry, comments, replies and new followers */
+export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActivity>>,
+          TError,
+          Awaited<ReturnType<typeof getActivity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The inbox: new entries per journey, likes batched per entry, comments, replies and new followers */
+export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActivity>>,
+          TError,
+          Awaited<ReturnType<typeof getActivity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The inbox: new entries per journey, likes batched per entry, comments, replies and new followers */
+export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The inbox: new entries per journey, likes batched per entry, comments, replies and new followers */
+export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivity>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteCommentUrl = (id: string,) => {
+
+
+
+
+  return `/v1/comments/${id}`
+}
+
+/**
+ * @summary Delete a comment and its replies
+ */
+export const deleteComment = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteCommentUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCommentMutationKey = () => ['deleteComment'] as const;
+
+export const getDeleteCommentMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComment>>, TError,DeleteCommentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteComment>>, TError,DeleteCommentMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCommentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteComment>>, DeleteCommentMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteComment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCommentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteComment>>>
+
+    export type DeleteCommentMutationError = unknown
+    export type DeleteCommentMutationVariables = {id: string}
+
+    /** @summary Delete a comment and its replies */
+export const useDeleteComment = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComment>>, TError,DeleteCommentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteComment>>,
+        TError,
+        DeleteCommentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCommentMutationOptions(options), queryClient);
+    }
