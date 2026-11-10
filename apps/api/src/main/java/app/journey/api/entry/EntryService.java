@@ -2,6 +2,7 @@ package app.journey.api.entry;
 
 import app.journey.api.common.ApiProblem;
 import app.journey.api.common.Keyset;
+import app.journey.api.common.Page;
 import app.journey.api.entry.EntryStore.Around;
 import app.journey.api.entry.EntryStore.Edge;
 import app.journey.api.entry.EntryStore.EntryMediaRow;
@@ -165,7 +166,25 @@ public class EntryService {
             @Schema(description = "\"Day 14\" or \"Part 3\"")
             String label,
 
-            LocalDate happenedOn) {}
+            LocalDate happenedOn,
+
+            @Schema(nullable = true, description = "A small picture of the entry's first photo, if it has one")
+            String thumbUrl) {}
+
+    /** One day of a story, for "Jump to": tapping it opens the story at the day's first entry. */
+    public record StoryDayResponse(
+            LocalDate happenedOn,
+
+            @Schema(description = "\"Day 14\"; counted from the journey's start date")
+            int dayNumber,
+
+            @Schema(nullable = true, description = "Where the day's first entry with a place was")
+            String place,
+
+            @Schema(description = "How many entries the reader can see on this day")
+            int entryCount,
+
+            UUID firstEntryId) {}
 
     /** What a journey's page shows of its story, without loading the story. */
     public record JourneySummaryResponse(
@@ -310,6 +329,16 @@ public class EntryService {
     /** How many of a story's newest entries a journey's page shows. */
     static final int SUMMARY_LATEST = 3;
 
+    /** The days of a journey's story that have entries, newest first: every way into a long story, for "Jump to". */
+    public Page<StoryDayResponse> days(UUID journeyId, UUID viewer, Keyset page) {
+        journeys.require(journeyId, viewer);
+        return entries.storyDays(journeyId, viewer, page)
+                .map(rows -> rows.stream()
+                        .map(row -> new StoryDayResponse(
+                                row.happenedOn(), row.dayNumber(), row.place(), row.entries(), row.firstId()))
+                        .toList());
+    }
+
     public JourneySummaryResponse summary(UUID journeyId, UUID viewer) {
         JourneyRow journey = journeys.require(journeyId, viewer);
         // The story's first entry and its newest few, in story order; in a short story they are the same entries.
@@ -322,18 +351,27 @@ public class EntryService {
                 ? new EntryStore.NewEntries(0, null)
                 : entries.newSince(journeyId, viewer, journey.lastReadAt());
         EntryStore.Photos photos = entries.photos(journeyId, viewer, SUMMARY_PHOTOS);
+        List<EntryStore.MilestoneRow> milestones = entries.milestones(journeyId, viewer, SUMMARY_MILESTONES);
+        Map<UUID, List<EntryMediaRow>> milestonePhotos = entries.mediaFor(
+                milestones.stream().map(EntryStore.MilestoneRow::id).toList(), viewer);
         return new JourneySummaryResponse(
                 ends.isEmpty() ? null : ends.get(0),
                 latest,
                 photos.first().stream().map(this::view).toList(),
                 photos.total(),
                 journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
-                entries.milestones(journeyId, viewer, SUMMARY_MILESTONES).stream()
+                milestones.stream()
                         .map(m -> new MilestoneResponse(
                                 m.id(),
                                 m.title(),
                                 (day ? "Day " + m.dayNumber() : "Part " + m.position()),
-                                m.happenedOn()))
+                                m.happenedOn(),
+                                milestonePhotos.getOrDefault(m.id(), List.of()).stream()
+                                        .filter(photo -> photo.status() == MediaStatus.READY)
+                                        .map(photo -> view(photo).thumbUrl())
+                                        .filter(java.util.Objects::nonNull)
+                                        .findFirst()
+                                        .orElse(null)))
                         .toList(),
                 fresh.count(),
                 fresh.firstId());

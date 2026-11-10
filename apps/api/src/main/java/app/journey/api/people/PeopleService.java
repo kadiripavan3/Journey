@@ -3,6 +3,7 @@ package app.journey.api.people;
 import app.journey.api.common.ApiProblem;
 import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
+import app.journey.api.common.Sql;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
 import app.journey.api.people.PeopleStore.Found;
@@ -104,12 +105,15 @@ public class PeopleService {
      * viewer has blocked: their profile still opens, so that they can be unblocked, and that is all of them
      * the viewer sees.
      */
-    public Page<ListedPersonResponse> listed(String username, boolean followers, UUID viewer, Keyset page) {
+    public Page<ListedPersonResponse> listed(
+            String username, boolean followers, UUID viewer, String search, Keyset page) {
         Found person = find(username, viewer);
         if (person.blockedByViewer()) {
             return new Page<>(List.of(), null);
         }
-        return people.listed(person.id(), followers, viewer, page).map(rows -> listed(rows, viewer));
+        String words = search == null ? "" : search.trim().replaceFirst("^@", "");
+        String named = words.isEmpty() ? null : Sql.anywhere(words.substring(0, Math.min(words.length(), 60)));
+        return people.listed(person.id(), followers, viewer, named, page).map(rows -> listed(rows, viewer));
     }
 
     /** The shortest words an index can help to find: three letters. Shorter ones get the first matches, not the most followed. */

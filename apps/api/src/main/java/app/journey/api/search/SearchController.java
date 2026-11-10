@@ -1,8 +1,10 @@
 package app.journey.api.search;
 
 import app.journey.api.auth.Me;
+import app.journey.api.common.Sql;
 import app.journey.api.journey.JourneyService;
 import app.journey.api.journey.JourneyService.JourneyResponse;
+import app.journey.api.journey.JourneyService.PlaceHitResponse;
 import app.journey.api.people.PeopleService;
 import app.journey.api.people.PeopleService.ListedPersonResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,7 +32,12 @@ class SearchController {
             List<JourneyResponse> journeys,
 
             @Schema(description = "The best matches, most followed first; at most 30")
-            List<ListedPersonResponse> people) {}
+            List<ListedPersonResponse> people,
+
+            @Schema(description = "Places whose name matches, those with the most journeys first; at most 20")
+            List<PlaceHitResponse> places) {}
+
+    private static final int PLACES = 20;
 
     private final JourneyService journeys;
     private final PeopleService people;
@@ -41,14 +48,19 @@ class SearchController {
     }
 
     @GetMapping
-    @Operation(operationId = "search", summary = "Find public journeys and people. A leading # or @ is ignored.")
+    @Operation(
+            operationId = "search",
+            summary = "Find public journeys, people and places. A leading # or @ is ignored.")
     SearchResponse search(@Me UUID me, @RequestParam("q") String q) {
         String words = q.trim().replaceFirst("^[#@]", "");
         if (words.length() < 2) {
-            return new SearchResponse(words, List.of(), List.of());
+            return new SearchResponse(words, List.of(), List.of(), List.of());
         }
-        // The person's words are matched as they are: % and _ mean themselves, not "anything".
-        String pattern = "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        return new SearchResponse(words, journeys.search(pattern, me, LIMIT), people.search(pattern, me, LIMIT));
+        String pattern = Sql.anywhere(words);
+        return new SearchResponse(
+                words,
+                journeys.search(pattern, me, LIMIT),
+                people.search(pattern, me, LIMIT),
+                journeys.places(pattern, me, PLACES));
     }
 }

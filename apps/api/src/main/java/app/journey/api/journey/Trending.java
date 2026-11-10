@@ -60,7 +60,15 @@ public class Trending {
                 .atOffset(ZoneOffset.UTC)
                 .truncatedTo(ChronoUnit.HOURS)
                 .toString();
-        jobs.run("trending", hour, this::rescore);
+        jobs.run("trending", hour, () -> {
+            rescore();
+            count();
+        });
+    }
+
+    /** Counts the public journeys of every kind, for the pages that say how many there are. Returns how many kinds. */
+    public int count() {
+        return upkeep.tally();
     }
 
     /**

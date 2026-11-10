@@ -1141,7 +1141,7 @@
     "/v1/search" : {
       "get" : {
         "tags" : [ "Search" ],
-        "summary" : "Find public journeys and people. A leading # or @ is ignored.",
+        "summary" : "Find public journeys, people and places. A leading # or @ is ignored.",
         "operationId" : "search",
         "parameters" : [ {
           "name" : "q",
@@ -1247,6 +1247,14 @@
             "type" : "string"
           }
         }, {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Only people whose name or username holds these letters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "name" : "cursor",
           "in" : "query",
           "required" : false,
@@ -1285,6 +1293,14 @@
           "name" : "username",
           "in" : "path",
           "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Only people whose name or username holds these letters",
+          "required" : false,
           "schema" : {
             "type" : "string"
           }
@@ -1592,6 +1608,49 @@
         }
       }
     },
+    "/v1/journeys/{journeyId}/days" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "The days of a journey's story that have entries, newest first, for \"Jump to\"",
+        "operationId" : "getStoryDays",
+        "parameters" : [ {
+          "name" : "journeyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PageStoryDayResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/recap" : {
       "get" : {
         "tags" : [ "journeys" ],
@@ -1796,6 +1855,24 @@
           "required" : false,
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "name" : "challenges",
+          "in" : "query",
+          "description" : "Only challenges: journeys with a number of days to reach",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "name" : "days",
+          "in" : "query",
+          "description" : "Only challenges of this many days, such as 30 or 100",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         } ],
         "responses" : {
@@ -3010,6 +3087,20 @@
         },
         "required" : [ "isFollowing", "isMe" ]
       },
+      "PlaceHitResponse" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "journeyCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many public journeys have an entry there, among the ones looked at"
+          }
+        },
+        "required" : [ "journeyCount", "name" ]
+      },
       "SearchResponse" : {
         "type" : "object",
         "properties" : {
@@ -3029,9 +3120,16 @@
             "items" : {
               "$ref" : "#/components/schemas/ListedPersonResponse"
             }
+          },
+          "places" : {
+            "type" : "array",
+            "description" : "Places whose name matches, those with the most journeys first; at most 20",
+            "items" : {
+              "$ref" : "#/components/schemas/PlaceHitResponse"
+            }
           }
         },
-        "required" : [ "journeys", "people", "query" ]
+        "required" : [ "journeys", "people", "places", "query" ]
       },
       "PageJourneyResponse" : {
         "type" : "object",
@@ -3261,9 +3359,13 @@
           "happenedOn" : {
             "type" : "string",
             "format" : "date"
+          },
+          "thumbUrl" : {
+            "type" : [ "string", "null" ],
+            "description" : "A small picture of the entry's first photo, if it has one"
           }
         },
-        "required" : [ "entryId", "happenedOn", "label", "title" ]
+        "required" : [ "entryId", "happenedOn", "label", "thumbUrl", "title" ]
       },
       "JourneyMapResponse" : {
         "type" : "object",
@@ -3355,6 +3457,50 @@
           }
         },
         "required" : [ "items", "nextCursor", "prevCursor", "total" ]
+      },
+      "PageStoryDayResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StoryDayResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ],
+            "description" : "Send this back as `cursor` to get the next page. Null on the last page."
+          }
+        },
+        "required" : [ "items", "nextCursor" ]
+      },
+      "StoryDayResponse" : {
+        "type" : "object",
+        "properties" : {
+          "happenedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "dayNumber" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "\"Day 14\"; counted from the journey's start date"
+          },
+          "place" : {
+            "type" : [ "string", "null" ],
+            "description" : "Where the day's first entry with a place was"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries the reader can see on this day"
+          },
+          "firstEntryId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "dayNumber", "entryCount", "firstEntryId", "happenedOn", "place" ]
       },
       "RecapResponse" : {
         "type" : "object",
@@ -3491,6 +3637,22 @@
         },
         "required" : [ "items", "nextCursor" ]
       },
+      "DiscoverCountsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "inProgress" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Public journeys that are going on now, as counted within the last hour"
+          },
+          "finishedThisMonth" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Public journeys completed since the first of this month, as counted within the last hour"
+          }
+        },
+        "required" : [ "finishedThisMonth", "inProgress" ]
+      },
       "DiscoverResponse" : {
         "type" : "object",
         "properties" : {
@@ -3511,9 +3673,17 @@
             "items" : {
               "$ref" : "#/components/schemas/JourneyResponse"
             }
+          },
+          "counts" : {
+            "description" : "How many there are, when a category or only challenges was asked for",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/DiscoverCountsResponse"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
-        "required" : [ "completed", "fresh", "trending" ]
+        "required" : [ "completed", "counts", "fresh", "trending" ]
       },
       "DigestJourneyResponse" : {
         "type" : "object",

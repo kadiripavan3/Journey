@@ -167,7 +167,7 @@ public class PeopleStore {
      * latest public journey. A page starts after the last row of the page before (when they followed, then their
      * id), and is read from the index that holds the list in that order (V31).
      */
-    public Page<ListedRow> listed(UUID personId, boolean followers, UUID viewer, Keyset page) {
+    public Page<ListedRow> listed(UUID personId, boolean followers, UUID viewer, String named, Keyset page) {
         String other = followers ? "f.follower_id" : "f.followee_id";
         String self = followers ? "f.followee_id" : "f.follower_id";
         String after = page.first() ? "" : " and (f.created_at, " + other + ") < (:at, :id)";
@@ -175,13 +175,18 @@ public class PeopleStore {
                         "select p.id, p.username, p.display_name, a.storage_key as avatar_key, f.created_at as since,"
                                 + LISTED + " from profile_follows f join profiles p on p.id = " + other + AVATAR
                                 + " where "
-                                + self + " = :person" + after + " and " + Rules.notBlocked("p.id", ":viewer")
+                                + self + " = :person" + after
+                                + (named == null ? "" : " and (p.username ilike :named or p.display_name ilike :named)")
+                                + " and " + Rules.notBlocked("p.id", ":viewer")
                                 + " order by f.created_at desc, " + other + " desc limit :limit")
                 .param("person", personId)
                 .param("viewer", viewer)
                 .param("limit", page.fetch());
         if (!page.first()) {
             query = query.param("at", Sql.timestamp(page.instant(0))).param("id", page.uuid(1));
+        }
+        if (named != null) {
+            query = query.param("named", named);
         }
         return page.page(query.query(LISTED_ROW).list(), row -> Keyset.cursor(row.since(), row.id()));
     }

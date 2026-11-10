@@ -331,7 +331,23 @@ public class JourneyService {
     }
 
     public record DiscoverResponse(
-            List<JourneyResponse> trending, List<JourneyResponse> fresh, List<JourneyResponse> completed) {}
+            List<JourneyResponse> trending,
+            List<JourneyResponse> fresh,
+            List<JourneyResponse> completed,
+
+            @Schema(
+                    nullable = true,
+                    description = "How many there are, when a category or only challenges was asked for")
+            DiscoverCountsResponse counts) {}
+
+    public record DiscoverCountsResponse(
+            @Schema(description = "Public journeys that are going on now, as counted within the last hour")
+            int inProgress,
+
+            @Schema(
+                    description =
+                            "Public journeys completed since the first of this month, as counted within the last hour")
+            int finishedThisMonth) {}
 
     public record RecapResponse(
             JourneyResponse journey,
@@ -383,6 +399,23 @@ public class JourneyService {
         return views(journeys.search(pattern, tag, words.length() >= SEARCH_EVERYWHERE_FROM, viewer, limit), viewer);
     }
 
+    /** A place that entries of public journeys happened in. Searching for its name finds those journeys. */
+    public record PlaceHitResponse(
+            String name,
+
+            @Schema(description = "How many public journeys have an entry there, among the ones looked at")
+            int journeyCount) {}
+
+    /** Places whose name holds the words typed, the ones with the most journeys first. Nothing for very short words. */
+    public List<PlaceHitResponse> places(String pattern, UUID viewer, int limit) {
+        if (wordsOf(pattern).length() < SEARCH_EVERYWHERE_FROM) {
+            return List.of();
+        }
+        return journeys.places(pattern, viewer, limit).stream()
+                .map(place -> new PlaceHitResponse(place.name(), place.journeys()))
+                .toList();
+    }
+
     /** The words a search pattern was made from: without the % on either side, and without the escapes. */
     static String wordsOf(String pattern) {
         String inner = pattern.length() >= 2 && pattern.startsWith("%") && pattern.endsWith("%")
@@ -408,13 +441,15 @@ public class JourneyService {
      * <p>The store reads the top of each list inside and outside the person's categories, each in order from
      * an index; the leaning is applied here, to those few rows.
      */
-    public DiscoverResponse discover(UUID viewer, String category, List<String> interests) {
+    public DiscoverResponse discover(
+            UUID viewer, String category, boolean challenges, Integer days, List<String> interests) {
         String only = category == null || category.isBlank() ? null : category;
+        JourneyStore.Only kind = new JourneyStore.Only(challenges || days != null, days);
         List<String> mine = Catalog.categoriesFor(interests);
         // What is going on now. The score is worked out every hour (see Trending); before its first run,
         // the most followed lead.
         List<JourneyRow> trending = top(
-                journeys.discover(Shelf.TRENDING, viewer, only, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
+                journeys.discover(Shelf.TRENDING, viewer, only, kind, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
                 Comparator.<JourneyRow>comparingDouble(
                                 j -> j.trendingScore() * (mine.contains(j.category()) ? INTEREST_BOOST : 1))
                         .reversed()
@@ -423,22 +458,29 @@ public class JourneyService {
                         .thenComparing(
                                 JourneyRow::lastEntryAt, Comparator.nullsLast(Comparator.<Instant>reverseOrder())));
         List<JourneyRow> fresh = top(
-                journeys.discover(Shelf.FRESH, viewer, only, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
+                journeys.discover(Shelf.FRESH, viewer, only, kind, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
                 Comparator.<JourneyRow, Instant>comparing(j -> j.createdAt()
                                 .plus(mine.contains(j.category()) ? INTEREST_HEAD_START_DAYS : 0, ChronoUnit.DAYS))
                         .reversed()
                         .thenComparing(JourneyRow::createdAt, Comparator.reverseOrder()));
         List<JourneyRow> completed =
-                journeys.discover(Shelf.COMPLETED, viewer, only, List.of(), DISCOVER_MIN_ENTRIES, DISCOVER_SHELF);
+                journeys.discover(Shelf.COMPLETED, viewer, only, kind, List.of(), DISCOVER_MIN_ENTRIES, DISCOVER_SHELF);
 
         // The three lists are turned into what the app shows together, so the friends on shared journeys are
         // looked up once for all of them.
         List<JourneyResponse> all = views(
                 Stream.of(trending, fresh, completed).flatMap(List::stream).toList(), viewer);
+        // A page about one category or about challenges says how many there are; plain Discover doesn't ask.
+        DiscoverCountsResponse counts = null;
+        if (only != null || kind.challenges()) {
+            JourneyStore.Counts counted = journeys.counts(only, kind);
+            counts = new DiscoverCountsResponse(counted.inProgress(), counted.finishedThisMonth());
+        }
         return new DiscoverResponse(
                 all.subList(0, trending.size()),
                 all.subList(trending.size(), trending.size() + fresh.size()),
-                all.subList(trending.size() + fresh.size(), all.size()));
+                all.subList(trending.size() + fresh.size(), all.size()),
+                counts);
     }
 
     /** The first of Discover's rows once the reader's leaning is applied. Rows that tie stay in the order the store gave. */

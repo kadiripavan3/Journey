@@ -6,6 +6,7 @@ import app.journey.api.common.Page;
 import app.journey.api.people.PeopleService.ListedPersonResponse;
 import app.journey.api.people.PeopleService.PublicProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,9 +55,12 @@ class PeopleController {
     Page<ListedPersonResponse> followers(
             @Me UUID me,
             @PathVariable String username,
+            @Parameter(description = "Only people whose name or username holds these letters")
+                    @RequestParam(required = false)
+                    String q,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return people.listed(username, true, me, Keyset.of(cursor, limit, 30));
+        return people.listed(username, true, me, q, Keyset.of(cursor, limit, 30));
     }
 
     @GetMapping("/following")
@@ -64,8 +68,11 @@ class PeopleController {
     Page<ListedPersonResponse> following(
             @Me UUID me,
             @PathVariable String username,
+            @Parameter(description = "Only people whose name or username holds these letters")
+                    @RequestParam(required = false)
+                    String q,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return people.listed(username, false, me, Keyset.of(cursor, limit, 30));
+        return people.listed(username, false, me, q, Keyset.of(cursor, limit, 30));
     }
 }

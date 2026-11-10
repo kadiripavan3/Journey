@@ -223,9 +223,10 @@ public class JourneyStore {
      * service's rule, so it does the merging.
      */
     public List<JourneyRow> discover(
-            Shelf shelf, UUID viewer, String category, List<String> leaning, int minEntries, int limit) {
+            Shelf shelf, UUID viewer, String category, Only only, List<String> leaning, int minEntries, int limit) {
         String top = "select j.id from journeys j where j.visibility = 'public' and j.entry_count >= :minEntries and "
-                + shelf.where + "%s" + VISIBLE + NOT_UNDER_REVIEW + " order by " + shelf.order + " limit :limit";
+                + shelf.where + only.sql() + "%s" + VISIBLE + NOT_UNDER_REVIEW + " order by " + shelf.order
+                + " limit :limit";
         String pick;
         if (category != null) {
             pick = top.formatted(" and j.category = :category");
@@ -244,7 +245,48 @@ public class JourneyStore {
         } else if (!leaning.isEmpty()) {
             query = query.param("leaning", leaning);
         }
+        if (only.days() != null) {
+            query = query.param("days", only.days());
+        }
         return query.query(ROW).list();
+    }
+
+    /**
+     * A narrower Discover: only challenges (journeys with a number of days to reach), and of those only the
+     * ones of one length.
+     */
+    public record Only(boolean challenges, Integer days) {
+
+        public static final Only EVERYTHING = new Only(false, null);
+
+        String sql() {
+            return days != null ? " and j.target_days = :days" : challenges ? " and j.target_days is not null" : "";
+        }
+    }
+
+    /** How many public journeys there are of a kind, as the hourly job last counted them. */
+    public record Counts(int inProgress, int finishedThisMonth) {}
+
+    /**
+     * Reads the count from the few rows the hourly job keeps ({@code journey_tallies}, written by
+     * {@code UpkeepStore.tally}): asking never looks at the journeys themselves.
+     */
+    public Counts counts(String category, Only only) {
+        String which = (category == null ? "" : " and t.category = :category")
+                + (only.days() != null
+                        ? " and t.target_days = :days"
+                        : only.challenges() ? " and t.target_days > 0" : "");
+        var query = jdbc.sql(
+                "select coalesce(sum(t.in_progress), 0) as in_progress, coalesce(sum(t.finished_this_month), 0) as finished"
+                        + " from journey_tallies t where true" + which);
+        if (category != null) {
+            query = query.param("category", category);
+        }
+        if (only.days() != null) {
+            query = query.param("days", only.days());
+        }
+        return query.query((rs, n) -> new Counts(rs.getInt("in_progress"), rs.getInt("finished")))
+                .single();
     }
 
     /** How many entries a search looks at for their place, at most. A place name can match a great many entries. */
@@ -292,6 +334,30 @@ public class JourneyStore {
             query = query.param("tags", Sql.arrayLiteral(List.of(tag)));
         }
         return query.query(ROW).list();
+    }
+
+    /** A place that entries of public journeys happened in, and in how many journeys. */
+    public record PlaceRow(String name, int journeys) {}
+
+    /**
+     * The places whose name holds the words typed, those with the most public journeys first. Like the search
+     * itself it looks at a bounded number of entries ({@link #SEARCH_PLACES}), found through the index on
+     * place names.
+     */
+    public List<PlaceRow> places(String pattern, UUID viewer, int limit) {
+        return jdbc.sql("""
+            select min(pe.place_name) as name, count(distinct pe.journey_id) as journeys
+            from (select e.place_name, e.journey_id, e.author_id from entries e where e.place_name ilike :q limit %d) pe
+            join journeys j on j.id = pe.journey_id
+            where j.visibility = 'public' %s %s and %s
+            group by lower(pe.place_name) order by journeys desc, name limit :limit
+            """.formatted(
+                                SEARCH_PLACES, VISIBLE, NOT_UNDER_REVIEW, Rules.notBlocked("pe.author_id", ":viewer")))
+                .param("q", pattern)
+                .param("viewer", viewer)
+                .param("limit", limit)
+                .query((rs, n) -> new PlaceRow(rs.getString("name"), rs.getInt("journeys")))
+                .list();
     }
 
     /**

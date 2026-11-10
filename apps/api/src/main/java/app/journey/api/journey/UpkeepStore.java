@@ -127,6 +127,31 @@ public class UpkeepStore {
      * a new entry or follow in one of them never waits long. Returns how many changed.
      */
     public int saveTrending(List<Rescored> scores) {
+        return saveScores(scores);
+    }
+
+    /**
+     * Counts the public journeys of each category and each length of challenge, and keeps the answers for the
+     * pages that show them (a category's page, the page of challenges). It reads every public journey once,
+     * so it is the hourly job's work and is given room. Returns how many kinds of journey there are.
+     */
+    public int tally() {
+        Integer kinds = transaction.execute(status -> {
+            jdbc.sql(Sql.ROOM_FOR_A_JOB).update();
+            jdbc.sql("delete from journey_tallies").update();
+            return jdbc.sql("""
+                insert into journey_tallies (category, target_days, in_progress, finished_this_month)
+                select j.category, coalesce(j.target_days, -1),
+                       count(*) filter (where j.status = 'active'),
+                       count(*) filter (where j.status = 'completed' and j.completed_at >= date_trunc('month', now()))
+                from journeys j where j.visibility = 'public'
+                group by j.category, coalesce(j.target_days, -1)
+                """).update();
+        });
+        return kinds == null ? 0 : kinds;
+    }
+
+    private int saveScores(List<Rescored> scores) {
         return jdbc.sql("""
             update journeys j set trending_score = s.score
             from unnest(cast(:ids as uuid[]), cast(:scores as float8[])) as s(id, score)

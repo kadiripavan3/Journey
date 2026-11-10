@@ -8,6 +8,7 @@ import app.journey.api.journey.JourneyService.JourneyResponse;
 import app.journey.api.profile.Profile;
 import app.journey.api.profile.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -197,9 +198,17 @@ class JourneyController {
     @Operation(
             operationId = "getDiscover",
             summary = "Trending, new and recently completed journeys, leaning towards your interests")
-    DiscoverResponse discover(@Me UUID me, @RequestParam(required = false) String category) {
+    DiscoverResponse discover(
+            @Me UUID me,
+            @RequestParam(required = false) String category,
+            @Parameter(description = "Only challenges: journeys with a number of days to reach")
+                    @RequestParam(defaultValue = "false")
+                    boolean challenges,
+            @Parameter(description = "Only challenges of this many days, such as 30 or 100")
+                    @RequestParam(required = false)
+                    Integer days) {
         List<String> interests = profiles.find(me).map(Profile::interests).orElse(List.of());
-        return journeys.discover(me, category, interests);
+        return journeys.discover(me, category, challenges, days, interests);
     }
 
     @GetMapping("/journeys/suggested")

@@ -2,9 +2,11 @@ package app.journey.api.entry;
 
 import app.journey.api.auth.Me;
 import app.journey.api.common.Keyset;
+import app.journey.api.common.Page;
 import app.journey.api.entry.EntryService.EntryResponse;
 import app.journey.api.entry.EntryService.JourneyMapResponse;
 import app.journey.api.entry.EntryService.JourneySummaryResponse;
+import app.journey.api.entry.EntryService.StoryDayResponse;
 import app.journey.api.entry.EntryService.TimelinePageResponse;
 import app.journey.api.entry.FeedService.FeedResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -96,6 +98,18 @@ class EntryController {
             summary = "The journey on a map: its entries that have a place, in story order, 300 at most")
     JourneyMapResponse map(@Me UUID me, @PathVariable UUID journeyId) {
         return entries.map(journeyId, me);
+    }
+
+    @GetMapping("/journeys/{journeyId}/days")
+    @Operation(
+            operationId = "getStoryDays",
+            summary = "The days of a journey's story that have entries, newest first, for \"Jump to\"")
+    Page<StoryDayResponse> days(
+            @Me UUID me,
+            @PathVariable UUID journeyId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        return entries.days(journeyId, me, Keyset.of(cursor, limit, 60));
     }
 
     @GetMapping("/journeys/{journeyId}/summary")

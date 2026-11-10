@@ -1,5 +1,7 @@
 package app.journey.api.entry;
 
+import app.journey.api.common.Keyset;
+import app.journey.api.common.Page;
 import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.journey.LabelStyle;
@@ -61,6 +63,9 @@ public class EntryStore {
             boolean held) {}
 
     public record MilestoneRow(UUID id, String title, LocalDate happenedOn, int dayNumber, int position) {}
+
+    /** One day of a story: how many entries the reader may see on it, the first of them, and where it was. */
+    public record StoryDayRow(LocalDate happenedOn, int dayNumber, int entries, UUID firstId, String place) {}
 
     /** What is new in a journey for one reader: how many entries, and the first of them in story order. */
     public record NewEntries(int count, UUID firstId) {}
@@ -429,6 +434,44 @@ public class EntryStore {
                 .param("limit", limit)
                 .query(Integer.class)
                 .list();
+    }
+
+    /**
+     * The days of a story that have something on them, the newest first, a page at a time, for "Jump to". It
+     * reads the journey's entries through the index on (journey, day) and never the entries themselves in full.
+     */
+    public Page<StoryDayRow> storyDays(UUID journeyId, UUID viewer, Keyset page) {
+        var query = jdbc.sql("""
+            select e.happened_on, (e.happened_on - j.start_date + 1) as day_number, count(*) as entries,
+                   (array_agg(e.id order by e.happened_at, e.created_at, e.id))[1] as first_id,
+                   (array_agg(e.place_name order by e.happened_at, e.created_at, e.id)
+                      filter (where coalesce(e.place_name, '') <> ''))[1] as place
+            from entries e join journeys j on j.id = e.journey_id
+            where e.journey_id = :journey %s %s
+            group by e.happened_on, j.start_date order by e.happened_on desc limit :limit
+            """.formatted(NOT_BLOCKED, page.first() ? "" : "and e.happened_on < :before"))
+                .param("journey", journeyId)
+                .param("viewer", viewer)
+                .param("limit", page.fetch());
+        if (!page.first()) {
+            query = query.param("before", day(page));
+        }
+        List<StoryDayRow> rows = query.query((rs, n) -> new StoryDayRow(
+                        rs.getObject("happened_on", LocalDate.class),
+                        rs.getInt("day_number"),
+                        rs.getInt("entries"),
+                        rs.getObject("first_id", UUID.class),
+                        rs.getString("place")))
+                .list();
+        return page.page(rows, row -> Keyset.cursor(row.happenedOn()));
+    }
+
+    private static LocalDate day(Keyset page) {
+        try {
+            return LocalDate.parse(page.text(0));
+        } catch (java.time.format.DateTimeParseException notADay) {
+            throw Keyset.badCursor();
+        }
     }
 
     /** The story's big moments, in story order, for "Jump to". */

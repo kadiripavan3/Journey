@@ -18,6 +18,14 @@ public final class Sql {
      */
     public static final String ROOM_FOR_A_JOB = "set local statement_timeout = '120s'";
 
+    /**
+     * What someone typed, as a pattern that finds it anywhere in a text. Their words are matched as they are:
+     * % and _ mean themselves, not "anything".
+     */
+    public static String anywhere(String words) {
+        return "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
     public static Instant instant(ResultSet rs, String column) throws SQLException {
         Timestamp value = rs.getTimestamp(column);
         return value == null ? null : value.toInstant();

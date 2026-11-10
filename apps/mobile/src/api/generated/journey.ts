@@ -629,12 +629,20 @@ export interface ListedPersonResponse {
   viewer: ListedPersonViewerResponse;
 }
 
+export interface PlaceHitResponse {
+  name: string;
+  /** How many public journeys have an entry there, among the ones looked at */
+  journeyCount: number;
+}
+
 export interface SearchResponse {
   query: string;
   /** The best matches, most followed first; at most 30 */
   journeys: JourneyResponse[];
   /** The best matches, most followed first; at most 30 */
   people: ListedPersonResponse[];
+  /** Places whose name matches, those with the most journeys first; at most 20 */
+  places: PlaceHitResponse[];
 }
 
 export interface PageJourneyResponse {
@@ -714,6 +722,11 @@ export interface MilestoneResponse {
   /** "Day 14" or "Part 3" */
   label: string;
   happenedOn: string;
+  /**
+     * A small picture of the entry's first photo, if it has one
+     * @nullable
+     */
+  thumbUrl: string | null;
 }
 
 export interface JourneySummaryResponse {
@@ -780,6 +793,29 @@ export interface TimelinePageResponse {
   total: number;
 }
 
+export interface StoryDayResponse {
+  happenedOn: string;
+  /** "Day 14"; counted from the journey's start date */
+  dayNumber: number;
+  /**
+     * Where the day's first entry with a place was
+     * @nullable
+     */
+  place: string | null;
+  /** How many entries the reader can see on this day */
+  entryCount: number;
+  firstEntryId: string;
+}
+
+export interface PageStoryDayResponse {
+  items: StoryDayResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
 export interface RecapResponse {
   journey: JourneyResponse;
   /** From the start date to the last entry, counting both */
@@ -839,10 +875,19 @@ export interface PageCommentResponse {
   nextCursor: string | null;
 }
 
+export interface DiscoverCountsResponse {
+  /** Public journeys that are going on now, as counted within the last hour */
+  inProgress: number;
+  /** Public journeys completed since the first of this month, as counted within the last hour */
+  finishedThisMonth: number;
+}
+
 export interface DiscoverResponse {
   trending: JourneyResponse[];
   fresh: JourneyResponse[];
   completed: JourneyResponse[];
+  /** How many there are, when a category or only challenges was asked for */
+  counts: DiscoverCountsResponse | null;
 }
 
 export interface DigestJourneyResponse {
@@ -986,11 +1031,15 @@ export type GetJourneysByUsernameParams = {
 };
 
 export type GetFollowingParams = {
+  /** Only people whose name or username holds these letters */
+  q?: string;
   cursor?: string;
   limit?: number;
 };
 
 export type GetFollowersParams = {
+  /** Only people whose name or username holds these letters */
+  q?: string;
   cursor?: string;
   limit?: number;
 };
@@ -1019,6 +1068,11 @@ export type SearchLocalPlacesParams = {
   q: string;
 };
 
+export type GetStoryDaysParams = {
+  cursor?: string;
+  limit?: number;
+};
+
 export type GetInvitableParams = {
   cursor?: string;
   limit?: number;
@@ -1035,6 +1089,10 @@ export type GetFeedParams = {
 
 export type GetDiscoverParams = {
   category?: string;
+  /** Only challenges: journeys with a number of days to reach */
+  challenges?: boolean;
+  /** Only challenges of this many days, such as 30 or 100 */
+  days?: number;
 };
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
@@ -4566,7 +4624,7 @@ export const getSearchUrl = (params: SearchParams,) => {
 }
 
 /**
- * @summary Find public journeys and people. A leading # or @ is ignored.
+ * @summary Find public journeys, people and places. A leading # or @ is ignored.
  */
 export const search = async (params: SearchParams, options?: Parameters<typeof apiFetch>[1]): Promise<SearchResponse> => {
 
@@ -4612,7 +4670,7 @@ export type SearchQueryResult = NonNullable<Awaited<ReturnType<typeof search>>>
 export type SearchQueryError = unknown
 
 
-/** @summary Find public journeys and people. A leading # or @ is ignored. */
+/** @summary Find public journeys, people and places. A leading # or @ is ignored. */
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
@@ -4623,7 +4681,7 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = u
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Find public journeys and people. A leading # or @ is ignored. */
+/** @summary Find public journeys, people and places. A leading # or @ is ignored. */
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
@@ -4634,12 +4692,12 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = u
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Find public journeys and people. A leading # or @ is ignored. */
+/** @summary Find public journeys, people and places. A leading # or @ is ignored. */
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Find public journeys and people. A leading # or @ is ignored. */
+/** @summary Find public journeys, people and places. A leading # or @ is ignored. */
 export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = unknown>(
  params: SearchParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof search>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
@@ -6640,6 +6698,122 @@ export function useGetJourneyMap<TData = Awaited<ReturnType<typeof getJourneyMap
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetJourneyMapQueryOptions(journeyId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStoryDaysUrl = (journeyId: string,
+    params?: GetStoryDaysParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/journeys/${journeyId}/days?${stringifiedParams}` : `/v1/journeys/${journeyId}/days`
+}
+
+/**
+ * @summary The days of a journey's story that have entries, newest first, for "Jump to"
+ */
+export const getStoryDays = async (journeyId: string,
+    params?: GetStoryDaysParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageStoryDayResponse> => {
+
+  return apiFetch<PageStoryDayResponse>(getGetStoryDaysUrl(journeyId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStoryDaysQueryKey = (journeyId: string,
+    params?: GetStoryDaysParams,) => {
+    return [
+    `/v1/journeys/${journeyId}/days`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStoryDaysQueryOptions = <TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStoryDaysQueryKey(journeyId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStoryDays>>> = ({ signal }) => getStoryDays(journeyId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStoryDaysQueryResult = NonNullable<Awaited<ReturnType<typeof getStoryDays>>>
+export type GetStoryDaysQueryError = unknown
+
+
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDays<TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(
+ journeyId: string,
+    params: undefined |  GetStoryDaysParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStoryDays>>,
+          TError,
+          Awaited<ReturnType<typeof getStoryDays>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDays<TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStoryDays>>,
+          TError,
+          Awaited<ReturnType<typeof getStoryDays>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDays<TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDays<TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStoryDaysQueryOptions(journeyId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
