@@ -1,6 +1,7 @@
 package app.journey.api.common;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,5 +24,12 @@ public class Jobs {
                         .param("period", period)
                         .update()
                 > 0;
+    }
+
+    /** Once a night: the record of runs from more than two months ago is of no use to anyone. */
+    @Scheduled(cron = "0 40 3 * * *", zone = "UTC")
+    void forgetOldRuns() {
+        jdbc.sql("delete from job_runs where started_at < now() - interval '60 days'")
+                .update();
     }
 }

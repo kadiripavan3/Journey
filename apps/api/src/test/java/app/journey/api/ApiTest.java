@@ -29,7 +29,7 @@ public abstract class ApiTest {
     @BeforeEach
     void emptyDatabase() {
         jdbc.sql(
-                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits, review_log, deletion_requests cascade")
+                        "truncate table entry_media, entries, journey_follows, journeys, media, profiles, local_users, job_runs, rate_limits, review_log, deletion_requests, push_tickets cascade")
                 .update();
     }
 

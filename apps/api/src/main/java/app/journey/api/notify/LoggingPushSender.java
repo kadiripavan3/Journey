@@ -1,9 +1,9 @@
 package app.journey.api.notify;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,7 +23,7 @@ public class LoggingPushSender implements PushSender {
     private final Deque<PushMessage> sent = new ArrayDeque<>();
 
     @Override
-    public synchronized Set<String> send(List<PushMessage> messages) {
+    public synchronized Handed send(List<PushMessage> messages) {
         for (PushMessage message : messages) {
             log.info("Push to {}: {} | {} (opens {})", message.token(), message.title(), message.body(), message.url());
             sent.addLast(message);
@@ -31,7 +31,12 @@ public class LoggingPushSender implements PushSender {
                 sent.removeFirst();
             }
         }
-        return Set.of();
+        return Handed.NOTHING;
+    }
+
+    @Override
+    public Outcome outcomes(Collection<String> ticketIds) {
+        return Outcome.NOTHING;
     }
 
     /** The most recent pushes, oldest first. */

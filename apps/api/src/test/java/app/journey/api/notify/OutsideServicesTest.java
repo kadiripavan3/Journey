@@ -10,7 +10,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
@@ -65,8 +64,8 @@ class OutsideServicesTest {
                          {"status":"error","message":"not registered","details":{"error":"DeviceNotRegistered"}},
                          {"status":"error","message":"too big","details":{"error":"MessageTooBig"}}]}
                 """);
-        ExpoPushSender expo = new ExpoPushSender(address("/push/send"), "");
-        Set<String> gone = expo.send(List.of(
+        ExpoPushSender expo = new ExpoPushSender(address("/push"), "");
+        PushSender.Handed handed = expo.send(List.of(
                 new PushMessage(
                         "ExponentPushToken[a]",
                         "Iceland ring road",
@@ -82,7 +81,9 @@ class OutsideServicesTest {
                 new PushMessage("ExponentPushToken[c]", "Journey", "x", "/digest", NotificationKind.WEEKLY_DIGEST)));
 
         // Only the phone Expo says is gone for good is forgotten; another kind of error is not a reason to.
-        assertThat(gone).containsExactly("ExponentPushToken[b]");
+        assertThat(handed.gone()).containsExactly("ExponentPushToken[b]");
+        // The push Expo accepted has a ticket, to ask about later.
+        assertThat(handed.tickets()).containsExactly(new PushSender.Ticket("t1", "ExponentPushToken[a]"));
         assertThat(calls).hasSize(1);
         Call call = calls.get(0);
         assertThat(call.path()).isEqualTo("/push/send");
@@ -96,27 +97,59 @@ class OutsideServicesTest {
     }
 
     @Test
-    void expoTakesAHundredAtATimeAndAnAccessTokenWhenThereIsOne() {
-        answers.add("{\"data\":[]}");
-        answers.add("{\"data\":[]}");
-        ExpoPushSender expo = new ExpoPushSender(address("/push/send"), "secret-token");
-        List<PushMessage> many = IntStream.range(0, 150)
+    void expoTakesAHundredInOneCallAndAnAccessTokenWhenThereIsOne() {
+        answers.add("{\"data\":[" + "{\"status\":\"ok\",\"id\":\"t\"},".repeat(99)
+                + "{\"status\":\"ok\",\"id\":\"last\"}]}");
+        ExpoPushSender expo = new ExpoPushSender(address("/push/"), "secret-token");
+        List<PushMessage> many = IntStream.range(0, 101)
                 .mapToObj(i -> new PushMessage(
                         "ExponentPushToken[" + i + "]", "t", "b", "/digest", NotificationKind.WEEKLY_DIGEST))
                 .toList();
 
-        assertThat(expo.send(many)).isEmpty();
-
-        assertThat(calls).hasSize(2);
+        assertThat(expo.send(many.subList(0, 100)).tickets()).hasSize(100);
+        assertThat(calls).hasSize(1);
+        assertThat(calls.get(0).path()).isEqualTo("/push/send");
         assertThat(calls.get(0).authorization()).isEqualTo("Bearer secret-token");
-        assertThat(calls.get(0).body()).contains("ExponentPushToken[99]").doesNotContain("ExponentPushToken[100]");
-        assertThat(calls.get(1).body()).contains("ExponentPushToken[100]").contains("ExponentPushToken[149]");
+        // More than a hundred is the caller's mistake, and nothing is sent.
+        assertThatThrownBy(() -> expo.send(many)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(calls).hasSize(1);
+    }
+
+    @Test
+    void anAnswerWithoutATicketForEveryPushCountsAsNotSent() {
+        // Expo answers 200 with "errors" when it refuses the whole call, and a ticket per push otherwise.
+        answers.add("{\"errors\":[{\"code\":\"PUSH_TOO_MANY_EXPERIENCE_IDS\",\"message\":\"no\"}]}");
+        answers.add("{\"data\":[]}");
+        ExpoPushSender expo = new ExpoPushSender(address("/push"), "");
+        List<PushMessage> one =
+                List.of(new PushMessage("ExponentPushToken[a]", "t", "b", "/digest", NotificationKind.WEEKLY_DIGEST));
+        assertThatThrownBy(() -> expo.send(one)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> expo.send(one)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void expoSaysLaterWhatBecameOfAPushAndWhichPhonesAreGone() {
+        answers.add("""
+                {"data":{"t1":{"status":"ok"},
+                         "t2":{"status":"error","message":"gone","details":{"error":"DeviceNotRegistered"}},
+                         "t3":{"status":"error","message":"wrong key","details":{"error":"InvalidCredentials"}}}}
+                """);
+        ExpoPushSender expo = new ExpoPushSender(address("/push"), "");
+
+        PushSender.Outcome outcome = expo.outcomes(List.of("t1", "t2", "t3", "t4"));
+
+        // t4 has no answer yet: it is asked about again next time.
+        assertThat(outcome.answered()).containsExactlyInAnyOrder("t1", "t2", "t3");
+        assertThat(outcome.gone()).containsExactly("t2");
+        assertThat(calls).hasSize(1);
+        assertThat(calls.get(0).path()).isEqualTo("/push/getReceipts");
+        assertThat(calls.get(0).body()).isEqualTo("{\"ids\":[\"t1\",\"t2\",\"t3\",\"t4\"]}");
     }
 
     @Test
     void whenExpoCannotBeReachedTheSenderSaysSoRatherThanPretending() {
         status = 503;
-        ExpoPushSender expo = new ExpoPushSender(address("/push/send"), "");
+        ExpoPushSender expo = new ExpoPushSender(address("/push"), "");
         assertThatThrownBy(() -> expo.send(List.of(
                         new PushMessage("ExponentPushToken[a]", "t", "b", "/digest", NotificationKind.WEEKLY_DIGEST))))
                 .isInstanceOf(RuntimeException.class);

@@ -1,6 +1,8 @@
 package app.journey.api.notify;
 
+import java.time.Duration;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +70,48 @@ public class DeviceStore {
                 .list()
                 .stream()
                 .collect(Collectors.groupingBy(Row::userId, Collectors.mapping(Row::token, Collectors.toList())));
+    }
+
+    /** Remembers what the push service gave back for each push it accepted, to ask about later. */
+    public void remember(List<PushSender.Ticket> tickets) {
+        for (PushSender.Ticket ticket : tickets) {
+            jdbc.sql("insert into push_tickets (id, token) values (:id, :token) on conflict do nothing")
+                    .param("id", ticket.id())
+                    .param("token", ticket.token())
+                    .update();
+        }
+    }
+
+    /** Tickets old enough for the push service to know what became of them, oldest first: ticket id to device token. */
+    public Map<String, String> ticketsOlderThan(Duration age, int limit) {
+        record Row(String id, String token) {}
+        return jdbc
+                .sql("""
+                    select id, token from push_tickets where created_at < now() - make_interval(secs => :age)
+                    order by created_at limit :limit
+                    """)
+                .param("age", age.toSeconds())
+                .param("limit", limit)
+                .query((rs, n) -> new Row(rs.getString("id"), rs.getString("token")))
+                .list()
+                .stream()
+                .collect(Collectors.toMap(Row::id, Row::token, (first, second) -> first, LinkedHashMap::new));
+    }
+
+    /** These tickets have been answered (or are too old to ever be). Returns how many were removed. */
+    public int forgetTickets(Collection<String> ids) {
+        return ids.isEmpty()
+                ? 0
+                : jdbc.sql("delete from push_tickets where id in (:ids)")
+                        .param("ids", ids)
+                        .update();
+    }
+
+    /** The push service keeps its answers for about a day; a ticket older than that will never be answered. */
+    public int forgetTicketsOlderThan(Duration age) {
+        return jdbc.sql("delete from push_tickets where created_at < now() - make_interval(secs => :age)")
+                .param("age", age.toSeconds())
+                .update();
     }
 
     /** Everyone who can get a push and hasn't switched reminders off, with where they are and when they want them. */

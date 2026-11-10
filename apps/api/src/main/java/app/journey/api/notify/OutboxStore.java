@@ -200,8 +200,8 @@ public class OutboxStore {
     }
 
     /**
-     * The messages that are due, locked for this sender: another copy of the API skips them and takes the next
-     * ones. Each says whether it may still be sent: the person hasn't switched that kind off since, neither has
+     * The messages that are due, locked for this sender until the end of the (short) transaction it is called
+     * in: another copy of the API skips them and takes the next ones. Each says whether it may still be sent: the person hasn't switched that kind off since, neither has
      * blocked the other, and they may still see the journey and the entry it is about.
      */
     public List<Due> lockDue(int limit) {
@@ -276,6 +276,11 @@ public class OutboxStore {
                 .list();
     }
 
+    /** Taken by this sender: the push service is about to be called for these. */
+    public void markSending(Collection<UUID> ids) {
+        mark(ids, "status = 'sending', claimed_at = now()");
+    }
+
     public void markSent(Collection<UUID> ids) {
         mark(ids, "status = 'sent', sent_at = now()");
     }
@@ -285,16 +290,34 @@ public class OutboxStore {
         mark(ids, "status = 'skipped'");
     }
 
-    /** The push service couldn't be reached: try again later, a little later each time, and give up after a few tries. */
+    /**
+     * The push service couldn't be reached: try again later, a little later each time, and give up after a few
+     * tries. A message that goes back to waiting no longer counts up with new ones (its batch key is dropped):
+     * a newer message for the same thing may have started in the meantime.
+     */
     public void retryLater(Collection<UUID> ids, int maxAttempts) {
         if (!ids.isEmpty()) {
             jdbc.sql("""
-                update notifications set attempts = attempts + 1,
-                  status = case when attempts + 1 >= :max then 'skipped' else status end,
+                update notifications set attempts = attempts + 1, batch_key = null, claimed_at = null,
+                  status = case when attempts + 1 >= :max then 'skipped' else 'pending' end,
                   send_after = now() + make_interval(mins => 5 * (attempts + 1))
                 where id in (:ids)
                 """).param("ids", ids).param("max", maxAttempts).update();
         }
+    }
+
+    /**
+     * Messages that were taken long ago and never marked as sent: the API stopped in between. They are tried
+     * again, like any other message that couldn't be sent. Returns how many there were.
+     */
+    public int putBackStuck(Duration after, int maxAttempts) {
+        List<UUID> stuck = jdbc.sql(
+                        "select id from notifications where status = 'sending' and claimed_at < now() - make_interval(secs => :after)")
+                .param("after", after.toSeconds())
+                .query(UUID.class)
+                .list();
+        retryLater(stuck, maxAttempts);
+        return stuck.size();
     }
 
     /** Messages that were sent or skipped long ago are of no use to anyone. Returns how many were removed. */
