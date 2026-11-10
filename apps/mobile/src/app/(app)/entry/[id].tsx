@@ -81,9 +81,7 @@ export default function EntryView() {
       </View>
 
       {load.error ? (
-        <View style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 12) }}>
-          <PageProblem tone="onPhoto" error={load.error} onRetry={load.retry} retrying={load.retrying} />
-        </View>
+        <PageProblem tone="onPhoto" error={load.error} onRetry={load.retry} retrying={load.retrying} />
       ) : !pager.ready ? (
         <Loading tone="onPhoto" offline={load.offline} />
       ) : (

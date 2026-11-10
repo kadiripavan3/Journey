@@ -20,7 +20,7 @@ import { BarLink } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Loading } from '@/ui/Loading';
 import { Tap } from '@/ui/Motion';
-import { Txt } from '@/ui/Txt';
+import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 import { WordTabs } from '@/ui/WordTabs';
 
@@ -64,6 +64,7 @@ export default function Search() {
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 46, paddingHorizontal: 16, borderRadius: radius.pill, borderWidth: 2, borderColor: colors.text }}>
           <SearchIcon size={18} color={colors.text} />
           <TextInput
+            maxFontSizeMultiplier={MAX_TEXT_SCALE}
             accessibilityLabel="Search journeys, people and tags"
             value={text}
             onChangeText={setText}

@@ -16,6 +16,7 @@ import { ProfileLink } from '@/features/people/ProfileLink';
 import { BlockSheet, ReportSheet } from '@/features/safety/SafetySheets';
 import { useLeave } from '@/features/navigation/useLeave';
 import { PageProblem } from '@/features/states/PageProblem';
+import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
 import { compact, followersLabel } from '@/lib/plural';
 import { layout, radius, useTheme, withAlpha } from '@/theme';
@@ -51,12 +52,12 @@ export default function CreatorProfile() {
   const unblock = useUnblockProfile({ mutation: { onSuccess: () => cache.blockChanged() } });
 
   const p = profile.data;
-  if (!p) {
+  if (!p || wentAway(profile)) {
     // Not here yet, or not at all: the way back stays, on the page's own colours.
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         {profile.isError ? (
-          <View style={{ flex: 1, paddingTop: insets.top + 56, paddingBottom: insets.bottom }}>
+          <View style={{ flex: 1, paddingTop: insets.top + 56 }}>
             <PageProblem error={profile.error} onRetry={() => void profile.refetch()} retrying={profile.isFetching} />
           </View>
         ) : profile.isPaused ? (

@@ -12,6 +12,7 @@ import { pickSquarePhoto } from '@/features/media/pick';
 import { useLeave } from '@/features/navigation/useLeave';
 import { useDebounced } from '@/lib/useDebounced';
 import { normalizeUsername, usernameProblem } from '@/lib/username';
+import { PHOTOS_CLOSED } from '@/lib/words';
 import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -60,7 +61,7 @@ export default function EditProfile() {
         setRemovePhoto(false);
       }
     } catch {
-      setFailure(new ApiError(0, 'photos', "We couldn't open your photos. Check that Journey may see them in the phone's Settings."));
+      setFailure(new ApiError(0, 'photos', PHOTOS_CLOSED));
     }
   };
 

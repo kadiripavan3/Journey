@@ -48,7 +48,7 @@ export default function JourneyLive() {
           <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
         </View>
         {!j ? (
-          journey.isError ? <PageProblem tone="onPhoto" error={journey.error} onRetry={() => void journey.refetch()} retrying={journey.isFetching} /> : <Loading tone="onPhoto" offline={journey.isPaused} />
+          journey.isError ? <PageProblem inset={false} tone="onPhoto" error={journey.error} onRetry={() => void journey.refetch()} retrying={journey.isFetching} /> : <Loading tone="onPhoto" offline={journey.isPaused} />
         ) : (
           <View style={{ gap: 12, paddingBottom: 12 }}>
             <Pill tone="photo" frost="blur" label={`${j.labelStyle === 'day' ? 'Day 1' : 'Part 1'} · ${visibility(j.visibility).label}`} />

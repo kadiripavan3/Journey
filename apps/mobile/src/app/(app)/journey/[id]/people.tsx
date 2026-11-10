@@ -13,6 +13,7 @@ import { PersonRow } from '@/features/people/PersonRow';
 import { PageProblem } from '@/features/states/PageProblem';
 import { MoreButton } from '@/ui/MoreButton';
 import { formatDay, timeAgo } from '@/lib/dates';
+import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
 import { shareLink } from '@/lib/share';
@@ -90,7 +91,7 @@ export default function JourneyPeople() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="People" subtitle={journey.data?.title} trailing={<View style={{ width: 40 }} />} />
-      {!data ? (
+      {!data || wentAway(members) ? (
         members.isError ? <PageProblem error={members.error} onRetry={() => void members.refetch()} retrying={members.isFetching} /> : <Loading offline={members.isPaused} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>

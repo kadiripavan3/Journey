@@ -19,6 +19,11 @@ describe('several things a screen reads, looked at together', () => {
     expect(loadState(stale, loaded({ id: 2 })).error).toBeNull();
   });
 
+  it('is an error again when the refresh says the thing has gone: what is on screen no longer exists', () => {
+    const gone = new ApiError(404, 'not_found', "This journey isn't available.");
+    expect(loadState({ ...failed(gone), data: { id: 1 } }).error).toBe(gone);
+  });
+
   it('asks again for everything that failed, and only that', () => {
     const fine = loaded({ id: 1 });
     const first = failed(down);

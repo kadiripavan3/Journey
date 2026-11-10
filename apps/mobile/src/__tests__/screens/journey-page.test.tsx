@@ -89,6 +89,13 @@ describe('the journey page', () => {
     expect(screen.queryByText("Can't reach Journey right now.")).not.toBeOnTheScreen();
   });
 
+  it('says the journey is not available once a refresh answers that it has gone (deleted, or its author blocked)', async () => {
+    mockJourney.mockReturnValue({ ...failed(new ApiError(404, 'not_found', "This journey isn't available.")), data: journey() });
+    await render(onPhone(<JourneyPage />));
+    expect(screen.getByText("This journey isn't available.")).toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Iceland ring road' })).not.toBeOnTheScreen();
+  });
+
   it('a challenge says "cheering" and asks for today\'s check-in until there is one', async () => {
     const challenge = journey({ targetDays: 30, startDate: today(), viewer: writes });
     mockJourney.mockReturnValue(loaded(challenge));

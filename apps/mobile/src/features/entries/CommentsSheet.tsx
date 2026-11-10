@@ -22,7 +22,7 @@ import { Tap } from '@/ui/Motion';
 import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
-import { Txt } from '@/ui/Txt';
+import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 
 type Props = { entry: EntryResponse; visible: boolean; onClose: () => void };
@@ -168,6 +168,7 @@ function Comments({ entry, visible, onClose }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: layout.barGutter, paddingTop: 12, paddingBottom: 4 }}>
             <Avatar uri={me?.avatarUrl} name={me?.displayName ?? ' '} size={34} />
             <TextInput
+              maxFontSizeMultiplier={MAX_TEXT_SCALE}
               accessibilityLabel="Add a comment"
               value={text}
               onChangeText={setText}

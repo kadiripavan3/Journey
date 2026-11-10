@@ -1,5 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
+import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { isGone } from '@/lib/loading';
@@ -25,6 +27,8 @@ type Props = {
   onRetry: () => void;
   retrying?: boolean;
   tone?: 'page' | 'onPhoto';
+  /** False on a screen that already keeps clear of the home bar (it sits in a `SafeAreaView` with all its edges). */
+  inset?: boolean;
 };
 
 /**
@@ -32,8 +36,13 @@ type Props = {
  * offers "Try again" and "Go to Home". Something that isn't there (deleted, private, blocked) can't be helped
  * by asking again, so that page offers only the way Home.
  */
-export function PageProblem({ error, onRetry, retrying, tone }: Props) {
+export function PageProblem({ error, onRetry, retrying, tone, inset = true }: Props) {
   const home = useGoHome();
+  const insets = useSafeAreaInsets();
   const gone = isGone(error);
-  return <Problem tone={tone} title={gone ? "This isn't available" : undefined} message={messageFor(error)} onRetry={gone ? undefined : onRetry} retrying={retrying} onHome={home} />;
+  return (
+    <View style={{ flex: 1, paddingBottom: inset ? insets.bottom : 0 }}>
+      <Problem tone={tone} title={gone ? "This isn't available" : undefined} message={messageFor(error)} onRetry={gone ? undefined : onRetry} retrying={retrying} onHome={home} />
+    </View>
+  );
 }

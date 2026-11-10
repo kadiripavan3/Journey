@@ -50,12 +50,12 @@ export default function JourneyPage() {
   const load = loadState(journey);
 
   const j = journey.data;
-  if (!j) {
+  if (!j || load.error) {
     // Not here yet, or not at all: the way back stays, on the page's own colours.
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         {load.error ? (
-          <View style={{ flex: 1, paddingTop: insets.top + 56, paddingBottom: insets.bottom }}>
+          <View style={{ flex: 1, paddingTop: insets.top + 56 }}>
             <PageProblem error={load.error} onRetry={load.retry} retrying={load.retrying} />
           </View>
         ) : load.offline ? (

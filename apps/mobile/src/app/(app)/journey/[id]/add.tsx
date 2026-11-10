@@ -25,7 +25,7 @@ import { Photo } from '@/ui/Photo';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
 import { Toggle } from '@/ui/Toggle';
-import { Txt } from '@/ui/Txt';
+import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 
 /**
@@ -49,7 +49,7 @@ export default function Composer() {
   if (c.error) {
     return (
       <Gate onClose={leave}>
-        <PageProblem error={c.error} onRetry={c.retry} retrying={c.retrying} />
+        <PageProblem inset={false} error={c.error} onRetry={c.retry} retrying={c.retrying} />
       </Gate>
     );
   }
@@ -115,6 +115,7 @@ export default function Composer() {
 
           <View style={{ marginHorizontal: layout.barGutter, gap: 6 }}>
             <TextInput
+              maxFontSizeMultiplier={MAX_TEXT_SCALE}
               accessibilityLabel="Title, optional"
               value={c.title}
               onChangeText={c.setTitle}
@@ -125,6 +126,7 @@ export default function Composer() {
               style={[webNoOutline, textStyle('title', 800, { oneLine: true }), { padding: 0, color: colors.text }]}
             />
             <TextInput
+              maxFontSizeMultiplier={MAX_TEXT_SCALE}
               accessibilityLabel="What happened"
               value={c.body}
               onChangeText={c.setBody}

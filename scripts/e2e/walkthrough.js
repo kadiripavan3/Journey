@@ -170,6 +170,12 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Food' }).click();
     await T("My grandmother's recipes").first().waitFor();
     await shot('discover-food');
+    // With a category chosen, a rail's title leads to that category's own page.
+    await R('button', { name: 'Trending now. See all' }).click();
+    await R('heading', { name: 'Food' }).waitFor();
+    await T("My grandmother's recipes").first().waitFor();
+    await shot('category');
+    await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Food' }).click();
     await T('Couch to 10K').first().click();
     await T('Read the story').waitFor();

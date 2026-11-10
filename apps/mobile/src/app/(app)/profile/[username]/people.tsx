@@ -9,6 +9,7 @@ import { List } from '@/ui/List';
 import { type ListedPersonResponse, useGetFollowersInfinite, useGetFollowingInfinite, useGetProfile } from '@/api/generated/journey';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { PersonRow } from '@/features/people/PersonRow';
+import { wentAway } from '@/lib/loading';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -45,7 +46,7 @@ export default function People() {
         value={tab}
         onChange={setTab}
       />
-      {!list.data ? (
+      {!list.data || wentAway(list) ? (
         list.isError ? <PageProblem error={list.error} onRetry={() => void list.refetch()} retrying={list.isFetching} /> : <Loading offline={list.isPaused} />
       ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>

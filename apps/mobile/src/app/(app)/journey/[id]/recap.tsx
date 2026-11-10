@@ -11,6 +11,7 @@ import { useLeave } from '@/features/navigation/useLeave';
 import { JourneyShareSheet } from '@/features/sharing/ShareSheet';
 import { PageProblem } from '@/features/states/PageProblem';
 import { formatDay } from '@/lib/dates';
+import { wentAway } from '@/lib/loading';
 import { darkTheme, layout, radius, withAlpha } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Emoji } from '@/ui/Emoji';
@@ -45,8 +46,8 @@ export default function Recap() {
           <Emoji char="🎉" size={40} />
           <View style={{ width: 40 }} />
         </View>
-        {!r ? (
-          recap.isError ? <PageProblem tone="onPhoto" error={recap.error} onRetry={() => void recap.refetch()} retrying={recap.isFetching} /> : <Loading tone="onPhoto" offline={recap.isPaused} />
+        {!r || wentAway(recap) ? (
+          recap.isError ? <PageProblem inset={false} tone="onPhoto" error={recap.error} onRetry={() => void recap.refetch()} retrying={recap.isFetching} /> : <Loading tone="onPhoto" offline={recap.isPaused} />
         ) : (
           <View style={{ gap: 12, paddingBottom: 12 }}>
             <Pill tone="photo" frost="blur" label={r.journey.status === 'completed' ? 'Journey complete' : 'So far'} />
