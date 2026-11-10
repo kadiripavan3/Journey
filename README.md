@@ -2,7 +2,7 @@
 
 **A social app where every post is part of a story.** People start a journey (a trip, a 30-day challenge, a build), add entries to it over time, and others follow along for the next chapter.
 
-iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL · Status: **Phase 1: building, milestone M1**
+iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL · Status: **Phase 1: building. Most of the app works locally; see [what works today](docs/07-run-locally.md#what-works-today)**
 
 ## Run it
 
@@ -25,4 +25,5 @@ iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL �
 | [apps/mobile/](apps/mobile/) | The app: Expo (React Native, TypeScript) |
 | [design/tokens.json](design/tokens.json) | Colours, type, shapes: the single source for the hub and the app |
 | [design/hub/](design/hub/) | The hub's source: screens, styles, status and build script |
+| [scripts/e2e/](scripts/e2e/) | A browser walk-through that uses every built screen, for checking changes |
 | [CLAUDE.md](CLAUDE.md) | How Claude picks up the work in every session |
