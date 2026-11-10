@@ -80,6 +80,14 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Format the API code** with `./mvnw spotless:apply` before committing; `./mvnw verify` (what CI runs) fails on unformatted code and on compiler warnings.
 - **The stand-ins need the `local` profile.** The API refuses to start with local sign-in, local files or sample data switched on without it.
 
+### Notifications, jobs and outside services
+
+- **A push is never sent from a service.** The service publishes an event (`EntryAdded`, `EntryLiked`, `CommentAdded`, `JourneyFollowed`, …) and `notify/Outbox` writes a row to `notifications` in the same transaction. `PushDelivery` sends the rows that are due and checks switches, blocks and visibility at that moment. A new kind of push is a new `NotificationKind`, a listener in `Outbox`, its words and target in `PushWording`, the path in the app's `features/notifications/target.ts`, and a case in `PushTest`.
+- **Every outside service** has a port, a stand-in and a real adapter behind `journey.<thing>.mode` (`PushSender`, `EmailSender`). The stand-in is the default with the `local` profile and listed in `LocalModeGuard`. The real adapter is tried against a small server in the test itself (`OutsideServicesTest`), so it needs no account.
+- **A scheduled job** claims its `job_runs` row first (`Jobs.claim`), and its work is a public method the tests call directly (`reminders.remindAt(...)`, `autoPause.pauseQuietJourneys()`, `trending.rescore()`). The trending rules are written out in `UpkeepStore` and in `docs/02-tech-stack.md`; change both together.
+- **In the app**, notifications, PostHog and Sentry are loaded only where they can work and only when needed (`features/notifications/device.ts`, `features/analytics`). Check `pushSupport()` before touching notifications: a browser and Expo Go get a sentence, never a crash. Something to do just before sign-out registers with `beforeSignOut()` (`src/auth/beforeSignOut.ts`).
+- **What is counted** is named once, in `features/analytics/events.ts`, by the API call that makes it happen. Kinds and counts only: never a name, an email address, a title or anything a person wrote.
+
 ## App structure and standards
 
 Where things live in `apps/mobile/src`:

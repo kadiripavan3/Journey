@@ -111,6 +111,48 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 | Links that leave the app | Built from `JOURNEY_PUBLIC_URL` when it is set, otherwise from the request. Behind a proxy, set `JOURNEY_FORWARD_HEADERS=framework`. |
 | The API's description | `/v3/api-docs` and the try-it-out page are on in local mode and off everywhere else. |
 
+### Notifications, reminders and what is trending
+
+**How a push is sent.** Nothing is sent while a person waits for an answer. When something happens that someone should hear about (an entry, a like, a comment, a follow, an invitation), the service says so with an event, and `notify/Outbox` writes a row to the `notifications` table in the same transaction as the change. If the change is undone, so is the row.
+
+- **Batching:** a row has a time before which it is not sent. New entries wait 10 minutes and likes an hour; until then more of the same join the same row, so three entries become one push ("Maya added 3 entries: …"). Comments, followers and invitations go out at once.
+- **Sending:** every 30 seconds `PushDelivery` takes the rows that are due (`for update skip locked`, so two copies of the API never take the same one), checks them against the person's switches, blocks and what they may still see, words them (`PushWording`) and hands them to the push service. A row is sent once; a failure is tried again up to five times.
+- **Where it opens:** every push carries a path in the app (`/journey/<id>/timeline`, `/entry/<id>?comments=1`, …). The app opens only the screens it knows (`features/notifications/target.ts`); anything else opens Activity.
+- **Activity** stays worked out from what happened, as before. The `notifications` table is only the list of pushes to send, and is emptied of old rows every night.
+
+**The jobs.** Each claims its row in `job_runs` first, so with several copies of the API only one does the work.
+
+| Job | When | What it does |
+|---|---|---|
+| Push delivery | every 30 seconds | Sends the pushes that are due |
+| Reminders | every hour | For people who have reminders on and whose own clock shows their chosen hour (7 pm unless they change it; the time zone comes from their phone): one push at most per day. A challenge gets "Day 12 of 30 is waiting" on a day without a check-in. Any other journey gets a nudge after 3, 7 and 14 quiet days and then none. Paused and completed journeys never get one. |
+| Auto-pause | daily, 04:15 UTC | An active journey with no entry for 30 days becomes paused and is marked as paused by itself, so its page can say "Paused after 30 quiet days". The owner hears once. A new entry wakes it. |
+| Trending | every hour, and when the API starts | Works out each public journey's score (below) |
+| Weekly digest | Sundays, 18:00 UTC | One push, plus an email for people who asked for it, built from the same week as the digest page. Nothing in a week with nothing new. |
+
+**What "Trending now" means.** A journey's score is worked out from four things anyone can check on its page:
+
+| What | Points |
+|---|---|
+| Entries added in the last 7 days | 3 each, 7 entries at most (posting a lot in one day doesn't win) |
+| New followers in the last 7 days | 2 each |
+| Likes and comments in the last 7 days | 1 for a like, 2 for a comment |
+| Completed in the last 14 days | 10 |
+| People who follow it already | a little: the logarithm, so 1,000 followers count for about 7 points |
+| Paused | the total is halved |
+
+Discover's "Trending now" lists public journeys with at least 3 entries by this score; journeys completed more than 14 days ago leave it. **Interests lean it, they don't decide it:** in "Trending now" a journey in a category the person picked at sign-up counts for half as much again, and among new journeys it is treated as a week newer than it is. The code is `UpkeepStore.rescoreTrending` and `JourneyService.discover`.
+
+**Outside services** each have a port (an interface), a stand-in and the real thing, chosen by a setting:
+
+| Port | Setting | Stand-in (`local`) | The real thing | Needs |
+|---|---|---|---|---|
+| `PushSender` | `journey.push.mode` (`JOURNEY_PUSH_MODE`) | Writes each push to the log | `expo`: the Expo Push Service over HTTPS, 100 at a time; a phone Expo reports as gone is forgotten | Nothing to send. `EXPO_ACCESS_TOKEN` only if "enhanced security" is switched on in the Expo account. |
+| `EmailSender` | `journey.email.mode` (`JOURNEY_EMAIL_MODE`) | Writes each email to the log | `resend`: Resend's Java library, with a key that makes sending twice harmless | `RESEND_API_KEY`, and `JOURNEY_EMAIL_FROM` with an address on a domain verified at Resend. Without the key the API doesn't start; `JOURNEY_EMAIL_MODE=off` runs it without email until there is one. |
+| `EmailAddresses` | follows `journey.auth.mode` | The local sign-in table | Supabase's `auth.users` | The API keeps no email addresses of its own |
+
+The stand-ins are the default with the `local` profile and refused without it, like the other stand-ins. In the app, PostHog and Sentry are switched on by `EXPO_PUBLIC_POSTHOG_KEY` (and `EXPO_PUBLIC_POSTHOG_HOST` for the EU) and `EXPO_PUBLIC_SENTRY_DSN`. Without a key nothing is loaded. What is counted is listed in `features/analytics/events.ts`: kinds and counts, never a name, an email address or anything a person wrote.
+
 ### Managed services
 
 | Service | Choice | Why, and what else was considered | Price |
@@ -178,8 +220,8 @@ flowchart LR
 | `creator_follows` | follower_id, creator_id |
 | `likes` | user_id, entry_id |
 | `comments` | id, entry_id, author_id, parent_id (one level of replies), body, created_at, deleted_at |
-| `notifications` | id, user_id, type, actor_id, journey_id, entry_id, created_at, read_at |
-| `push_tokens` | user_id, token, platform |
+| `notifications` | The pushes waiting to be sent: id, user_id, kind, batch_key, actor_id, journey_id, entry_id, count, text, send_after, status (pending · sent · skipped), attempts. Activity is not read from here. |
+| `devices` | token (the phone's address at the push service), user_id, platform, time_zone, seen_at |
 | `notification_prefs` | user_id, one switch for each type (new entries, completed journeys, comments, followers and invitations, likes, reminders), digest_push, digest_email, checkin_time |
 | `reports`, `blocks` | reporter, target, reason, status · blocker_id, blocked_id |
 | `templates` | id, name, category, label_style, prompts (JSON) |
