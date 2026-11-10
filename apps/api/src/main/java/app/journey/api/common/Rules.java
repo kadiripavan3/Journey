@@ -116,12 +116,16 @@ public final class Rules {
      * against one of its entries. Discover, search and suggestions leave a reported journey out until then;
      * it still opens for anyone who has the link or follows it.
      *
+     * <p>The two kinds of report are asked about separately. Open reports are few, so the database reads them
+     * once and checks each journey against them, instead of going through the reports again for every journey.
+     *
      * @param journey the alias of the journeys table in the query, such as {@code "j"}
      */
     public static String notUnderReview(String journey) {
-        return ("not exists (select 1 from reports rp where rp.status = 'open' and ((rp.target_type = 'journey'"
-                        + " and rp.target_id = %1$s.id) or (rp.target_type = 'entry' and exists"
-                        + " (select 1 from entries re where re.id = rp.target_id and re.journey_id = %1$s.id))))")
+        return ("(not exists (select 1 from reports rp where rp.status = 'open' and rp.target_type = 'journey'"
+                        + " and rp.target_id = %1$s.id)"
+                        + " and not exists (select 1 from reports rp join entries re on re.id = rp.target_id"
+                        + " where rp.status = 'open' and rp.target_type = 'entry' and re.journey_id = %1$s.id))")
                 .formatted(journey);
     }
 }

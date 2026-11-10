@@ -186,15 +186,25 @@ public class PeopleStore {
         return page.page(query.query(LISTED_ROW).list(), row -> Keyset.cursor(row.since(), row.id()));
     }
 
-    /** People whose name or username matches the words typed, most followed first. */
-    public List<ListedRow> search(String pattern, UUID viewer, int limit) {
+    /**
+     * People whose name or username holds the words typed, most followed first. The matches are found first
+     * (through the indexes on the two names) and ten times what the answer shows are kept, by followers; only
+     * those are read in full and shown to the viewer.
+     *
+     * @param mostFollowed false for very short words, which no index can help with: the first matches found
+     *     are taken instead of the most followed, so the look stops as soon as there are enough
+     */
+    public List<ListedRow> search(String pattern, boolean mostFollowed, UUID viewer, int limit) {
+        String best = mostFollowed ? " order by c.follower_count desc, c.username" : "";
         return jdbc.sql("select p.id, p.username, p.display_name, a.storage_key as avatar_key, p.created_at as since,"
-                        + LISTED + " from profiles p" + AVATAR
-                        + " where (p.username ilike :q or p.display_name ilike :q) and "
+                        + LISTED
+                        + " from (select c.id from profiles c where c.username ilike :q or c.display_name ilike :q"
+                        + best + " limit :most) found join profiles p on p.id = found.id" + AVATAR + " where "
                         + Rules.notBlocked("p.id", ":viewer")
                         + " order by p.follower_count desc, p.username limit :limit")
                 .param("q", pattern)
                 .param("viewer", viewer)
+                .param("most", limit * 10)
                 .param("limit", limit)
                 .query(LISTED_ROW)
                 .list();

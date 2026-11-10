@@ -104,9 +104,17 @@ public class PeopleService {
         return people.listed(idOf(username, viewer), followers, viewer, page).map(rows -> listed(rows, viewer));
     }
 
-    /** People whose name or username matches. */
+    /** The shortest words an index can help to find: three letters. Shorter ones get the first matches, not the most followed. */
+    static final int SEARCH_BEST_FROM = 3;
+
+    /**
+     * People whose name or username matches, most followed first.
+     *
+     * @param pattern the words as an "anywhere in the text" pattern: escaped, with a % on either side
+     */
     public List<ListedPersonResponse> search(String pattern, UUID viewer, int limit) {
-        return listed(people.search(pattern, viewer, limit), viewer);
+        int letters = pattern.replace("\\", "").length() - 2;
+        return listed(people.search(pattern, letters >= SEARCH_BEST_FROM, viewer, limit), viewer);
     }
 
     private List<ListedPersonResponse> listed(List<PeopleStore.ListedRow> rows, UUID viewer) {

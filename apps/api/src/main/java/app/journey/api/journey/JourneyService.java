@@ -6,8 +6,8 @@ import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import app.journey.api.common.PublicUrls;
-import app.journey.api.common.Rules;
 import app.journey.api.journey.JourneyStore.JourneyRow;
+import app.journey.api.journey.JourneyStore.Shelf;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
 import app.journey.api.people.PeopleService;
@@ -16,11 +16,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -297,9 +299,6 @@ public class JourneyService {
         journeys.markRead(viewer, id);
     }
 
-    /** Places that recommend journeys leave out one with an open report, until a reviewer has looked at it. */
-    private static final String NOT_UNDER_REVIEW = " and " + Rules.notUnderReview("j");
-
     /** The journeys the viewer writes in, of every visibility: their own and the shared ones they joined. Newest activity first. */
     public Page<JourneyResponse> mine(UUID viewer, Keyset page) {
         return journeys.mine(viewer, page).map(rows -> views(rows, viewer));
@@ -362,83 +361,88 @@ public class JourneyService {
                 journeys.momentKeys(id, viewer, 3).stream().map(media::urlFor).toList());
     }
 
-    /** Public journeys whose title, description, tags, creator or places (where its entries happened) match the words typed. */
+    /** The shortest words an index can help to find: three letters. Shorter ones are matched in titles, names and tags only. */
+    static final int SEARCH_EVERYWHERE_FROM = 3;
+
+    /**
+     * Public journeys whose title, description, creator or places (where its entries happened) hold the words
+     * typed, or that carry them as a tag. A tag is matched whole, the way it was saved ("#Road Trip" finds
+     * "roadtrip"); everything else anywhere in the text.
+     *
+     * @param pattern the words as an "anywhere in the text" pattern: escaped, with a % on either side
+     */
     public List<JourneyResponse> search(String pattern, UUID viewer, int limit) {
-        return views(
-                journeys.list(
-                        """
-            j.visibility = 'public' and (j.title ilike :q or j.description ilike :q or p.display_name ilike :q or p.username ilike :q
-              or exists (select 1 from unnest(j.tags) t where t ilike :q)
-              or exists (select 1 from entries pe where pe.journey_id = j.id and pe.place_name ilike :q))
-            """ + NOT_UNDER_REVIEW,
-                        Map.of("q", pattern),
-                        "j.follower_count desc, j.last_entry_at desc nulls last",
-                        limit,
-                        viewer),
-                viewer);
+        String words = wordsOf(pattern);
+        String tag = cleanTags(List.of(words)).stream().findFirst().orElse(null);
+        return views(journeys.search(pattern, tag, words.length() >= SEARCH_EVERYWHERE_FROM, viewer, limit), viewer);
     }
+
+    /** The words a search pattern was made from: without the % on either side, and without the escapes. */
+    static String wordsOf(String pattern) {
+        String inner = pattern.length() >= 2 && pattern.startsWith("%") && pattern.endsWith("%")
+                ? pattern.substring(1, pattern.length() - 1)
+                : pattern;
+        StringBuilder words = new StringBuilder();
+        for (int i = 0; i < inner.length(); i++) {
+            char c = inner.charAt(i);
+            words.append(c == '\\' && i + 1 < inner.length() ? inner.charAt(++i) : c);
+        }
+        return words.toString();
+    }
+
+    /** How many journeys each of Discover's lists shows. */
+    static final int DISCOVER_SHELF = 12;
 
     /**
      * Discover uses simple rules that can be explained: what is trending, what is new, and what was recently
      * completed. The interests a person picked lean the first two their way without hiding anything: in
      * "Trending now" a journey in one of their categories counts for half as much again, and in "New journeys"
      * it is treated as a week newer than it is.
+     *
+     * <p>The store reads the top of each list inside and outside the person's categories, each in order from
+     * an index; the leaning is applied here, to those few rows.
      */
     public DiscoverResponse discover(UUID viewer, String category, List<String> interests) {
-        String base = "j.visibility = 'public' and j.entry_count >= " + DISCOVER_MIN_ENTRIES
-                + " and (cast(:category as text) is null or j.category = :category)" + NOT_UNDER_REVIEW;
+        String only = category == null || category.isBlank() ? null : category;
         List<String> mine = Catalog.categoriesFor(interests);
-        Map<String, Object> params = new java.util.HashMap<>();
-        params.put("category", category == null || category.isBlank() ? null : category);
-        params.put("mine", mine.isEmpty() ? List.of("-") : mine);
+        // What is going on now. The score is worked out every hour (see Trending); before its first run,
+        // the most followed lead.
+        List<JourneyRow> trending = top(
+                journeys.discover(Shelf.TRENDING, viewer, only, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
+                Comparator.<JourneyRow>comparingDouble(
+                                j -> j.trendingScore() * (mine.contains(j.category()) ? INTEREST_BOOST : 1))
+                        .reversed()
+                        .thenComparing(Comparator.comparingInt(JourneyRow::followerCount)
+                                .reversed())
+                        .thenComparing(
+                                JourneyRow::lastEntryAt, Comparator.nullsLast(Comparator.<Instant>reverseOrder())));
+        List<JourneyRow> fresh = top(
+                journeys.discover(Shelf.FRESH, viewer, only, mine, DISCOVER_MIN_ENTRIES, DISCOVER_SHELF),
+                Comparator.<JourneyRow, Instant>comparing(j -> j.createdAt()
+                                .plus(mine.contains(j.category()) ? INTEREST_HEAD_START_DAYS : 0, ChronoUnit.DAYS))
+                        .reversed()
+                        .thenComparing(JourneyRow::createdAt, Comparator.reverseOrder()));
+        List<JourneyRow> completed =
+                journeys.discover(Shelf.COMPLETED, viewer, only, List.of(), DISCOVER_MIN_ENTRIES, DISCOVER_SHELF);
+
+        // The three lists are turned into what the app shows together, so the friends on shared journeys are
+        // looked up once for all of them.
+        List<JourneyResponse> all = views(
+                Stream.of(trending, fresh, completed).flatMap(List::stream).toList(), viewer);
         return new DiscoverResponse(
-                views(
-                        journeys.list(
-                                // What is going on now: not journeys that ended a while ago. The score is worked
-                                // out every hour (see Trending); before its first run, the most followed lead.
-                                base + " and (j.status <> 'completed' or j.completed_at > now() - interval '14 days')",
-                                params,
-                                "j.trending_score * (case when j.category in (:mine) then " + INTEREST_BOOST
-                                        + " else 1 end) desc, j.follower_count desc, j.last_entry_at desc nulls last",
-                                12,
-                                viewer),
-                        viewer),
-                views(
-                        journeys.list(
-                                base + " and j.status <> 'completed'",
-                                params,
-                                "j.created_at + (case when j.category in (:mine) then interval '"
-                                        + INTEREST_HEAD_START_DAYS
-                                        + " days' else interval '0' end) desc, j.created_at desc",
-                                12,
-                                viewer),
-                        viewer),
-                views(
-                        journeys.list(
-                                base + " and j.status = 'completed'",
-                                params,
-                                "j.completed_at desc nulls last",
-                                12,
-                                viewer),
-                        viewer));
+                all.subList(0, trending.size()),
+                all.subList(trending.size(), trending.size() + fresh.size()),
+                all.subList(trending.size() + fresh.size(), all.size()));
+    }
+
+    /** The first of Discover's rows once the reader's leaning is applied. Rows that tie stay in the order the store gave. */
+    private static List<JourneyRow> top(List<JourneyRow> rows, Comparator<JourneyRow> leaning) {
+        return rows.stream().sorted(leaning).limit(DISCOVER_SHELF).toList();
     }
 
     /** A few public journeys to follow, favouring the person's interests. Never their own or ones they already follow. */
     public List<JourneyResponse> suggested(UUID viewer, List<String> interests, int limit) {
-        List<String> categories = Catalog.categoriesFor(interests);
-        Map<String, Object> params =
-                Map.of("me", viewer, "categories", categories.isEmpty() ? List.of("-") : categories);
-        return views(
-                journeys.list(
-                        """
-            j.visibility = 'public' and j.status = 'active' and j.entry_count >= 1 and j.owner_id <> :me
-            and not exists (select 1 from journey_follows sf where sf.journey_id = j.id and sf.user_id = :me)
-            """ + NOT_UNDER_REVIEW,
-                        params,
-                        "(j.category in (:categories)) desc, j.follower_count desc, j.last_entry_at desc nulls last",
-                        limit,
-                        viewer),
-                viewer);
+        return views(journeys.suggested(viewer, Catalog.categoriesFor(interests), limit), viewer);
     }
 
     public List<JourneyResponse> views(List<JourneyRow> rows, UUID viewer) {

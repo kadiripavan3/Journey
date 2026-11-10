@@ -47,7 +47,8 @@ public class JourneyStore {
             Instant lastReadAt,
             boolean member,
             int memberCount,
-            Instant autoPausedAt) {}
+            Instant autoPausedAt,
+            double trendingScore) {}
 
     /**
      * Every journey with its owner, its cover (the chosen one, or else the first photo the viewer may see), and
@@ -68,7 +69,7 @@ public class JourneyStore {
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
              exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
              (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count,
-             j.auto_paused_at
+             j.auto_paused_at, j.trending_score
       from journeys j
       join profiles p on p.id = j.owner_id
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
@@ -104,7 +105,8 @@ public class JourneyStore {
             Sql.instant(rs, "last_read_at"),
             rs.getBoolean("member"),
             rs.getInt("member_count"),
-            Sql.instant(rs, "auto_paused_at"));
+            Sql.instant(rs, "auto_paused_at"),
+            rs.getDouble("trending_score"));
 
     private final JdbcClient jdbc;
 
@@ -191,11 +193,123 @@ public class JourneyStore {
                 .list();
     }
 
-    /** The first journeys matching a condition, written against the aliases j (journey) and p (owner). */
-    public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-        return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy + ", j.id limit :limit")
-                .params(params)
+    /** Places that recommend journeys leave out one with an open report, until a reviewer has looked at it. */
+    private static final String NOT_UNDER_REVIEW = " and " + Rules.notUnderReview("j");
+
+    /** One of Discover's three lists. Each is read in its own order from its own index (V15, V33). */
+    public enum Shelf {
+        /** What is going on now, by the score worked out every hour; journeys that ended a while ago have left. */
+        TRENDING(
+                "(j.status <> 'completed' or j.completed_at > now() - interval '14 days')",
+                "j.trending_score desc, j.follower_count desc, j.last_entry_at desc nulls last, j.id"),
+        /** Journeys that started recently and are still going. */
+        FRESH("j.status <> 'completed'", "j.created_at desc, j.id"),
+        /** Journeys that were completed, the latest first. */
+        COMPLETED("j.status = 'completed'", "j.completed_at desc nulls last, j.id");
+
+        private final String where;
+        private final String order;
+
+        Shelf(String where, String order) {
+            this.where = where;
+            this.order = order;
+        }
+    }
+
+    /**
+     * The top of one of Discover's lists: public journeys with at least {@code minEntries} entries, in the
+     * list's own order. With {@code category}, only that category. With {@code leaning} (the categories the
+     * reader picked), the answer holds the top {@code limit} inside those categories and the top {@code limit}
+     * outside them, each read in order from the index; how much the reader's interests count is the
+     * service's rule, so it does the merging.
+     */
+    public List<JourneyRow> discover(
+            Shelf shelf, UUID viewer, String category, List<String> leaning, int minEntries, int limit) {
+        String top = "select j.id from journeys j where j.visibility = 'public' and j.entry_count >= :minEntries and "
+                + shelf.where + "%s" + VISIBLE + NOT_UNDER_REVIEW + " order by " + shelf.order + " limit :limit";
+        String pick;
+        if (category != null) {
+            pick = top.formatted(" and j.category = :category");
+        } else if (leaning.isEmpty()) {
+            pick = top.formatted("");
+        } else {
+            pick = "(" + top.formatted(" and j.category in (:leaning)") + ") union all ("
+                    + top.formatted(" and j.category not in (:leaning)") + ")";
+        }
+        var query = picked(pick)
                 .param("viewer", viewer)
+                .param("minEntries", minEntries)
+                .param("limit", limit);
+        if (category != null) {
+            query = query.param("category", category);
+        } else if (!leaning.isEmpty()) {
+            query = query.param("leaning", leaning);
+        }
+        return query.query(ROW).list();
+    }
+
+    /** How many entries a search looks at for their place, at most. A place name can match a great many entries. */
+    static final int SEARCH_PLACES = 3000;
+
+    /**
+     * Public journeys that match the words typed, the most followed first. Each way of matching is asked on
+     * its own, so each can use its own index: the title, the description, the creator's name or username,
+     * a tag (the whole tag), and the places its entries happened in. Each gives its most followed matches (ten
+     * times what the answer shows); their answers are put together, and only then are the journeys read and
+     * ranked. However common the word, the work stays about the same.
+     *
+     * @param pattern the words as an "anywhere in the text" pattern, already escaped
+     * @param tag the words as a tag would be saved, or null when they can't be a tag
+     * @param everywhere false for very short words, which no index can help with: titles, names and tags give
+     *     the first matches they find instead of their most followed, and descriptions and places (the two
+     *     big texts) are left out
+     */
+    public List<JourneyRow> search(String pattern, String tag, boolean everywhere, UUID viewer, int limit) {
+        String best = everywhere ? " order by c.follower_count desc, c.id" : "";
+        String from = "(select c.id from journeys c where c.visibility = 'public' and %s" + best + " limit :most)";
+        StringBuilder matches = new StringBuilder(from.formatted("c.title ilike :q"))
+                .append(" union ")
+                .append(
+                        from.formatted(
+                                "c.owner_id in (select op.id from profiles op where op.username ilike :q or op.display_name ilike :q)"));
+        if (tag != null) {
+            matches.append(" union ").append(from.formatted("c.tags @> cast(:tags as text[])"));
+        }
+        if (everywhere) {
+            matches.append(" union ")
+                    .append(from.formatted("c.description ilike :q"))
+                    .append(" union (select pe.journey_id from entries pe where pe.place_name ilike :q limit ")
+                    .append(SEARCH_PLACES)
+                    .append(")");
+        }
+        var query = picked("select j.id from journeys j where j.id in (" + matches + ") and j.visibility = 'public'"
+                        + VISIBLE + NOT_UNDER_REVIEW
+                        + " order by j.follower_count desc, j.last_entry_at desc nulls last, j.id limit :limit")
+                .param("q", pattern)
+                .param("viewer", viewer)
+                .param("most", limit * 10)
+                .param("limit", limit);
+        if (tag != null) {
+            query = query.param("tags", Sql.arrayLiteral(List.of(tag)));
+        }
+        return query.query(ROW).list();
+    }
+
+    /**
+     * A few public, active journeys to follow, the most followed first and those in the given categories before
+     * the rest. Never the viewer's own or ones they already follow. It is asked once, when someone signs up, and
+     * looks at every public active journey to find the most followed: there is deliberately no index on the
+     * follower count, because one would have to be rewritten every time anyone follows anything.
+     */
+    public List<JourneyRow> suggested(UUID viewer, List<String> categories, int limit) {
+        return picked("select j.id from journeys j"
+                        + " where j.visibility = 'public' and j.status = 'active' and j.entry_count >= 1 and j.owner_id <> :viewer"
+                        + " and not exists (select 1 from journey_follows sf where sf.journey_id = j.id and sf.user_id = :viewer)"
+                        + VISIBLE + NOT_UNDER_REVIEW
+                        + " order by (j.category in (:categories)) desc, j.follower_count desc, j.last_entry_at desc nulls last, j.id"
+                        + " limit :limit")
+                .param("viewer", viewer)
+                .param("categories", categories.isEmpty() ? List.of("-") : categories)
                 .param("limit", limit)
                 .query(ROW)
                 .list();
