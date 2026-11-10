@@ -58,7 +58,7 @@ Effort is my estimate for building with Claude Code, on the same basis as the ro
 
 One person starts a journey and invites friends to add to it. The screens are in the hub's Screens page, in the group *Shared journeys*.
 
-- **Inviting:** the owner invites up to 3 friends, so a journey has at most 4 authors. They pick someone they know in the app or send a one-time link. A friend without the app installs it from the link and lands on the invitation.
+- **Inviting:** the owner invites up to 3 friends, so a journey has at most 4 authors. They pick someone they know in the app or send a one-time link. A friend without the app opens the link's web page, installs the app from there, and taps the link again to land on the invitation.
 - **Joining:** nobody is added without saying yes. The invitation says what joining means and who can see the journey.
 - **What friends can do:** add entries, and edit or delete their own.
 - **What only the owner can do:** change the title, cover and who can see the journey, complete it, and remove people or entries.

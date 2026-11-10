@@ -9,22 +9,23 @@
 The app opens with **ten sample creators and their journeys**, so there is something to read and follow from the first minute.
 
 - **Sign-up:** Welcome, how it works, sign-in with any email and the test code **123456** (no email is sent), your profile, your interests, journeys to follow
-- **Reading:** Home with what's new from the journeys you follow, the Following feed that ends with "You're all caught up", Discover with category filters, a journey's page and its story line (with quiet days and "new since your last visit"), and entries you swipe through
-- **Creating:** the + button, starting a journey in three steps (template, details with a cover, who can see it), adding an entry with photos, a place and a milestone, editing and deleting entries, pausing and deleting a journey
+- **Reading:** Home with what's new from the journeys you follow, the Following feed that ends with "You're all caught up", Discover with category filters and what's trending, a journey's page and its story line (with quiet days and "new since your last visit"), entries you swipe through, and a map of where a journey has been (in a browser the map is a list of stops)
+- **Creating:** the + button, starting a journey in three steps (template, details with a cover, who can see it), adding an entry with photos, short clips, a place and a milestone, editing and deleting entries, pausing and deleting a journey. An entry written without a connection waits on the phone (Drafts and uploads) and goes up when the connection is back
 - **People:** like and comment on entries (with replies), creator profiles, following people, followers and following, and Activity with a dot on its tab
 - **Finishing:** challenge journeys show their progress and a grid of days; complete a journey with a closing note and get its recap; change a journey's details later
 - **Finding:** search for journeys and people, with popular tags
 - **Sharing:** every public or unlisted journey has a link to a web page anyone can open. On your Mac the link uses the Mac's own address, so it opens only on the same Wi-Fi until the API is hosted
 - **The weekly digest:** "This week in the journeys you follow", from the card at the top of Activity
-- **Together:** shared journeys. Invite people who follow you to add their own entries, accept an invitation, see who writes in a journey, leave or remove someone
+- **Together:** shared journeys. Invite people who follow you to add their own entries, or send a one-time link to a friend who isn't on Journey yet; accept an invitation, see who writes in a journey, leave or remove someone
 - **You:** your profile with your journeys, editing it (photo, name, username, bio, link, interests), and Settings: notifications, privacy, appearance, your account, and deleting it
-- **Safety:** report a journey, an entry, a comment or a person; block and unblock people
+- **Safety:** report a journey, an entry, a comment or a person; block and unblock people. A photo the automatic check doubts, and a comment with a word from the filter's list, are held until a reviewer has looked. The reviewer's pages are at http://localhost:8080/admin (any name, the password is `review`). To see a photo being held, post one that is a single solid magenta (`#ff00ff`)
+- **Notifications:** what each push would say is written to the API's log, and Activity shows the same events. A journey with a daily check-in can remind you; a journey nobody wrote in for 30 days pauses by itself
 - **Look and feel:** 3D icons, frosted glass over photos, and small motions (they stop when your iPhone's Reduce Motion is on). Photos open full screen; Jump to moves around a long story; a banner tells you when you're offline
 - Light and dark mode, following your phone or your own choice
 
 **Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. Invite that follower to one of your journeys (the ⋯ menu, then People on this journey) and they accept and add an entry. That is only so you can see likes, comments, Activity and shared journeys work with one phone.
 
-Not built yet: the map, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
+**What Expo Go can't show:** a push notification arriving on the phone, signing in with Apple or Google, and shrinking a clip before it is sent (in Expo Go a clip goes up as recorded). Those need a build of Journey itself: see [the end of this page](#a-real-build-on-your-iphone-later).
 
 ## One-time setup
 
@@ -58,7 +59,7 @@ It starts the database, then the API, then the app, and prints a QR code.
 
 Sign in with any email. The code is **123456**.
 
-The first time, macOS may ask whether Java and Node may accept incoming connections. Choose **Allow**: your iPhone reaches the API through that.
+The first time, macOS may ask whether Java and Node may accept incoming connections, and your iPhone asks whether Expo Go may find devices on your local network. Choose **Allow** both times: the iPhone reaches your Mac through that. (On the iPhone it can be changed later in Settings, Privacy & Security, Local Network.)
 
 ## Debug the API in your IDE
 
@@ -87,7 +88,8 @@ Every endpoint can be tried in a browser at http://localhost:8080/swagger-ui.htm
 |---|---|
 | Expo Go asks you to log in, or won't open the project | Sign in to Expo Go with the same account you used for `npx expo login` on the Mac. |
 | Expo Go says the project uses a different SDK version | Update Expo Go from the App Store. |
-| The app opens but says "Can't reach Journey right now" | The phone can't reach the API. Check both are on the same Wi-Fi, and that you allowed incoming connections for Java. On some networks devices can't see each other: try `./scripts/dev.sh --tunnel` for the app, and tell me, because the API then needs another route. |
+| The app opens but says "Can't reach Journey right now" | The phone can't reach the API. Check both are on the same Wi-Fi, that you allowed incoming connections for Java on the Mac, and Local Network for Expo Go on the iPhone. |
+| The Wi-Fi doesn't let devices see each other (some offices and hotels) | `./scripts/dev.sh --tunnel` gives the app a public address, but the API needs one too. Open a tunnel to port 8080 with any tunnelling tool (for example `cloudflared tunnel --url http://localhost:8080`) and start with its address: `EXPO_PUBLIC_API_URL=https://<the tunnel's address> ./scripts/dev.sh --tunnel`. |
 | "No database found" | Docker Desktop isn't running. Start it and run the script again. |
 | Port 5432 is already in use | You already run a PostgreSQL. Run `./scripts/local-db.sh` once to create Journey's databases in it; the script then uses it. |
 | The API stops while starting | The end of `.dev/api.log` says why. Send it to me if it isn't clear. |
@@ -100,13 +102,15 @@ We build local first (decided on 10 Nov 2026). Each outside service has a stand-
 |---|---|
 | Sign-in with Apple, Google or an email code | Any email with the test code |
 | Photo storage | Photos are saved in a folder next to the API (`apps/api/.dev/media`) and served by it |
-| Video | Arrives with the Video milestone: clips stored and played as plain files |
-| Push notifications | Shown in the Activity inbox only |
+| Video | Clips are stored and played as plain files by the API |
+| Push notifications | Written to the API's log; Activity shows the same events |
 | Email and the weekly digest message | Written to the API's log |
+| The automatic photo check | A local check that only flags a photo that is one solid magenta, so the review flow can be tried |
+| Place search | The phone's own on an iPhone or Android phone; a short built-in list in a browser |
 | Other people | Ten sample creators, added to an empty database. They react when you post, as described above |
 
-Switching a stand-in for the real service is a setting in the API. The app and the rest of the API don't change.
+Switching a stand-in for the real service is a setting in the API. The app and the rest of the API don't change. [Connect the real services](08-connect-services.md) has every step.
 
 ## A real build on your iPhone, later
 
-Expo Go can't run everything: push notifications, Google sign-in and video compression need a build of Journey itself. With Xcode and your free Apple ID, `npx expo run:ios --device` installs one on your iPhone for 7 days at a time. We'll set that up when the first feature needs it.
+Expo Go can't run everything: push notifications, Apple and Google sign-in and shrinking clips need a build of Journey itself. That build needs the **Apple Developer Program** (US$99 a year): Journey uses Sign in with Apple and push notifications, and Apple doesn't let a free Apple ID sign an app that does. Enrolling can take from two days to a few weeks, so start early. The steps are in [Connect the real services](08-connect-services.md), step 4.

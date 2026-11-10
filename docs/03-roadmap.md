@@ -46,7 +46,7 @@ Progress:
 |---|---|---|
 | **M1 Foundations** | Repo scaffold (app and API), CI, design tokens as a theme, the API skeleton with its database, the generated API client, sign-in, profiles, the sign-up flow, the app in Expo Go on your phone, the environment setup script | 3 |
 | **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete; shared journeys (invite friends, join, who can do what) | 5 |
-| **M3 Video** | The first real build on your iPhone (through Xcode, with your free Apple ID). Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
+| **M3 Video** | Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
 | **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers; shared journeys in the feed and on profiles; the weekly digest | 3–4 |
 | **M5 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
 | **M6 Finish and safety** | Map view, challenge progress, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |

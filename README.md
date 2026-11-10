@@ -2,7 +2,7 @@
 
 **A social app where every post is part of a story.** People start a journey (a trip, a 30-day challenge, a build), add entries to it over time, and others follow along for the next chapter.
 
-iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL · Status: **Phase 1: building. Most of the app works locally; see [what works today](docs/07-run-locally.md#what-works-today)**
+iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL · Status: **Phase 1: built and working locally, with stand-ins for the outside services; see [what works today](docs/07-run-locally.md#what-works-today). Next: [connect the real services](docs/08-connect-services.md)**
 
 ## Run it
 
@@ -21,6 +21,8 @@ iOS and Android · Expo (React Native) app, Spring Boot (Java) API, PostgreSQL �
 | [docs/05-inspiration.md](docs/05-inspiration.md) | References and what we take from each |
 | [docs/06-engagement.md](docs/06-engagement.md) | What brings people back and brings new people in; shared journeys |
 | [docs/07-run-locally.md](docs/07-run-locally.md) | Run the app and the API on your Mac, and open it on your iPhone |
+| [docs/08-connect-services.md](docs/08-connect-services.md) | Connect the real services, one at a time: the accounts, where every key goes, how to check each |
+| [docs/09-store-listing.md](docs/09-store-listing.md) | Drafts for the App Store and Google Play pages, and the answers to their privacy forms |
 | [apps/api/](apps/api/) | The Journey API: Spring Boot (Java) |
 | [apps/mobile/](apps/mobile/) | The app: Expo (React Native, TypeScript) |
 | [design/tokens.json](design/tokens.json) | Colours, type, shapes: the single source for the hub and the app |

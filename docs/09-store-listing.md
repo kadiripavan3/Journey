@@ -21,7 +21,7 @@ Drafts for the App Store and Google Play pages, and the answers to their privacy
 >
 > Start a journey: a trip, a 30-day challenge, something you're learning or building. Add an entry whenever something happens: a few photos, a short clip, a few words, the place. Your followers get each new chapter in order and can read the whole story from day one at any time.
 >
-> **Follow journeys, not feeds.** Home shows what's new in the journeys you follow, newest first, and ends with "You're all caught up". Nothing is ranked by a machine.
+> **Follow journeys, not feeds.** Home shows what's new in the journeys you follow, in the order it happened, and ends with "You're all caught up". When you want something new, Discover shows what's trending this week.
 >
 > **Made for trips and challenges.** A map of where you've been. "Day 12 of 30" with a ring that fills. A recap card when you finish.
 >
@@ -42,6 +42,7 @@ Drafts for the App Store and Google Play pages, and the answers to their privacy
 | Requirement | Where it is |
 |---|---|
 | Sign in with Apple offered next to Google (App Store 4.8) | The first button on the sign-in screen |
+| Deleting an account also ends its link with Apple (App Store 5.1.1) | The API revokes the person's Apple token when the account is deleted, once the Apple key is set ([step 5](08-connect-services.md#5-apple-and-google-sign-in)) |
 | Report and block for user content, and a way to act on reports (App Store 1.2) | The ••• menus; the reviewer's pages in the API |
 | Delete the account in the app (both stores) | Settings, Account |
 | A web page to ask for deletion (Google Play) | The API's deletion-request page (its address goes into the Play listing) |
@@ -58,7 +59,7 @@ What Journey collects, why, and whether it is tied to the person. Nothing is use
 | Name and username | Yes | The profile | Yes |
 | Photos and video | Yes, only what the person chooses to post or use as a profile picture | The app's purpose | Yes |
 | Other content: entries, comments, likes, follows | Yes | The app's purpose | Yes |
-| Location | Only the place a person adds to an entry: city level by default, the exact spot only if they choose it. Location data inside photos is removed before upload. No live location, nothing in the background. | Showing where an entry happened; the map | Yes |
+| Location | Only the place a person adds to an entry: city level by default, the exact spot only if they choose it. Location data inside a photo is removed on the phone, and the API keeps only a fresh copy of the picture with nothing else from the file. A clip is sent to the video service as the phone recorded it; people who watch get the converted clip, not that file. No live location, nothing in the background. | Showing where an entry happened; the map | Yes |
 | Device push token | Yes, if notifications are allowed | Sending notifications | Yes |
 | Usage data (which screens and actions) | Only when analytics is switched on in the build | Understanding what works. No names, emails or content are sent. | By an id, not by name |
 | Crash reports | Only when crash reporting is switched on in the build | Fixing crashes | No |
@@ -68,7 +69,7 @@ What Journey collects, why, and whether it is tied to the person. Nothing is use
 
 **Google Play Data safety:** the same data types; all collected, none shared with other companies except the services that process it for Journey (hosting, storage, video, email, notifications, moderation); data is encrypted in transit; people can ask for deletion in the app and on the web page.
 
-**Photo screening:** photos are checked automatically for nudity and violence when they are uploaded, by a service that processes them for Journey and does not keep them. Say so in the privacy policy.
+**Photo screening:** photos, and still frames of clips, are checked automatically for nudity and violence when they are uploaded, by a service that processes them for Journey. That service keeps nothing only if its "use my content to improve the service" setting is switched off for the account ([step 9](08-connect-services.md#9-aws-rekognition-the-automatic-photo-check)); do that before saying so in the privacy policy.
 
 ## Before submitting
 

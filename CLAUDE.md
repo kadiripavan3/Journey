@@ -15,6 +15,7 @@ Journey is a social app for iOS and Android where every post is part of a story:
    - `docs/06-engagement.md`: engagement and growth plan: what is in the first version, what is added during the beta, and what waits for its numbers
    - `docs/07-run-locally.md`: how the owner runs the app and the API on their Mac and iPhone
    - `docs/08-connect-services.md`: how each real service is connected (accounts, where every key goes, how to check it)
+   - `docs/09-store-listing.md`: the store pages and the answers to the stores' privacy forms. They must stay true: change them in the same change as anything that collects, sends or shows data differently
 4. For any UI work, open the screens in `design/hub/src/screens/` (one file per group, order in `index.json`), their styles in `design/hub/src/phone.css`, and `design/tokens.json`. The app must look like the screens and use only the tokens.
 
 ## Sources of truth

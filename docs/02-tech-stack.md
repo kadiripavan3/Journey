@@ -54,20 +54,20 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Navigation and deep links | **Expo Router** | File-based routes; links to a journey open the right screen |
 | Talking to the API | A typed client **generated from the API's own description** (OpenAPI, with Orval) | The app and the API can't drift apart: a changed endpoint fails the build instead of failing on a phone |
 | Server data | **TanStack Query** | Caching, instant likes, retry and offline reads |
-| Local state | **Zustand** | Small and simple |
+| Local state | React's own state and context | The session, the sign-up answers and the outbox are small; no library is needed |
 | Offline drafts and upload queue | **expo-sqlite** | A real database on the phone; works in Expo Go. MMKV and op-sqlite need a custom build. |
 | Uploads | **expo-file-system** upload tasks | Uploads continue when the app goes to the background on iOS |
 | UI | Our own small component kit, styled with plain **StyleSheet** and a typed theme generated from `design/tokens.json` | No styling library to depend on. NativeWind 5 is still a release candidate, and Unistyles needs a custom build. |
-| Glass and blur | **expo-glass-effect** on iOS 26 and later, **expo-blur** elsewhere | Real system glass where the phone supports it |
+| Glass and blur | **expo-blur** on iPhone; a dense tint on Android | Blur on Android needs wiring on every screen that could not be checked without a device, so Android gets the tint for now |
 | Animation and gestures | **Reanimated 4**, **Gesture Handler** | The standard pair, included with Expo |
 | Long lists | **FlashList 2** | Smooth feeds and timelines |
-| Images | **expo-image** | Caching and blurred placeholders |
+| Images | **expo-image** | Caching; the small version of a photo shows first, then the full one |
 | Photos | **expo-image-picker**, **expo-image-manipulator** | Resize to about 2048 px on the phone before upload. The API makes the smaller versions for lists when the upload finishes (see below). |
 | Video | **expo-video** to play; **react-native-compressor** to shrink clips before upload | Mux has an official guide for expo-video. The compressor needs a development build (see [testing](#testing-without-the-store-accounts)). |
 | Maps | **react-native-maps** | Supports our custom "Day 14" pins and works in Expo Go. Expo's own maps library needs iOS 17 or later. |
-| Sign-in | **Supabase Auth** client with **expo-apple-authentication**, native Google sign-in, and email codes | Apple and email codes work in Expo Go. Google sign-in needs a development build. |
+| Sign-in | **Supabase Auth** client with **expo-apple-authentication**, native Google sign-in, and email codes | Email codes work in Expo Go. Apple and Google need a build of Journey itself: in Expo Go, Apple's sign-in belongs to Expo Go, not to Journey. |
 | Push | **expo-notifications** | Works with the Expo Push Service; needs a development build |
-| Forms | **React Hook Form** with **Zod** | Validation with clear messages |
+| Forms | Plain React state | The API checks every field and answers with a sentence for each, so the rules are written once |
 | Analytics and crashes | **PostHog**, **Sentry** | |
 | Tests | **Jest** with React Native Testing Library; **Maestro** for end-to-end flows later | |
 
@@ -268,14 +268,14 @@ We build **local first** (decided on 10 Nov 2026): everything runs on one comput
 | Stage | What you need | How we test | What it covers |
 |---|---|---|---|
 | **1. Now** | Nothing | I run the API's tests against a real database in the cloud, and I run the app as a web page that I check with screenshots | Screens, navigation, forms, and every rule in the API |
-| **2. On your iPhone** | A free Expo login, and your Mac | **Expo Go.** The database, the API and the app's dev server run on your Mac; you scan a QR code with your iPhone on the same Wi-Fi. No cable. | Most of the first two milestones: sign-in with an email code or Apple, profiles, journeys, entries, photos and the timeline |
-| **3. A real build** | Xcode and your free Apple ID (the build lasts 7 days), or the Apple Developer Program, US$99 a year | A build of Journey installed on your iPhone; later TestFlight for the beta, which needs the paid program | What Expo Go can't run: push notifications, Google sign-in, video compression, links that open the app |
+| **2. On your iPhone** | A free Expo login, and your Mac | **Expo Go.** The database, the API and the app's dev server run on your Mac; you scan a QR code with your iPhone on the same Wi-Fi. No cable. | Nearly everything, with the test sign-in: profiles, journeys, entries, photos, clips, the map, drafts without a connection, shared journeys, Activity |
+| **3. A real build** | The Apple Developer Program, US$99 a year | A build of Journey installed on your iPhone from a link; later TestFlight for the beta | What Expo Go can't run: push notifications, Apple and Google sign-in, video compression, links that open the app |
 | **4. Android and the stores** | Google Play Console, US$25 once | Android testers, then the store | A new personal account must run a closed test with 12 testers for 14 days before it can publish |
 
 Good to know:
 
 - **Expo Go** on the App Store runs only the newest Expo version, SDK 58, which is the one we use. It needs an Expo login on an iPhone.
-- **With your Mac and Xcode**, a build can go onto your iPhone with a free Apple ID. It expires after 7 days and can't use push notifications or Sign in with Apple; those need the paid program.
+- **A free Apple ID is not enough for a build of Journey.** The app uses Sign in with Apple and push notifications, and Apple signs those only for members of the paid program.
 - **The Apple Developer Program** can take a while: Apple says up to 48 hours, and in 2026 people report one to several weeks. Enrol a few weeks before you want TestFlight.
 
 ## Accounts, and when each is needed
