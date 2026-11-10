@@ -37,10 +37,7 @@ public class MemberService {
     public record MemberResponse(
             PersonResponse person,
 
-            @Schema(
-                    description = "owner or friend",
-                    allowableValues = {"owner", "friend"})
-            ViewerRole role,
+            @Schema(description = "owner or friend") ViewerRole role,
 
             MemberStatus status,
             int entryCount,

@@ -2266,8 +2266,7 @@
           },
           "role" : {
             "$ref" : "#/components/schemas/ViewerRole",
-            "description" : "owner or friend",
-            "enum" : [ "owner", "friend" ]
+            "description" : "owner or friend"
           },
           "status" : {
             "$ref" : "#/components/schemas/MemberStatus"
