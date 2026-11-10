@@ -90,6 +90,9 @@ public class EntryStore {
     /** A photo being reviewed is shown only to its owner. Written against the alias m (media). */
     private static final String SHOWN = " and " + Rules.shownMedia("m", ":viewer");
 
+    /** Where photos stand for the journey as a whole (its grid, its count), one being reviewed is left out for everyone. */
+    private static final String NOT_HELD = " and " + Rules.publicMedia("m");
+
     private static final RowMapper<EntryRow> ROW = (rs, n) -> new EntryRow(
             rs.getObject("id", UUID.class),
             rs.getObject("journey_id", UUID.class),
@@ -235,7 +238,7 @@ public class EntryStore {
             select em.entry_id, m.id, m.kind, m.storage_key, m.width, m.height, m.duration_s, m.held
             from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
-            """ + NOT_BLOCKED + SHOWN + " order by " + STORY_ORDER + ", em.position limit :limit")
+            """ + NOT_BLOCKED + NOT_HELD + " order by " + STORY_ORDER + ", em.position limit :limit")
                 .param("journey", journeyId)
                 .param("viewer", viewer)
                 .param("limit", limit)
@@ -247,7 +250,7 @@ public class EntryStore {
         return jdbc.sql("""
             select count(*) from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id and m.kind = 'photo'
             where e.journey_id = :journey
-            """ + NOT_BLOCKED + SHOWN)
+            """ + NOT_BLOCKED + NOT_HELD)
                 .param("journey", journeyId)
                 .param("viewer", viewer)
                 .query(Integer.class)

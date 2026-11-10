@@ -19,9 +19,7 @@
     <a th:href="@{/delete-account}">Delete your account</a>
   </nav>
 
-  <span th:fragment="reach">
-    <span th:if="${contactEmail != ''}">write to <a th:href="${'mailto:' + contactEmail}" th:text="${contactEmail}">us</a></span>
-    <span th:if="${contactEmail == ''}">write to us (the address is added here before launch)</span>
-  </span>
+  <!-- On one line: a line break here would put a space before the full stop that follows it. -->
+  <span th:fragment="reach"><span th:if="${contactEmail != ''}">write to <a th:href="${'mailto:' + contactEmail}" th:text="${contactEmail}">us</a></span><span th:if="${contactEmail == ''}">write to us (the address is added here before launch)</span></span>
 </body>
 </html>

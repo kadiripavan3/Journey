@@ -26,6 +26,7 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * Held content and the reviewer's queue: the automatic check holds a photo, the word filter holds a comment,
@@ -66,8 +67,10 @@ class ModerationTest extends ApiTest {
         mvc.perform(get("/v1/journeys/" + journey + "/summary").header("Authorization", nora))
                 .andExpect(jsonPath("$.photoCount").value(1))
                 .andExpect(jsonPath("$.photos", hasSize(1)));
+        // The journey's own grid of photos leaves it out for Maya too: there it is simply not there yet.
         mvc.perform(get("/v1/journeys/" + journey + "/summary").header("Authorization", maya))
-                .andExpect(jsonPath("$.photoCount").value(2));
+                .andExpect(jsonPath("$.photoCount").value(1))
+                .andExpect(jsonPath("$.latest[0].media", hasSize(2)));
         String coverOfFine = jdbc.sql("select storage_key from media where id = cast(:id as uuid)")
                 .param("id", fine)
                 .query(String.class)
@@ -311,6 +314,34 @@ class ModerationTest extends ApiTest {
                         .query(Boolean.class)
                         .single())
                 .isTrue();
+    }
+
+    @Test
+    void theReviewersPasswordCannotBeGuessedByTrying() throws Exception {
+        // Ten wrong passwords from one address, and that address waits, even with the right one.
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(get("/admin").with(httpBasic("ada", "guess" + i)).with(from("203.0.113.9")))
+                    .andExpect(status().isUnauthorized());
+        }
+        mvc.perform(get("/admin").with(httpBasic("ada", "review")).with(from("203.0.113.9")))
+                .andExpect(status().isUnauthorized());
+        // Everyone else is let in as before.
+        mvc.perform(get("/admin").with(httpBasic("ada", "review")).with(from("198.51.100.4")))
+                .andExpect(status().isOk());
+        // A few slips don't lock anyone out, and getting it right clears them.
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(get("/admin").with(httpBasic("ada", "oops")).with(from("198.51.100.7")))
+                    .andExpect(status().isUnauthorized());
+        }
+        mvc.perform(get("/admin").with(httpBasic("ada", "review")).with(from("198.51.100.7")))
+                .andExpect(status().isOk());
+    }
+
+    private static RequestPostProcessor from(String address) {
+        return request -> {
+            request.setRemoteAddr(address);
+            return request;
+        };
     }
 
     private MockHttpServletRequestBuilder reviewer(MockHttpServletRequestBuilder request) {

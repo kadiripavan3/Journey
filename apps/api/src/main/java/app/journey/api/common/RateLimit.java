@@ -84,7 +84,7 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(this)
-                .addPathPatterns("/v1/**", "/local-auth/**")
+                .addPathPatterns("/v1/**", "/local-auth/**", "/delete-account")
                 .order(-10);
     }
 
@@ -95,7 +95,9 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
         }
         String who = who(request);
         ConsumptionProbe probe;
-        if (request.getRequestURI().startsWith("/local-auth/")) {
+        // Signing in, and the public form that asks for an account to be deleted, share the small allowance.
+        if (request.getRequestURI().startsWith("/local-auth/")
+                || (request.getRequestURI().equals("/delete-account") && !isRead(request))) {
             probe = shared.builder().build("signin:" + who, () -> signIns).tryConsumeAndReturnRemaining(1);
         } else if (isRead(request)) {
             if (readers.size() > 50_000) {
