@@ -38,7 +38,12 @@ public class AccountService {
             boolean reminders,
 
             @Schema(description = "What new journeys start as")
-            Visibility defaultVisibility) {}
+            Visibility defaultVisibility,
+
+            @Schema(
+                    description =
+                            "The hour of the person's own day, 0 to 23, at which reminders arrive. 19 is 7 pm, and what is used when this is left out.")
+            Integer reminderHour) {}
 
     public record BlockedPersonResponse(
             UUID id,
@@ -51,7 +56,7 @@ public class AccountService {
 
     /** What someone has until they change anything: everything on except email, and new journeys public. */
     public static final SettingsResponse DEFAULTS =
-            new SettingsResponse(true, true, true, true, true, true, false, true, Visibility.PUBLIC);
+            new SettingsResponse(true, true, true, true, true, true, false, true, Visibility.PUBLIC, 19);
 
     private final AccountStore accounts;
     private final PeopleService people;
@@ -73,6 +78,9 @@ public class AccountService {
     public SettingsResponse save(UUID me, SettingsResponse settings) {
         if (settings.defaultVisibility() == null) {
             throw ApiProblem.badRequest("invalid_visibility", "Choose Public, Unlisted or Private.");
+        }
+        if (settings.reminderHour() != null && (settings.reminderHour() < 0 || settings.reminderHour() > 23)) {
+            throw ApiProblem.badRequest("invalid_reminder_hour", "Pick an hour of the day for reminders.");
         }
         accounts.saveSettings(me, settings);
         return settings(me);

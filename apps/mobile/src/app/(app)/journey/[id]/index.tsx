@@ -13,6 +13,7 @@ import { EntryRow } from '@/features/entries/EntryRow';
 import { useCatalog } from '@/features/journeys/catalog';
 import { ChallengeCard } from '@/features/journeys/ChallengeCard';
 import { FollowButton } from '@/features/journeys/FollowButton';
+import { PausedNote } from '@/features/journeys/PausedNote';
 import { STATUS } from '@/features/journeys/status';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { firstName } from '@/lib/names';
@@ -123,19 +124,7 @@ export default function JourneyPage() {
             <Stat value={compact(j.followerCount)} label="following" divider />
           </View>
 
-          {j.status === 'paused' ? (
-            <View style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 12, marginTop: 18, padding: 14, borderRadius: radius.photo, backgroundColor: colors.fill }}>
-              <Pause size={20} color={colors.warn} />
-              <View style={{ flex: 1 }}>
-                <Txt variant="control" weight={800}>
-                  This journey is paused
-                </Txt>
-                <Txt variant="note">
-                  {writes ? "Followers can still read it. Add an entry whenever you're ready and it picks up again." : `You can still read it. You'll hear when ${first} picks it up again.`}
-                </Txt>
-              </View>
-            </View>
-          ) : null}
+          {j.status === 'paused' ? <PausedNote journey={j} /> : null}
 
           {j.targetDays ? <ChallengeCard journey={j} days={summary.data?.days ?? []} /> : null}
 

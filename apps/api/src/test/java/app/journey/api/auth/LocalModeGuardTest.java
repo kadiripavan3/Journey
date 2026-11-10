@@ -26,6 +26,20 @@ class LocalModeGuardTest {
     }
 
     @Test
+    void pushesAndEmailsThatOnlyGoToTheLogNeedTheLocalProfileToo() {
+        MockEnvironment quiet = new MockEnvironment()
+                .withProperty("journey.push.mode", "local")
+                .withProperty("journey.email.mode", "local");
+        assertThatThrownBy(() -> LocalModeGuard.check(quiet))
+                .hasMessageContaining("journey.push.mode=local")
+                .hasMessageContaining("journey.email.mode=local");
+        MockEnvironment real = new MockEnvironment()
+                .withProperty("journey.push.mode", "expo")
+                .withProperty("journey.email.mode", "resend");
+        assertThatCode(() -> LocalModeGuard.check(real)).doesNotThrowAnyException();
+    }
+
+    @Test
     void theSameSettingsAreFineOnADevelopersComputerAndInTests() {
         MockEnvironment local = new MockEnvironment().withProperty("journey.auth.mode", "local");
         local.setActiveProfiles("local");

@@ -394,7 +394,7 @@ public class EntryStore {
     /** A new entry wakes a paused journey. (The entry count and "last entry" are kept by the database.) */
     public void wakeJourney(UUID journeyId) {
         jdbc.sql(
-                        "update journeys set status = case when status = 'paused' then 'active' else status end, updated_at = now() where id = :journey")
+                        "update journeys set status = case when status = 'paused' then 'active' else status end, auto_paused_at = null, updated_at = now() where id = :journey")
                 .param("journey", journeyId)
                 .update();
     }

@@ -45,7 +45,8 @@ public class JourneyStore {
             boolean following,
             Instant lastReadAt,
             boolean member,
-            int memberCount) {}
+            int memberCount,
+            Instant autoPausedAt) {}
 
     /** Every journey with its owner, its cover (the chosen one, or else the first photo), and whether and since when the viewer follows it. */
     private static final String SELECT = """
@@ -61,7 +62,8 @@ public class JourneyStore {
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
              exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
-             (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count
+             (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count,
+             j.auto_paused_at
       from journeys j
       join profiles p on p.id = j.owner_id
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
@@ -96,7 +98,8 @@ public class JourneyStore {
             rs.getBoolean("following"),
             Sql.instant(rs, "last_read_at"),
             rs.getBoolean("member"),
-            rs.getInt("member_count"));
+            rs.getInt("member_count"),
+            Sql.instant(rs, "auto_paused_at"));
 
     private final JdbcClient jdbc;
 
@@ -260,7 +263,8 @@ public class JourneyStore {
         jdbc.sql("""
             update journeys set title = :title, description = :description, category = :category, label_style = :labelStyle,
               visibility = :visibility, tags = cast(:tags as text[]), cover_media_id = cast(:cover as uuid), start_date = :startDate,
-              status = :status, updated_at = now()
+              status = :status, updated_at = now(),
+              auto_paused_at = case when :status = 'paused' and status = 'paused' then auto_paused_at else null end
             where id = :id
             """)
                 .param("title", title)

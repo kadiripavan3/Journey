@@ -60,6 +60,12 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Follow', exact: true }).nth(0).click();
     await shot('suggested');
     await T('Continue', { exact: true }).click();
+    // Notifications are asked about once, with a reason. A browser can't have them: the screen says so and sign-up goes on.
+    await T("Know when there's a new chapter").waitFor();
+    await T('Southeast Asia by motorbike').waitFor();
+    await T(/^Notifications arrive on your phone\./).waitFor();
+    await shot('notify-ask');
+    await T('Continue', { exact: true }).click();
     await T("You're all set, Nora").waitFor();
     await T('Your Home already has 3 journeys to follow').waitFor();
     await shot('ready');
@@ -214,6 +220,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await shot('journey-menu');
     await T('Pause journey').click();
     await T('Paused', { exact: true }).waitFor();
+    // Paused by hand, so the note doesn't claim 30 quiet days; the owner gets both ways on.
+    await T('This journey is paused').waitFor();
+    await R('button', { name: 'Add an entry', exact: true }).waitFor();
+    await R('button', { name: 'Complete it' }).waitFor();
+    await shot('paused');
     await R('button', { name: 'Back' }).click();
     await T('Edit profile').click();
     await L('Link', { exact: true }).waitFor();
@@ -366,7 +377,15 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: /^Notifications/ }).click();
     await R('switch', { name: 'Likes' }).click();
     await R('switch', { name: 'Likes', checked: false }).waitFor();
+    await T('In one batch, at most once an hour').waitFor();
+    await T(/^Notifications arrive on your phone\./).waitFor();
     await shot('notification-settings');
+    // Reminders arrive at the hour the person chooses.
+    await R('button', { name: /^Challenge check-in time\. 7:00 pm/ }).click();
+    await T('8:00 pm').waitFor();
+    await shot('reminder-time');
+    await R('button', { name: '8:00 pm', exact: true }).click();
+    await R('button', { name: /^Challenge check-in time\. 8:00 pm/ }).waitFor();
     await R('button', { name: 'Back' }).click();
     await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
     await R('button', { name: /^Privacy and safety/ }).click();

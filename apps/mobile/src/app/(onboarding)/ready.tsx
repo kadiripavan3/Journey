@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { useGetFollowedJourneys, useGetMe } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { useOnboarding } from '@/auth/onboarding';
+import { track } from '@/features/analytics/analytics';
 import { TemplateCard } from '@/features/journeys/TemplateCard';
 import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
@@ -26,6 +27,7 @@ export default function Ready() {
   const count = followed.data?.items.length ?? 0;
 
   const leave = (then?: Href) => {
+    track('signed_up', { journeys_followed: count, starts_a_journey: then !== undefined });
     void cache.everything();
     onboarding.finish(then);
   };

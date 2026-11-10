@@ -34,6 +34,9 @@ import org.springframework.test.web.servlet.MockMvc;
             "journey.media.r2.access-key-id=key-id",
             "journey.media.r2.secret-access-key=secret",
             "journey.media.r2.public-url=https://photos.example.com",
+            "journey.email.mode=resend",
+            "journey.email.resend.api-key=resend-key",
+            "journey.push.mode=expo",
             "journey.seed.enabled=false",
             "springdoc.api-docs.enabled=false",
             // The test database is shared with the other tests, which use the stand-in tables.

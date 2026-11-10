@@ -37,19 +37,21 @@ public class AccountStore {
                         rs.getBoolean("weekly_digest"),
                         rs.getBoolean("digest_email"),
                         rs.getBoolean("reminders"),
-                        Visibility.read(rs.getString("default_visibility"))))
+                        Visibility.read(rs.getString("default_visibility")),
+                        rs.getInt("reminder_hour")))
                 .optional();
     }
 
     public void saveSettings(UUID userId, SettingsResponse s) {
         jdbc.sql("""
             insert into settings (user_id, notify_new_entries, notify_completed, notify_comments, notify_followers, notify_likes, weekly_digest,
-              digest_email, reminders, default_visibility)
-            values (:me, :entries, :completed, :comments, :followers, :likes, :digest, :digestEmail, :reminders, :visibility)
+              digest_email, reminders, default_visibility, reminder_hour)
+            values (:me, :entries, :completed, :comments, :followers, :likes, :digest, :digestEmail, :reminders, :visibility, :reminderHour)
             on conflict (user_id) do update set
               notify_new_entries = excluded.notify_new_entries, notify_completed = excluded.notify_completed, notify_comments = excluded.notify_comments,
               notify_followers = excluded.notify_followers, notify_likes = excluded.notify_likes, weekly_digest = excluded.weekly_digest,
-              digest_email = excluded.digest_email, reminders = excluded.reminders, default_visibility = excluded.default_visibility, updated_at = now()
+              digest_email = excluded.digest_email, reminders = excluded.reminders, default_visibility = excluded.default_visibility,
+              reminder_hour = excluded.reminder_hour, updated_at = now()
             """)
                 .param("me", userId)
                 .param("entries", s.notifyNewEntries())
@@ -61,6 +63,7 @@ public class AccountStore {
                 .param("digestEmail", s.digestEmail())
                 .param("reminders", s.reminders())
                 .param("visibility", s.defaultVisibility().code())
+                .param("reminderHour", s.reminderHour() == null ? 19 : s.reminderHour())
                 .update();
     }
 

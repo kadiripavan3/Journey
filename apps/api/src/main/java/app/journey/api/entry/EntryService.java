@@ -307,7 +307,9 @@ public class EntryService {
     /** One heart per person. Liking twice changes nothing. */
     @Transactional
     public EntryResponse like(UUID id, UUID viewer) {
-        entries.like(require(id, viewer).id(), viewer);
+        if (entries.like(require(id, viewer).id(), viewer)) {
+            events.publishEvent(new EntryLiked(id, viewer));
+        }
         return get(id, viewer);
     }
 

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useOnboarding } from '@/auth/onboarding';
 import { NewJourneyProvider } from '@/features/journeys/draft';
 import { OfflineBanner } from '@/features/navigation/OfflineBanner';
+import { usePushNotifications } from '@/features/notifications/usePushNotifications';
 import { RecentSearchesProvider } from '@/features/search/recent';
 
 // A screen that breaks while drawing shows a friendly page with a way to try again.
@@ -19,6 +20,9 @@ export default function AppLayout() {
     const next = onboarding.takeNext();
     if (next) router.push(next);
   }, [onboarding, router]);
+
+  // A tapped notification opens its screen; a phone that said yes stays connected.
+  usePushNotifications();
 
   return (
     <RecentSearchesProvider>

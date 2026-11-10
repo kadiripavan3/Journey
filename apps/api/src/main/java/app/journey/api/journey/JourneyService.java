@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,10 @@ public class JourneyService {
     static final int MAX_TAGS = 5;
     /** Discover only shows journeys with a cover and at least this many entries. */
     static final int DISCOVER_MIN_ENTRIES = 3;
+    /** In "Trending now", a journey in a category the reader picked counts for this many times its score. */
+    static final double INTEREST_BOOST = 1.5;
+    /** In "New journeys", a journey in a category the reader picked is treated as this many days newer. */
+    static final int INTEREST_HEAD_START_DAYS = 7;
 
     public record JourneyViewerResponse(
             boolean isOwner,
@@ -88,16 +93,24 @@ public class JourneyService {
                             "Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared.")
             List<PersonResponse> authors,
 
-            JourneyViewerResponse viewer) {}
+            JourneyViewerResponse viewer,
+
+            @Schema(
+                    description =
+                            "True when the journey paused by itself after 30 days without an entry, not because its owner paused it")
+            boolean pausedAutomatically) {}
 
     private final JourneyStore journeys;
     private final MediaService media;
     private final PublicUrls urls;
 
-    JourneyService(JourneyStore journeys, MediaService media, PublicUrls urls) {
+    private final ApplicationEventPublisher events;
+
+    JourneyService(JourneyStore journeys, MediaService media, PublicUrls urls, ApplicationEventPublisher events) {
         this.journeys = journeys;
         this.media = media;
         this.urls = urls;
+        this.events = events;
     }
 
     /** The journey, if this person may see it (see Rules). A private journey looks exactly like one that doesn't exist, except to its authors. */
@@ -240,6 +253,7 @@ public class JourneyService {
             throw ApiProblem.badRequest("no_entries", "Add at least one entry before completing the journey.");
         }
         journeys.complete(id, closingNote == null || closingNote.isBlank() ? null : closingNote.trim());
+        events.publishEvent(new JourneyCompleted(id, viewer));
         return view(require(id, viewer), viewer);
     }
 
@@ -255,7 +269,9 @@ public class JourneyService {
         if (journey.ownerId().equals(viewer) || journey.member()) {
             throw ApiProblem.badRequest("own_journey", "You write in this journey. You already see everything in it.");
         }
-        journeys.follow(viewer, id);
+        if (journeys.follow(viewer, id)) {
+            events.publishEvent(new JourneyFollowed(id, viewer));
+        }
         return view(require(id, viewer), viewer);
     }
 
@@ -358,23 +374,40 @@ public class JourneyService {
                 viewer);
     }
 
-    /** Discover uses simple rules that can be explained: most followed, newest, and recently completed. */
-    public DiscoverResponse discover(UUID viewer, String category) {
+    /**
+     * Discover uses simple rules that can be explained: what is trending, what is new, and what was recently
+     * completed. The interests a person picked lean the first two their way without hiding anything: in
+     * "Trending now" a journey in one of their categories counts for half as much again, and in "New journeys"
+     * it is treated as a week newer than it is.
+     */
+    public DiscoverResponse discover(UUID viewer, String category, List<String> interests) {
         String base = "j.visibility = 'public' and j.entry_count >= " + DISCOVER_MIN_ENTRIES
                 + " and (cast(:category as text) is null or j.category = :category)";
+        List<String> mine = Catalog.categoriesFor(interests);
         Map<String, Object> params = new java.util.HashMap<>();
         params.put("category", category == null || category.isBlank() ? null : category);
+        params.put("mine", mine.isEmpty() ? List.of("-") : mine);
         return new DiscoverResponse(
                 views(
                         journeys.list(
-                                base + " and j.status = 'active'",
+                                // What is going on now: not journeys that ended a while ago. The score is worked
+                                // out every hour (see Trending); before its first run, the most followed lead.
+                                base + " and (j.status <> 'completed' or j.completed_at > now() - interval '14 days')",
                                 params,
-                                "j.follower_count desc, j.last_entry_at desc nulls last",
+                                "j.trending_score * (case when j.category in (:mine) then " + INTEREST_BOOST
+                                        + " else 1 end) desc, j.follower_count desc, j.last_entry_at desc nulls last",
                                 12,
                                 viewer),
                         viewer),
                 views(
-                        journeys.list(base + " and j.status <> 'completed'", params, "j.created_at desc", 12, viewer),
+                        journeys.list(
+                                base + " and j.status <> 'completed'",
+                                params,
+                                "j.created_at + (case when j.category in (:mine) then interval '"
+                                        + INTEREST_HEAD_START_DAYS
+                                        + " days' else interval '0' end) desc, j.created_at desc",
+                                12,
+                                viewer),
                         viewer),
                 views(
                         journeys.list(
@@ -448,7 +481,8 @@ public class JourneyService {
                 owner,
                 authors,
                 new JourneyViewerResponse(
-                        j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.member(), j.lastReadAt()));
+                        j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.member(), j.lastReadAt()),
+                j.status() == JourneyStatus.PAUSED && j.autoPausedAt() != null);
     }
 
     private static int latestNumber(JourneyRow j) {

@@ -191,6 +191,7 @@ public class MemberService {
             throw new ApiProblem(HttpStatus.NOT_FOUND, "no_invitation", "This invitation isn't there any more.");
         }
         journeyStore.setAuthor(me, journeyId);
+        events.publishEvent(new FriendJoined(journeyId, me));
         return journeys.view(journeys.require(journeyId, me), me);
     }
 

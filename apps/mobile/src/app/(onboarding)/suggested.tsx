@@ -52,7 +52,7 @@ export default function Suggested() {
               {problem}
             </Txt>
           ) : null}
-          <Button label="Continue" size="lg" block disabled={follow.isPending || unfollow.isPending} onPress={() => router.push('/ready')} />
+          <Button label="Continue" size="lg" block disabled={follow.isPending || unfollow.isPending} onPress={() => router.push('/notify')} />
           <Txt variant="small" weight={500} color="muted" center>
             Find more any time in Discover.
           </Txt>

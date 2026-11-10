@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- The weekly digest as an email. Email programs ignore stylesheets and variables, so the colours are written
+     out here; they are the light theme's from design/tokens.json (text, muted, fill, line, Sun accent). -->
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title th:text="${summary}">This week in the journeys you follow</title>
+</head>
+<body style="margin:0;padding:0;background:#F3F3F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#141418;">
+  <div style="display:none;max-height:0;overflow:hidden;" th:text="${summary}">5 new entries in 3 journeys you follow.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F3F6;">
+    <tr>
+      <td align="center" style="padding:28px 14px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#FFFFFF;border-radius:24px;">
+          <tr>
+            <td style="padding:28px 26px 6px;">
+              <div style="font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8A5A00;">Journey · this week</div>
+              <h1 style="margin:10px 0 6px;font-size:26px;line-height:30px;font-weight:800;" th:text="${'Hi ' + name + ', here is your week'}">Hi Nora, here is your week</h1>
+              <p style="margin:0;font-size:15px;line-height:22px;color:#6B6B75;" th:text="${summary}">5 new entries in 3 journeys you follow.</p>
+            </td>
+          </tr>
+          <tr th:each="line : ${week.journeys}">
+            <td style="padding:18px 26px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E9E9EE;border-radius:18px;">
+                <tr th:if="${line.journey.coverThumbUrl != null}">
+                  <td><a th:href="${urls.to('/j/' + line.journey.id)}" style="text-decoration:none;"><img th:src="${line.journey.coverThumbUrl}" alt="" width="100%" style="display:block;width:100%;height:180px;object-fit:cover;border-radius:17px 17px 0 0;"></a></td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 16px 16px;">
+                    <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A5A00;" th:text="${line.newCount == 1 ? '1 new entry' : line.newCount + ' new entries'}">3 new entries</div>
+                    <div style="margin-top:4px;font-size:18px;line-height:23px;font-weight:800;" th:text="${line.journey.title}">Southeast Asia by motorbike</div>
+                    <div style="margin-top:2px;font-size:13px;line-height:18px;color:#6B6B75;" th:text="${'by ' + line.journey.owner.displayName}">by Maya Rivera</div>
+                    <p style="margin:10px 0 0;font-size:15px;line-height:22px;" th:text="${line.latest.label + (line.latest.title != '' ? ': ' + line.latest.title : '')}">Day 23: Roads that look like rivers</p>
+                    <p style="margin:14px 0 0;"><a th:href="${urls.to('/j/' + line.journey.id)}" style="display:inline-block;padding:10px 18px;border-radius:999px;background:#FFC21A;color:#1A1400;font-size:14px;font-weight:800;text-decoration:none;">Read it</a></p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr th:if="${!#lists.isEmpty(week.finished)}">
+            <td style="padding:22px 26px 0;">
+              <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6B6B75;">Completed this week</div>
+              <p th:each="done : ${week.finished}" style="margin:8px 0 0;font-size:15px;line-height:22px;">
+                <a th:href="${urls.to('/j/' + done.id)}" style="color:#141418;font-weight:700;" th:text="${done.title}">Cappadocia by balloon</a>
+                <span style="color:#6B6B75;" th:text="${' by ' + done.owner.displayName}"> by Jonas Weber</span>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 26px 28px;">
+              <p style="margin:0;padding-top:18px;border-top:1px solid #E9E9EE;font-size:12px;line-height:18px;color:#6B6B75;">You get this because you switched on the weekly digest by email. To stop it, open Journey, then Settings, then Notifications. Nothing is sent in a week with nothing new.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
