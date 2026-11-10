@@ -7,8 +7,19 @@ app = "journey-api"
 # Choose the region closest to the Supabase project, so the API sits next to its database.
 primary_region = "fra"
 
+# When Fly stops a machine (every deploy does), the API gets a minute to finish the requests and the jobs
+# it is in the middle of. Without this it would get five seconds.
+kill_signal = "SIGTERM"
+kill_timeout = "60s"
+
 [build]
   dockerfile = "Dockerfile"
+
+# A deploy starts the new version next to the old one, waits until it answers the health check (which it
+# only does after bringing the database up to date), and only then moves people over. If the new version
+# doesn't start, the old one keeps running.
+[deploy]
+  strategy = "bluegreen"
 
 # Settings that are not secret. Everything secret (keys, passwords, the database address) is set with
 # "fly secrets set" and never written here.
@@ -17,6 +28,8 @@ primary_region = "fra"
   JOURNEY_MEDIA_MODE = "r2"
   # Fly's proxy tells the API it is reached over https.
   JOURNEY_FORWARD_HEADERS = "framework"
+  # ...and where each request really came from. Wrong passwords are counted by this, not by anything the caller writes.
+  JOURNEY_CLIENT_ADDRESS_HEADER = "Fly-Client-IP"
   # Not connected yet. Remove each line when its step in docs/08-connect-services.md is done
   # (6: clips, 7: push notifications, 8: email, 9: the automatic photo check).
   JOURNEY_VIDEO_MODE = "off"
@@ -31,6 +44,13 @@ primary_region = "fra"
   auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
+
+  # How many requests one machine takes at once before Fly holds new ones back. The database pool is ten
+  # connections; most requests need one for a few milliseconds.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 150
+    hard_limit = 200
 
   [[http_service.checks]]
     method = "GET"

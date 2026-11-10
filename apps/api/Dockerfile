@@ -13,12 +13,15 @@ COPY src src
 # The tests need a database and run in CI, not here.
 RUN ./mvnw -B -ntp -DskipTests package
 
-# Runs on Java 25, as the tech plan says. The code is built for Java 21, which is what CI tests with.
+# Runs on Java 25, as the tech plan says. The code is built for Java 21; CI runs the tests on both.
 FROM eclipse-temurin:25-jre
 RUN useradd --system --uid 10001 --no-create-home journey
 WORKDIR /app
 COPY --from=build /src/target/journey-api-*.jar app.jar
 USER journey
 EXPOSE 8080
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+# Java may use 60% of the machine's memory for its own heap; the rest is for everything else it needs
+# (threads, buffers for photos on their way in and out). If it ever does run out, it stops at once, so the
+# platform starts a fresh copy instead of leaving a half-working one answering "healthy".
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError"
 ENTRYPOINT ["java", "-jar", "app.jar"]

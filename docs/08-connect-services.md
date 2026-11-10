@@ -23,9 +23,9 @@ Never put a key in a file in the repository, in a chat, or in an app build setti
 
 1. Create a project at supabase.com. Pick a region near your users and note it: the API should run in the same region (step 3).
 2. **Keep the API's tables out of Supabase's own data API.** Supabase serves every table in the `public` schema to anyone holding the project's public key, unless a rule on the table says otherwise. Journey doesn't use that data API at all: the Java API is the only door. So the API keeps its tables in a schema of its own, called `journey`, which Supabase does not serve. In the project's API settings, also switch the Data API off (or remove `public` from the exposed schemas). Either one is enough; do both.
-3. Copy the database's connection details (the direct connection, not the pooler: Fly.io reaches it directly). The address for the API has this shape, with the schema at the end:
+3. Copy the database's connection details (the direct connection, not the pooler: Fly.io reaches it directly). The address for the API has this shape (the schema is named separately, below):
 
-   `jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require&currentSchema=journey,extensions`
+   `jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require`
 
 4. In the project's Authentication settings:
    - Email: switch on sign-in by email, and set the email template to send a **6-digit code** (the template's `{{ .Token }}`), not a link.
@@ -74,7 +74,7 @@ Two rules to add to the bucket, so that nothing waiting in `incoming` can be pas
 
 1. Install `flyctl`, sign up, and in `apps/api` run `fly apps create <a name of your own>`. Put that name and the region next to your Supabase project in `apps/api/fly.toml` (`app` and `primary_region`).
 2. Set every secret from steps 1 and 2, and from the later steps as you do them, with `fly secrets set`. Also set `JOURNEY_PUBLIC_URL` to the address people will reach the API at (first `https://<app>.fly.dev`, later your own domain): links that leave the app are built from it.
-3. Run `fly deploy` from `apps/api`. The first start creates the `journey` schema and every table.
+3. Run `fly deploy --ha=false` from `apps/api`. (`--ha=false` means one machine. Without it the first deploy makes two, and Journey is set up to run as one for now.) The first start creates the `journey` schema and every table. Check with `fly scale show` that there is one machine; `fly scale count 1` sets it.
 4. To deploy from GitHub from then on: create a deploy token (`fly tokens create deploy`) and add it to the repository's GitHub secrets as `FLY_API_TOKEN`. The **Deploy** workflow then runs whenever `main` changes, and by hand from the Actions tab. Until the secret exists it does nothing.
 
 `fly.toml` already says: sign-in by Supabase, files in R2, one machine that is always on (the weekly digest and reminders run inside the API), a health check, and 1 GB of memory.
@@ -92,7 +92,7 @@ A switch set to a word the API doesn't know stops it from starting, and the mess
 
 **Check:** `https://<app>.fly.dev/actuator/health` answers `{"status":"UP"}`. `https://<app>.fly.dev/local-auth/token` answers "not found": the test sign-in does not exist there.
 
-The API refuses to start if a stand-in is switched on without the `local` profile, and says which one. If a deploy fails with a message about `SUPABASE_URL` or `R2_…`, that secret is missing.
+When it starts, the API checks that everything that is switched on has what it needs. If something is missing, the deploy fails and `fly logs` shows one list: "The API can't start yet. Set these: …", each with the step of this page it belongs to. A deploy that fails this way changes nothing: the version that was running keeps running. The API also refuses to start if a stand-in is switched on without the `local` profile, and says which one.
 
 ## 4. The app on your iPhone, for real
 

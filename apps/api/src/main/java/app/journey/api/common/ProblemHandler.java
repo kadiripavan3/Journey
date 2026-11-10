@@ -59,11 +59,11 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
             throw e; // sign-in problems are answered by the security layer
         }
         log.error("Unexpected failure for {}", request.getDescription(false), e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(problem(
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                        "unexpected",
-                        "Something went wrong on our side. Please try again."));
+        ProblemDetail body = problem(
+                HttpStatus.INTERNAL_SERVER_ERROR, "unexpected", "Something went wrong on our side. Please try again.");
+        // The same id is on the log lines that say what went wrong.
+        body.setProperty("requestId", RequestId.current());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @Override

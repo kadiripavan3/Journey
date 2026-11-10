@@ -1,5 +1,6 @@
 package app.journey.api.moderation;
 
+import app.journey.api.common.ClientAddress;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -19,21 +20,22 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.WebAuthenticationDetails;
 
 /**
  * Who may open the reviewer's pages under /admin. They are not part of the app: a reviewer opens them in a
  * browser, which asks for a name and the reviewers' password ({@code JOURNEY_ADMIN_PASSWORD}). The name is
  * whatever the reviewer types; it is written next to everything they do. With no password set the pages
- * don't exist at all. An address that gets the password wrong ten times waits ten minutes, so it can't be
- * guessed by trying.
+ * don't exist at all. An address that gets the password wrong ten times waits ten minutes, and the address is
+ * the one the request really came from ({@link ClientAddress}), so the password can't be guessed by trying.
+ * Outside local mode the API refuses to start with a short password.
  */
 @Configuration
 class ReviewerSecurity {
 
     @Bean
     @Order(1) // before the rules for the API itself, which would turn /admin away
-    SecurityFilterChain reviewers(HttpSecurity http, @Value("${journey.admin.password:}") String password)
+    SecurityFilterChain reviewers(
+            HttpSecurity http, ClientAddress addresses, @Value("${journey.admin.password:}") String password)
             throws Exception {
         http.securityMatcher("/admin", "/admin/**");
         if (password.isBlank()) {
@@ -46,7 +48,9 @@ class ReviewerSecurity {
             // Forms on these pages carry Spring's token against cross-site requests (on by default here).
             http.authorizeHttpRequests(requests -> requests.anyRequest().authenticated())
                     .authenticationProvider(new ReviewerSignIn(password))
-                    .httpBasic(basic -> basic.realmName("Journey reviewers"));
+                    // Wrong passwords are counted by the address the request really came from.
+                    .httpBasic(
+                            basic -> basic.realmName("Journey reviewers").authenticationDetailsSource(addresses::of));
         }
         return http.build();
     }
@@ -68,9 +72,7 @@ class ReviewerSecurity {
 
         @Override
         public Authentication authenticate(Authentication attempt) {
-            String from = attempt.getDetails() instanceof WebAuthenticationDetails details
-                    ? String.valueOf(details.getRemoteAddress())
-                    : "unknown";
+            String from = attempt.getDetails() instanceof String address ? address : "unknown";
             Instant now = Instant.now();
             Misses before = misses.computeIfPresent(
                     from, (address, kept) -> kept.since().plus(WAIT).isBefore(now) ? null : kept);
@@ -83,7 +85,9 @@ class ReviewerSecurity {
                     given.getBytes(StandardCharsets.UTF_8), password.getBytes(StandardCharsets.UTF_8));
             if (!right || name.isEmpty() || name.length() > 60) {
                 if (misses.size() > 10_000) {
-                    misses.clear(); // better that everyone starts afresh than that the list grows without end
+                    // Forget the ones whose wait is over. (The list can't be filled with made-up addresses: they are
+                    // real ones.)
+                    misses.values().removeIf(kept -> kept.since().plus(WAIT).isBefore(now));
                 }
                 misses.merge(from, new Misses(1, now), (kept, one) -> new Misses(kept.count() + 1, kept.since()));
                 throw new BadCredentialsException("Not a reviewer");

@@ -10,8 +10,13 @@ concurrency:
 
 jobs:
   api:
-    name: API (Java)
+    name: API (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
+    # 21 is what the code is written for and what runs on a developer's computer; 25 is what runs in production.
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ["21", "25"]
     services:
       postgres:
         image: postgres:16
@@ -34,7 +39,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: ${{ matrix.java }}
           cache: maven
       - name: Build, test and check the formatting (also checks openapi.json is current)
         run: ./mvnw -B -ntp verify
@@ -93,7 +98,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25" # the version the API runs on in production
           cache: maven
       - uses: actions/setup-node@v4
         with:

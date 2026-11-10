@@ -25,6 +25,7 @@ public class LocalModeGuard implements ApplicationListener<ApplicationEnvironmen
     @Override
     public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
         check(event.getEnvironment());
+        SettingsCheck.check(event.getEnvironment());
     }
 
     /** Every switch and the words it understands. A word it doesn't know is a typing mistake, not "off". */

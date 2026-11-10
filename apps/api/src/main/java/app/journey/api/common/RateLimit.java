@@ -32,9 +32,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * tighter for changing things, tight for guessing sign-in codes. It stops a runaway loop or a script from
  * hurting everyone else. The counting is done by Bucket4j.
  *
- * <p>Changes and sign-in attempts are counted in PostgreSQL, so the ceiling holds across every copy of the API.
- * Reads are counted in this copy's memory: there are far more of them, a database write for each would cost
- * more than it protects, and a per-copy ceiling is enough to stop a loop.
+ * <p>Sign-in attempts are counted in PostgreSQL, so that ceiling holds across every copy of the API and
+ * across restarts: it is the one that protects a secret. Reads and changes are counted in this copy's
+ * memory: there are far more of them, a database write for each costs more than it protects, and a per-copy
+ * ceiling is enough to stop a loop. The pages and the webhook that need no sign-in are counted by address.
  */
 @Configuration
 public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
@@ -43,23 +44,27 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
 
     private final boolean enabled;
     private final Bandwidth reads;
-    private final BucketConfiguration writes;
     private final BucketConfiguration signIns;
     private final PostgreSQLSelectForUpdateBasedProxyManager<String> shared;
+    private final Bandwidth changes;
     private final ConcurrentHashMap<String, Bucket> readers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Bucket> writers = new ConcurrentHashMap<>();
     private final Jobs jobs;
+    private final ClientAddress addresses;
 
     RateLimit(
             DataSource dataSource,
             Jobs jobs,
+            ClientAddress addresses,
             @Value("${journey.rate-limit.enabled:true}") boolean enabled,
             @Value("${journey.rate-limit.reads-per-minute:600}") int reads,
             @Value("${journey.rate-limit.writes-per-minute:120}") int writes,
             @Value("${journey.rate-limit.sign-ins-per-minute:10}") int signIns) {
         this.jobs = jobs;
+        this.addresses = addresses;
         this.enabled = enabled;
         this.reads = perMinute(reads);
-        this.writes = BucketConfiguration.builder().addLimit(perMinute(writes)).build();
+        this.changes = perMinute(writes);
         this.signIns =
                 BucketConfiguration.builder().addLimit(perMinute(signIns)).build();
         this.shared = Bucket4jPostgreSQL.selectForUpdateBasedBuilder(dataSource)
@@ -84,7 +89,15 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(this)
-                .addPathPatterns("/v1/**", "/local-auth/**", "/delete-account")
+                .addPathPatterns(
+                        "/v1/**",
+                        "/local-auth/**",
+                        "/delete-account",
+                        "/webhooks/**",
+                        "/j/**",
+                        "/e/**",
+                        "/u/**",
+                        "/i/**")
                 .order(-10);
     }
 
@@ -99,15 +112,10 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
         if (request.getRequestURI().startsWith("/local-auth/")
                 || (request.getRequestURI().equals("/delete-account") && !isRead(request))) {
             probe = shared.builder().build("signin:" + who, () -> signIns).tryConsumeAndReturnRemaining(1);
-        } else if (isRead(request)) {
-            if (readers.size() > 50_000) {
-                readers.clear(); // everyone starts the minute afresh; far better than growing without end
-            }
-            probe = readers.computeIfAbsent(
-                            who, key -> Bucket.builder().addLimit(reads).build())
-                    .tryConsumeAndReturnRemaining(1);
+        } else if (isRead(request) || request.getRequestURI().startsWith("/webhooks/")) {
+            probe = counted(readers, who, reads);
         } else {
-            probe = shared.builder().build("write:" + who, () -> writes).tryConsumeAndReturnRemaining(1);
+            probe = counted(writers, who, changes);
         }
         if (!probe.isConsumed()) {
             response.setHeader(
@@ -117,6 +125,15 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
                     HttpStatus.TOO_MANY_REQUESTS, "slow_down", "That's a lot at once. Wait a minute and try again.");
         }
         return true;
+    }
+
+    private static ConsumptionProbe counted(ConcurrentHashMap<String, Bucket> buckets, String who, Bandwidth limit) {
+        if (buckets.size() > 50_000) {
+            buckets.clear(); // everyone starts the minute afresh; far better than growing without end
+        }
+        return buckets.computeIfAbsent(
+                        who, key -> Bucket.builder().addLimit(limit).build())
+                .tryConsumeAndReturnRemaining(1);
     }
 
     /** Each night, forget the people who have been quiet: their allowance is full again anyway. */
@@ -136,8 +153,8 @@ public class RateLimit implements HandlerInterceptor, WebMvcConfigurer {
     }
 
     /** The signed-in person, or the caller's address when nobody is signed in yet. */
-    private static String who(HttpServletRequest request) {
+    private String who(HttpServletRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth instanceof JwtAuthenticationToken token ? token.getToken().getSubject() : request.getRemoteAddr();
+        return auth instanceof JwtAuthenticationToken token ? token.getToken().getSubject() : addresses.of(request);
     }
 }
