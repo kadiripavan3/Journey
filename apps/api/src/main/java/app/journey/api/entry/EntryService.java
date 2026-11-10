@@ -144,7 +144,7 @@ public class EntryService {
         journeys.require(journeyId, viewer);
         PageRequest page = PageRequest.of(cursor, limit, PAGE);
         int offset = page.offset();
-        if (around != null && cursor == null) {
+        if (around != null && (cursor == null || cursor.isBlank())) {
             require(around, viewer);
             offset = entries.countBefore(journeyId, around, viewer) / page.limit() * page.limit();
         }
@@ -220,7 +220,7 @@ public class EntryService {
                             : "Only the people on this journey can add entries to it.");
         }
         Content content = check(journey, author, title, body, happenedAt, happenedOn, placeName, mediaIds);
-        UUID id = entries.insert(
+        Optional<UUID> added = entries.insert(
                 journeyId,
                 author,
                 clientId,
@@ -230,6 +230,11 @@ public class EntryService {
                 content.body,
                 content.placeName,
                 milestone);
+        if (added.isEmpty()) {
+            // The same draft arrived twice at the same moment and the other request saved it first.
+            return get(entries.findByClientId(author, clientId).orElseThrow(), author);
+        }
+        UUID id = added.get();
         entries.replaceMedia(id, content.mediaIds);
         entries.wakeJourney(journeyId);
         events.publishEvent(new EntryAdded(id, journeyId, author));

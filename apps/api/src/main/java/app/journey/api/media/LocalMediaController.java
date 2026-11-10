@@ -8,11 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Iterator;
 import java.util.UUID;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -65,7 +61,13 @@ class LocalMediaController {
         if (bytes == 0) {
             throw ApiProblem.badRequest("empty_file", "The file arrived empty. Try again.");
         }
-        int[] size = clip ? null : dimensions(storage.resolve(row.storageKey()));
+        int[] size = clip ? null : LocalDiskStorage.dimensions(storage.resolve(row.storageKey()));
+        if (size != null && (long) size[0] * size[1] > LocalDiskStorage.MAX_PIXELS) {
+            // A small file can still unpack into an enormous picture; nothing good comes of keeping it.
+            storage.delete(row.storageKey());
+            throw new ApiProblem(
+                    HttpStatus.CONTENT_TOO_LARGE, "too_large", "That photo is too large. Try a smaller one.");
+        }
         media.markReady(id, bytes, size == null ? null : size[0], size == null ? null : size[1]);
         return ResponseEntity.noContent().build();
     }
@@ -96,24 +98,5 @@ class LocalMediaController {
                 .cacheControl(
                         CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
                 .body(resource);
-    }
-
-    /** Width and height of an image, read from its header. Null when the format isn't one Java can read. */
-    private static int[] dimensions(Path file) {
-        try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
-            Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
-            if (readers == null || !readers.hasNext()) {
-                return null;
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(in);
-                return new int[] {reader.getWidth(0), reader.getHeight(0)};
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException | RuntimeException e) {
-            return null;
-        }
     }
 }

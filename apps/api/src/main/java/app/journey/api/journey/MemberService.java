@@ -120,6 +120,7 @@ public class MemberService {
 
     @Transactional
     public MembersResponse invite(UUID journeyId, UUID owner, String username) {
+        journeyStore.lock(journeyId); // two invitations at once must not both pass the "room for one more" check
         JourneyRow journey = journeys.requireOwned(journeyId, owner);
         if (journey.status() == JourneyStatus.COMPLETED) {
             throw ApiProblem.badRequest(
@@ -155,8 +156,12 @@ public class MemberService {
             throw new ApiProblem(
                     HttpStatus.FORBIDDEN, "not_yours", "Only the owner can remove people from this journey.");
         }
-        members.remove(journeyId, person);
-        journeyStore.unsetAuthor(person, journeyId);
+        if (person.equals(journey.ownerId())) {
+            throw ApiProblem.badRequest("owner_stays", "The owner can't leave their own journey.");
+        }
+        if (members.remove(journeyId, person)) {
+            journeyStore.unsetAuthor(person, journeyId);
+        }
     }
 
     /** Invitations waiting for an answer, newest first. */

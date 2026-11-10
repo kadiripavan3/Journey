@@ -404,4 +404,80 @@ class RulesTest extends ApiTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("UP")));
     }
+
+    @Test
+    void theOwnerSeesAndCanRemoveWhatABlockedFriendWroteInTheirJourney() throws Exception {
+        String nora = person("nora");
+        String alex = person("alex");
+        String reader = person("reader");
+        String journey = journey(nora, "Iceland ring road", "public", 5);
+        mvc.perform(put("/v1/profiles/nora/follow").header("Authorization", alex))
+                .andExpect(status().isOk());
+        mvc.perform(post("/v1/journeys/" + journey + "/members")
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"alex\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", alex))
+                .andExpect(status().isOk());
+        String alexEntry = entry(alex, journey, "The lake before breakfast", 0);
+
+        mvc.perform(put("/v1/profiles/alex/block").header("Authorization", nora))
+                .andExpect(status().isNoContent());
+
+        // Alex is off the journey and can't see it. What he wrote is still part of the story, and Nora, whose
+        // journey it is, still sees it and is the one who can take it out.
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", alex))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", reader))
+                .andExpect(jsonPath("$.items", hasSize(1)));
+        mvc.perform(get("/v1/journeys/" + journey + "/entries").header("Authorization", nora))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].viewer.canDelete").value(true));
+        mvc.perform(delete("/v1/entries/" + alexEntry).header("Authorization", nora))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", reader))
+                .andExpect(jsonPath("$.entryCount").value(0))
+                .andExpect(jsonPath("$.authors", hasSize(1)));
+    }
+
+    @Test
+    void theOwnerCannotBeRemovedFromTheirOwnJourney() throws Exception {
+        String nora = person("nora");
+        String reader = person("reader");
+        String journey = journey(nora, "Iceland ring road", "public", 5);
+        mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", reader))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/v1/journeys/" + journey + "/members/nora").header("Authorization", nora))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("owner_stays"));
+        // Removing someone who was never on the journey changes nothing either.
+        mvc.perform(delete("/v1/journeys/" + journey + "/members/reader").header("Authorization", nora))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", nora))
+                .andExpect(jsonPath("$.followerCount").value(1))
+                .andExpect(jsonPath("$.viewer.isOwner").value(true))
+                .andExpect(jsonPath("$.viewer.isFollowing").value(false))
+                .andExpect(jsonPath("$.viewer.lastReadAt").isNotEmpty());
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", reader))
+                .andExpect(jsonPath("$.viewer.isFollowing").value(true));
+        assertThat(jdbc.sql("select count(*) from journey_follows where author")
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(1);
+    }
+
+    @Test
+    void aTitleOfOnlySpacesIsRefusedAsWhatItIs() throws Exception {
+        String nora = person("nora");
+        String journey = journey(nora, "Iceland ring road", "public", 5);
+        mvc.perform(patch("/v1/journeys/" + journey)
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("invalid_title"));
+    }
 }

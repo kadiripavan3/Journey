@@ -93,6 +93,7 @@ class ShapeTest extends ApiTest {
         String middle = mvc.perform(get("/v1/journeys/" + journey + "/entries")
                         .param("limit", "3")
                         .param("around", ids.get(4))
+                        .param("cursor", "")
                         .header("Authorization", maya))
                 .andExpect(jsonPath("$.items[*].position", org.hamcrest.Matchers.contains(4, 5, 6)))
                 .andReturn()
@@ -410,6 +411,68 @@ class ShapeTest extends ApiTest {
                         .list())
                 .containsExactlyInAnyOrder(used, fresh);
         assertThat(unused).isNotEqualTo(used);
+    }
+
+    @Test
+    void theSameDraftSentTwiceAtTheSameMomentStillMakesOne() throws Exception {
+        String maya = person("maya");
+        String journey = journey(maya, "Southeast Asia", "public", 3);
+        java.util.concurrent.ExecutorService two = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 6; round++) {
+                String draft = "{\"title\":\"Hoi An %d\",\"clientId\":\"%s\"}".formatted(round, UUID.randomUUID());
+                java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+                java.util.concurrent.Callable<String> send = () -> {
+                    go.await();
+                    return mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                                    .header("Authorization", maya)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(draft))
+                            .andExpect(status().isCreated())
+                            .andReturn()
+                            .getResponse()
+                            .getContentAsString();
+                };
+                var first = two.submit(send);
+                var second = two.submit(send);
+                go.countDown();
+                assertThat(JsonPath.<String>read(first.get(), "$.id"))
+                        .isEqualTo(JsonPath.<String>read(second.get(), "$.id"));
+            }
+        } finally {
+            two.shutdownNow();
+        }
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", maya))
+                .andExpect(jsonPath("$.entryCount").value(6));
+    }
+
+    @Test
+    void aPhotoThatUnpacksIntoSomethingEnormousIsRefused() throws Exception {
+        String maya = person("maya");
+        String target = mvc.perform(post("/v1/media/uploads")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"photo\",\"contentType\":\"image/png\"}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        // 56 megapixels of one colour: a tiny file, a huge picture.
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(8000, 7000, BufferedImage.TYPE_BYTE_BINARY), "png", png);
+        assertThat(png.size()).isLessThan(1024 * 1024);
+        mvc.perform(put(URI.create(JsonPath.<String>read(target, "$.uploadUrl")))
+                        .contentType(MediaType.IMAGE_PNG)
+                        .content(png.toByteArray()))
+                .andExpect(status().isContentTooLarge())
+                .andExpect(jsonPath("$.code").value("too_large"));
+        String journey = journey(maya, "Southeast Asia", "public", 3);
+        mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mediaIds\":[\"%s\"]}".formatted(JsonPath.<String>read(target, "$.mediaId"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("media_not_ready"));
     }
 
     /** Uploads a JPEG of the given size the way the app does. Returns the media id. */

@@ -147,7 +147,7 @@ public class JourneyService {
         if (coverMediaId != null) {
             media.requireOwn(List.of(coverMediaId), owner, MediaKind.PHOTO);
         }
-        UUID id = journeys.insert(
+        Optional<UUID> started = journeys.insert(
                 owner,
                 clientId,
                 title.trim(),
@@ -160,6 +160,11 @@ public class JourneyService {
                 coverMediaId,
                 startDate,
                 template.targetDays());
+        if (started.isEmpty()) {
+            // The same draft arrived twice at the same moment and the other request saved it first.
+            return view(require(journeys.findByClientId(owner, clientId).orElseThrow(), owner), owner);
+        }
+        UUID id = started.get();
         if (visibility == Visibility.PUBLIC) {
             journeys.followForFollowersOf(owner, id); // people who follow the creator get their new journeys
         }
@@ -181,6 +186,9 @@ public class JourneyService {
             boolean clearCover,
             JourneyStatus status) {
         JourneyRow current = requireOwned(id, viewer);
+        if (title != null && title.isBlank()) {
+            throw ApiProblem.badRequest("invalid_title", "Give your journey a title.");
+        }
         if (category != null) {
             requireCategory(category);
         }

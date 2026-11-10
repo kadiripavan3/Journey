@@ -84,7 +84,7 @@ public class EntryStore {
     private static final String SELECT = "select " + COLUMNS + FROM;
 
     /** Entries by someone the viewer has blocked, or who has blocked them, are left out of every read. */
-    private static final String NOT_BLOCKED = " and " + Rules.notBlocked("e.author_id", ":viewer");
+    private static final String NOT_BLOCKED = " and " + Rules.entryBy("e", ":viewer");
 
     private static final RowMapper<EntryRow> ROW = (rs, n) -> new EntryRow(
             rs.getObject("id", UUID.class),
@@ -305,7 +305,8 @@ public class EntryStore {
                 .collect(Collectors.groupingBy(EntryMediaRow::entryId));
     }
 
-    public UUID insert(
+    /** Adds an entry. Empty when the same draft (clientId) is being saved by another request at this very moment. */
+    public Optional<UUID> insert(
             UUID journeyId,
             UUID authorId,
             UUID clientId,
@@ -318,6 +319,7 @@ public class EntryStore {
         return jdbc.sql("""
             insert into entries (journey_id, author_id, client_id, happened_at, happened_on, title, body, place_name, is_milestone)
             values (:journey, :author, cast(:client as uuid), :happenedAt, :happenedOn, :title, :body, :place, :milestone)
+            on conflict (author_id, client_id) where client_id is not null do nothing
             returning id
             """)
                 .param("journey", journeyId)
@@ -330,7 +332,7 @@ public class EntryStore {
                 .param("place", placeName)
                 .param("milestone", milestone)
                 .query(UUID.class)
-                .single();
+                .optional();
     }
 
     public void update(

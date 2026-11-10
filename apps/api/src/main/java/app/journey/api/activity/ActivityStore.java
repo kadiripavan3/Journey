@@ -75,7 +75,7 @@ public class ActivityStore {
             where %s and e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s and %s
             group by e.journey_id, j.title, day
             order by at desc limit :limit
-            """.formatted(VISIBLE, RECENT, Rules.notBlocked("e.author_id", ":me")))
+            """.formatted(VISIBLE, RECENT, Rules.entryBy("e", ":me")))
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(

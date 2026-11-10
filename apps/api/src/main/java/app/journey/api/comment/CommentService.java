@@ -84,7 +84,10 @@ public class CommentService {
             // Replies are one level deep: a reply to a reply joins the same thread.
             parent = answered.parentId() == null ? answered.id() : answered.parentId();
         }
-        UUID id = comments.insert(entryId, author, parent, text, clientId);
+        // Empty means the same comment arrived twice at the same moment and the other request saved it first.
+        UUID id = comments.insert(entryId, author, parent, text, clientId)
+                .or(() -> comments.findByClientId(author, clientId))
+                .orElseThrow();
         return view(comments.find(id).orElseThrow(), entry, author);
     }
 

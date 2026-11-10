@@ -199,7 +199,8 @@ public class JourneyStore {
                 .optional();
     }
 
-    public UUID insert(
+    /** Starts a journey. Empty when the same draft (clientId) is being saved by another request at this very moment. */
+    public Optional<UUID> insert(
             UUID ownerId,
             UUID clientId,
             String title,
@@ -212,10 +213,11 @@ public class JourneyStore {
             UUID coverMediaId,
             LocalDate startDate,
             Integer targetDays) {
-        UUID id = jdbc.sql("""
+        Optional<UUID> id = jdbc.sql("""
             insert into journeys (owner_id, client_id, title, description, category, template, label_style, visibility, tags, cover_media_id, start_date, target_days)
             values (:owner, cast(:client as uuid), :title, :description, :category, :template, :labelStyle, :visibility, cast(:tags as text[]),
               cast(:cover as uuid), :startDate, cast(:targetDays as int))
+            on conflict (owner_id, client_id) where client_id is not null do nothing
             returning id
             """)
                 .param("owner", ownerId)
@@ -231,9 +233,17 @@ public class JourneyStore {
                 .param("startDate", startDate)
                 .param("targetDays", targetDays == null ? null : targetDays.toString())
                 .query(UUID.class)
-                .single();
-        setAuthor(ownerId, id); // the owner follows their own journey as an author
+                .optional();
+        id.ifPresent(journey -> setAuthor(ownerId, journey)); // the owner follows their own journey as an author
         return id;
+    }
+
+    /** Holds the journey for the rest of the transaction, so two requests can't both pass a check and then both change it. */
+    public void lock(UUID id) {
+        jdbc.sql("select id from journeys where id = :id for update")
+                .param("id", id)
+                .query(UUID.class)
+                .optional();
     }
 
     public void update(
@@ -422,7 +432,7 @@ public class JourneyStore {
             group by f.journey_id
             order by latest desc, f.journey_id
             limit :limit offset :offset
-            """.formatted(Rules.visibleJourney("j", ":user"), Rules.notBlocked("e.author_id", ":user")))
+            """.formatted(Rules.visibleJourney("j", ":user"), Rules.entryBy("e", ":user")))
                 .param("user", userId)
                 .param("limit", page.fetch())
                 .param("offset", page.offset())

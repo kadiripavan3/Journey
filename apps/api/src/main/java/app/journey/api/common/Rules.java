@@ -33,4 +33,18 @@ public final class Rules {
                         + " or exists (select 1 from journey_members rm where rm.journey_id = %1$s.id and rm.user_id = %2$s and rm.status = 'joined')))")
                 .formatted(journey, viewer);
     }
+
+    /**
+     * True when the viewer may read an entry as far as its author goes: the two haven't blocked each other,
+     * or the entry is in the viewer's own journey. An owner sees everything written in their journey, also
+     * by someone they have blocked since, because they are the one who can remove it.
+     *
+     * @param entry the alias of the entries table in the query, such as {@code "e"}
+     * @param viewer the parameter or column holding the viewer's id
+     */
+    public static String entryBy(String entry, String viewer) {
+        return ("(" + notBlocked("%1$s.author_id", viewer)
+                        + " or exists (select 1 from journeys oj where oj.id = %1$s.journey_id and oj.owner_id = %2$s))")
+                .formatted(entry, viewer);
+    }
 }

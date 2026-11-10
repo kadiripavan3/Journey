@@ -13,11 +13,16 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -30,6 +35,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @Component
 @ConditionalOnProperty(name = "journey.media.mode", havingValue = "local")
 public class LocalDiskStorage implements MediaStorage {
+
+    /** The biggest picture this stand-in will keep or unpack: 50 megapixels, well above any phone camera. */
+    public static final long MAX_PIXELS = 50_000_000L;
+
+    private static final Semaphore RESIZING = new Semaphore(2);
 
     /** The folder, inside the storage folder, that holds the smaller versions. */
     private static final String SIZED = ".sized";
@@ -85,9 +95,22 @@ public class LocalDiskStorage implements MediaStorage {
         if (Files.isRegularFile(sized)) {
             return sized;
         }
+        int[] full = dimensions(original);
+        if (full == null || Math.max(full[0], full[1]) <= size.width() || (long) full[0] * full[1] > MAX_PIXELS) {
+            return original; // not a picture Java can read, already small, or too big to unpack safely
+        }
+        boolean free = false;
         try {
+            // Unpacking a photo takes a lot of memory, so only a couple are worked on at a time.
+            free = RESIZING.tryAcquire(10, TimeUnit.SECONDS);
+            if (!free) {
+                return original;
+            }
+            if (Files.isRegularFile(sized)) {
+                return sized; // someone else made it while we waited
+            }
             BufferedImage image = ImageIO.read(original.toFile());
-            if (image == null || Math.max(image.getWidth(), image.getHeight()) <= size.width()) {
+            if (image == null) {
                 return original;
             }
             double scale = (double) size.width() / Math.max(image.getWidth(), image.getHeight());
@@ -115,8 +138,34 @@ public class LocalDiskStorage implements MediaStorage {
                 Files.deleteIfExists(temp);
             }
             return sized;
-        } catch (IOException | RuntimeException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return original;
+        } catch (IOException | RuntimeException | OutOfMemoryError e) {
+            return original;
+        } finally {
+            if (free) {
+                RESIZING.release();
+            }
+        }
+    }
+
+    /** Width and height of an image, read from its header without unpacking it. Null when the format isn't one Java can read. */
+    public static int[] dimensions(Path file) {
+        try (ImageInputStream in = ImageIO.createImageInputStream(file.toFile())) {
+            Iterator<ImageReader> readers = in == null ? null : ImageIO.getImageReaders(in);
+            if (readers == null || !readers.hasNext()) {
+                return null;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(in);
+                return new int[] {reader.getWidth(0), reader.getHeight(0)};
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
         }
     }
 

@@ -110,11 +110,13 @@ public class MemberStore {
                 > 0;
     }
 
-    public void remove(UUID journeyId, UUID userId) {
-        jdbc.sql("delete from journey_members where journey_id = :journey and user_id = :person")
-                .param("journey", journeyId)
-                .param("person", userId)
-                .update();
+    /** True when the person was on the journey (asked or joined) and now isn't. */
+    public boolean remove(UUID journeyId, UUID userId) {
+        return jdbc.sql("delete from journey_members where journey_id = :journey and user_id = :person")
+                        .param("journey", journeyId)
+                        .param("person", userId)
+                        .update()
+                > 0;
     }
 
     /** Invitations waiting for this person's answer, newest first. */

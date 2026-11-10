@@ -83,10 +83,13 @@ public class CommentStore {
         return Page.of(rows, page);
     }
 
-    public UUID insert(UUID entryId, UUID authorId, UUID parentId, String body, UUID clientId) {
+    /** Adds a comment. Empty when the same one (clientId) is being saved by another request at this very moment. */
+    public Optional<UUID> insert(UUID entryId, UUID authorId, UUID parentId, String body, UUID clientId) {
         return jdbc.sql("""
             insert into comments (entry_id, author_id, parent_id, body, client_id)
-            values (:entry, :author, :parent, :body, cast(:client as uuid)) returning id
+            values (:entry, :author, :parent, :body, cast(:client as uuid))
+            on conflict (author_id, client_id) where client_id is not null do nothing
+            returning id
             """)
                 .param("entry", entryId)
                 .param("author", authorId)
@@ -94,7 +97,7 @@ public class CommentStore {
                 .param("body", body)
                 .param("client", clientId == null ? null : clientId.toString())
                 .query(UUID.class)
-                .single();
+                .optional();
     }
 
     /** Deletes a comment. Its replies go with it. */

@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** Photos and clips: what may be uploaded, and turning stored files into addresses the app can show. */
 @Service
@@ -123,7 +125,24 @@ public class MediaService {
     public void deleteAllOwnedBy(UUID ownerId) {
         List<String> keys = store.keysOwnedBy(ownerId);
         store.deleteOwnedBy(ownerId);
-        keys.forEach(storage::delete);
+        afterCommit(() -> keys.forEach(storage::delete));
+    }
+
+    /**
+     * Files are removed only once the change to the database has been kept. If the change is undone instead
+     * (something failed further on), the records are back and so the files must still be there.
+     */
+    private static void afterCommit(Runnable work) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            work.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                work.run();
+            }
+        });
     }
 
     /** Removes uploads nobody used (see {@link MediaStore#abandoned}). Returns how many. */
@@ -131,7 +150,7 @@ public class MediaService {
     public int removeAbandoned() {
         List<MediaStore.StoredFile> files = store.abandoned(24, 500);
         store.delete(files.stream().map(MediaStore.StoredFile::id).toList());
-        files.forEach(file -> storage.delete(file.storageKey()));
+        afterCommit(() -> files.forEach(file -> storage.delete(file.storageKey())));
         if (!files.isEmpty()) {
             log.info("Removed {} uploads that were never used.", files.size());
         }

@@ -35,7 +35,7 @@ public class DigestStore {
             join journeys j on j.id = e.journey_id
             where e.author_id <> :me and e.created_at > %s and %s and %s
             group by e.journey_id order by max(e.created_at) desc limit :limit
-            """.formatted(WEEK, Rules.visibleJourney("j", ":me"), Rules.notBlocked("e.author_id", ":me")))
+            """.formatted(WEEK, Rules.visibleJourney("j", ":me"), Rules.entryBy("e", ":me")))
                 .param("me", reader)
                 .param("limit", limit)
                 .query((rs, n) -> new Moved(
@@ -70,8 +70,7 @@ public class DigestStore {
             left join settings s on s.user_id = f.user_id
             where coalesce(s.weekly_digest, true) and %s
             group by f.user_id, s.digest_email
-            """.formatted(
-                        WEEK, Rules.visibleJourney("j", "f.user_id"), Rules.notBlocked("e.author_id", "f.user_id")))
+            """.formatted(WEEK, Rules.visibleJourney("j", "f.user_id"), Rules.entryBy("e", "f.user_id")))
                 .query((rs, n) -> new Due(
                         rs.getObject("user_id", UUID.class),
                         rs.getInt("entries"),
