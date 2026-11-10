@@ -1,5 +1,6 @@
 package app.journey.api.journey;
 
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import app.journey.api.common.Rules;
@@ -192,24 +193,87 @@ public class JourneyStore {
 
     /** The first journeys matching a condition, written against the aliases j (journey) and p (owner). */
     public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-        return query(where, params, orderBy, limit, 0, viewer);
-    }
-
-    /** One page of the journeys matching a condition. */
-    public Page<JourneyRow> page(String where, Map<String, ?> params, String orderBy, PageRequest page, UUID viewer) {
-        return Page.of(query(where, params, orderBy, page.fetch(), page.offset(), viewer), page);
-    }
-
-    private List<JourneyRow> query(
-            String where, Map<String, ?> params, String orderBy, int limit, int offset, UUID viewer) {
-        return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy
-                        + ", j.id limit :limit offset :offset")
+        return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy + ", j.id limit :limit")
                 .params(params)
                 .param("viewer", viewer)
                 .param("limit", limit)
-                .param("offset", offset)
                 .query(ROW)
                 .list();
+    }
+
+    /** When a journey last moved: its newest entry, or its start while it has none. Lists of journeys are ordered by it. */
+    private static final String ACTIVITY = "coalesce(j.last_entry_at, j.created_at)";
+
+    private static final String NEWEST_ACTIVITY_FIRST = " order by " + ACTIVITY + " desc, j.id desc limit :limit";
+
+    /**
+     * The journeys a person writes in, of every visibility: their own and the shared ones they joined, newest
+     * activity first. Authors have a follow row marked "author" (V6), so the list starts from those few rows
+     * (the index is in V32) and never looks at anyone else's journeys.
+     */
+    public Page<JourneyRow> mine(UUID me, Keyset page) {
+        return page(
+                "select j.id from journey_follows af join journeys j on j.id = af.journey_id"
+                        + " where af.user_id = :viewer and af.author",
+                Map.of(),
+                me,
+                page);
+    }
+
+    /** The journeys a person follows, newest activity first. */
+    public Page<JourneyRow> following(UUID me, Keyset page) {
+        return page(
+                "select j.id from journey_follows f join journeys j on j.id = f.journey_id"
+                        + " where f.user_id = :viewer and not f.author",
+                Map.of(),
+                me,
+                page);
+    }
+
+    /**
+     * Someone's public journeys, for their profile: the ones they own and the shared ones they write in.
+     * Nothing when the viewer and that person have blocked each other, whoever owns the journey.
+     */
+    public Page<JourneyRow> byProfile(UUID person, UUID viewer, Keyset page) {
+        return page(
+                "select j.id from journey_follows af join journeys j on j.id = af.journey_id"
+                        + " where af.user_id = :person and af.author and j.visibility = 'public' and "
+                        + Rules.notBlocked(":person", ":viewer"),
+                Map.of("person", person),
+                viewer,
+                page);
+    }
+
+    /**
+     * One page of a list of journeys ordered by newest activity. {@code pick} chooses the journeys (ids only);
+     * the rule about who may see them, the place the page starts and its size are added here. A page starts
+     * after the last journey of the page before, so a journey that moves or appears in between is neither
+     * repeated nor skipped.
+     */
+    private Page<JourneyRow> page(String pick, Map<String, ?> params, UUID viewer, Keyset page) {
+        String after = page.first() ? "" : " and (" + ACTIVITY + ", j.id) < (:at, :after)";
+        var query = picked(pick + VISIBLE + after + NEWEST_ACTIVITY_FIRST)
+                .params(params)
+                .param("viewer", viewer)
+                .param("limit", page.fetch());
+        if (!page.first()) {
+            query = query.param("at", Sql.timestamp(page.instant(0))).param("after", page.uuid(1));
+        }
+        return page.page(query.query(ROW).list(), row -> Keyset.cursor(activityOf(row), row.id()));
+    }
+
+    private static Instant activityOf(JourneyRow row) {
+        return row.lastEntryAt() != null ? row.lastEntryAt() : row.createdAt();
+    }
+
+    /**
+     * Reads a list of journeys in two steps inside one statement. {@code pick} chooses which journeys, in what
+     * order and how many, looking only at what that takes. Then each chosen journey is read in full, so its
+     * cover, counts and owner are worked out for the journeys on the page and for no others.
+     */
+    private JdbcClient.StatementSpec picked(String pick) {
+        return jdbc.sql("with picked as materialized (select s.id, row_number() over () as n from (" + pick + ") s) "
+                + SELECT + " join picked on picked.id = j.id order by picked.n");
     }
 
     /** The journey this person already made from the same draft, if the app is sending it a second time. */

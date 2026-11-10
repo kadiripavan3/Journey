@@ -1,6 +1,7 @@
 package app.journey.api.activity;
 
 import app.journey.api.activity.ActivityService.ActivityResponse;
+import app.journey.api.activity.ActivityService.ActivityUnseenResponse;
 import app.journey.api.auth.Me;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,14 @@ class ActivityController {
                     "The inbox: new entries per journey, likes batched per entry, comments, replies and new followers")
     ActivityResponse inbox(@Me UUID me) {
         return activity.inbox(me);
+    }
+
+    @GetMapping("/unseen")
+    @Operation(
+            operationId = "getActivityUnseen",
+            summary = "Whether anything happened since you last opened Activity: the dot on the tab bar")
+    ActivityUnseenResponse unseen(@Me UUID me) {
+        return activity.unseen(me);
     }
 
     @PostMapping("/seen")

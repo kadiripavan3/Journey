@@ -1,8 +1,8 @@
 package app.journey.api.people;
 
 import app.journey.api.auth.Me;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.people.PeopleService.ListedPersonResponse;
 import app.journey.api.people.PeopleService.PublicProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,7 +56,7 @@ class PeopleController {
             @PathVariable String username,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return people.listed(username, true, me, PageRequest.of(cursor, limit, 30));
+        return people.listed(username, true, me, Keyset.of(cursor, limit, 30));
     }
 
     @GetMapping("/following")
@@ -66,6 +66,6 @@ class PeopleController {
             @PathVariable String username,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return people.listed(username, false, me, PageRequest.of(cursor, limit, 30));
+        return people.listed(username, false, me, Keyset.of(cursor, limit, 30));
     }
 }

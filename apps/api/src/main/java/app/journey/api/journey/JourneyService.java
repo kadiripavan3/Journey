@@ -2,6 +2,7 @@ package app.journey.api.journey;
 
 import app.journey.api.catalog.Catalog;
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
 import app.journey.api.common.PageRequest;
 import app.journey.api.common.PublicUrls;
@@ -299,28 +300,14 @@ public class JourneyService {
     /** Places that recommend journeys leave out one with an open report, until a reviewer has looked at it. */
     private static final String NOT_UNDER_REVIEW = " and " + Rules.notUnderReview("j");
 
-    private static final String NEWEST_ACTIVITY = "coalesce(j.last_entry_at, j.created_at) desc";
-
-    /** The viewer's own journeys, of every visibility, newest activity first. */
-    public Page<JourneyResponse> mine(UUID viewer, PageRequest page) {
-        return journeys.page(
-                        "j.owner_id = :owner or exists (select 1 from journey_members mm where mm.journey_id = j.id and mm.user_id = :owner and mm.status = 'joined')",
-                        Map.of("owner", viewer),
-                        NEWEST_ACTIVITY,
-                        page,
-                        viewer)
-                .map(rows -> views(rows, viewer));
+    /** The journeys the viewer writes in, of every visibility: their own and the shared ones they joined. Newest activity first. */
+    public Page<JourneyResponse> mine(UUID viewer, Keyset page) {
+        return journeys.mine(viewer, page).map(rows -> views(rows, viewer));
     }
 
     /** Journeys the viewer follows, newest activity first. */
-    public Page<JourneyResponse> following(UUID viewer, PageRequest page) {
-        return journeys.page(
-                        "exists (select 1 from journey_follows mf where mf.journey_id = j.id and mf.user_id = :me and not mf.author)",
-                        Map.of("me", viewer),
-                        NEWEST_ACTIVITY,
-                        page,
-                        viewer)
-                .map(rows -> views(rows, viewer));
+    public Page<JourneyResponse> following(UUID viewer, Keyset page) {
+        return journeys.following(viewer, page).map(rows -> views(rows, viewer));
     }
 
     /**
@@ -328,19 +315,14 @@ public class JourneyService {
      * "Not found" when there is no such person for this viewer (they don't exist, or they have blocked the
      * viewer), and nothing at all when the viewer has blocked them.
      */
-    public Page<JourneyResponse> publicBy(String username, UUID viewer, PageRequest page) {
+    public Page<JourneyResponse> byProfile(String username, UUID viewer, Keyset page) {
         UUID person = people.idOf(username, viewer);
-        return journeys.page(
-                        """
-            j.visibility = 'public' and (j.owner_id = :person or exists (
-              select 1 from journey_members pm
-              where pm.journey_id = j.id and pm.status = 'joined' and pm.user_id = :person))
-            and\s""" + Rules.notBlocked(":person", ":viewer"),
-                        Map.of("person", person),
-                        NEWEST_ACTIVITY,
-                        page,
-                        viewer)
-                .map(rows -> views(rows, viewer));
+        return journeys.byProfile(person, viewer, page).map(rows -> views(rows, viewer));
+    }
+
+    /** The start of someone's public journeys, for the web page behind "Follow my journey". */
+    public Page<JourneyResponse> publicBy(String username, UUID viewer, PageRequest page) {
+        return byProfile(username, viewer, Keyset.first(page.limit()));
     }
 
     public record DiscoverResponse(

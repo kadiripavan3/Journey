@@ -1847,6 +1847,25 @@
         }
       }
     },
+    "/v1/activity/unseen" : {
+      "get" : {
+        "tags" : [ "Activity" ],
+        "summary" : "Whether anything happened since you last opened Activity: the dot on the tab bar",
+        "operationId" : "getActivityUnseen",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ActivityUnseenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/journeys/{id}/members/{username}" : {
       "delete" : {
         "tags" : [ "Shared journeys" ],
@@ -3663,6 +3682,16 @@
           }
         },
         "required" : [ "items", "newCount" ]
+      },
+      "ActivityUnseenResponse" : {
+        "type" : "object",
+        "properties" : {
+          "unseen" : {
+            "type" : "boolean",
+            "description" : "True when something happened since the person last opened Activity"
+          }
+        },
+        "required" : [ "unseen" ]
       }
     },
     "securitySchemes" : {

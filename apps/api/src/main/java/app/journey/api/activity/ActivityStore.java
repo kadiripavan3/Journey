@@ -16,6 +16,12 @@ import org.springframework.stereotype.Repository;
 /**
  * The questions Activity asks. Nothing is stored for the inbox: each kind of line is read straight from what
  * happened (entries, likes, comments, follows) over the last 30 days, grouped so a busy day stays one line.
+ *
+ * <p>Every kind of line has one description of where it comes from (the constants below), written so that the
+ * database starts from the person's own few rows (the journeys they follow, the entries they wrote, the
+ * journeys they own) and looks up what happened to each through an index. The same description answers both
+ * "what are the lines" and "is there anything new" ({@link #unseen}), so the dot on the tab bar and the list
+ * can't disagree. In each, {@code %s} stands for the moment the question starts from.
  */
 @Repository
 public class ActivityStore {
@@ -23,8 +29,94 @@ public class ActivityStore {
     /** How many lines of each kind are read; the service keeps the newest of all of them together. */
     static final int PER_KIND = 30;
 
+    /** Activity looks back this far and no further. */
     private static final String RECENT = "now() - interval '30 days'";
+
     private static final String VISIBLE = Rules.visibleJourney("j", ":me");
+
+    /** New entries by others in the journeys the person follows or writes in, since they started following. */
+    private static final String NEW_ENTRIES = """
+            from journey_follows f
+            join journeys j on j.id = f.journey_id
+            join entries e on e.journey_id = f.journey_id and e.created_at > greatest(f.created_at, %s)
+            where f.user_id = :me and e.author_id <> :me and
+            """ + VISIBLE + " and " + Rules.entryBy("e", ":me");
+
+    /** Journeys the person follows that were completed by someone else since they started following. */
+    private static final String COMPLETED = """
+            from journey_follows f
+            join journeys j on j.id = f.journey_id
+            where f.user_id = :me and j.status = 'completed' and j.owner_id <> :me
+              and j.completed_at > greatest(f.created_at, %s) and
+            """ + VISIBLE;
+
+    /**
+     * Likes on the person's own entries. An entry nobody has liked (the count the database keeps says so) is
+     * passed over without looking for its likes.
+     */
+    private static final String LIKES = """
+            from entries e
+            join journeys j on j.id = e.journey_id
+            join entry_likes l on l.entry_id = e.id and l.created_at > %s
+            where e.author_id = :me and e.like_count > 0 and l.user_id <> :me and
+            """ + VISIBLE + " and " + Rules.notBlocked("l.user_id", ":me");
+
+    /**
+     * Comments reach a person three ways, and each way starts from rows that are theirs: under an entry in a
+     * journey they own, under an entry they wrote in someone else's journey, and as an answer to a comment of
+     * theirs anywhere else. The three never overlap, so a comment is one line. An entry without comments (the
+     * count the database keeps, which leaves out held ones, as these lines do) is passed over without looking.
+     */
+    private static final List<String> COMMENTS = List.of("""
+            from journeys j
+            join entries e on e.journey_id = j.id and e.comment_count > 0
+            join comments c on c.entry_id = e.id and c.created_at > %s
+            where j.owner_id = :me
+            """, """
+            from (select distinct w.journey_id from entries w where w.author_id = :me) wrote
+            join journeys j on j.id = wrote.journey_id and j.owner_id <> :me
+            join entries e on e.author_id = :me and e.journey_id = j.id and e.comment_count > 0
+            join comments c on c.entry_id = e.id and c.created_at > %s
+            where true
+            """, """
+            from comments mine
+            join comments c on c.parent_id = mine.id and c.created_at > %s
+            join entries e on e.id = c.entry_id and e.author_id <> :me
+            join journeys j on j.id = e.journey_id and j.owner_id <> :me
+            where mine.author_id = :me
+            """);
+
+    /** What holds for a comment whichever way it came: someone else wrote it, and the person may see it. */
+    private static final String COMMENT_SHOWN = " and c.author_id <> :me and " + VISIBLE + " and "
+            + Rules.commentBy("c", ":me") + " and " + Rules.entryBy("e", ":me") + " and "
+            + Rules.shownComment("c", ":me");
+
+    /** People who chose to follow one of the person's journeys. Follows made for a creator's followers are left out. */
+    private static final String JOURNEY_FOLLOWS = """
+            from journeys j
+            join journey_follows f on f.journey_id = j.id and not f.author and not f.auto and f.created_at > %s
+            where j.owner_id = :me and f.user_id <> :me and
+            """ + Rules.notBlocked("f.user_id", ":me");
+
+    /** People who started following the person. */
+    private static final String PROFILE_FOLLOWS = """
+            from profile_follows f
+            where f.followee_id = :me and f.created_at > %s and
+            """ + Rules.notBlocked("f.follower_id", ":me");
+
+    /** Invitations waiting for the person's answer. */
+    private static final String INVITATIONS = """
+            from journey_members m
+            join journeys j on j.id = m.journey_id
+            where m.user_id = :me and m.status = 'invited' and m.created_at > %s and
+            """ + Rules.notBlocked("j.owner_id", ":me");
+
+    /** Friends who said yes to one of the person's journeys. */
+    private static final String FRIENDS_JOINED = """
+            from journeys j
+            join journey_members m on m.journey_id = j.id and m.status = 'joined' and coalesce(m.joined_at, m.created_at) > %s
+            where j.owner_id = :me and
+            """ + Rules.notBlocked("m.user_id", ":me");
 
     /** One line before the people and pictures are looked up. */
     public record Line(
@@ -62,6 +154,45 @@ public class ActivityStore {
                 .update();
     }
 
+    /**
+     * True when something happened since the person last opened Activity: the answer behind the dot on the tab
+     * bar, in one statement. It asks each kind of line "is there one after that moment?", the cheapest first,
+     * and stops at the first yes; a kind the person has switched off isn't asked. It never builds the list.
+     */
+    public boolean unseen(UUID me) {
+        String since = "my.since";
+        String comments = String.join(
+                " or ",
+                COMMENTS.stream()
+                        .map(from -> exists(from + COMMENT_SHOWN, since))
+                        .toList());
+        return jdbc.sql("select " + exists(INVITATIONS, since)
+                        + " or " + exists(FRIENDS_JOINED, since)
+                        + " or (my.followers and (" + exists(PROFILE_FOLLOWS, since) + " or "
+                        + exists(JOURNEY_FOLLOWS, since) + "))"
+                        + " or (my.completed and " + exists(COMPLETED, since) + ")"
+                        + " or (my.likes and " + exists(LIKES, since) + ")"
+                        + " or (my.comments and (" + comments + "))"
+                        + " or (my.entries and " + exists(NEW_ENTRIES, since) + ") "
+                        + """
+                        from (
+                          select greatest(p.activity_seen_at, %s) as since,
+                                 coalesce(s.notify_new_entries, true) as entries, coalesce(s.notify_completed, true) as completed,
+                                 coalesce(s.notify_likes, true) as likes, coalesce(s.notify_comments, true) as comments,
+                                 coalesce(s.notify_followers, true) as followers
+                          from profiles p left join settings s on s.user_id = p.id
+                          where p.id = :me) my
+                        """.formatted(RECENT))
+                .param("me", me)
+                .query(Boolean.class)
+                .optional()
+                .orElse(false);
+    }
+
+    private static String exists(String from, String since) {
+        return "exists (select 1 " + from.formatted(since) + ")";
+    }
+
     /** "Maya added 3 entries to Southeast Asia by motorbike": one line per journey per day, for journeys the person follows. */
     public List<Line> newEntries(UUID me) {
         return jdbc.sql("""
@@ -69,13 +200,8 @@ public class ActivityStore {
                    (array_agg(e.id order by e.created_at desc))[1] as entry_id,
                    (array_agg(e.author_id order by e.created_at desc))[1] as actor,
                    (array_agg(coalesce(nullif(e.title, ''), left(e.body, 80)) order by e.created_at desc))[1] as entry_title
-            from entries e
-            join journey_follows f on f.journey_id = e.journey_id and f.user_id = :me
-            join journeys j on j.id = e.journey_id
-            where %s and e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s and %s
-            group by e.journey_id, j.title, day
-            order by at desc limit :limit
-            """.formatted(VISIBLE, RECENT, Rules.entryBy("e", ":me")))
+            """ + NEW_ENTRIES.formatted(RECENT)
+                        + " group by e.journey_id, j.title, day order by at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -96,12 +222,8 @@ public class ActivityStore {
 
     /** "Jonas completed Cappadocia by balloon", for journeys the person follows. */
     public List<Line> completedJourneys(UUID me) {
-        return jdbc.sql("""
-            select j.id, j.title, j.owner_id, j.completed_at
-            from journeys j join journey_follows f on f.journey_id = j.id and f.user_id = :me
-            where %s and j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s
-            order by j.completed_at desc limit :limit
-            """.formatted(VISIBLE, RECENT))
+        return jdbc.sql("select j.id, j.title, j.owner_id, j.completed_at " + COMPLETED.formatted(RECENT)
+                        + " order by j.completed_at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -125,11 +247,8 @@ public class ActivityStore {
         return jdbc.sql("""
             select l.entry_id, e.journey_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title, count(*) as n, max(l.created_at) as at,
                    (array_agg(l.user_id order by l.created_at desc))[1\\:2] as actors
-            from entry_likes l join entries e on e.id = l.entry_id join journeys j on j.id = e.journey_id
-            where %s and e.author_id = :me and l.user_id <> :me and l.created_at > %s and %s
-            group by l.entry_id, e.journey_id, e.title, e.body
-            order by at desc limit :limit
-            """.formatted(VISIBLE, RECENT, Rules.notBlocked("l.user_id", ":me")))
+            """ + LIKES.formatted(RECENT)
+                        + " group by l.entry_id, e.journey_id, e.title, e.body order by at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -150,22 +269,16 @@ public class ActivityStore {
 
     /** Comments on the person's entries and journeys, and replies to their comments. */
     public List<Line> comments(UUID me) {
-        return jdbc.sql("""
+        String line = """
             select c.id, c.entry_id, e.journey_id, c.body, c.created_at, c.author_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title,
-                   coalesce(pc.author_id = :me, false) as reply_to_me
-            from comments c
-            join entries e on e.id = c.entry_id
-            join journeys j on j.id = e.journey_id
-            left join comments pc on pc.id = c.parent_id
-            where %s and c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s
-              and %s and %s and %s
-            order by c.created_at desc limit :limit
-            """.formatted(
-                                VISIBLE,
-                                RECENT,
-                                Rules.commentBy("c", ":me"),
-                                Rules.entryBy("e", ":me"),
-                                Rules.shownComment("c", ":me")))
+                   exists (select 1 from comments pc where pc.id = c.parent_id and pc.author_id = :me) as reply_to_me
+            """;
+        String ways = String.join(
+                " union all ",
+                COMMENTS.stream()
+                        .map(from -> line + from.formatted(RECENT) + COMMENT_SHOWN)
+                        .toList());
+        return jdbc.sql("select * from (" + ways + ") found order by created_at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -186,12 +299,8 @@ public class ActivityStore {
 
     /** "Theo started following Iceland ring road". Follows made automatically for a creator's followers are left out. */
     public List<Line> journeyFollows(UUID me) {
-        return jdbc.sql("""
-            select f.journey_id, j.title, f.user_id, f.created_at
-            from journey_follows f join journeys j on j.id = f.journey_id
-            where j.owner_id = :me and f.user_id <> :me and not f.auto and not f.author and f.created_at > %s
-            order by f.created_at desc limit :limit
-            """.formatted(RECENT))
+        return jdbc.sql("select f.journey_id, j.title, f.user_id, f.created_at " + JOURNEY_FOLLOWS.formatted(RECENT)
+                        + " order by f.created_at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -215,10 +324,7 @@ public class ActivityStore {
         return jdbc.sql("""
             select f.follower_id, f.created_at,
                    exists (select 1 from profile_follows b where b.follower_id = :me and b.followee_id = f.follower_id) as follows_back
-            from profile_follows f
-            where f.followee_id = :me and f.created_at > %s
-            order by f.created_at desc limit :limit
-            """.formatted(RECENT))
+            """ + PROFILE_FOLLOWS.formatted(RECENT) + " order by f.created_at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> new Line(
@@ -239,12 +345,10 @@ public class ActivityStore {
 
     /** "Nora invited you to add to Iceland ring road", and for an owner, "Alex joined Iceland ring road". */
     public List<Line> sharedJourneys(UUID me) {
-        return jdbc.sql("""
-            select m.journey_id, j.title, m.status, m.user_id, m.invited_by, coalesce(m.joined_at, m.created_at) as at
-            from journey_members m join journeys j on j.id = m.journey_id
-            where ((m.user_id = :me and m.status = 'invited') or (j.owner_id = :me and m.status = 'joined')) and coalesce(m.joined_at, m.created_at) > %s
-            order by at desc limit :limit
-            """.formatted(RECENT))
+        String line =
+                "select m.journey_id, j.title, m.status, m.user_id, m.invited_by, coalesce(m.joined_at, m.created_at) as at ";
+        return jdbc.sql("select * from (" + line + INVITATIONS.formatted(RECENT) + " union all " + line
+                        + FRIENDS_JOINED.formatted(RECENT) + ") found order by at desc limit :limit")
                 .param("me", me)
                 .param("limit", PER_KIND)
                 .query((rs, n) -> {
@@ -284,15 +388,22 @@ public class ActivityStore {
         return keys;
     }
 
-    /** The first photo of each journey that this person may see: never one by someone they have blocked. */
+    /**
+     * The first photo of each journey that this person may see: never one by someone they have blocked. Each
+     * journey's story is read from its start only as far as its first photo.
+     */
     public Map<UUID, String> journeyThumbs(List<UUID> journeyIds, UUID me) {
         Map<UUID, String> keys = new HashMap<>();
         if (!journeyIds.isEmpty()) {
             jdbc.sql("""
-              select distinct on (e.journey_id) e.journey_id as id, m.storage_key
-              from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id
-              where e.journey_id in (:ids) and m.kind = 'photo' and %s and %s
-              order by e.journey_id, e.happened_at, em.position
+              select j.id, first.storage_key
+              from journeys j
+              cross join lateral (
+                select m.storage_key
+                from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id
+                where e.journey_id = j.id and m.kind = 'photo' and %s and %s
+                order by e.happened_at, e.created_at, e.id, em.position limit 1) first
+              where j.id in (:ids)
               """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":me")))
                     .param("ids", journeyIds)
                     .param("me", me)

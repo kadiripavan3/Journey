@@ -1,10 +1,11 @@
 package app.journey.api.people;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaSize;
+import app.journey.api.people.PeopleStore.Found;
 import app.journey.api.people.PeopleStore.PersonRow;
 import app.journey.api.people.PeopleStore.ProfileRow;
 import app.journey.api.profile.PersonResponse;
@@ -79,7 +80,7 @@ public class PeopleService {
 
     @Transactional
     public PublicProfileResponse follow(String username, UUID viewer) {
-        ProfileRow person = require(username, viewer);
+        Found person = find(username, viewer);
         if (person.id().equals(viewer)) {
             throw ApiProblem.badRequest("thats_you", "You can't follow yourself.");
         }
@@ -94,14 +95,13 @@ public class PeopleService {
 
     @Transactional
     public PublicProfileResponse unfollow(String username, UUID viewer) {
-        people.unfollow(viewer, require(username, viewer).id());
+        people.unfollow(viewer, idOf(username, viewer));
         return profile(username, viewer);
     }
 
-    /** The people who follow someone, or the people they follow. */
-    public Page<ListedPersonResponse> listed(String username, boolean followers, UUID viewer, PageRequest page) {
-        return people.listed(require(username, viewer).id(), followers, viewer, page)
-                .map(rows -> listed(rows, viewer));
+    /** The people who follow someone, or the people they follow, newest first. */
+    public Page<ListedPersonResponse> listed(String username, boolean followers, UUID viewer, Keyset page) {
+        return people.listed(idOf(username, viewer), followers, viewer, page).map(rows -> listed(rows, viewer));
     }
 
     /** People whose name or username matches. */
@@ -128,7 +128,16 @@ public class PeopleService {
 
     /** The id behind a username, or "not found" (also when that person has blocked the viewer). */
     public UUID idOf(String username, UUID viewer) {
-        return require(username, viewer).id();
+        return find(username, viewer).id();
+    }
+
+    /** Who a username belongs to, looked up by the username alone: nothing about the person is counted. */
+    private Found find(String username, UUID viewer) {
+        return people.find(username.toLowerCase(), viewer).orElseThrow(PeopleService::notFound);
+    }
+
+    private static ApiProblem notFound() {
+        return new ApiProblem(HttpStatus.NOT_FOUND, "profile_not_found", "We can't find that person.");
     }
 
     /** People by id as they are shown next to what they did. */
@@ -141,9 +150,7 @@ public class PeopleService {
     }
 
     private ProfileRow require(String username, UUID viewer) {
-        return people.profile(username.toLowerCase(), viewer)
-                .orElseThrow(
-                        () -> new ApiProblem(HttpStatus.NOT_FOUND, "profile_not_found", "We can't find that person."));
+        return people.profile(username.toLowerCase(), viewer).orElseThrow(PeopleService::notFound);
     }
 
     private PublicProfileResponse view(ProfileRow p, UUID viewer) {
