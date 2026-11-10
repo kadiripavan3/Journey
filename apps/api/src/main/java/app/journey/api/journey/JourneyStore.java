@@ -340,17 +340,19 @@ public class JourneyStore {
     public record PlaceRow(String name, int journeys) {}
 
     /**
-     * The places whose name holds the words typed, those with the most public journeys first. Like the search
+     * The places whose name holds the words typed, those with the most public journeys first. A place written
+     * in several ways ("Cusco, Peru", "cusco, peru") is one place, shown the way most entries write it. Like the search
      * itself it looks at a bounded number of entries ({@link #SEARCH_PLACES}), found through the index on
      * place names.
      */
     public List<PlaceRow> places(String pattern, UUID viewer, int limit) {
         return jdbc.sql("""
-            select min(pe.place_name) as name, count(distinct pe.journey_id) as journeys
+            select mode() within group (order by pe.place_name collate "C") as name,
+                   count(distinct pe.journey_id) as journeys
             from (select e.place_name, e.journey_id, e.author_id from entries e where e.place_name ilike :q limit %d) pe
             join journeys j on j.id = pe.journey_id
             where j.visibility = 'public' %s %s and %s
-            group by lower(pe.place_name) order by journeys desc, name limit :limit
+            group by lower(pe.place_name) order by journeys desc, lower(pe.place_name) limit :limit
             """.formatted(
                                 SEARCH_PLACES, VISIBLE, NOT_UNDER_REVIEW, Rules.notBlocked("pe.author_id", ":viewer")))
                 .param("q", pattern)
