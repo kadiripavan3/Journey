@@ -1,0 +1,39 @@
+# The Journey API on Fly.io. docs/08-connect-services.md has the steps; in short:
+#   fly apps create <a name of your own>     (then put it on the next line)
+#   fly secrets set ...                      (every secret the runbook lists)
+#   fly deploy                               (or let the "Deploy" GitHub Action do it)
+
+app = "journey-api"
+# Choose the region closest to the Supabase project, so the API sits next to its database.
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Settings that are not secret. Everything secret (keys, passwords, the database address) is set with
+# "fly secrets set" and never written here.
+[env]
+  JOURNEY_AUTH_MODE = "supabase"
+  JOURNEY_MEDIA_MODE = "r2"
+  # Fly's proxy tells the API it is reached over https.
+  JOURNEY_FORWARD_HEADERS = "framework"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # One machine that is always on: jobs (the weekly digest, reminders) run inside the API.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/actuator/health"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "45s"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

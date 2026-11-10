@@ -6,7 +6,9 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ApiError, messageFor } from '@/api/fetcher';
 import { authMode } from '@/auth/mode';
+import { signInService } from '@/auth/signIn';
 import { layout, radius, useTheme } from '@/theme';
 import { AppleLogo, BrandMark, GoogleLogo } from '@/ui/Brand';
 import { Button } from '@/ui/Button';
@@ -20,9 +22,21 @@ export default function SignIn() {
   const insets = useSafeAreaInsets();
   const [note, setNote] = useState<string | null>(null);
 
-  // Apple and Google need their accounts connected. Until then, say so plainly instead of failing.
-  const notYet = (name: string) =>
-    authMode === 'local' ? () => setNote(`${name} sign-in is switched on later. Use your email for now.`) : undefined;
+  // Where Apple or Google isn't offered (not connected yet, or not this kind of phone), say so plainly.
+  const [busy, setBusy] = useState<string | null>(null);
+  const with_ = (name: 'Apple' | 'Google', start: (() => Promise<void>) | null) => () => {
+    if (!start) {
+      setNote(authMode === 'local' ? `${name} sign-in is switched on later. Use your email for now.` : `${name} sign-in isn't available on this phone. Use your email.`);
+      return;
+    }
+    setNote(null);
+    setBusy(name);
+    start()
+      .catch((error: unknown) => {
+        if (!(error instanceof ApiError && error.code === 'cancelled')) setNote(messageFor(error));
+      })
+      .finally(() => setBusy(null));
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -47,8 +61,8 @@ export default function SignIn() {
             </Txt>
           </View>
           <View style={{ paddingHorizontal: layout.rowGutter, gap: 10, marginTop: 24 }}>
-            <Button label="Continue with Apple" size="lg" variant="ink" block onPress={notYet('Apple')} icon={(c) => <AppleLogo color={c} />} />
-            <Button label="Continue with Google" size="lg" variant="line" block onPress={notYet('Google')} icon={() => <GoogleLogo />} />
+            <Button label="Continue with Apple" size="lg" variant="ink" block loading={busy === 'Apple'} onPress={with_('Apple', signInService.apple)} icon={(c) => <AppleLogo color={c} />} />
+            <Button label="Continue with Google" size="lg" variant="line" block loading={busy === 'Google'} onPress={with_('Google', signInService.google)} icon={() => <GoogleLogo />} />
             <Button label="Continue with email" size="lg" variant="line" block onPress={() => router.push('/email')} icon={(c) => <Mail size={19} color={c} />} />
             {note ? (
               <View accessibilityLiveRegion="polite" style={{ padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>

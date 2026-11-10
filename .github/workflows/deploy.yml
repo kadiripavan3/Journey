@@ -1,0 +1,40 @@
+name: Deploy
+
+# Puts the API on Fly.io. It runs when the main branch changes, or by hand from the Actions tab.
+# It needs one secret in the repository's settings: FLY_API_TOKEN (see docs/08-connect-services.md).
+# Until that secret exists, the job says so and does nothing.
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/api/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  api:
+    name: API to Fly.io
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Is Fly.io connected?
+        id: connected
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "FLY_API_TOKEN is not set, so there is nowhere to deploy to yet. See docs/08-connect-services.md."
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.connected.outputs.yes == 'true'
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.connected.outputs.yes == 'true'
+      - name: Deploy (the database is brought up to date when the new version starts)
+        if: steps.connected.outputs.yes == 'true'
+        working-directory: apps/api
+        run: flyctl deploy --remote-only

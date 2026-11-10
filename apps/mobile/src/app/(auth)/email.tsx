@@ -1,10 +1,11 @@
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { useRequestLocalCode } from '@/api/generated/journey';
+import { signInService } from '@/auth/signIn';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
 import { RoundButton } from '@/ui/RoundButton';
@@ -17,11 +18,11 @@ const looksLikeEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valu
 export default function Email() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const requestCode = useRequestLocalCode();
+  const requestCode = useMutation({ mutationFn: (address: string) => signInService.requestCode(address) });
 
   const send = () => {
     const address = email.trim();
-    requestCode.mutate({ data: { email: address } }, { onSuccess: () => router.push({ pathname: '/code', params: { email: address } }) });
+    requestCode.mutate(address, { onSuccess: () => router.push({ pathname: '/code', params: { email: address } }) });
   };
 
   return (

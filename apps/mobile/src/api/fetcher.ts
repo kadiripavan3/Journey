@@ -14,7 +14,12 @@ export class ApiError extends Error {
   }
 }
 
-type Hooks = { getToken: () => string | null; onSignedOut: () => void };
+type Hooks = {
+  getToken: () => string | null;
+  /** After the API refused the token: a fresh one, or null when the person has to sign in again. */
+  renew?: () => Promise<string | null>;
+  onSignedOut: () => void;
+};
 let hooks: Hooks = { getToken: () => null, onSignedOut: () => {} };
 
 /** The session tells the client where to find the sign-in token and what to do when it stops working. */
@@ -24,15 +29,22 @@ export function connectSession(next: Hooks) {
 
 /** Every generated API call goes through here: it adds the address and the sign-in token, and turns failures into ApiError. */
 export const apiFetch = async <T>(path: string, options?: RequestInit): Promise<T> => {
-  const headers = new Headers(options?.headers);
   const token = hooks.getToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const send = async (using: string | null) => {
+    const headers = new Headers(options?.headers);
+    if (using) headers.set('Authorization', `Bearer ${using}`);
+    try {
+      return await fetch(apiBaseUrl() + path, { ...options, headers });
+    } catch {
+      throw new ApiError(0, 'unreachable', "Can't reach Journey right now. Check your connection and try again.");
+    }
+  };
 
-  let response: Response;
-  try {
-    response = await fetch(apiBaseUrl() + path, { ...options, headers });
-  } catch {
-    throw new ApiError(0, 'unreachable', "Can't reach Journey right now. Check your connection and try again.");
+  let response = await send(token);
+  // A token that ran out is renewed once and the request sent again; the person never notices.
+  if (response.status === 401 && token && hooks.renew) {
+    const fresh = await hooks.renew().catch(() => null);
+    if (fresh && fresh !== token) response = await send(fresh);
   }
 
   const text = await response.text();

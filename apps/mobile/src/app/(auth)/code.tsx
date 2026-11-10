@@ -1,12 +1,12 @@
+import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { useCreateLocalToken, useRequestLocalCode } from '@/api/generated/journey';
+import { signInService } from '@/auth/signIn';
 import { authMode, LOCAL_TEST_CODE } from '@/auth/mode';
-import { useSession } from '@/auth/session';
 import { radius, useTheme } from '@/theme';
 import { OtpInput } from '@/ui/OtpInput';
 import { RoundButton } from '@/ui/RoundButton';
@@ -18,16 +18,12 @@ export default function Code() {
   const router = useRouter();
   const { colors } = useTheme();
   const { email } = useLocalSearchParams<{ email: string }>();
-  const session = useSession();
   const [code, setCode] = useState('');
-  const createToken = useCreateLocalToken();
-  const resend = useRequestLocalCode();
+  // A right code signs the person in; the session hears it from the sign-in service and the app moves on.
+  const createToken = useMutation({ mutationFn: (typed: string) => signInService.verifyCode(email, typed) });
+  const resend = useMutation({ mutationFn: () => signInService.requestCode(email) });
 
-  const check = (typed: string) =>
-    createToken.mutate(
-      { data: { email, code: typed } },
-      { onSuccess: (result) => void session.signIn(result.accessToken), onError: () => setCode('') },
-    );
+  const check = (typed: string) => createToken.mutate(typed, { onError: () => setCode('') });
 
   return (
     <Screen
@@ -52,7 +48,7 @@ export default function Code() {
           {messageFor(createToken.error)}
         </Txt>
       ) : null}
-      <Pressable accessibilityRole="button" onPress={() => resend.mutate({ data: { email } })} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
+      <Pressable accessibilityRole="button" onPress={() => resend.mutate()} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
         <Txt variant="callout" color="accentText" weight={700}>
           {resend.isSuccess ? 'Code sent again' : 'Send the code again'}
         </Txt>

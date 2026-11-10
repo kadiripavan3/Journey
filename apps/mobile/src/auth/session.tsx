@@ -3,18 +3,18 @@ import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, us
 
 import { connectSession } from '@/api/fetcher';
 
-import { clearToken, loadToken, saveToken } from './storage';
+import { signInService } from './signIn';
 
 type SessionState = { status: 'loading' } | { status: 'signedOut' } | { status: 'signedIn' };
 
-type Session = SessionState & {
-  /** Call with the token from a successful sign-in. */
-  signIn: (token: string) => Promise<void>;
-  signOut: () => Promise<void>;
-};
+type Session = SessionState & { signOut: () => Promise<void> };
 
 const SessionContext = createContext<Session | null>(null);
 
+/**
+ * Whether someone is signed in. The sign-in service (the test one, or Supabase) says so: when the app starts,
+ * when a code or Apple or Google signs someone in, when a token is renewed, and when the sign-in ends.
+ */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<SessionState>({ status: 'loading' });
@@ -22,26 +22,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     token.current = null;
-    await clearToken();
+    await signInService.signOut();
     queryClient.clear(); // nothing of the previous person stays in memory
     setState({ status: 'signedOut' });
   }, [queryClient]);
 
-  const signIn = useCallback(async (next: string) => {
-    token.current = next;
-    await saveToken(next);
-    setState({ status: 'signedIn' });
-  }, []);
-
   useEffect(() => {
-    connectSession({ getToken: () => token.current, onSignedOut: () => void signOut() });
-    void loadToken().then((saved) => {
-      token.current = saved;
-      setState({ status: saved ? 'signedIn' : 'signedOut' });
+    const hear = (next: string | null) => {
+      const was = token.current;
+      token.current = next;
+      if (next && !was) setState({ status: 'signedIn' });
+      if (!next && was) {
+        queryClient.clear();
+        setState({ status: 'signedOut' });
+      }
+    };
+    connectSession({
+      getToken: () => token.current,
+      renew: async () => {
+        const fresh = await signInService.renew();
+        if (fresh) token.current = fresh;
+        return fresh;
+      },
+      onSignedOut: () => void signOut(),
     });
-  }, [signOut]);
+    const stop = signInService.onToken(hear);
+    void signInService
+      .restore()
+      .catch(() => null)
+      .then((saved) => {
+        token.current = saved;
+        setState({ status: saved ? 'signedIn' : 'signedOut' });
+      });
+    return stop;
+  }, [queryClient, signOut]);
 
-  const value = useMemo(() => ({ ...state, signIn, signOut }), [state, signIn, signOut]);
+  const value = useMemo(() => ({ ...state, signOut }), [state, signOut]);
   return <SessionContext value={value}>{children}</SessionContext>;
 }
 
