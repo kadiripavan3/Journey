@@ -37,7 +37,9 @@ public class MediaService {
     // The app turns every photo into a JPEG before sending it; PNG is accepted too. Both are formats the API can make
     // smaller.
     private static final Map<String, String> PHOTO_TYPES = Map.of("image/jpeg", "jpg", "image/png", "png");
-    private static final Map<String, String> CLIP_TYPES = Map.of("video/mp4", "mp4", "video/quicktime", "mov");
+    // Phones record MP4 and MOV; a browser (the web preview) records WebM.
+    private static final Map<String, String> CLIP_TYPES =
+            Map.of("video/mp4", "mp4", "video/quicktime", "mov", "video/webm", "webm");
 
     /** What the app needs to show one photo or clip. */
     public record MediaResponse(

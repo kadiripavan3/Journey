@@ -109,6 +109,13 @@ class ClipsTest extends ApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("unsupported_media"))
                 .andExpect(jsonPath("$.detail", containsString("MP4 or MOV")));
+        // A clip recorded in a browser (the web preview) is WebM; that is taken too.
+        mvc.perform(post("/v1/media/uploads")
+                        .header("Authorization", kai)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"video\",\"contentType\":\"video/webm\",\"durationSeconds\":5}"))
+                .andExpect(status().is2xxSuccessful())
+                .andExpect(jsonPath("$.mediaId").exists());
 
         // Nothing sent yet: saying "done" doesn't make it so.
         String waiting = JsonPath.read(startClip(kai, 10), "$.mediaId");
