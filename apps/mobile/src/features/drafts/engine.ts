@@ -1,4 +1,5 @@
 import { lastAnswerAt, messageFor } from '@/api/fetcher';
+import { words } from '@/words';
 
 import { howItFailed, sendDraft, uploadsForgotten } from './send';
 import type { Draft, DraftInput, DraftStore, Progress } from './types';
@@ -14,7 +15,6 @@ export const STUCK_AFTER = 4;
 /** While something goes up, screens hear about its progress at most this often. */
 const PROGRESS_EVERY_MS = 250;
 
-const STUCK = "This entry keeps failing to upload although you're online. Open it to try again; a very long clip may be too much for this connection.";
 
 type Waiting = { tries: number; since: number; notBefore: number };
 type Timer = ReturnType<typeof setTimeout>;
@@ -296,7 +296,7 @@ export class OutboxEngine {
     if (how === 'unreachable') {
       // Usually the connection: everything rests a while. But when the API answered other requests since
       // this entry first got no answer, it is this entry that can't get through.
-      if (wait.tries >= STUCK_AFTER && lastAnswerAt() > wait.since) return failed(STUCK);
+      if (wait.tries >= STUCK_AFTER && lastAnswerAt() > wait.since) return failed(words.drafts.stuck);
       this.fails += 1;
       this.restUntil = now + restFor(this.fails);
     } else if (wait.tries >= MOST_TRIES) {

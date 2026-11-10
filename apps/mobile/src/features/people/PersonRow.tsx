@@ -5,6 +5,7 @@ import { layout } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = {
   person: { displayName: string; username: string; avatarUrl?: string | null };
@@ -35,7 +36,7 @@ export function PersonRow({ person, detail, onPress, trailing }: Props) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
       {onPress ? (
-        <Tap accessibilityRole="button" accessibilityLabel={`${person.displayName}, @${person.username}`} scaleTo={0.985} onPress={onPress} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Tap accessibilityRole="button" accessibilityLabel={words.people.rowSpoken(person.displayName, person.username)} scaleTo={0.985} onPress={onPress} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           {main}
         </Tap>
       ) : (

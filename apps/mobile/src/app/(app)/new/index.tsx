@@ -17,6 +17,8 @@ import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 import { Tap } from '@/ui/Motion';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 const POPULAR = ['trip', 'challenge30'];
 
@@ -40,9 +42,9 @@ export default function ChooseTemplate() {
   return (
     <Screen
       header={<AppBar leading="close" center={<StepProgress step={1} />} />}
-      footer={<Button label="Continue" size="lg" block disabled={!catalog.template(draft.template)} onPress={() => router.push('/new/details')} />}>
-      <Heading style={{ marginTop: 6 }}>What kind of journey?</Heading>
-      <Lead>Pick a starting point. You can change anything later.</Lead>
+      footer={<Button label={words.common.continue} size="lg" block disabled={!catalog.template(draft.template)} onPress={() => router.push('/new/details')} />}>
+      <Heading style={{ marginTop: 6 }}>{words.newJourney.template.title}</Heading>
+      <Lead>{words.newJourney.template.lead}</Lead>
       {catalog.query.isPending ? (
         <View style={{ height: 240 }}>
           <Loading offline={catalog.query.isPaused} />
@@ -61,7 +63,7 @@ export default function ChooseTemplate() {
                   emoji={t.emoji}
                   name={t.name}
                   description={t.description}
-                  tag={POPULAR.includes(t.id) ? 'POPULAR' : undefined}
+                  tag={POPULAR.includes(t.id) ? words.newJourney.template.popular : undefined}
                   selected={draft.template === t.id}
                   onPress={() => pick(t.id)}
                 />
@@ -71,7 +73,7 @@ export default function ChooseTemplate() {
           {journal ? (
             <Tap
               accessibilityRole="button"
-              accessibilityLabel={`${journal.name}. ${journal.description}`}
+              accessibilityLabel={words.common.spoken([journal.name, journal.description])}
               accessibilityState={{ selected: draft.template === journal.id }}
               onPress={() => pick(journal.id)}
               style={{
@@ -88,10 +90,13 @@ export default function ChooseTemplate() {
               }}>
               <Emoji char={journal.emoji} size={28} />
               <Txt variant="callout" style={{ flex: 1 }}>
-                <Txt variant="callout" weight={800}>
-                  {journal.name}
-                </Txt>
-                {` · ${journal.description.charAt(0).toLowerCase()}${journal.description.slice(1)}`}
+                {rich(words.newJourney.template.journal(journal.name, journal.description), {
+                  bold: (text) => (
+                    <Txt variant="callout" weight={800}>
+                      {text}
+                    </Txt>
+                  ),
+                })}
               </Txt>
               <ChevronRight size={18} color={colors.muted} />
             </Tap>

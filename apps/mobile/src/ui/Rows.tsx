@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Card } from './Card';
 import { Toggle } from './Toggle';
@@ -57,7 +58,7 @@ export function Row({ icon, label, note, value, onPress, danger, first, trailing
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[label, value, note].filter(Boolean).join('. ')}
+      accessibilityLabel={words.common.spoken([label, value, note])}
       onPress={onPress}
       style={({ pressed }) => [frame, { backgroundColor: pressed ? colors.fill : 'transparent' }]}>
       {content}

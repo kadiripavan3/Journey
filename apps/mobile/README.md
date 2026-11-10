@@ -12,6 +12,7 @@ npm run api:generate  # after ../api/openapi.json changes
 
 - **Screens** live in `src/app` (one file per screen). The designs they follow are in `design/hub/src/screens`.
 - **Look:** every colour, size and radius comes from `src/theme/tokens.ts`, generated from `design/tokens.json`. The design system is in `src/ui` (it knows nothing about journeys, people or the API); components that do are in `src/features`. The linter keeps sizes, corners, colours and emoji coming from the tokens (see "App structure and standards" in the repo's `CLAUDE.md`).
+- **Words:** every sentence a person reads or hears is in `src/words/en`, one file per area, and screens read them from `words` (`@/words`). The linter refuses a sentence written in a screen. `src/words/index.ts` says how another language is added.
 - **API:** `src/api/generated` is generated from the API's description. Don't edit it by hand.
 - **Adding a library:** use `npx expo install <name>` so the version matches the Expo SDK.
 

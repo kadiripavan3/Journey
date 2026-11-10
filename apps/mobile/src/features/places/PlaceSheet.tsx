@@ -7,6 +7,7 @@ import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
+import { words } from '@/words';
 
 import { canLocate, LocationDenied, placeAt, placeHere, searchPlaces } from './lookup';
 import { type FoundPlace, type PickedPlace, typedName } from './place';
@@ -20,15 +21,13 @@ type Props = {
   photoPoint?: Point;
 };
 
-const DENIED = "Journey isn't allowed to use the phone's location, so it can't look places up. You can still use the name as you typed it.";
-
 /**
  * 7.2 Place: search for where an entry happened, or take it from where the phone is or where the first photo
  * was taken. A name alone works too. Nothing here asks for the phone's location until the person taps for it.
  */
 export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Props) {
   const { colors } = useTheme();
-  const [words, setWords] = useState('');
+  const [typing, setTyping] = useState('');
   const [found, setFound] = useState<FoundPlace[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
   const close = () => {
     if (timer.current) clearTimeout(timer.current);
     asked.current += 1;
-    setWords('');
+    setTyping('');
     setFound(null);
     setBusy(false);
     setNote(null);
@@ -52,7 +51,7 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
   const pickFound = (place: FoundPlace) => pick({ name: place.name, lat: place.lat, lng: place.lng, exact: false });
 
   const type = (text: string) => {
-    setWords(text);
+    setTyping(text);
     setNote(null);
     if (timer.current) clearTimeout(timer.current);
     const query = text.trim();
@@ -72,7 +71,7 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
         .catch((error: unknown) => {
           if (asked.current !== mine) return;
           setFound([]);
-          if (error instanceof LocationDenied) setNote(DENIED);
+          if (error instanceof LocationDenied) setNote(words.places.lookupOff);
         })
         .finally(() => {
           if (asked.current === mine) setBusy(false);
@@ -92,24 +91,24 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
         else setNote(missing);
       })
       .catch((error: unknown) => {
-        if (asked.current === mine) setNote(error instanceof LocationDenied ? "Journey isn't allowed to use the phone's location. You can switch it on in the phone's Settings, or search for the place instead." : missing);
+        if (asked.current === mine) setNote(error instanceof LocationDenied ? words.places.locationOff : missing);
       })
       .finally(() => {
         if (asked.current === mine) setBusy(false);
       });
   };
 
-  const typed = words.trim();
+  const typed = typing.trim();
   return (
-    <Sheet visible={visible} onClose={close} title="Where was this?" tall>
+    <Sheet visible={visible} onClose={close} title={words.places.title} tall>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, marginHorizontal: layout.rowGutter, marginTop: 6, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.field, backgroundColor: colors.fill }}>
         <Search size={18} color={colors.muted} />
         <TextInput
           maxFontSizeMultiplier={MAX_TEXT_SCALE}
-          accessibilityLabel="Search for a place"
-          value={words}
+          accessibilityLabel={words.places.search}
+          value={typing}
           onChangeText={type}
-          placeholder="Search for a place"
+          placeholder={words.places.search}
           placeholderTextColor={colors.muted}
           selectionColor={colors.accent}
           autoCorrect={false}
@@ -129,17 +128,17 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
       {typed.length === 0 ? (
         <>
           {canLocate ? (
-            <SheetRow first icon={(c) => <LocateFixed size={22} color={c} />} label="Where you are now" note="Uses the phone's location, only when you tap here" onPress={() => take(placeHere, "The phone couldn't tell where it is. Search for the place instead.")} />
+            <SheetRow first icon={(c) => <LocateFixed size={22} color={c} />} label={words.places.here.label} note={words.places.here.note} onPress={() => take(placeHere, words.places.hereUnknown)} />
           ) : null}
           {photoPoint ? (
             <SheetRow
               first={!canLocate}
               icon={(c) => <ImageIcon size={22} color={c} />}
-              label="Where the first photo was taken"
-              onPress={() => take(() => placeAt(photoPoint.lat, photoPoint.lng), "We couldn't tell where that photo was taken. Search for the place instead.")}
+              label={words.places.fromPhoto}
+              onPress={() => take(() => placeAt(photoPoint.lat, photoPoint.lng), words.places.photoUnknown)}
             />
           ) : null}
-          {value ? <SheetRow first={!canLocate && !photoPoint} danger icon={(c) => <Trash2 size={22} color={c} />} label="Remove the place" onPress={() => pick(null)} /> : null}
+          {value ? <SheetRow first={!canLocate && !photoPoint} danger icon={(c) => <Trash2 size={22} color={c} />} label={words.places.remove} onPress={() => pick(null)} /> : null}
         </>
       ) : (
         <>
@@ -150,8 +149,8 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
             <SheetRow
               first={(found ?? []).length === 0}
               icon={(c) => <Type size={22} color={c} />}
-              label={`Use "${typedName(typed)}"`}
-              note="Just the name, without a spot on the map"
+              label={words.places.useTyped(typedName(typed))}
+              note={words.places.useTypedNote}
               onPress={() => pick({ name: typedName(typed), exact: false })}
             />
           ) : null}
@@ -159,7 +158,7 @@ export function PlaceSheet({ visible, onClose, value, onChange, photoPoint }: Pr
       )}
 
       <Txt variant="footnote" color="muted" style={{ marginHorizontal: layout.gutter, marginTop: 16 }}>
-        Other people see the area around a place, not the exact point, unless you choose to show the exact spot.
+        {words.places.footnote}
       </Txt>
     </Sheet>
   );

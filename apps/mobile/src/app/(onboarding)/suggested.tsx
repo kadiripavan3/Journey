@@ -14,6 +14,7 @@ import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 2.3 Journeys to follow: step 3 of 3. Real journeys in progress, matched to the interests just picked. */
 export default function Suggested() {
@@ -52,14 +53,14 @@ export default function Suggested() {
               {problem}
             </Txt>
           ) : null}
-          <Button label="Continue" size="lg" block disabled={follow.isPending || unfollow.isPending} onPress={() => router.push('/notify')} />
+          <Button label={words.common.continue} size="lg" block disabled={follow.isPending || unfollow.isPending} onPress={() => router.push('/notify')} />
           <Txt variant="small" weight={500} color="muted" center>
-            Find more any time in Discover.
+            {words.onboarding.suggested.findMore}
           </Txt>
         </>
       }>
-      <Heading style={{ marginTop: 6 }}>Follow a few journeys</Heading>
-      <Lead>New chapters from them will show up on your Home.</Lead>
+      <Heading style={{ marginTop: 6 }}>{words.onboarding.suggested.title}</Heading>
+      <Lead>{words.onboarding.suggested.body}</Lead>
       <View style={{ marginTop: 16, marginHorizontal: -20 }}>
         {!list && suggested.isError ? (
           <View style={{ height: 260 }}>
@@ -71,7 +72,7 @@ export default function Suggested() {
           </View>
         ) : list.length === 0 ? (
           <Txt color="muted" center style={{ marginTop: 40, marginHorizontal: 40 }}>
-            No journeys to suggest yet. You can start the first one.
+            {words.onboarding.suggested.none}
           </Txt>
         ) : (
           list.map((journey) => {
@@ -82,12 +83,12 @@ export default function Suggested() {
                 key={journey.id}
                 coverUrl={journey.coverThumbUrl}
                 title={journey.title}
-                detail={`${journey.owner.displayName} · ${journey.progressLabel}${followers > 0 ? `\n${followingLabel(followers)}` : ''}`}
+                detail={[words.common.join([journey.owner.displayName, journey.progressLabel]), followers > 0 ? followingLabel(followers) : null].filter(Boolean).join('\n')}
                 trailing={
                   on ? (
-                    <Button label="Following" inline size="sm" variant="soft" icon={(c) => <Check size={16} color={c} strokeWidth={2.6} />} onPress={() => toggle(journey.id)} />
+                    <Button label={words.common.following} inline size="sm" variant="soft" icon={(c) => <Check size={16} color={c} strokeWidth={2.6} />} onPress={() => toggle(journey.id)} />
                   ) : (
-                    <Button label="Follow" inline size="sm" onPress={() => toggle(journey.id)} />
+                    <Button label={words.common.follow} inline size="sm" onPress={() => toggle(journey.id)} />
                   )
                 }
               />

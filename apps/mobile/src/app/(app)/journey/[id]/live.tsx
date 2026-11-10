@@ -17,13 +17,9 @@ import { Loading } from '@/ui/Loading';
 import { Pill } from '@/ui/Pill';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const STAGE = darkTheme.colors.stage;
-const WHO = {
-  public: { title: 'is live', note: 'Share the link so friends can follow from day one. Once it has a cover and three entries, people can also find it in Discover.' },
-  unlisted: { title: 'is ready', note: 'Only people you give the link to will see it. Share it with the ones you want along.' },
-  private: { title: 'is ready', note: 'Add your first entry to get it going. Only you can see it until you decide to publish.' },
-} as const;
 
 /** 7.7 Journey is live: the journey exists and has a link. Two next steps: add the first entry, or share the link. */
 export default function JourneyLive() {
@@ -45,22 +41,22 @@ export default function JourneyLive() {
       />
       <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: layout.rowGutter }}>
         <View style={{ paddingTop: 8, marginLeft: -4 }}>
-          <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
+          <RoundButton tone="photo" label={words.common.close} onPress={leave} icon={(c) => <X size={20} color={c} />} />
         </View>
         {!j ? (
           journey.isError ? <PageProblem inset={false} tone="onPhoto" error={journey.error} onRetry={() => void journey.refetch()} retrying={journey.isFetching} /> : <Loading tone="onPhoto" offline={journey.isPaused} />
         ) : (
           <View style={{ gap: 12, paddingBottom: 12 }}>
-            <Pill tone="photo" frost="blur" label={`${j.labelStyle === 'day' ? 'Day 1' : 'Part 1'} · ${visibility(j.visibility).label}`} />
+            <Pill tone="photo" frost="blur" label={words.common.join([words.journey.live.firstLabel(j.labelStyle === 'day'), visibility(j.visibility).label])} />
             <Txt variant="displayLarge" accessibilityRole="header" style={{ color: darkTheme.colors.onPhoto }}>
-              {j.title} {WHO[j.visibility].title}
+              {words.journey.live.title[j.visibility](j.title)}
             </Txt>
-            <Txt variant="lead" style={{ color: darkTheme.colors.onPhoto, opacity: 0.84, marginBottom: 8 }}>{WHO[j.visibility].note}</Txt>
-            <Button label="Add your first entry" size="lg" block icon={(c) => <Camera size={19} color={c} strokeWidth={2.4} />} onPress={() => router.replace(`/journey/${id}/add`)} />
+            <Txt variant="lead" style={{ color: darkTheme.colors.onPhoto, opacity: 0.84, marginBottom: 8 }}>{words.journey.live.note[j.visibility]}</Txt>
+            <Button label={words.journey.live.addFirst} size="lg" block icon={(c) => <Camera size={19} color={c} strokeWidth={2.4} />} onPress={() => router.replace(`/journey/${id}/add`)} />
             {j.shareUrl ? (
-              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => setSharing(true)} />
+              <Button label={words.journey.live.shareLink} size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => setSharing(true)} />
             ) : (
-              <Button label="Maybe later" size="lg" variant="glass" block onPress={leave} />
+              <Button label={words.journey.live.later} size="lg" variant="glass" block onPress={leave} />
             )}
           </View>
         )}

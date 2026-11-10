@@ -5,6 +5,7 @@ import { ApiError } from '@/api/fetcher';
 import { useAcceptInviteLink, useGetLinkInvitation } from '@/api/generated/journey';
 import { InvitationView } from '@/features/journeys/InvitationView';
 import { useLeave } from '@/features/navigation/useLeave';
+import { words } from '@/words';
 
 /**
  * 8.2 Invitation, reached by an invite link: a friend who wasn't on Journey yet got a one-time link,
@@ -35,7 +36,7 @@ export default function LinkInvitation() {
       loadError={invitation.isError && !gone ? invitation.error : undefined}
       onRetry={() => void invitation.refetch()}
       retrying={invitation.isRefetching}
-      gone="This invitation link has been used or has run out. Ask your friend for a new one."
+      gone={words.shared.invitation.linkGone}
       failed={accept.error}
       onJoin={() => accept.mutate({ token })}
       joining={accept.isPending}

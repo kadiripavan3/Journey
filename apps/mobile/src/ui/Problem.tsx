@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { darkTheme, layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Button } from './Button';
 import { Emoji } from './Emoji';
@@ -34,12 +35,12 @@ export function Problem({ message, onRetry, retrying, onHome, title, tone = 'pag
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 }}>
         <Txt variant="titleSmall" accessibilityRole="header" center style={{ color: colors.text }}>
-          {title ?? "That didn't load"}
+          {title ?? words.states.problem.title}
         </Txt>
         <Txt variant="bodySmall" center style={{ color: colors.muted }}>
           {message}
         </Txt>
-        {onRetry ? <Button label="Try again" variant={onPhoto ? 'glass' : 'line'} loading={retrying} onPress={onRetry} style={{ alignSelf: 'center', marginTop: 6 }} /> : null}
+        {onRetry ? <Button label={words.common.tryAgain} variant={onPhoto ? 'glass' : 'line'} loading={retrying} onPress={onRetry} style={{ alignSelf: 'center', marginTop: 6 }} /> : null}
       </View>
     );
   }
@@ -51,15 +52,15 @@ export function Problem({ message, onRetry, retrying, onHome, title, tone = 'pag
           <Emoji char="🧭" size={64} />
         </View>
         <Txt variant="titleSmall" accessibilityRole="header" center style={{ color: colors.text }}>
-          {title ?? 'We lost the trail'}
+          {title ?? words.states.problem.pageTitle}
         </Txt>
         <Txt variant="bodySmall" center style={{ color: colors.muted }}>
           {message}
         </Txt>
       </View>
       <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingBottom: 20 }}>
-        {onRetry ? <Button label="Try again" size="lg" block loading={retrying} icon={(c) => <RefreshCw size={18} color={c} />} onPress={onRetry} /> : null}
-        <Button label="Go to Home" size="lg" block variant={onPhoto ? 'glass' : 'line'} onPress={onHome} />
+        {onRetry ? <Button label={words.common.tryAgain} size="lg" block loading={retrying} icon={(c) => <RefreshCw size={18} color={c} />} onPress={onRetry} /> : null}
+        <Button label={words.common.goHome} size="lg" block variant={onPhoto ? 'glass' : 'line'} onPress={onHome} />
       </View>
     </View>
   );

@@ -13,6 +13,7 @@ import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const MINIMUM = 3;
 
@@ -47,7 +48,7 @@ export default function Interests() {
             </Txt>
           ) : null}
           <Button
-            label={enough ? `Continue · ${picked.length} picked` : `Pick ${MINIMUM - picked.length} more`}
+            label={enough ? words.onboarding.interests.continuePicked(picked.length) : words.onboarding.interests.pickMore(MINIMUM - picked.length)}
             size="lg"
             block
             disabled={!enough || !profile}
@@ -57,8 +58,8 @@ export default function Interests() {
           />
         </>
       }>
-      <Heading style={{ marginTop: 6 }}>What are you into?</Heading>
-      <Lead>Pick at least three. We&apos;ll suggest journeys to match.</Lead>
+      <Heading style={{ marginTop: 6 }}>{words.onboarding.interests.title}</Heading>
+      <Lead>{words.onboarding.interests.body}</Lead>
       {catalog.isPending ? (
         <View style={{ height: 200 }}>
           <Loading />

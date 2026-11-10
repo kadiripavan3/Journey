@@ -8,13 +8,13 @@ import { useOnboarding } from '@/auth/onboarding';
 import { track } from '@/features/analytics/analytics';
 import { TemplateCard } from '@/features/journeys/TemplateCard';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
 import { radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Emoji } from '@/ui/Emoji';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 2.5 All set: sign-up ends by offering the most important thing, starting a journey, without forcing it. */
 export default function Ready() {
@@ -34,23 +34,21 @@ export default function Ready() {
   };
 
   return (
-    <Screen footer={<Button label="Maybe later, take me Home" size="lg" variant="line" block onPress={() => leave()} />}>
+    <Screen footer={<Button label={words.onboarding.ready.later} size="lg" variant="line" block onPress={() => leave()} />}>
       <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 12 }}>
         <View style={{ width: 140, height: 140, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft }}>
           <Emoji char="🎉" size={78} />
         </View>
       </View>
-      <Heading center>{first ? `You're all set, ${first}` : "You're all set"}</Heading>
-      <Lead center>
-        {count > 0 ? `Your Home already has ${plural(count, 'journey')} to follow. Want to start your own?` : 'Want to start a journey of your own?'}
-      </Lead>
+      <Heading center>{words.onboarding.ready.title(first)}</Heading>
+      <Lead center>{words.onboarding.ready.body(count)}</Lead>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 24, marginHorizontal: -4 }}>
-        <TemplateCard emoji="🧳" name="A trip" description="Day by day, with a map of where you've been" onPress={() => leave('/new?template=trip')} />
-        <TemplateCard emoji="🔥" name="A 30-day challenge" description="A check-in a day, with people cheering" onPress={() => leave('/new?template=challenge30')} />
+        <TemplateCard emoji="🧳" name={words.onboarding.ready.trip.name} description={words.onboarding.ready.trip.description} onPress={() => leave('/new?template=trip')} />
+        <TemplateCard emoji="🔥" name={words.onboarding.ready.challenge.name} description={words.onboarding.ready.challenge.description} onPress={() => leave('/new?template=challenge30')} />
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Something else: learn a skill, build something, keep a journal"
+        accessibilityLabel={words.onboarding.ready.somethingElse}
         onPress={() => leave('/new')}
         style={({ pressed }) => ({
           flexDirection: 'row',
@@ -65,7 +63,7 @@ export default function Ready() {
           opacity: pressed ? 0.8 : 1,
         })}>
         <Txt variant="callout" weight={700} style={{ flex: 1 }}>
-          Something else: learn a skill, build something, keep a journal
+          {words.onboarding.ready.somethingElse}
         </Txt>
         <ChevronRight size={18} color={colors.muted} />
       </Pressable>

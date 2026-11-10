@@ -1,3 +1,5 @@
+import { words } from '@/words';
+
 import { ApiError } from './fetcher';
 
 /** Where a file goes, as the API hands it out. */
@@ -12,7 +14,7 @@ export async function sendFile(uri: string, target: Target, onProgress?: (fracti
   try {
     body = await (await fetch(uri)).blob();
   } catch {
-    throw new ApiError(400, 'file_gone', 'A photo or clip of this entry is no longer on your phone. Open the entry, take it out and add it again.');
+    throw new ApiError(400, 'file_gone', words.media.uploads.fileGone);
   }
   return new Promise((resolve) => {
     const request = new XMLHttpRequest();

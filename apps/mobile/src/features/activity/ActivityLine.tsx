@@ -26,19 +26,6 @@ export function ActivityLine({ item, fresh }: { item: ActivityItemResponse; fres
   const told = tell(item, bold);
   if (!first || !told) return null;
 
-  const who =
-    item.actorCount <= 1 || !second ? (
-      bold(first.displayName)
-    ) : item.actorCount === 2 ? (
-      <>
-        {bold(first.displayName)} and {bold(second.displayName)}
-      </>
-    ) : (
-      <>
-        {bold(`${first.displayName}, ${second.displayName}`)} and {item.actorCount - 2} {item.actorCount === 3 ? 'other' : 'others'}
-      </>
-    );
-
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 11, paddingHorizontal: layout.rowGutter, backgroundColor: fresh ? colors.accentSoft : 'transparent' }}>
       <Tap accessibilityRole="button" scaleTo={0.985} onPress={() => router.push(hrefFor(told.path))} style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
@@ -56,8 +43,7 @@ export function ActivityLine({ item, fresh }: { item: ActivityItemResponse; fres
         )}
         <View style={{ flex: 1 }}>
           <Txt variant="callout" numberOfLines={4}>
-            {who}
-            {told.what}
+            {told.says}
           </Txt>
           <Txt variant="footnote" color="muted" style={{ marginTop: 3 }}>
             {timeAgo(item.at)}

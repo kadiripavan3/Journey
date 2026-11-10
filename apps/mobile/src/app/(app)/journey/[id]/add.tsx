@@ -27,6 +27,8 @@ import { Sheet } from '@/ui/Sheet';
 import { Toggle } from '@/ui/Toggle';
 import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 /**
  * 7.2 New entry: photos and short clips in one strip, gentle prompts, the day and the place. Also used to
@@ -68,9 +70,9 @@ export default function Composer() {
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 60 }}>
           <EmptyState
             emoji="🧳"
-            title={`It starts on ${formatDayLong(j.startDate)}`}
-            body={c.isOwner ? 'You can add entries from that day on. Already on your way? Move the start date.' : 'You can add entries from that day on.'}
-            action={c.isOwner ? <Button label="Change the start date" variant="line" onPress={() => router.replace(`/journey/${id}/edit`)} /> : undefined}
+            title={words.composer.startsLater.title(formatDayLong(j.startDate))}
+            body={c.isOwner ? words.composer.startsLater.owner : words.composer.startsLater.member}
+            action={c.isOwner ? <Button label={words.composer.startsLater.changeStart} variant="line" onPress={() => router.replace(`/journey/${id}/edit`)} /> : undefined}
           />
         </View>
       </Gate>
@@ -82,21 +84,24 @@ export default function Composer() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <AvoidKeyboard style={{ flex: 1 }}>
         <View style={{ minHeight: 58, paddingHorizontal: layout.barGutter, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <RoundButton label="Close" onPress={c.close} icon={(color) => <X size={20} color={color} />} />
+          <RoundButton label={words.common.close} onPress={c.close} icon={(color) => <X size={20} color={color} />} />
           <Txt variant="subheading" accessibilityRole="header">
-            {editing ? 'Edit entry' : c.mode === 'draft' ? 'Draft' : 'New entry'}
+            {editing ? words.composer.heading.edit : c.mode === 'draft' ? words.composer.heading.draft : words.composer.heading.fresh}
           </Txt>
-          <Button label={editing ? 'Save' : 'Post'} inline size="sm" disabled={!c.hasContent} loading={c.busy} onPress={editing ? c.save : c.post} />
+          <Button label={editing ? words.common.save : words.composer.post} inline size="sm" disabled={!c.hasContent} loading={c.busy} onPress={editing ? c.save : c.post} />
         </View>
 
         <ScrollView contentContainerStyle={{ gap: 16, paddingTop: 8, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, marginHorizontal: layout.barGutter, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: radius.cardLarge, backgroundColor: colors.fill }}>
             <Photo uri={j.coverThumbUrl} radius="thumb" style={{ width: 28, height: 28, backgroundColor: colors.fill2 }} />
             <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ maxWidth: 270 }}>
-              {editing ? 'In ' : 'Posting to '}
-              <Txt variant="caption" weight={700}>
-                {j.title}
-              </Txt>
+              {rich(editing ? words.composer.inJourney(j.title) : words.composer.postingTo(j.title), {
+                bold: (text) => (
+                  <Txt variant="caption" weight={700}>
+                    {text}
+                  </Txt>
+                ),
+              })}
             </Txt>
           </View>
 
@@ -116,10 +121,10 @@ export default function Composer() {
           <View style={{ marginHorizontal: layout.barGutter, gap: 6 }}>
             <TextInput
               maxFontSizeMultiplier={MAX_TEXT_SCALE}
-              accessibilityLabel="Title, optional"
+              accessibilityLabel={words.composer.title.spoken}
               value={c.title}
               onChangeText={c.setTitle}
-              placeholder="Title"
+              placeholder={words.composer.title.hint}
               placeholderTextColor={colors.muted}
               selectionColor={colors.accent}
               maxLength={80}
@@ -127,10 +132,10 @@ export default function Composer() {
             />
             <TextInput
               maxFontSizeMultiplier={MAX_TEXT_SCALE}
-              accessibilityLabel="What happened"
+              accessibilityLabel={words.composer.body.spoken}
               value={c.body}
               onChangeText={c.setBody}
-              placeholder="What happened?"
+              placeholder={words.composer.body.hint}
               placeholderTextColor={colors.muted}
               selectionColor={colors.accent}
               multiline
@@ -145,7 +150,7 @@ export default function Composer() {
                 <Tap
                   key={prompt}
                   accessibilityRole="button"
-                  accessibilityLabel={`Start with: ${prompt}`}
+                  accessibilityLabel={words.composer.startWith(prompt)}
                   hitSlop={{ top: 5, bottom: 5 }}
                   scaleTo={0.94}
                   onPress={() => c.setBody(`${prompt} `)}
@@ -163,9 +168,9 @@ export default function Composer() {
               <DayRow label={c.dayLabel} journeyStart={j.startDate} day={c.day} onChange={c.chooseDay} />
             </Row>
             <Row icon={<MapPin size={20} color={colors.accentText} />} divider>
-              <Tap accessibilityRole="button" accessibilityLabel={c.place ? `Place: ${c.place.name}. Change the place` : 'Add a place'} scaleTo={0.985} onPress={() => setPlacing(true)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}>
+              <Tap accessibilityRole="button" accessibilityLabel={c.place ? words.composer.place.spoken(c.place.name) : words.composer.place.add} scaleTo={0.985} onPress={() => setPlacing(true)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}>
                 <Txt variant="item" weight={600} numberOfLines={1} color={c.place ? 'text' : 'muted'} style={{ flex: 1 }}>
-                  {c.place ? c.place.name : 'Add a place'}
+                  {c.place ? c.place.name : words.composer.place.add}
                 </Txt>
                 <ChevronRight size={18} color={colors.muted} />
               </Tap>
@@ -173,16 +178,16 @@ export default function Composer() {
             {!c.place && c.suggested ? (
               <Tap
                 accessibilityRole="button"
-                accessibilityLabel={`Use ${c.suggested.name}, where the first photo was taken`}
+                accessibilityLabel={words.composer.place.useSpoken(c.suggested.name)}
                 hitSlop={{ top: 8, bottom: 8 }}
                 scaleTo={0.985}
                 onPress={() => c.suggested && c.setPlace({ name: c.suggested.name, lat: c.suggested.lat, lng: c.suggested.lng, exact: false })}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28, marginLeft: 48, marginRight: 16, marginBottom: 12 }}>
                 <Txt variant="footnote" color="muted" numberOfLines={1} style={{ flex: 1 }}>
-                  From your photo: {c.suggested.name}
+                  {words.composer.place.fromPhoto(c.suggested.name)}
                 </Txt>
                 <Txt variant="footnote" weight={800} style={{ color: colors.accentText }}>
-                  Use
+                  {words.composer.place.use}
                 </Txt>
               </Tap>
             ) : null}
@@ -190,26 +195,26 @@ export default function Composer() {
               <Row icon={<LocateFixed size={20} color={colors.text} />} divider>
                 <View style={{ flex: 1 }}>
                   <Txt variant="item" weight={600}>
-                    Show the exact spot
+                    {words.composer.place.exact}
                   </Txt>
                   <Txt variant="footnote" color="muted">
-                    {c.place.exact ? 'People see the exact point on the map.' : 'People see the area, not the exact point.'}
+                    {c.place.exact ? words.composer.place.exactOn : words.composer.place.exactOff}
                   </Txt>
                 </View>
-                <Toggle label="Show the exact spot" value={c.place.exact} onChange={(exact) => c.place && c.setPlace({ ...c.place, exact })} />
+                <Toggle label={words.composer.place.exact} value={c.place.exact} onChange={(exact) => c.place && c.setPlace({ ...c.place, exact })} />
               </Row>
             ) : null}
             <Row icon={<Star size={20} color={colors.text} />} divider>
               <Txt variant="item" weight={600} style={{ flex: 1 }}>
-                Mark as milestone
+                {words.composer.milestone}
               </Txt>
-              <Toggle label="Mark as milestone" value={c.milestone} onChange={c.setMilestone} />
+              <Toggle label={words.composer.milestone} value={c.milestone} onChange={c.setMilestone} />
             </Row>
           </Card>
 
           {!editing && !c.online ? (
             <NoteBox tone="warn" icon={(color) => <WifiOff size={18} color={color} />} style={{ marginHorizontal: layout.barGutter }}>
-              You&apos;re offline. Post it anyway: it&apos;s saved on this phone and goes up when you&apos;re back.
+              {words.composer.offline}
             </NoteBox>
           ) : null}
 
@@ -223,13 +228,13 @@ export default function Composer() {
 
       <PlaceSheet visible={placing} onClose={() => setPlacing(false)} value={c.place} onChange={c.setPlace} photoPoint={c.photoPoint} />
       {editing ? (
-        <ConfirmSheet visible={c.asking} onClose={c.keepWriting} title="Discard your changes?" body="The entry stays as it was." confirm="Discard changes" cancel="Keep editing" onConfirm={c.discard} />
+        <ConfirmSheet visible={c.asking} onClose={c.keepWriting} title={words.composer.discardChanges.title} body={words.composer.discardChanges.body} confirm={words.composer.discardChanges.confirm} cancel={words.composer.discardChanges.cancel} onConfirm={c.discard} />
       ) : (
-        <Sheet visible={c.asking} onClose={c.keepWriting} title={c.mode === 'draft' ? 'Keep this draft?' : 'Save this for later?'} subtitle="A draft stays on this phone until you post it. You'll find it under Drafts and uploads, on your profile.">
+        <Sheet visible={c.asking} onClose={c.keepWriting} title={c.mode === 'draft' ? words.composer.leave.titleDraft : words.composer.leave.title} subtitle={words.composer.leave.body}>
           <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-            <Button label={c.mode === 'draft' ? 'Save draft' : 'Save as a draft'} size="lg" block loading={c.busy} onPress={c.saveDraft} />
-            <Button label={c.mode === 'draft' ? 'Delete draft' : 'Discard'} variant="danger" size="lg" block onPress={c.discard} />
-            <Button label="Keep writing" variant="soft" size="lg" block onPress={c.keepWriting} />
+            <Button label={c.mode === 'draft' ? words.composer.leave.saveDraft : words.composer.leave.saveAsDraft} size="lg" block loading={c.busy} onPress={c.saveDraft} />
+            <Button label={c.mode === 'draft' ? words.drafts.delete : words.composer.leave.discard} variant="danger" size="lg" block onPress={c.discard} />
+            <Button label={words.composer.leave.keepWriting} variant="soft" size="lg" block onPress={c.keepWriting} />
           </View>
         </Sheet>
       )}
@@ -243,7 +248,7 @@ function Gate({ children, onClose }: { children: ReactNode; onClose: () => void 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
-        <RoundButton label="Close" onPress={onClose} icon={(color) => <X size={20} color={color} />} />
+        <RoundButton label={words.common.close} onPress={onClose} icon={(color) => <X size={20} color={color} />} />
       </View>
       {children}
     </SafeAreaView>
@@ -266,13 +271,13 @@ function DayRow({ label, journeyStart, day, onChange }: { label: string; journey
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Tap accessibilityRole="button" accessibilityLabel={`${label}. Change the day`} scaleTo={0.985} onPress={() => setOpen(true)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}>
+      <Tap accessibilityRole="button" accessibilityLabel={words.composer.day.spoken(label)} scaleTo={0.985} onPress={() => setOpen(true)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}>
         <Txt variant="item" weight={600} style={{ flex: 1 }}>
           {label}
         </Txt>
         <ChevronRight size={18} color={colors.muted} />
       </Tap>
-      <DayPicker visible={open} onClose={() => setOpen(false)} title="When did this happen?" value={day} onChange={onChange} min={journeyStart} max={today()} />
+      <DayPicker visible={open} onClose={() => setOpen(false)} title={words.composer.day.title} value={day} onChange={onChange} min={journeyStart} max={today()} />
     </>
   );
 }

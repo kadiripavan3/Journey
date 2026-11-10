@@ -4,6 +4,7 @@ import { useFollowJourney, useUnfollowJourney } from '@/api/generated/journey';
 import type { JourneyResponse } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { Button } from '@/ui/Button';
+import { words } from '@/words';
 
 type Props = { journey: JourneyResponse; size?: 'sm' | 'md'; onChanged?: (following: boolean) => void };
 
@@ -19,7 +20,7 @@ export function FollowButton({ journey, size = 'sm', onChanged }: Props) {
   if (journey.viewer.isOwner) return null;
   return following ? (
     <Button
-      label="Following"
+      label={words.common.following}
       inline
       size={size}
       variant="soft"
@@ -30,7 +31,7 @@ export function FollowButton({ journey, size = 'sm', onChanged }: Props) {
     />
   ) : (
     <Button
-      label="Follow"
+      label={words.common.follow}
       inline
       size={size}
       icon={size === 'md' ? (c) => <Plus size={18} color={c} strokeWidth={2.6} /> : undefined}

@@ -19,6 +19,7 @@ import { RoundButton } from '@/ui/RoundButton';
 import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /**
  * 4.4 Category: one category's journeys on a page of their own. A friendly header, then the journeys that are
@@ -48,10 +49,10 @@ export default function Category() {
         <View style={{ paddingTop: insets.top + 60, paddingBottom: 22, paddingHorizontal: layout.gutter, gap: 6, borderBottomLeftRadius: radius.sheet, borderBottomRightRadius: radius.sheet, backgroundColor: colors.accentSoft }}>
           {category ? <Emoji char={category.emoji} size={52} /> : null}
           <Txt variant="heading" accessibilityRole="header">
-            {category?.label ?? 'Journeys'}
+            {category?.label ?? words.discover.category.title}
           </Txt>
           <Txt variant="callout" color="muted">
-            Journeys that are going on now, and the ones that were just completed.
+            {words.discover.category.lead}
           </Txt>
         </View>
 
@@ -61,7 +62,7 @@ export default function Category() {
           load.offline ? <Loading offline /> : <RailSkeleton />
         ) : going.length === 0 && completed.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 40 }}>
-            <EmptyState emoji={category?.emoji ?? '🧭'} title={category ? `No ${category.label.toLowerCase()} journeys yet` : 'Nothing here yet'} body="Public journeys with a cover and three entries show up here. Yours could be the first." />
+            <EmptyState emoji={category?.emoji ?? '🧭'} title={category ? words.discover.none.inCategory(category.label) : words.discover.category.none} body={words.discover.none.body} />
           </View>
         ) : (
           <>
@@ -73,7 +74,7 @@ export default function Category() {
                       journey={journey}
                       size="grid"
                       progress={journey.targetDays ? Math.min(journey.latestNumber / journey.targetDays, 1) : undefined}
-                      detail={`${journey.targetDays ? `${journey.progressLabel} of ${journey.targetDays}` : journey.progressLabel}${journey.followerCount > 0 ? ` · ${audienceLabel(journey)}` : ''}`}
+                      detail={words.common.join([journey.targetDays ? words.journeys.progressOf(journey.progressLabel, journey.targetDays) : journey.progressLabel, journey.followerCount > 0 ? audienceLabel(journey) : null])}
                       onPress={() => open(journey)}
                     />
                   </View>
@@ -82,7 +83,7 @@ export default function Category() {
             ) : null}
             {completed.length > 0 ? (
               <>
-                <SectionHeader title="Recently completed" />
+                <SectionHeader title={words.discover.completed} />
                 <Rail>
                   {completed.map((journey) => (
                     <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => open(journey)} />
@@ -94,7 +95,7 @@ export default function Category() {
         )}
       </ScrollView>
       <View style={{ position: 'absolute', top: insets.top + 8, left: layout.barGutter }}>
-        <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        <RoundButton label={words.common.back} onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
       </View>
     </View>
   );

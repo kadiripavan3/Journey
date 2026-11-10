@@ -1,3 +1,8 @@
+/**
+ * How English counts. Other languages count differently (one, few, many…), so these stay inside this catalog:
+ * a screen asks for the whole sentence, `words.journey.quietDays(3)`, never for a plural.
+ */
+
 /** "1 entry", "3 entries". */
 export function plural(count: number, one: string, many: string = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;

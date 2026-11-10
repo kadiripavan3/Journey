@@ -6,6 +6,7 @@ import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = {
   coverUrl?: string | null;
@@ -43,7 +44,7 @@ export function JourneyRow({ coverUrl, title, detail, badge, trailing, onPress, 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, paddingHorizontal: layout.rowGutter }}>
       {onPress ? (
-        <Tap accessibilityRole="button" accessibilityLabel={`${title}. ${badge ? `${badge}. ` : ''}${detail}`} scaleTo={0.985} onPress={onPress} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Tap accessibilityRole="button" accessibilityLabel={words.journeys.rowSpoken(title, badge, detail)} scaleTo={0.985} onPress={onPress} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           {main}
         </Tap>
       ) : (

@@ -26,6 +26,7 @@ import { useTheme } from '@/theme';
 import { loadAppearance } from '@/theme/appearance';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 // A screen that breaks while drawing shows a friendly page with a way to try again.
 export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
@@ -91,13 +92,13 @@ function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', gap: 12, padding: 32, backgroundColor: theme.colors.bg }}>
         <Txt variant="title" center accessibilityRole="header">
-          {online ? "We can't reach Journey" : "You're offline"}
+          {online ? words.states.cantOpen.unreachable.title : words.states.offline.title}
         </Txt>
         <Txt color="muted" center>
-          {online ? "Check your connection and try again. You're still signed in." : "Journey opens as soon as you're back online. You're still signed in."}
+          {online ? words.states.cantOpen.unreachable.body : words.states.cantOpen.offline}
         </Txt>
-        <Button label="Try again" block loading={me.isRefetching} onPress={() => void me.refetch()} style={{ marginTop: 12 }} />
-        <Button label="Sign out" variant="quiet" block onPress={() => void session.signOut()} />
+        <Button label={words.common.tryAgain} block loading={me.isRefetching} onPress={() => void me.refetch()} style={{ marginTop: 12 }} />
+        <Button label={words.common.signOut} variant="quiet" block onPress={() => void session.signOut()} />
       </View>
     );
   }

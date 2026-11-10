@@ -6,7 +6,6 @@ import { messageFor } from '@/api/fetcher';
 import { useOutbox } from '@/features/drafts/outbox';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Loading } from '@/ui/Loading';
@@ -14,6 +13,7 @@ import { Photo } from '@/ui/Photo';
 import { Problem } from '@/ui/Problem';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 7.1 The + button: your journeys first, so today's entry is two taps away; a new journey is one row below. */
 export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -24,7 +24,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
   // Entries that are still on this phone: drafts, and ones on their way up.
   const waiting = useOutbox().drafts;
   const drafts = waiting.filter((draft) => draft.state === 'draft').length;
-  const waitingLine = [waiting.length - drafts > 0 ? `${plural(waiting.length - drafts, 'entry', 'entries')} waiting to upload` : null, drafts > 0 ? plural(drafts, 'draft') : null].filter(Boolean).join(' · ');
+  const waitingLine = words.common.join([waiting.length - drafts > 0 ? words.journeys.add.waitingToUpload(waiting.length - drafts) : null, drafts > 0 ? words.journeys.add.draftCount(drafts) : null]);
 
   const go = (href: Href) => {
     onClose();
@@ -32,7 +32,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title={open.length > 0 ? 'Add to a journey' : 'Start your first journey'}>
+    <Sheet visible={visible} onClose={onClose} title={open.length > 0 ? words.journeys.add.title : words.journeys.add.titleFirst}>
       {mine.isPending ? (
         <View style={{ height: 120 }}>
           <Loading offline={mine.isPaused} />
@@ -45,7 +45,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
         <>
           {open.length === 0 ? (
             <Txt variant="callout" color="muted" style={{ paddingHorizontal: layout.gutter, paddingBottom: 10 }}>
-              Every entry belongs to a journey: a trip, a challenge, anything with a story.
+              {words.journeys.add.lead}
             </Txt>
           ) : null}
           {open.map((journey, index) => (
@@ -58,12 +58,11 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
                   {journey.title}
                 </Txt>
                 <Txt variant="footnote" numberOfLines={1} color="muted">
-                  {journey.progressLabel}
-                  {journey.status === 'paused' ? ' · paused' : journey.lastEntryAt ? ` · last entry ${timeAgo(journey.lastEntryAt)}` : ''}
+                  {words.common.join([journey.progressLabel, journey.status === 'paused' ? words.journeys.add.paused : journey.lastEntryAt ? words.journeys.add.lastEntry(timeAgo(journey.lastEntryAt)) : null])}
                 </Txt>
               </View>
               <Button
-                label="Entry"
+                label={words.journeys.addEntry}
                 inline
                 size="sm"
                 variant={index === 0 ? 'primary' : 'soft'}
@@ -75,15 +74,15 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
           <SheetRow
             first
             icon={(c) => <Route size={22} color={c} />}
-            label="Start a new journey"
-            note="A trip, a challenge, anything with a story"
+            label={words.journeys.add.startNew}
+            note={words.journeys.add.startNewNote}
             trailing={<ChevronRight size={18} color={colors.muted} />}
             onPress={() => go('/new')}
           />
           {waiting.length > 0 ? (
             <SheetRow
               icon={(c) => <CloudUpload size={22} color={c} />}
-              label="Drafts and uploads"
+              label={words.drafts.title}
               note={waitingLine}
               trailing={<ChevronRight size={18} color={colors.muted} />}
               onPress={() => go('/uploads')}

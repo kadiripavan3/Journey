@@ -23,6 +23,8 @@ import { Field } from '@/ui/Field';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 /** What the API says when it is the username it won't take. Anything else it refuses is not about the username. */
 const USERNAME_REFUSED = ['username_taken', 'invalid_username'];
@@ -96,7 +98,7 @@ export default function CreateProfile() {
             </Txt>
           ) : null}
           <Button
-            label="Continue"
+            label={words.common.continue}
             size="lg"
             block
             disabled={!canContinue}
@@ -107,11 +109,11 @@ export default function CreateProfile() {
               save.mutate();
             }}
           />
-          <Button label="Use a different email" variant="quiet" block onPress={() => void session.signOut()} />
+          <Button label={words.onboarding.profile.differentEmail} variant="quiet" block onPress={() => void session.signOut()} />
         </>
       }>
-      <Heading style={{ marginTop: 6 }}>Create your profile</Heading>
-      <Lead>This is how people see you when you share a journey.</Lead>
+      <Heading style={{ marginTop: 6 }}>{words.onboarding.profile.title}</Heading>
+      <Lead>{words.onboarding.profile.body}</Lead>
 
       <View style={{ marginTop: 22, marginBottom: 20 }}>
         <ProfilePhoto
@@ -127,7 +129,7 @@ export default function CreateProfile() {
 
       <View style={{ gap: 12 }}>
         <Field
-          label="Name"
+          label={words.profile.name}
           value={displayName}
           onChangeText={setDisplayName}
           autoComplete="name"
@@ -138,7 +140,7 @@ export default function CreateProfile() {
           error={failed?.fields.displayName}
         />
         <Field
-          label="Username"
+          label={words.profile.username.label}
           prefix="@"
           value={rawUsername}
           onChangeText={(text) => setRawUsername(text.replace(/\s/g, '').toLowerCase())}
@@ -148,29 +150,32 @@ export default function CreateProfile() {
           maxLength={21}
           returnKeyType="next"
           error={usernameError}
-          note={checked?.available ? `${username} is available` : null}
+          note={checked?.available ? words.profile.username.available(username) : null}
           noteTone="ok"
           accessory={checked?.available && !usernameError ? <Check size={18} color={colors.ok} strokeWidth={2.6} /> : null}
         />
-        <Field label="Bio · optional" value={bio} onChangeText={setBio} multiline maxLength={150} error={failed?.fields.bio} />
+        <Field label={words.onboarding.profile.bio} value={bio} onChangeText={setBio} multiline maxLength={150} error={failed?.fields.bio} />
       </View>
       {existing ? null : (
         <CheckRow
-          label="I'm 13 or older"
+          label={words.onboarding.profile.oldEnough}
           checked={oldEnough}
           onChange={setOldEnough}
           style={{ marginTop: 18 }}
           note={
             <Txt variant="footnote" color="muted">
-              By continuing you agree to the{' '}
-              <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ color: colors.accentText }}>
-                terms
-              </Txt>{' '}
-              and the{' '}
-              <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ color: colors.accentText }}>
-                privacy policy
-              </Txt>
-              .
+              {rich(words.onboarding.profile.agree, {
+                terms: (text) => (
+                  <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ color: colors.accentText }}>
+                    {text}
+                  </Txt>
+                ),
+                privacy: (text) => (
+                  <Txt variant="footnote" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ color: colors.accentText }}>
+                    {text}
+                  </Txt>
+                ),
+              })}
             </Txt>
           }
         />

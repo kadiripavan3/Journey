@@ -6,6 +6,7 @@ import { track } from '@/features/analytics/analytics';
 import { layout } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet } from '@/ui/Sheet';
+import { words } from '@/words';
 
 import { askedAboutPush, shouldAskAboutPush, turnOnPush } from './device';
 import { pushSupport } from './support';
@@ -72,11 +73,11 @@ export function AskAboutNotifications() {
     <Sheet
       visible={visible}
       onClose={notNow}
-      title="Know when there's a new chapter"
-      subtitle="New entries from the journeys you follow, and likes and comments on yours. Grouped so you're never flooded; turn off any type whenever you like.">
+      title={words.notifications.ask.title}
+      subtitle={words.notifications.ask.bodyInApp}>
       <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-        <Button label="Turn on notifications" size="lg" block loading={asking} onPress={() => void turnOn()} />
-        <Button label="Not now" variant="soft" size="lg" block disabled={asking} onPress={notNow} />
+        <Button label={words.notifications.ask.turnOn} size="lg" block loading={asking} onPress={() => void turnOn()} />
+        <Button label={words.common.notNow} variant="soft" size="lg" block disabled={asking} onPress={notNow} />
       </View>
     </Sheet>
   );

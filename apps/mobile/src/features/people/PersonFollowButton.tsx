@@ -3,6 +3,7 @@ import { Check } from 'lucide-react-native';
 import { useFollowProfile, useUnfollowProfile } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { Button } from '@/ui/Button';
+import { words } from '@/words';
 
 type Props = {
   username: string;
@@ -26,7 +27,7 @@ export function PersonFollowButton({ username, isFollowing, followsYou, size = '
 
   return following ? (
     <Button
-      label="Following"
+      label={words.common.following}
       inline={!block}
       block={block}
       size={size}
@@ -38,7 +39,7 @@ export function PersonFollowButton({ username, isFollowing, followsYou, size = '
     />
   ) : (
     <Button
-      label={followsYou ? 'Follow back' : name ? `Follow ${name}` : 'Follow'}
+      label={followsYou ? words.people.followBack : name ? words.people.followName(name) : words.common.follow}
       inline={!block}
       block={block}
       size={size}

@@ -17,6 +17,7 @@ import { FieldButton } from '@/ui/Field';
 import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
+import { words } from '@/words';
 
 /** Change a journey's details after it has started: the same form as when it was made, and who can see it. */
 export default function EditJourney() {
@@ -67,9 +68,9 @@ export default function EditJourney() {
     <Screen
       header={
         <AppBar
-          title="Edit journey"
-          left={<BarLink label="Cancel" quiet onPress={leave} />}
-          trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!filled || saving || details.title.trim().length === 0} onPress={() => void save()} />}
+          title={words.journey.edit.title}
+          left={<BarLink label={words.common.cancel} quiet onPress={leave} />}
+          trailing={<BarLink label={saving ? words.common.saving : words.common.save} disabled={!filled || saving || details.title.trim().length === 0} onPress={() => void save()} />}
         />
       }>
       {journey.isPending ? (
@@ -89,13 +90,13 @@ export default function EditJourney() {
             coverUri={cover?.uri ?? j?.coverUrl}
             onCover={setCover}
             problem={failure ? messageFor(failure) : null}
-            dayTitle="When did it start?"
+            dayTitle={words.journey.edit.dayTitle}
           >
-            <FieldButton label="Who can see it" value={visibilityWords(visibility).label} onPress={() => setChoosing(true)} />
+            <FieldButton label={words.journey.edit.whoCanSee} value={visibilityWords(visibility).label} onPress={() => setChoosing(true)} />
           </DetailsForm>
         </>
       )}
-      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title="Who can see it?" value={visibility} onChange={setVisibility} />
+      <VisibilitySheet visible={choosing} onClose={() => setChoosing(false)} title={words.journeys.whoCanSee} value={visibility} onChange={setVisibility} />
     </Screen>
   );
 }

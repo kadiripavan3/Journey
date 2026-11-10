@@ -15,6 +15,7 @@ import { Loading } from '@/ui/Loading';
 import { Row, RowGroup, ToggleRow } from '@/ui/Rows';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 10.2 Notification settings: every type has its own switch, and reminders arrive at the hour you choose. */
 export default function NotificationSettings() {
@@ -25,7 +26,7 @@ export default function NotificationSettings() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Notifications" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.notificationsPage.title} trailing={<View style={{ width: 40 }} />} />
       {!s ? (
         settings.isError ? <PageProblem error={settings.error} onRetry={() => void settings.refetch()} retrying={settings.isFetching} /> : <Loading offline={settings.isPaused} />
       ) : (
@@ -35,26 +36,26 @@ export default function NotificationSettings() {
               {messageFor(save.error)}
             </Txt>
           ) : null}
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Tell me about</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.notificationsPage.tellMeAbout}</GroupLabel>
           <RowGroup>
-            <ToggleRow first label="New entries" note="Grouped per journey" value={s.notifyNewEntries} onChange={(v) => change({ notifyNewEntries: v })} />
-            <ToggleRow label="Finished journeys" note="With the recap" value={s.notifyCompleted} onChange={(v) => change({ notifyCompleted: v })} />
-            <ToggleRow label="Comments and replies" value={s.notifyComments} onChange={(v) => change({ notifyComments: v })} />
-            <ToggleRow label="Followers and invitations" value={s.notifyFollowers} onChange={(v) => change({ notifyFollowers: v })} />
-            <ToggleRow label="Likes" note="In one batch, at most once an hour" value={s.notifyLikes} onChange={(v) => change({ notifyLikes: v })} />
+            <ToggleRow first label={words.settings.notificationsPage.newEntries.label} note={words.settings.notificationsPage.newEntries.note} value={s.notifyNewEntries} onChange={(v) => change({ notifyNewEntries: v })} />
+            <ToggleRow label={words.settings.notificationsPage.completed.label} note={words.settings.notificationsPage.completed.note} value={s.notifyCompleted} onChange={(v) => change({ notifyCompleted: v })} />
+            <ToggleRow label={words.settings.notificationsPage.comments} value={s.notifyComments} onChange={(v) => change({ notifyComments: v })} />
+            <ToggleRow label={words.settings.notificationsPage.followers} value={s.notifyFollowers} onChange={(v) => change({ notifyFollowers: v })} />
+            <ToggleRow label={words.settings.notificationsPage.likes.label} note={words.settings.notificationsPage.likes.note} value={s.notifyLikes} onChange={(v) => change({ notifyLikes: v })} />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Once a week</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.notificationsPage.onceAWeek}</GroupLabel>
           <RowGroup>
-            <ToggleRow first label="Weekly digest" note="On Sundays, in one message" value={s.weeklyDigest} onChange={(v) => change({ weeklyDigest: v })} />
-            <ToggleRow label="Also send it by email" value={s.digestEmail} onChange={(v) => change({ digestEmail: v })} />
+            <ToggleRow first label={words.settings.notificationsPage.digest.label} note={words.settings.notificationsPage.digest.note} value={s.weeklyDigest} onChange={(v) => change({ weeklyDigest: v })} />
+            <ToggleRow label={words.settings.notificationsPage.digestEmail} value={s.digestEmail} onChange={(v) => change({ digestEmail: v })} />
           </RowGroup>
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Reminders</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.settings.notificationsPage.reminders}</GroupLabel>
           <RowGroup>
-            <ToggleRow first label="Gentle reminders" note="To add an entry. At most one a day." value={s.reminders} onChange={(v) => change({ reminders: v })} />
-            <Row label="Challenge check-in time" value={hourLabel(s.reminderHour)} onPress={() => setChoosingHour(true)} />
+            <ToggleRow first label={words.settings.notificationsPage.gentle.label} note={words.settings.notificationsPage.gentle.note} value={s.reminders} onChange={(v) => change({ reminders: v })} />
+            <Row label={words.settings.notificationsPage.checkInTime} value={hourLabel(s.reminderHour)} onPress={() => setChoosingHour(true)} />
           </RowGroup>
           <ThisPhone />
-          <Sheet visible={choosingHour} onClose={() => setChoosingHour(false)} title="Challenge check-in time" subtitle="Reminders arrive around this time of your day, at most one a day." tall>
+          <Sheet visible={choosingHour} onClose={() => setChoosingHour(false)} title={words.settings.notificationsPage.checkInTime} subtitle={words.settings.notificationsPage.checkInTimeNote} tall>
             {HOURS.map((hour, index) => (
               <SheetRow
                 key={hour}

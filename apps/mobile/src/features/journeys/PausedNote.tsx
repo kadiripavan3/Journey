@@ -6,6 +6,7 @@ import type { JourneyResponse } from '@/api/generated/journey';
 import { firstName } from '@/lib/names';
 import { Button } from '@/ui/Button';
 import { NoteBox } from '@/ui/NoteBox';
+import { words } from '@/words';
 
 /**
  * On a paused journey's page: why it is quiet, in kind words. A journey pauses by itself after 30 days
@@ -19,14 +20,14 @@ export function PausedNote({ journey }: { journey: JourneyResponse }) {
 
   return (
     <View style={{ alignSelf: 'stretch', marginTop: 18, gap: 12 }}>
-      <NoteBox tone="warn" icon={(c) => <Pause size={20} color={c} />} title={journey.pausedAutomatically ? 'Paused after 30 quiet days' : 'This journey is paused'}>
-        {writes ? "Followers can still read it. Add an entry whenever you're ready and it picks up again." : `You can still read it. You'll hear when ${owner} picks it up again.`}
+      <NoteBox tone="warn" icon={(c) => <Pause size={20} color={c} />} title={journey.pausedAutomatically ? words.journeys.paused.titleAutomatic : words.journeys.paused.title}>
+        {writes ? words.journeys.paused.writer : words.journeys.paused.reader(owner)}
       </NoteBox>
       {writes ? (
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button label="Add an entry" icon={(c) => <Plus size={18} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${journey.id}/add`)} style={{ flex: 1, paddingHorizontal: 10 }} />
+          <Button label={words.journeys.paused.addEntry} icon={(c) => <Plus size={18} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${journey.id}/add`)} style={{ flex: 1, paddingHorizontal: 10 }} />
           {journey.viewer.isOwner ? (
-            <Button label="Complete it" variant="line" icon={(c) => <Check size={18} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${journey.id}/complete`)} style={{ flex: 1, paddingHorizontal: 10 }} />
+            <Button label={words.journeys.paused.complete} variant="line" icon={(c) => <Check size={18} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${journey.id}/complete`)} style={{ flex: 1, paddingHorizontal: 10 }} />
           ) : null}
         </View>
       ) : null}

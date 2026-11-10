@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react-native';
 
 import { layout, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Txt } from './Txt';
 import { Tap } from './Motion';
@@ -11,7 +12,7 @@ export function SectionHeader({ title, onPress }: { title: string; onPress?: () 
   return (
     <Tap
       accessibilityRole={onPress ? 'button' : 'header'}
-      accessibilityLabel={onPress ? `${title}. See all` : title}
+      accessibilityLabel={onPress ? words.common.seeAll(title) : title}
       disabled={!onPress}
       onPress={onPress}
       style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: layout.section, marginBottom: 12, paddingHorizontal: layout.rowGutter }}>

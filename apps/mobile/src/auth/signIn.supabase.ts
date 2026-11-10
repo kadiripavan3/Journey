@@ -7,6 +7,7 @@ import { ApiError, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
 import { rememberAppleSignIn } from '@/api/generated/journey';
 
 import { keep } from '@/lib/keep';
+import { words } from '@/words';
 
 import type { SignInService, SignInWay } from './signIn';
 import { sessionStore } from './storage';
@@ -58,7 +59,7 @@ export function supabaseSignIn(): SignInService {
 
   let made: GoTrueClient | null = null;
   const client = () => {
-    if (!url || !key) throw new ApiError(0, 'not_connected', "Sign-in isn't set up in this build yet.");
+    if (!url || !key) throw new ApiError(0, 'not_connected', words.signIn.problems.notSetUp);
     if (!made) {
       made = new AuthClient({
         url: `${url}/auth/v1`,
@@ -83,7 +84,7 @@ export function supabaseSignIn(): SignInService {
 
   const signedIn = async (result: { data: { session: Session | null }; error: AuthError | null }, way: SignInWay) => {
     if (result.error) throw problem(result.error);
-    if (!result.data.session) throw new ApiError(0, 'sign_in_failed', "That didn't sign you in. Try again.");
+    if (!result.data.session) throw new ApiError(0, 'sign_in_failed', words.signIn.problems.failed);
     await keep.set(WAY_KEY, way);
   };
 
@@ -106,9 +107,9 @@ export function supabaseSignIn(): SignInService {
       name = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
     } catch (error) {
       if (isCode(error, 'ERR_REQUEST_CANCELED')) throw new ApiError(0, 'cancelled', '');
-      throw new ApiError(0, 'sign_in_failed', "Apple didn't sign you in. Try again, or use your email.");
+      throw new ApiError(0, 'sign_in_failed', words.signIn.problems.appleFailed);
     }
-    if (!token) throw new ApiError(0, 'sign_in_failed', "Apple didn't sign you in. Try again, or use your email.");
+    if (!token) throw new ApiError(0, 'sign_in_failed', words.signIn.problems.appleFailed);
     // Apple hands the name over this once and never again. It is offered on "Create your profile" instead
     // of being asked for a second time, and kept with the sign-in (where Google's goes by itself) for the
     // case that the profile is made later, or on another phone.
@@ -136,7 +137,7 @@ export function supabaseSignIn(): SignInService {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       google = require('@react-native-google-signin/google-signin') as GoogleModule;
     } catch {
-      throw new ApiError(0, 'not_connected', 'Google sign-in needs the installed app. Use your email for now.');
+      throw new ApiError(0, 'not_connected', words.signIn.problems.googleNeedsApp);
     }
     let token: string | null | undefined;
     try {
@@ -147,9 +148,9 @@ export function supabaseSignIn(): SignInService {
       token = answer.data?.idToken;
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(0, 'sign_in_failed', "Google didn't sign you in. Try again, or use your email.");
+      throw new ApiError(0, 'sign_in_failed', words.signIn.problems.googleFailed);
     }
-    if (!token) throw new ApiError(0, 'sign_in_failed', "Google didn't sign you in. Try again, or use your email.");
+    if (!token) throw new ApiError(0, 'sign_in_failed', words.signIn.problems.googleFailed);
     await signedIn(await client().signInWithIdToken({ provider: 'google', token }), 'google');
   };
 
@@ -237,18 +238,18 @@ export function supabaseSignIn(): SignInService {
 function problem(error: AuthError): ApiError {
   const code = error.code ?? '';
   if (code === 'otp_expired' || code === 'invalid_credentials' || error.status === 403 || error.status === 401) {
-    return new ApiError(error.status ?? 401, 'wrong_code', "That code isn't right, or it has run out. Check it or ask for a new one.");
+    return new ApiError(error.status ?? 401, 'wrong_code', words.signIn.problems.wrongCode);
   }
   if (error.status === 429 || code.includes('rate_limit')) {
-    return new ApiError(429, 'slow_down', "That's a lot of codes. Wait a minute and try again.");
+    return new ApiError(429, 'slow_down', words.signIn.problems.tooManyCodes);
   }
   if (code === 'validation_failed' || code === 'email_address_invalid') {
-    return new ApiError(400, 'invalid_email', "That email doesn't look right.");
+    return new ApiError(400, 'invalid_email', words.signIn.problems.badEmail);
   }
   if (!error.status) {
-    return new ApiError(0, 'unreachable', "Can't reach Journey right now. Check your connection and try again.");
+    return new ApiError(0, 'unreachable', words.states.unreachable);
   }
-  return new ApiError(error.status, 'sign_in_failed', "That didn't work. Try again in a moment.");
+  return new ApiError(error.status, 'sign_in_failed', words.signIn.problems.didntWork);
 }
 
 function isCode(error: unknown, code: string): boolean {

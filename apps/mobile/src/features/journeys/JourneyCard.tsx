@@ -9,6 +9,7 @@ import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = {
   journey: JourneyResponse;
@@ -30,21 +31,21 @@ type Props = {
 /** A journey as a photo card: cover, title, and where it has got to. A journey that friends write together says "Shared", next to any other label. */
 export function JourneyCard({ journey, onPress, size = 'lg', pill, pillEmoji, detail, footnote, progress }: Props) {
   const side = size === 'lg' ? 232 : size === 'sm' ? 158 : undefined;
-  const label = pill ?? (journey.status === 'completed' ? 'Completed' : journey.status === 'paused' ? 'Paused' : null);
+  const label = pill ?? (journey.status === 'completed' ? words.journeys.status.completed : journey.status === 'paused' ? words.journeys.status.paused : null);
   const shared = journey.authors.length > 1;
-  const line = detail ?? `${journey.progressLabel} · ${journey.owner.displayName}`;
+  const line = detail ?? words.common.join([journey.progressLabel, journey.owner.displayName]);
   const second = size === 'lg' ? (footnote ?? followersLabel(journey.followerCount)) : null;
   return (
     <Tap
       accessibilityRole="button"
-      accessibilityLabel={`${journey.title}. ${line}.${label ? ` ${label}.` : ''}${shared ? ' Shared.' : ''}`}
+      accessibilityLabel={words.journeys.card.spoken(journey.title, line, label, shared)}
       onPress={onPress}
       style={{ width: side, flex: side ? undefined : 1, gap: 2 }}>
       <Photo uri={journey.coverThumbUrl} style={{ height: side ?? 172, marginBottom: 8 }}>
         {label || shared ? (
           <View style={{ position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {label ? <Pill label={label} icon={pill && pillEmoji ? () => <Emoji char={pillEmoji} size={14} /> : undefined} /> : null}
-            {shared ? <Pill label="Shared" icon={(c) => <Users size={13} color={c} />} /> : null}
+            {shared ? <Pill label={words.journeys.card.shared} icon={(c) => <Users size={13} color={c} />} /> : null}
           </View>
         ) : null}
       </Photo>

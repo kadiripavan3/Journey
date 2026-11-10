@@ -14,7 +14,6 @@ import type { StoryRow } from '@/features/story/rows';
 import { useStory } from '@/features/story/useStory';
 import { formatDay } from '@/lib/dates';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -26,6 +25,7 @@ import { Rise } from '@/ui/Motion';
 import { RoundButton } from '@/ui/RoundButton';
 import { CardSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /**
  * 5.2 Story line: the journey in the order things happened, grouped by day, with quiet days and what's new
@@ -52,7 +52,7 @@ export default function Timeline() {
         <View style={{ paddingHorizontal: layout.barGutter }}>
           {line()}
           <Txt variant="footnote" color="muted" italic style={{ marginLeft: 34, marginBottom: 12 }}>
-            {plural(item.days, 'quiet day')}
+            {words.story.quietDays(item.days)}
           </Txt>
         </View>
       );
@@ -64,7 +64,7 @@ export default function Timeline() {
           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginBottom: 14, paddingVertical: 7, paddingHorizontal: 12, borderRadius: radius.field, backgroundColor: colors.accent }}>
             <ArrowDown size={15} color={colors.onAccent} strokeWidth={2.6} />
             <Txt variant="caption" weight={800} style={{ color: colors.onAccent }}>
-              {item.count} new since your last visit
+              {words.story.newSinceVisit(item.count)}
             </Txt>
           </View>
         </View>
@@ -95,12 +95,12 @@ export default function Timeline() {
       <View style={{ borderBottomWidth: 1, borderBottomColor: colors.line }}>
         <AppBar
           title={j?.title ?? ''}
-          subtitle={j ? `${j.authors.length > 1 ? `${j.owner.displayName} and ${plural(j.authors.length - 1, 'friend')}` : j.owner.displayName} · ${plural(j.entryCount, 'entry', 'entries')}` : undefined}
-          trailing={<RoundButton label="Map of this journey" onPress={() => router.push(`/journey/${id}/map`)} icon={(c) => <MapIcon size={19} color={c} />} />}
+          subtitle={j ? words.story.subtitle(j.owner.displayName, j.authors.length - 1, j.entryCount) : undefined}
+          trailing={<RoundButton label={words.story.map} onPress={() => router.push(`/journey/${id}/map`)} icon={(c) => <MapIcon size={19} color={c} />} />}
         />
         {j && story.shared ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingBottom: 10 }}>
-            <Chip tone="filter" label="Everyone" selected={story.who === null} onPress={() => story.pickWho(null)} />
+            <Chip tone="filter" label={words.story.everyone} selected={story.who === null} onPress={() => story.pickWho(null)} />
             {j.authors.map((author) => (
               <Chip
                 key={author.id}
@@ -123,9 +123,9 @@ export default function Timeline() {
       ) : rows.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 40 }}>
           <Txt variant="body" color="muted" center>
-            {story.whoName ? `${story.whoName} hasn't added an entry yet.` : j.viewer.isOwner ? 'Your story starts with the first entry.' : 'No entries yet. The first one will show up here.'}
+            {story.whoName ? words.story.none.by(story.whoName) : j.viewer.isOwner ? words.story.none.owner : words.story.none.reader}
           </Txt>
-          {j.viewer.canAddEntry && !story.who ? <Button label="Add the first entry" onPress={() => router.push(`/journey/${j.id}/add`)} style={{ alignSelf: 'center' }} /> : null}
+          {j.viewer.canAddEntry && !story.who ? <Button label={words.story.addFirst} onPress={() => router.push(`/journey/${j.id}/add`)} style={{ alignSelf: 'center' }} /> : null}
         </View>
       ) : (
         <List
@@ -144,7 +144,7 @@ export default function Timeline() {
           footer={
             j.status === 'completed' && story.atEnd ? (
               <Txt variant="caption" color="muted" weight={700} style={{ marginLeft: layout.barGutter + 34, marginTop: 2 }}>
-                Completed{j.completedAt ? ` · ${formatDay(j.completedAt.slice(0, 10))}` : ''}
+                {words.common.join([words.journeys.status.completed, j.completedAt ? formatDay(j.completedAt.slice(0, 10)) : null])}
               </Txt>
             ) : null
           }
@@ -153,7 +153,7 @@ export default function Timeline() {
       )}
       {(story.who ? (j?.entryCount ?? 0) : story.total) > 3 ? (
         <View style={{ position: 'absolute', left: layout.barGutter, bottom: Math.max(insets.bottom, 12) + 12 }}>
-          <Button label="Jump to" size="lg" variant="ink" icon={(c) => <ListIcon size={19} color={c} />} onPress={() => setJumping(true)} />
+          <Button label={words.story.jump.title} size="lg" variant="ink" icon={(c) => <ListIcon size={19} color={c} />} onPress={() => setJumping(true)} />
         </View>
       ) : null}
       {s ? (
@@ -172,7 +172,7 @@ export default function Timeline() {
       ) : null}
       {j?.viewer.canAddEntry && story.total > 0 ? (
         <View style={{ position: 'absolute', right: layout.barGutter, bottom: Math.max(insets.bottom, 12) + 12 }}>
-          <Button label="Entry" size="lg" icon={(c) => <Plus size={20} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
+          <Button label={words.journeys.addEntry} size="lg" icon={(c) => <Plus size={20} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
         </View>
       ) : null}
     </SafeAreaView>

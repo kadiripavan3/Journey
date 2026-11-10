@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Txt } from './Txt';
 import { Tap } from './Motion';
@@ -34,7 +35,7 @@ export function WordTabs<T extends string>({ tabs, value, onChange, style }: Pro
           <Tap
             key={tab.id}
             accessibilityRole="tab"
-            accessibilityLabel={tab.count === undefined ? tab.label : `${tab.label}, ${tab.count}`}
+            accessibilityLabel={tab.count === undefined ? tab.label : words.common.withCount(tab.label, tab.count)}
             accessibilityState={{ selected: on }}
             onPress={() => onChange(tab.id)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 12 }}>

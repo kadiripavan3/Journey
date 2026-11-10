@@ -4,10 +4,10 @@ import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
 import { Button } from '@/ui/Button';
 import { GlassBar } from '@/ui/GlassBar';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { FollowButton } from './FollowButton';
 
@@ -19,18 +19,18 @@ export function JourneyBar({ journey: j, style }: { journey: JourneyResponse; st
   const router = useRouter();
   const first = firstName(j.owner.displayName);
   const writes = j.viewer.isOwner || j.viewer.isMember;
-  const title = j.viewer.isOwner ? 'Your journey' : j.viewer.isMember ? 'You write in this journey' : j.viewer.isFollowing ? `You follow ${first}'s journey` : `Follow ${first}'s journey`;
+  const title = j.viewer.isOwner ? words.journeys.bar.yours : j.viewer.isMember ? words.journeys.bar.youWrite : j.viewer.isFollowing ? words.journeys.bar.youFollow(first) : words.journeys.bar.follow(first);
   const line = writes
     ? j.status === 'completed'
-      ? 'Completed'
+      ? words.journeys.status.completed
       : j.status === 'paused'
-        ? 'Paused. A new entry starts it again.'
+        ? words.journeys.bar.paused
         : j.entryCount === 0
-          ? 'Add the first entry'
-          : `${plural(j.entryCount, 'entry', 'entries')} so far`
+          ? words.journeys.bar.addFirst
+          : words.journeys.bar.soFar(j.entryCount)
     : j.status === 'completed'
-      ? 'This journey is completed'
-      : 'New entries land on your Home';
+      ? words.journeys.bar.readerCompleted
+      : words.journeys.bar.readerActive;
   return (
     <GlassBar radius="sheet" style={style} contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingLeft: 20, paddingRight: 10 }}>
       <View style={{ flex: 1 }}>
@@ -43,7 +43,7 @@ export function JourneyBar({ journey: j, style }: { journey: JourneyResponse; st
       </View>
       {writes ? (
         j.viewer.canAddEntry ? (
-          <Button label="Entry" inline icon={(c) => <Plus size={19} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
+          <Button label={words.journeys.addEntry} inline icon={(c) => <Plus size={19} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add`)} />
         ) : null
       ) : (
         <FollowButton journey={j} size="md" />

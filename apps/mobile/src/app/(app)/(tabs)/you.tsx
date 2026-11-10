@@ -12,8 +12,8 @@ import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { ProfileShareSheet } from '@/features/sharing/ShareSheet';
 import { visibility } from '@/features/journeys/visibility';
 import { ProfileLink } from '@/features/people/ProfileLink';
+import { compact } from '@/lib/compact';
 import { audienceLabel } from '@/lib/following';
-import { compact } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
@@ -24,6 +24,7 @@ import { RoundButton } from '@/ui/RoundButton';
 import { Stat } from '@/ui/Stat';
 import { Txt } from '@/ui/Txt';
 import { WordTabs } from '@/ui/WordTabs';
+import { words } from '@/words';
 
 type Shelf = 'active' | 'completed' | 'private';
 
@@ -62,8 +63,8 @@ export default function You() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingHorizontal: layout.barGutter, paddingBottom: 8 }}>
-          <RoundButton label="Share your profile" onPress={() => setSharing(true)} icon={(c) => <Share2 size={19} color={c} />} />
-          <RoundButton label="Settings" onPress={() => router.push('/settings')} icon={(c) => <Gear size={20} color={c} />} />
+          <RoundButton label={words.profile.you.share} onPress={() => setSharing(true)} icon={(c) => <Share2 size={19} color={c} />} />
+          <RoundButton label={words.settings.title} onPress={() => router.push('/settings')} icon={(c) => <Gear size={20} color={c} />} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: layout.barGutter, paddingVertical: 22, paddingHorizontal: 18, borderRadius: radius.panel, backgroundColor: colors.surface, boxShadow: shadow.md }}>
           <View style={{ flex: 1.15, alignItems: 'center' }}>
@@ -76,9 +77,9 @@ export default function You() {
             </Txt>
           </View>
           <View style={{ flex: 1 }}>
-            <Stat layout="stack" size="titleSmall" value={compact(journeys.length)} spoken={journeys.length} label="Journeys" />
-            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followerCount ?? 0)} spoken={counts.data?.followerCount ?? 0} label="Followers" divider onPress={() => openPeople('followers')} />
-            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followingCount ?? 0)} spoken={counts.data?.followingCount ?? 0} label="Following" divider onPress={() => openPeople('following')} />
+            <Stat layout="stack" size="titleSmall" value={compact(journeys.length)} spoken={journeys.length} label={words.profile.you.journeys} />
+            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followerCount ?? 0)} spoken={counts.data?.followerCount ?? 0} label={words.profile.people.followers} divider onPress={() => openPeople('followers')} />
+            <Stat layout="stack" size="titleSmall" value={compact(counts.data?.followingCount ?? 0)} spoken={counts.data?.followingCount ?? 0} label={words.profile.people.following} divider onPress={() => openPeople('following')} />
           </View>
         </View>
 
@@ -90,17 +91,17 @@ export default function You() {
         ) : null}
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14, marginHorizontal: layout.barGutter, marginBottom: 6 }}>
-          <Button label="Edit profile" variant="soft" onPress={() => router.push('/edit-profile')} style={{ flex: 1 }} />
-          <Button label="New journey" variant="soft" onPress={() => router.push('/new')} style={{ flex: 1 }} />
+          <Button label={words.profile.you.edit} variant="soft" onPress={() => router.push('/edit-profile')} style={{ flex: 1 }} />
+          <Button label={words.profile.you.newJourney} variant="soft" onPress={() => router.push('/new')} style={{ flex: 1 }} />
         </View>
 
         <OutboxLink />
 
         <WordTabs
           tabs={[
-            { id: 'active', label: 'Active', count: shelves.active.length },
-            { id: 'completed', label: 'Completed', count: shelves.completed.length },
-            { id: 'private', label: 'Private', count: shelves.private.length, icon: (c) => <Lock size={13} color={c} /> },
+            { id: 'active', label: words.profile.shelves.active, count: shelves.active.length },
+            { id: 'completed', label: words.profile.shelves.completed, count: shelves.completed.length },
+            { id: 'private', label: words.profile.shelves.private, count: shelves.private.length, icon: (c) => <Lock size={13} color={c} /> },
           ]}
           value={shelf}
           onChange={setShelf}
@@ -116,11 +117,11 @@ export default function You() {
           </View>
         ) : journeys.length === 0 ? (
           <View style={{ marginTop: 36 }}>
-            <EmptyState emoji="🗺️" title="Start your first journey" body="A trip, a 30-day challenge, something you're building. Add to it as it happens." action={<Button label="Start a journey" onPress={() => router.push('/new')} />} />
+            <EmptyState emoji="🗺️" title={words.profile.you.first.title} body={words.profile.you.first.body} action={<Button label={words.profile.you.first.start} onPress={() => router.push('/new')} />} />
           </View>
         ) : shown.length === 0 ? (
           <Txt variant="bodySmall" color="muted" center style={{ marginTop: 40, marginHorizontal: 40 }}>
-            {shelf === 'active' ? 'No active journeys right now.' : shelf === 'completed' ? 'Journeys you complete show up here.' : 'Journeys only you can see show up here.'}
+            {words.profile.you.emptyShelf[shelf]}
           </Txt>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, marginHorizontal: 10 }}>
@@ -130,7 +131,7 @@ export default function You() {
                   journey={journey}
                   size="grid"
                   pill={journey.status === 'active' ? journey.progressLabel : undefined}
-                  detail={journey.status === 'active' ? (journey.followerCount > 0 ? audienceLabel(journey) : visibility(journey.visibility).badge) : `${journey.progressLabel} · ${audienceLabel(journey)}`}
+                  detail={journey.status === 'active' ? (journey.followerCount > 0 ? audienceLabel(journey) : visibility(journey.visibility).badge) : words.common.join([journey.progressLabel, audienceLabel(journey)])}
                   onPress={() => router.push(`/journey/${journey.id}`)}
                 />
               </View>

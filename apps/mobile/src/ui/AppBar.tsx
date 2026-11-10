@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { RoundButton } from './RoundButton';
 import { Txt } from './Txt';
@@ -33,7 +34,7 @@ export function AppBar({ title, subtitle, leading = 'back', left, trailing, cent
       <View style={{ minWidth: 40, alignItems: 'flex-start' }}>
         {left ?? (leading === 'none' ? null : (
           <RoundButton
-            label={leading === 'back' ? 'Back' : 'Close'}
+            label={leading === 'back' ? words.common.back : words.common.close}
             onPress={leave}
             icon={(c) => (leading === 'back' ? <ArrowLeft size={20} color={c} /> : <X size={20} color={c} />)}
           />
@@ -63,7 +64,7 @@ export function AppBar({ title, subtitle, leading = 'back', left, trailing, cent
 /** Three bars showing how far through a short flow the person is. */
 export function StepProgress({ step, of = 3 }: { step: number; of?: number }) {
   return (
-    <View accessible accessibilityLabel={`Step ${step} of ${of}`} style={{ flexDirection: 'row', gap: 6, width: 170 }}>
+    <View accessible accessibilityLabel={words.common.stepOf(step, of)} style={{ flexDirection: 'row', gap: 6, width: 170 }}>
       {Array.from({ length: of }, (_, i) => (
         <StepBar key={i} on={i < step} />
       ))}

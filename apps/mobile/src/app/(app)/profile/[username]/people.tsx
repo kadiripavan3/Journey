@@ -10,12 +10,13 @@ import { type ListedPersonResponse, useGetFollowersInfinite, useGetFollowingInfi
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { PersonRow } from '@/features/people/PersonRow';
 import { wentAway } from '@/lib/loading';
-import { compact } from '@/lib/plural';
+import { compact } from '@/lib/compact';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Loading } from '@/ui/Loading';
 import { Txt } from '@/ui/Txt';
 import { WordTabs } from '@/ui/WordTabs';
+import { words } from '@/words';
 
 type Tab = 'followers' | 'following';
 
@@ -40,8 +41,8 @@ export default function People() {
       <AppBar title={username} trailing={<View style={{ width: 40 }} />} />
       <WordTabs
         tabs={[
-          { id: 'followers', label: 'Followers', count: profile.data ? compact(profile.data.followerCount) : undefined },
-          { id: 'following', label: 'Following', count: profile.data ? compact(profile.data.followingCount) : undefined },
+          { id: 'followers', label: words.profile.people.followers, count: profile.data ? compact(profile.data.followerCount) : undefined },
+          { id: 'following', label: words.profile.people.following, count: profile.data ? compact(profile.data.followingCount) : undefined },
         ]}
         value={tab}
         onChange={setTab}
@@ -50,7 +51,7 @@ export default function People() {
         list.isError ? <PageProblem error={list.error} onRetry={() => void list.refetch()} retrying={list.isFetching} /> : <Loading offline={list.isPaused} />
       ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
-          {tab === 'followers' ? (isMe ? 'Nobody follows you yet. Share a journey and they will.' : 'No followers yet.') : isMe ? "You don't follow anyone yet." : 'Not following anyone yet.'}
+          {tab === 'followers' ? (isMe ? words.profile.people.none.yourFollowers : words.profile.people.none.followers) : isMe ? words.profile.people.none.yourFollowing : words.profile.people.none.following}
         </Txt>
       ) : (
         <List
@@ -59,7 +60,7 @@ export default function People() {
           row={(person) => (
             <PersonRow
               person={person}
-              detail={`@${person.username}${person.latestJourney ? ` · ${person.latestJourney}` : ''}`}
+              detail={words.common.join([`@${person.username}`, person.latestJourney])}
               onPress={() => router.push(`/profile/${person.username}`)}
               trailing={person.viewer.isMe ? null : <PersonFollowButton username={person.username} isFollowing={person.viewer.isFollowing} followsYou={followsYou(person)} />}
             />

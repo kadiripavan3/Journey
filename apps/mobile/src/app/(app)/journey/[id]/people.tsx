@@ -15,7 +15,6 @@ import { MoreButton } from '@/ui/MoreButton';
 import { formatDay, timeAgo } from '@/lib/dates';
 import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
 import { shareLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -26,12 +25,7 @@ import { GroupLabel } from '@/ui/Heading';
 import { LinkBox } from '@/ui/LinkBox';
 import { Loading } from '@/ui/Loading';
 import { Txt } from '@/ui/Txt';
-
-const RULES = [
-  { what: 'Add entries', note: 'And edit or delete their own', who: 'Everyone' },
-  { what: 'Change the journey', note: 'Title, cover, who sees it, completing it', who: 'Only the owner' },
-  { what: 'Remove people or entries', note: '', who: 'Only the owner' },
-];
+import { words } from '@/words';
 
 /** 8.1 and 8.6 People on a journey: who can add entries, who is still deciding, and (for the owner) who to invite. */
 export default function JourneyPeople() {
@@ -67,30 +61,30 @@ export default function JourneyPeople() {
     const me = member.person.id === myId;
     const detail =
       member.status === 'invited'
-        ? `Invited ${timeAgo(member.since)}`
+        ? words.shared.people.invited(timeAgo(member.since))
         : member.role === 'owner'
-          ? `${me ? 'You · ' : ''}${plural(member.entryCount, 'entry', 'entries')}`
-          : `${me ? 'You · ' : ''}Can add entries · ${member.entryCount} so far`;
+          ? words.shared.people.owner(me, member.entryCount)
+          : words.shared.people.member(me, member.entryCount);
     const action =
       member.role === 'owner' ? (
         <Txt variant="caption" color="muted" weight={700}>
-          Owner
+          {words.shared.people.ownerBadge}
         </Txt>
       ) : isOwner ? (
         member.status === 'invited' ? (
-          <Button label="Cancel" inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
+          <Button label={words.shared.people.cancelInvitation} inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
         ) : (
-          <Button label="Remove" inline size="sm" variant="line" onPress={() => setGoing(member)} />
+          <Button label={words.shared.people.remove} inline size="sm" variant="line" onPress={() => setGoing(member)} />
         )
       ) : me ? (
-        <Button label="Leave" inline size="sm" variant="line" onPress={() => setGoing(member)} />
+        <Button label={words.shared.people.leave} inline size="sm" variant="line" onPress={() => setGoing(member)} />
       ) : null;
     return <PersonRow key={member.person.id} person={member.person} detail={detail} trailing={action} />;
   };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="People" subtitle={journey.data?.title} trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.shared.people.title} subtitle={journey.data?.title} trailing={<View style={{ width: 40 }} />} />
       {!data || wentAway(members) ? (
         members.isError ? <PageProblem error={members.error} onRetry={() => void members.refetch()} retrying={members.isFetching} /> : <Loading offline={members.isPaused} />
       ) : (
@@ -100,18 +94,16 @@ export default function JourneyPeople() {
               {messageFor(failed)}
             </Txt>
           ) : null}
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>On this journey</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.shared.people.onThisJourney}</GroupLabel>
           {joined.map(row)}
-          {waiting.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>Invited</GroupLabel> : null}
+          {waiting.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.shared.people.invitedGroup}</GroupLabel> : null}
           {waiting.map(row)}
 
           {isOwner ? (
             <>
-              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Add people</GroupLabel>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.shared.people.addPeople}</GroupLabel>
               <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginBottom: 6 }}>
-                {data.spotsLeft > 0
-                  ? `You can invite ${plural(data.spotsLeft, 'more person', 'more people')}. They add their own entries, and you stay in charge of the journey.`
-                  : `A journey has up to ${plural(data.members.length, 'author')}. Remove someone to invite another person.`}
+                {data.spotsLeft > 0 ? words.shared.people.canInvite(data.spotsLeft) : words.shared.people.full(data.members.length)}
               </Txt>
               {data.spotsLeft === 0 ? null : invitable.isPending ? (
                 <View style={{ height: 80 }}>
@@ -119,12 +111,12 @@ export default function JourneyPeople() {
                 </View>
               ) : candidates.length === 0 ? (
                 <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginTop: 6 }}>
-                  You can invite people who follow you. When someone follows you, they show up here.
+                  {words.shared.people.nobodyToInvite}
                 </Txt>
               ) : (
                 <>
                   {candidates.map((person) => (
-                    <PersonRow key={person.id} person={person} trailing={<Button label="Invite" inline size="sm" onPress={() => invite.mutate({ id, data: { username: person.username } })} />} />
+                    <PersonRow key={person.id} person={person} trailing={<Button label={words.shared.people.invite} inline size="sm" onPress={() => invite.mutate({ id, data: { username: person.username } })} />} />
                   ))}
                   <MoreButton pages={invitable} />
                 </>
@@ -133,9 +125,9 @@ export default function JourneyPeople() {
             </>
           ) : null}
 
-          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Who can do what</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.shared.people.whoCanDoWhat}</GroupLabel>
           <Card style={{ marginHorizontal: layout.barGutter, borderRadius: radius.card }}>
-            {RULES.map((rule, index) => (
+            {words.shared.people.rules.map((rule, index) => (
               <View key={rule.what} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: layout.barGutter, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: colors.line }}>
                 <View style={{ flex: 1 }}>
                   <Txt variant="item" weight={600}>
@@ -154,17 +146,17 @@ export default function JourneyPeople() {
             ))}
           </Card>
           <Txt variant="footnote" color="muted" style={{ marginTop: 12, marginHorizontal: layout.gutter }}>
-            A friend can leave at any time. Their entries stay unless they delete them.
+            {words.shared.people.leaveNote}
           </Txt>
         </ScrollView>
       )}
       <ConfirmSheet
         visible={!!going}
         onClose={() => setGoing(null)}
-        title={going?.person.id === myId ? 'Leave this journey?' : `Remove ${firstName(going?.person.displayName ?? '')} from this journey?`}
-        body={going?.person.id === myId ? "You won't be able to add entries any more. The ones you wrote stay unless you delete them." : "They won't be able to add entries any more. The ones they wrote stay unless they delete them."}
-        confirm={going?.person.id === myId ? 'Leave journey' : 'Remove'}
-        cancel={going?.person.id === myId ? 'Stay' : 'Keep them'}
+        title={going?.person.id === myId ? words.shared.people.confirmLeave.title : words.shared.people.confirmRemove.title(firstName(going?.person.displayName ?? ''))}
+        body={going?.person.id === myId ? words.shared.people.confirmLeave.body : words.shared.people.confirmRemove.body}
+        confirm={going?.person.id === myId ? words.shared.people.confirmLeave.confirm : words.shared.people.remove}
+        cancel={going?.person.id === myId ? words.shared.people.confirmLeave.cancel : words.shared.people.confirmRemove.cancel}
         busy={remove.isPending}
         problem={remove.isError ? messageFor(remove.error) : null}
         onConfirm={() => going && remove.mutate({ id, username: going.person.username })}
@@ -179,26 +171,26 @@ function InviteLink({ journeyId, title }: { journeyId: string; title: string }) 
   const make = useCreateInviteLink({ mutation: { onSuccess: setLink } });
   return (
     <>
-      <GroupLabel style={{ marginHorizontal: layout.gutter }}>Not on Journey yet?</GroupLabel>
+      <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.shared.inviteLink.heading}</GroupLabel>
       {link ? (
         <>
           <LinkBox url={link.url} icon={(c) => <LinkIcon size={18} color={c} />} style={{ marginHorizontal: layout.barGutter }} />
           <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
-            The link works once, for one person, until {formatDay(link.expiresAt.slice(0, 10))}. Copy or send it now: it isn&apos;t shown again.
+            {words.shared.inviteLink.madeNote(formatDay(link.expiresAt.slice(0, 10)))}
           </Txt>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginHorizontal: layout.barGutter }}>
-            <Button label="Send the link" size="sm" variant="soft" icon={(c) => <Share2 size={15} color={c} />} onPress={() => void shareLink(`Add to ${title} with me on Journey`, link.url)} />
-            <Button label="Make a new link" size="sm" variant="quiet" loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} />
+            <Button label={words.shared.inviteLink.send} size="sm" variant="soft" icon={(c) => <Share2 size={15} color={c} />} onPress={() => void shareLink(words.shared.inviteLink.message(title), link.url)} />
+            <Button label={words.shared.inviteLink.makeNew} size="sm" variant="quiet" loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} />
           </View>
         </>
       ) : (
         <>
           <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginBottom: 12 }}>
-            Make a link for a friend who doesn&apos;t have Journey yet. They join when they open it and sign up.
+            {words.shared.inviteLink.lead}
           </Txt>
-          <Button label="Make an invite link" variant="soft" icon={(c) => <LinkIcon size={18} color={c} />} loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} style={{ marginHorizontal: layout.barGutter }} />
+          <Button label={words.shared.inviteLink.make} variant="soft" icon={(c) => <LinkIcon size={18} color={c} />} loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} style={{ marginHorizontal: layout.barGutter }} />
           <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
-            The link works once, for one person, and for a few days only.
+            {words.shared.inviteLink.note}
           </Txt>
         </>
       )}

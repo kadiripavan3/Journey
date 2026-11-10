@@ -14,6 +14,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Loading } from '@/ui/Loading';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 10.7 Blocked accounts: who you've blocked, and a way to undo it. */
 export default function Blocked() {
@@ -25,9 +26,9 @@ export default function Blocked() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Blocked accounts" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.blocked.title} trailing={<View style={{ width: 40 }} />} />
       <Txt variant="body" color="muted" style={{ marginTop: 6, marginHorizontal: layout.rowGutter }}>
-        Blocked people can&apos;t see, follow or comment on your journeys in the app, and you won&apos;t see theirs. They aren&apos;t told.
+        {words.settings.blocked.lead}
       </Txt>
       {unblock.isError ? (
         <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8, marginHorizontal: layout.rowGutter }}>
@@ -38,7 +39,7 @@ export default function Blocked() {
         blocked.isError ? <PageProblem error={blocked.error} onRetry={() => void blocked.refetch()} retrying={blocked.isFetching} /> : <Loading offline={blocked.isPaused} />
       ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
-          You haven&apos;t blocked anyone.
+          {words.settings.blocked.none}
         </Txt>
       ) : (
         <ScrollView contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -46,8 +47,8 @@ export default function Blocked() {
             <PersonRow
               key={person.id}
               person={person}
-              detail={`@${person.username} · blocked ${timeAgo(person.blockedAt)}`}
-              trailing={<Button label="Unblock" inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />}
+              detail={words.common.join([`@${person.username}`, words.settings.blocked.since(timeAgo(person.blockedAt))])}
+              trailing={<Button label={words.people.unblock} inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />}
             />
           ))}
           <MoreButton pages={blocked} />

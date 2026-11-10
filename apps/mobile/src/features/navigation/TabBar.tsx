@@ -9,6 +9,7 @@ import { AddSheet } from '@/features/journeys/AddSheet';
 import { radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const ICONS: Record<string, (color: string) => ReactNode> = {
   index: (c) => <House size={24} color={c} />,
@@ -36,7 +37,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
         key={route.key}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
-        accessibilityLabel={route.name === 'activity' && hasNews ? `${label}, new` : label}
+        accessibilityLabel={route.name === 'activity' && hasNews ? words.common.tabWithNews(label) : label}
         onPress={() => {
           if (!focused) navigateToTab(route.key);
         }}
@@ -67,7 +68,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
           {tab(1)}
           <Tap
             accessibilityRole="button"
-            accessibilityLabel="Add an entry or start a journey"
+            accessibilityLabel={words.journeys.add.spoken}
             onPress={() => setAdding(true)}
             scaleTo={0.9}
             style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}>

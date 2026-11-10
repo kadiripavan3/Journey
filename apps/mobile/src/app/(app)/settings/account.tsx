@@ -9,8 +9,9 @@ import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Row, RowGroup } from '@/ui/Rows';
+import { words } from '@/words';
 
-const WAYS: Record<string, string | undefined> = { apple: 'Apple', google: 'Google', email: 'Email code' };
+const WAYS: Record<string, string | undefined> = words.signIn.providers;
 
 /** 10.5 Account: how you sign in, and the way out. Deleting the account is right here in the app. */
 export default function Account() {
@@ -23,16 +24,16 @@ export default function Account() {
   const how = session.provider ? WAYS[session.provider] : undefined;
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Account" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.settings.accountPage.title} trailing={<View style={{ width: 40 }} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <GroupLabel style={{ marginHorizontal: layout.gutter }}>{how ? 'Sign in with' : 'Signed in as'}</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>{how ? words.settings.accountPage.signInWith : words.settings.accountPage.signedInAs}</GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => (how ? <KeyRound size={18} color={c} /> : <Mail size={18} color={c} />)} label={how ?? me?.email ?? 'Your account'} note={how ? me?.email : undefined} />
+          <Row first icon={(c) => (how ? <KeyRound size={18} color={c} /> : <Mail size={18} color={c} />)} label={how ?? me?.email ?? words.settings.accountPage.yourAccount} note={how ? me?.email : undefined} />
         </RowGroup>
         <View style={{ height: 24 }} />
         <RowGroup>
-          <Row first icon={(c) => <LogOut size={18} color={c} />} label="Sign out" onPress={() => void session.signOut()} trailing={<View />} />
-          <Row danger icon={(c) => <Trash2 size={18} color={c} />} label="Delete account" onPress={() => router.push('/settings/delete-account')} />
+          <Row first icon={(c) => <LogOut size={18} color={c} />} label={words.common.signOut} onPress={() => void session.signOut()} trailing={<View />} />
+          <Row danger icon={(c) => <Trash2 size={18} color={c} />} label={words.settings.accountPage.delete} onPress={() => router.push('/settings/delete-account')} />
         </RowGroup>
       </ScrollView>
     </SafeAreaView>

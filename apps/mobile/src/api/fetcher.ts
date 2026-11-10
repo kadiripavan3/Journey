@@ -1,3 +1,5 @@
+import { words } from '@/words';
+
 import { apiBaseUrl } from './config';
 
 /** A failure from the API, already worded for the person using the app. */
@@ -18,7 +20,7 @@ export class ApiError extends Error {
 export const TIME_LIMIT_MS = 15_000;
 
 /** Nothing answered: no connection, the API is away, or it took too long. `status` is 0. */
-export function unreachable(message = "Can't reach Journey right now. Check your connection and try again."): ApiError {
+export function unreachable(message: string = words.states.unreachable): ApiError {
   return new ApiError(0, 'unreachable', message);
 }
 
@@ -116,7 +118,7 @@ async function send(path: string, options: RequestInit | undefined, token: strin
     return { status: response.status, ok: response.ok, text: await response.text() };
   } catch (error) {
     if (caller?.aborted) throw error;
-    throw tooLong ? unreachable('Journey is taking too long to answer. Check your connection and try again.') : unreachable();
+    throw tooLong ? unreachable(words.states.tooSlow) : unreachable();
   } finally {
     clearTimeout(timer);
     caller?.removeEventListener('abort', stop);
@@ -153,7 +155,7 @@ export const apiFetch = async <T>(path: string, options?: RequestInit): Promise<
     throw new ApiError(
       answer.status,
       typeof problem.code === 'string' ? problem.code : 'error',
-      typeof problem.detail === 'string' ? problem.detail : 'Something went wrong on our side. Try again.',
+      typeof problem.detail === 'string' ? problem.detail : words.states.onOurSide,
       isRecord(problem.fields) ? (problem.fields as Record<string, string>) : {},
     );
   }
@@ -184,5 +186,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** The message to show for any thrown value. */
 export function messageFor(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'Something went wrong. Try again.';
+  return error instanceof ApiError ? error.message : words.states.unknown;
 }

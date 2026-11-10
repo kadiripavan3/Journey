@@ -5,7 +5,6 @@ import { Linking, View } from 'react-native';
 import { messageFor } from '@/api/fetcher';
 import { type EntryResponse, type JourneyResponse, useGetEntryShareLink, useGetMe, useGetMyShareLink } from '@/api/generated/journey';
 import { entryHeadline } from '@/features/entries/labels';
-import { plural } from '@/lib/plural';
 import { copyText, mailLink, messageLink, shareLink, shortLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { LinkBox } from '@/ui/LinkBox';
@@ -14,6 +13,7 @@ import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** Something that can be shared: the web page for it and how it is introduced. */
 export type Shared = {
@@ -54,15 +54,15 @@ export function ShareSheet({ visible, onClose, heading, link, problem, children 
 
   const ways = link
     ? [
-        { label: 'Messages', icon: (c: string) => <MessageCircle size={22} color={c} />, go: () => void Linking.openURL(messageLink(`${link.text}\n${link.url}`)).catch(() => undefined) },
-        { label: 'Mail', icon: (c: string) => <Mail size={22} color={c} />, go: () => void Linking.openURL(mailLink(link.text, `${link.text}\n${link.url}`)).catch(() => undefined) },
+        { label: words.sharing.ways.messages, icon: (c: string) => <MessageCircle size={22} color={c} />, go: () => void Linking.openURL(messageLink(`${link.text}\n${link.url}`)).catch(() => undefined) },
+        { label: words.sharing.ways.mail, icon: (c: string) => <Mail size={22} color={c} />, go: () => void Linking.openURL(mailLink(link.text, `${link.text}\n${link.url}`)).catch(() => undefined) },
         {
-          label: copied ? 'Copied' : 'Copy link',
+          label: copied ? words.common.copied : words.sharing.ways.copy,
           icon: (c: string) => (copied ? <Check size={22} color={c} strokeWidth={2.6} /> : <LinkIcon size={22} color={c} />),
           go: () => void copyText(link.url).then(setCopied),
         },
         // The phone's own share sheet, with every app that can take a link.
-        { label: 'More', icon: (c: string) => <Ellipsis size={22} color={c} />, go: () => void shareLink(link.text, link.url).then((result) => setCopied(result === 'copied')) },
+        { label: words.sharing.ways.more, icon: (c: string) => <Ellipsis size={22} color={c} />, go: () => void shareLink(link.text, link.url).then((result) => setCopied(result === 'copied')) },
       ]
     : [];
 
@@ -126,19 +126,19 @@ export function EntryShareSheet({ entry, visible, onClose }: { entry: EntryRespo
     <ShareSheet
       visible={visible}
       onClose={close}
-      heading={mine ? 'Share your entry' : 'Share this entry'}
+      heading={mine ? words.sharing.entry.mine : words.sharing.entry.theirs}
       problem={link.isError ? messageFor(link.error) : null}
       link={
         link.data
-          ? { url: link.data.url, text: link.data.text, title: entryHeadline(entry), line: `${entry.label} of ${entry.journeyTitle}, by ${entry.author.displayName}`, photo: photo?.thumbUrl ?? photo?.url }
+          ? { url: link.data.url, text: link.data.text, title: entryHeadline(entry), line: words.sharing.entry.line(entry.label, entry.journeyTitle, entry.author.displayName), photo: photo?.thumbUrl ?? photo?.url }
           : undefined
       }>
       {mine ? (
         <SheetRow
           first
           icon={(c) => <AtSign size={22} color={c} />}
-          label="Your “Follow my journey” link"
-          note="For your Instagram or TikTok bio"
+          label={words.sharing.followLink.title}
+          note={words.sharing.followLink.note}
           trailing={<ChevronRight size={18} color={colors.muted} />}
           onPress={() => setProfile(true)}
         />
@@ -155,7 +155,7 @@ export function ProfileShareSheet({ visible, onClose }: { visible: boolean; onCl
     <ShareSheet
       visible={visible}
       onClose={onClose}
-      heading="Your “Follow my journey” link"
+      heading={words.sharing.followLink.title}
       problem={link.isError ? messageFor(link.error) : null}
       link={
         link.data && me
@@ -163,7 +163,7 @@ export function ProfileShareSheet({ visible, onClose }: { visible: boolean; onCl
               url: link.data.url,
               text: link.data.text,
               title: me.displayName,
-              line: 'Your public journeys on one page. Put the link in your Instagram or TikTok bio.',
+              line: words.sharing.followLink.line,
               photo: me.avatarUrl,
             }
           : undefined
@@ -179,20 +179,19 @@ export function ProfileShareSheet({ visible, onClose }: { visible: boolean; onCl
  */
 export function JourneyShareSheet({ journey, visible, onClose, recap }: { journey: JourneyResponse; visible: boolean; onClose: () => void; recap?: { dayCount: number; entryCount: number; placeCount: number } }) {
   const mine = journey.viewer.isOwner || journey.viewer.isMember;
-  const summed = recap ? [plural(recap.dayCount, 'day'), plural(recap.entryCount, 'entry', 'entries'), ...(recap.placeCount > 0 ? [plural(recap.placeCount, 'place')] : [])] : [];
   return (
     <ShareSheet
       visible={visible}
       onClose={onClose}
-      heading={recap ? 'Share the recap' : mine ? 'Share your journey' : 'Share this journey'}
-      problem={journey.shareUrl ? null : 'This journey is private, so it has no link to share.'}
+      heading={recap ? words.sharing.journey.recap : mine ? words.sharing.journey.mine : words.sharing.journey.theirs}
+      problem={journey.shareUrl ? null : words.sharing.journey.isPrivate}
       link={
         journey.shareUrl
           ? {
               url: journey.shareUrl,
               title: journey.title,
-              line: recap ? summed.join(' · ') : `${journey.progressLabel} · by ${journey.owner.displayName}`,
-              text: recap ? `${journey.title}: ${summed.slice(0, 2).join(', ')} on Journey` : `${journey.title} on Journey`,
+              line: recap ? words.sharing.journey.recapLine(recap.dayCount, recap.entryCount, recap.placeCount) : words.sharing.journey.line(journey.progressLabel, journey.owner.displayName),
+              text: recap ? words.sharing.journey.recapText(journey.title, recap.dayCount, recap.entryCount) : words.sharing.journey.text(journey.title),
               photo: journey.coverThumbUrl,
             }
           : undefined

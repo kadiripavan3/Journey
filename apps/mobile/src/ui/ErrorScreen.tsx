@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Button } from './Button';
 import { EmptyState } from './EmptyState';
@@ -36,12 +37,12 @@ export function ErrorScreen({ onRetry, onHome, detail }: Props) {
     <View style={{ flex: 1, justifyContent: 'center', gap: 16, paddingVertical: 48, backgroundColor: colors.bg }}>
       <EmptyState
         emoji="🧭"
-        title="Something went wrong"
-        body="That's on us, not you. Try again. If it keeps happening, close Journey and open it again."
+        title={words.states.broken.title}
+        body={words.states.broken.body}
         action={
           <View style={{ gap: 10, alignItems: 'center' }}>
-            <Button label="Try again" inline onPress={onRetry} />
-            <Button label="Go to Home" inline variant="line" onPress={home} />
+            <Button label={words.common.tryAgain} inline onPress={onRetry} />
+            <Button label={words.common.goHome} inline variant="line" onPress={home} />
           </View>
         }
       />

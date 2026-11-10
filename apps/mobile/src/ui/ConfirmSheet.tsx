@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { layout } from '@/theme';
+import { words } from '@/words';
 
 import { Button } from './Button';
 import { Sheet } from './Sheet';
@@ -25,7 +26,7 @@ type Props = {
 };
 
 /** Asks before something that can't be taken back: one question, the button that does it, and the way out. */
-export function ConfirmSheet({ visible, onClose, title, body, confirm, cancel = 'Keep it', onConfirm, busy, problem }: Props) {
+export function ConfirmSheet({ visible, onClose, title, body, confirm, cancel = words.common.keepIt, onConfirm, busy, problem }: Props) {
   return (
     <Sheet visible={visible} onClose={onClose} title={title} subtitle={body}>
       {problem ? (

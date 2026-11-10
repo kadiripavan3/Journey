@@ -10,11 +10,12 @@ import { Heading, Lead } from '@/ui/Heading';
 import { Pill } from '@/ui/Pill';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const CARDS = [
-  { photo: require('@/assets/photos/bromo.jpg'), label: 'Day 22 · Mount Bromo', left: 96, top: 30, rotate: '10deg' },
-  { photo: require('@/assets/photos/market.jpg'), label: 'Day 14 · Hoi An', left: -96, top: 30, rotate: '-11deg' },
-  { photo: require('@/assets/photos/scooters.jpg'), label: 'Day 1 · Hanoi', left: 0, top: 58, rotate: '-2deg' },
+  { photo: require('@/assets/photos/bromo.jpg'), label: words.signIn.howItWorks.cards.bromo, left: 96, top: 30, rotate: '10deg' },
+  { photo: require('@/assets/photos/market.jpg'), label: words.signIn.howItWorks.cards.hoiAn, left: -96, top: 30, rotate: '-11deg' },
+  { photo: require('@/assets/photos/scooters.jpg'), label: words.signIn.howItWorks.cards.hanoi, left: 0, top: 58, rotate: '-2deg' },
 ] as const;
 
 /** 1.2 How it works: one picture explains the idea. A journey is a stack of days that people follow. */
@@ -22,8 +23,8 @@ export default function HowItWorks() {
   const router = useRouter();
   const { colors, shadow } = useTheme();
   return (
-    <Screen header={<AppBar />} footer={<Button label="Next" size="lg" block onPress={() => router.push('/sign-in')} />}>
-      <View accessible accessibilityLabel="Three photos stacked like cards: Day 1 in Hanoi, Day 14 in Hoi An and Day 22 at Mount Bromo." style={{ height: 430, alignItems: 'center' }}>
+    <Screen header={<AppBar />} footer={<Button label={words.common.next} size="lg" block onPress={() => router.push('/sign-in')} />}>
+      <View accessible accessibilityLabel={words.signIn.howItWorks.picture} style={{ height: 430, alignItems: 'center' }}>
         {CARDS.map((card, index) => (
           <Animated.View
             key={card.label}
@@ -57,15 +58,15 @@ export default function HowItWorks() {
             boxShadow: shadow.md,
           }}>
           <Txt variant="caption" weight={800}>
-            1.2k
+            {words.signIn.howItWorks.followerCount}
           </Txt>
           <Txt variant="caption" weight={500} color="muted">
-            following along
+            {words.signIn.howItWorks.followingAlong}
           </Txt>
         </View>
       </View>
-      <Heading center>A story, told day by day</Heading>
-      <Lead center>Start a journey, add entries as it happens, and people follow along for the next chapter.</Lead>
+      <Heading center>{words.signIn.howItWorks.title}</Heading>
+      <Lead center>{words.signIn.howItWorks.body}</Lead>
     </Screen>
   );
 }

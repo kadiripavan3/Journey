@@ -5,6 +5,7 @@ import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
 import { InvitationView } from '@/features/journeys/InvitationView';
 import { useLeave } from '@/features/navigation/useLeave';
+import { words } from '@/words';
 
 /** 8.2 Invitation: what the friend sees when someone asked them in the app. */
 export default function Invitation() {
@@ -39,7 +40,7 @@ export default function Invitation() {
       loadError={invitations.isError ? invitations.error : undefined}
       onRetry={() => void invitations.refetch()}
       retrying={invitations.isRefetching}
-      gone="This invitation isn't there any more."
+      gone={words.shared.invitation.gone}
       failed={accept.error ?? decline.error}
       onJoin={() => accept.mutate({ id })}
       joining={accept.isPending}

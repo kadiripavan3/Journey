@@ -18,8 +18,8 @@ import { useLeave } from '@/features/navigation/useLeave';
 import { PageProblem } from '@/features/states/PageProblem';
 import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
+import { compact } from '@/lib/compact';
 import { followersLabel } from '@/lib/following';
-import { compact } from '@/lib/plural';
 import { layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
@@ -33,6 +33,7 @@ import { HeroSkeleton } from '@/ui/Skeleton';
 import { Stat } from '@/ui/Stat';
 import { Txt } from '@/ui/Txt';
 import { WordTabs } from '@/ui/WordTabs';
+import { words } from '@/words';
 
 /** 9.2 Creator profile: someone else's shelf of journeys. Following them also brings their next journeys; or follow just one from the list. */
 export default function CreatorProfile() {
@@ -67,7 +68,7 @@ export default function CreatorProfile() {
           <HeroSkeleton photo={230} />
         )}
         <View style={{ position: 'absolute', top: insets.top + 8, left: layout.barGutter }}>
-          <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
+          <RoundButton label={words.common.back} onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         </View>
       </View>
     );
@@ -97,7 +98,7 @@ export default function CreatorProfile() {
           </Txt>
           <Txt variant="caption" center weight={700} style={{ marginTop: 8 }}>
             @{p.username}
-            {p.viewer.followsYou ? <Txt variant="caption" color="muted" weight={500}>{' · Follows you'}</Txt> : null}
+            {p.viewer.followsYou ? <Txt variant="caption" color="muted" weight={500}>{words.common.also(words.profile.page.followsYou)}</Txt> : null}
           </Txt>
           {p.bio ? (
             <Txt variant="body" color="muted" center style={{ marginTop: 10, marginHorizontal: 30 }}>
@@ -107,26 +108,26 @@ export default function CreatorProfile() {
           {p.link ? <ProfileLink url={p.link} style={{ alignSelf: 'center', marginTop: 8, marginHorizontal: layout.gutter }} /> : null}
 
           <View style={{ flexDirection: 'row', alignSelf: 'stretch', marginTop: 18, marginHorizontal: layout.gutter, paddingVertical: 13, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line }}>
-            <Stat value={compact(p.journeyCount)} spoken={p.journeyCount} label={p.journeyCount === 1 ? 'journey' : 'journeys'} />
-            <Stat value={compact(p.followerCount)} spoken={p.followerCount} label={p.followerCount === 1 ? 'follower' : 'followers'} divider onPress={() => openPeople('followers')} />
-            <Stat value={compact(p.entryCount)} spoken={p.entryCount} label={p.entryCount === 1 ? 'entry' : 'entries'} divider />
+            <Stat value={compact(p.journeyCount)} spoken={p.journeyCount} label={words.common.unit.journeys(p.journeyCount)} />
+            <Stat value={compact(p.followerCount)} spoken={p.followerCount} label={words.common.unit.followers(p.followerCount)} divider onPress={() => openPeople('followers')} />
+            <Stat value={compact(p.entryCount)} spoken={p.entryCount} label={words.common.unit.entries(p.entryCount)} divider />
           </View>
 
           <View style={{ alignSelf: 'stretch', marginTop: 16, marginHorizontal: layout.gutter, gap: 8 }}>
             {p.viewer.isMe ? (
-              <Button label="Edit profile" variant="soft" block onPress={() => router.push('/edit-profile')} />
+              <Button label={words.profile.you.edit} variant="soft" block onPress={() => router.push('/edit-profile')} />
             ) : p.viewer.hasBlocked ? (
               <>
-                <Button label="Unblock" variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
+                <Button label={words.people.unblock} variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
                 <Txt variant="small" weight={500} color="muted" center>
-                  You&apos;ve blocked {first}. Neither of you sees the other&apos;s journeys in the app.
+                  {words.profile.page.blocked(first)}
                 </Txt>
               </>
             ) : (
               <>
                 <PersonFollowButton username={p.username} isFollowing={p.viewer.isFollowing} followsYou={p.viewer.followsYou} name={first} size="md" block />
                 <Txt variant="small" weight={500} color="muted" center>
-                  {p.viewer.isFollowing ? `You'll get ${first}'s next journeys.` : `Following ${first} also brings their next journeys.`}
+                  {p.viewer.isFollowing ? words.profile.page.following(first) : words.profile.page.notFollowing(first)}
                 </Txt>
               </>
             )}
@@ -134,8 +135,8 @@ export default function CreatorProfile() {
 
           <WordTabs
             tabs={[
-              { id: 'active', label: 'Active', count: active.length },
-              { id: 'completed', label: 'Completed', count: completed.length },
+              { id: 'active', label: words.profile.shelves.active, count: active.length },
+              { id: 'completed', label: words.profile.shelves.completed, count: completed.length },
             ]}
             value={shelf}
             onChange={setShelf}
@@ -153,7 +154,7 @@ export default function CreatorProfile() {
               </View>
             ) : shown.length === 0 ? (
               <Txt variant="bodySmall" color="muted" center style={{ marginTop: 30, marginHorizontal: 40 }}>
-                {shelf === 'active' ? `${first} has no journeys in progress.` : `${first} hasn't completed a journey yet.`}
+                {words.profile.page.emptyShelf[shelf](first)}
               </Txt>
             ) : (
               shown.map((journey) => (
@@ -161,8 +162,8 @@ export default function CreatorProfile() {
                   key={journey.id}
                   coverUrl={journey.coverThumbUrl}
                   title={journey.title}
-                  badge={journey.authors.length > 1 ? 'Shared' : undefined}
-                  detail={`${journey.status === 'paused' ? 'Paused · ' : ''}${journey.progressLabel} · ${followersLabel(journey.followerCount)}`}
+                  badge={journey.authors.length > 1 ? words.journeys.card.shared : undefined}
+                  detail={words.common.join([journey.status === 'paused' ? words.journeys.status.paused : null, journey.progressLabel, followersLabel(journey.followerCount)])}
                   onPress={() => router.push(`/journey/${journey.id}`)}
                   trailing={<FollowButton journey={journey} />}
                 />
@@ -173,8 +174,8 @@ export default function CreatorProfile() {
       </ScrollView>
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: layout.barGutter, right: layout.barGutter, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <RoundButton tone="photo" label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
-        {p.viewer.isMe ? null : <RoundButton tone="photo" label="More options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />}
+        <RoundButton tone="photo" label={words.common.back} onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        {p.viewer.isMe ? null : <RoundButton tone="photo" label={words.profile.page.more} onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />}
       </View>
 
       <Sheet visible={menu} onClose={() => setMenu(false)} title={p.displayName}>
@@ -182,7 +183,7 @@ export default function CreatorProfile() {
           <SheetRow
             first
             icon={(c) => <Ban size={22} color={c} />}
-            label={`Block ${first}`}
+            label={words.profile.page.block(first)}
             onPress={() => {
               setMenu(false);
               setBlocking(true);
@@ -192,7 +193,7 @@ export default function CreatorProfile() {
         <SheetRow
           first={p.viewer.hasBlocked}
           icon={(c) => <Flag size={22} color={c} />}
-          label={`Report ${first}`}
+          label={words.profile.page.report(first)}
           onPress={() => {
             setMenu(false);
             setReporting(true);
@@ -200,7 +201,7 @@ export default function CreatorProfile() {
         />
       </Sheet>
       <BlockSheet person={blocking ? p : null} onClose={() => setBlocking(false)} onBlocked={leave} />
-      <ReportSheet target={reporting ? { type: 'profile', id: p.id, word: 'person' } : null} onClose={() => setReporting(false)} />
+      <ReportSheet target={reporting ? { type: 'profile', id: p.id } : null} onClose={() => setReporting(false)} />
     </View>
   );
 }

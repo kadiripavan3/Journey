@@ -8,11 +8,11 @@ import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useDeleteJourney, useUpdateJourney } from '@/api/generated/journey';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { useGoHome } from '@/features/states/PageProblem';
-import { plural } from '@/lib/plural';
 import { layout } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = { journey: JourneyResponse; visible: boolean; onClose: () => void };
 
@@ -59,8 +59,8 @@ function OwnerMenu({ journey, visible, onClose }: Props) {
     <Sheet
       visible={visible}
       onClose={close}
-      title={confirming ? 'Delete this journey?' : journey.title}
-      subtitle={confirming ? `"${journey.title}" and its ${plural(journey.entryCount, 'entry', 'entries')} will be gone for good, for you and everyone following.` : undefined}>
+      title={confirming ? words.journeys.menu.confirmDelete.title : journey.title}
+      subtitle={confirming ? words.journeys.menu.confirmDelete.body(journey.title, journey.entryCount) : undefined}>
       {failed ? (
         <Txt variant="caption" color="danger" style={{ paddingHorizontal: layout.gutter, paddingBottom: 8 }}>
           {messageFor(failed)}
@@ -68,28 +68,28 @@ function OwnerMenu({ journey, visible, onClose }: Props) {
       ) : null}
       {confirming ? (
         <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
-          <Button label="Delete journey" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: journey.id })} />
-          <Button label="Keep it" variant="soft" size="lg" block onPress={() => setConfirming(false)} />
+          <Button label={words.journeys.menu.delete} variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: journey.id })} />
+          <Button label={words.common.keepIt} variant="soft" size="lg" block onPress={() => setConfirming(false)} />
         </View>
       ) : (
         <>
-          {journey.status !== 'completed' ? <SheetRow first icon={(c) => <Pencil size={22} color={c} />} label="Edit details" note="Title, cover, start date, who can see it" onPress={() => go('edit')} /> : null}
+          {journey.status !== 'completed' ? <SheetRow first icon={(c) => <Pencil size={22} color={c} />} label={words.journeys.menu.edit} note={words.journeys.menu.editNote} onPress={() => go('edit')} /> : null}
           <SheetRow
             first={journey.status === 'completed'}
             icon={(c) => <Users size={22} color={c} />}
-            label="People on this journey"
-            note={journey.status === 'completed' ? undefined : 'Invite friends to add their own entries'}
+            label={words.journeys.menu.people}
+            note={journey.status === 'completed' ? undefined : words.journeys.menu.peopleNote}
             onPress={() => go('people')}
           />
           {journey.status !== 'completed' && journey.entryCount > 0 ? (
-            <SheetRow icon={(c) => <CircleCheck size={22} color={c} />} label="Complete journey" note="Add a closing note and get the recap" onPress={() => go('complete')} />
+            <SheetRow icon={(c) => <CircleCheck size={22} color={c} />} label={words.journey.complete.title} note={words.journeys.menu.completeNote} onPress={() => go('complete')} />
           ) : null}
           {journey.status === 'active' ? (
-            <SheetRow icon={(c) => <Pause size={22} color={c} />} label="Pause journey" note="Followers see it's on hold. A new entry starts it again." onPress={() => update.mutate({ id: journey.id, data: { status: 'paused' } })} />
+            <SheetRow icon={(c) => <Pause size={22} color={c} />} label={words.journeys.menu.pause} note={words.journeys.menu.pauseNote} onPress={() => update.mutate({ id: journey.id, data: { status: 'paused' } })} />
           ) : journey.status === 'paused' ? (
-            <SheetRow icon={(c) => <Play size={22} color={c} />} label="Resume journey" onPress={() => update.mutate({ id: journey.id, data: { status: 'active' } })} />
+            <SheetRow icon={(c) => <Play size={22} color={c} />} label={words.journeys.menu.resume} onPress={() => update.mutate({ id: journey.id, data: { status: 'active' } })} />
           ) : null}
-          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete journey" onPress={() => setConfirming(true)} />
+          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label={words.journeys.menu.delete} onPress={() => setConfirming(true)} />
         </>
       )}
     </Sheet>
@@ -108,8 +108,8 @@ function ViewerMenu({ journey, visible, onClose }: Props) {
           <SheetRow
             first
             icon={(c) => <Users size={22} color={c} />}
-            label="People on this journey"
-            note={journey.viewer.isMember ? 'See who writes here, or leave' : undefined}
+            label={words.journeys.menu.people}
+            note={journey.viewer.isMember ? words.journeys.menu.peopleNoteMember : undefined}
             onPress={() => {
               onClose();
               router.push(`/journey/${journey.id}/people`);
@@ -119,14 +119,14 @@ function ViewerMenu({ journey, visible, onClose }: Props) {
         <SheetRow
           first={!shared}
           icon={(c) => <Flag size={22} color={c} />}
-          label="Report this journey"
+          label={words.journeys.menu.report}
           onPress={() => {
             onClose();
             setReporting(true);
           }}
         />
       </Sheet>
-      <ReportSheet target={reporting ? { type: 'journey', id: journey.id, word: 'journey' } : null} onClose={() => setReporting(false)} />
+      <ReportSheet target={reporting ? { type: 'journey', id: journey.id } : null} onClose={() => setReporting(false)} />
     </>
   );
 }

@@ -6,13 +6,13 @@ import { messageFor } from '@/api/fetcher';
 import { useDeleteAccount, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
 import { useLeave } from '@/features/navigation/useLeave';
-import { compact, plural } from '@/lib/plural';
 import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 10.6 Delete account: clear and final. No maze and no guilt trip. */
 export default function DeleteAccount() {
@@ -33,9 +33,9 @@ export default function DeleteAccount() {
 
   const losses = counts
     ? [
-        `Your ${plural(counts.journeyCount, 'journey')} and ${plural(counts.entryCount, 'entry', 'entries')}, with their photos`,
-        `Your ${compact(counts.followerCount)} ${counts.followerCount === 1 ? 'follower' : 'followers'} and the ${plural(counts.followingCount, 'person', 'people')} you follow`,
-        'Your likes and comments',
+        words.settings.deleteAccount.journeys(counts.journeyCount, counts.entryCount),
+        words.settings.deleteAccount.people(counts.followerCount, counts.followingCount),
+        words.settings.deleteAccount.likes,
       ]
     : [];
 
@@ -49,15 +49,15 @@ export default function DeleteAccount() {
               {messageFor(remove.error)}
             </Txt>
           ) : null}
-          <Button label="Delete my account" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate()} />
-          <Button label="Keep my account" variant="line" size="lg" block onPress={leave} />
+          <Button label={words.settings.deleteAccount.confirm} variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate()} />
+          <Button label={words.settings.deleteAccount.keep} variant="line" size="lg" block onPress={leave} />
         </>
       }>
       <View style={{ width: 72, height: 72, borderRadius: radius.cardLarge, marginTop: 14, marginBottom: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
         <Trash2 size={32} color={colors.danger} />
       </View>
-      <Heading>Delete your account?</Heading>
-      <Lead>This can&apos;t be undone. Everyone will stop seeing your profile, and you&apos;ll lose:</Lead>
+      <Heading>{words.settings.deleteAccount.title}</Heading>
+      <Lead>{words.settings.deleteAccount.lead}</Lead>
       <View style={{ gap: 10, marginTop: 18 }}>
         {losses.map((loss) => (
           <View key={loss} style={{ flexDirection: 'row', gap: 10 }}>

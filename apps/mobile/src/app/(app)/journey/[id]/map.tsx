@@ -11,7 +11,6 @@ import { stopsOf } from '@/features/map/stops';
 import { PageProblem } from '@/features/states/PageProblem';
 import { loadState } from '@/lib/loading';
 import { useLeave } from '@/features/navigation/useLeave';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -25,6 +24,7 @@ import { Photo } from '@/ui/Photo';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /**
  * 5.3 Map: where the journey has been. Day pills on the route, joined in the order of the story; tapping one
@@ -48,11 +48,11 @@ export default function JourneyMapScreen() {
   const pins = map.data?.pins ?? [];
   const stops = stopsOf(pins);
   const selected = chosen === undefined ? (stops.find((stop) => stop.pins.some((pin) => pin.entryId === opened))?.key ?? null) : chosen;
-  const counts = map.data ? `${plural(map.data.pinCount, 'entry', 'entries')} · ${plural(map.data.placeCount, 'place')}` : undefined;
+  const counts = map.data ? words.map.counts(map.data.pinCount, map.data.placeCount) : undefined;
   const load = loadState(journey, map);
   const failed = load.error;
   const openEntry = (pin: MapPinResponse) => router.push(`/entry/${pin.entryId}`);
-  const capped = map.data?.capped ? `Showing the first ${pins.length} places.` : null;
+  const capped = map.data?.capped ? words.map.capped(pins.length) : null;
 
   // No map to draw (still loading, nothing to show, or a browser): an ordinary page.
   if (failed || !j || !map.data || pins.length === 0 || !hasMap) {
@@ -67,7 +67,7 @@ export default function JourneyMapScreen() {
           <Loading offline={load.offline} />
         ) : pins.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
-            <EmptyState emoji="🗺️" title="No places yet" body={j.viewer.canAddEntry ? 'Add a place to an entry and it shows up here, joined to the others in the order of the story.' : 'Entries with a place show up here, joined in the order of the story.'} />
+            <EmptyState emoji="🗺️" title={words.map.none.title} body={j.viewer.canAddEntry ? words.map.none.author : words.map.none.reader} />
           </View>
         ) : (
           <List
@@ -77,7 +77,7 @@ export default function JourneyMapScreen() {
             bottom={40 + insets.bottom}
             header={
               <Txt variant="footnote" color="muted" style={{ marginHorizontal: layout.gutter, marginBottom: 6 }}>
-                The stops of this journey, in the order of the story.{capped ? ` ${capped}` : ''}
+                {words.map.listLead(capped)}
               </Txt>
             }
             row={(pin, index) => (index < 8 ? <Rise index={index}>{<PinRow pin={pin} number={index + 1} last={index === pins.length - 1} onPress={() => openEntry(pin)} />}</Rise> : <PinRow pin={pin} number={index + 1} last={index === pins.length - 1} onPress={() => openEntry(pin)} />)}
@@ -94,7 +94,7 @@ export default function JourneyMapScreen() {
       <JourneyMap pins={pins} stops={stops} selected={selected} onSelect={setSelected} inset={{ top: insets.top + 96, bottom: 220 + insets.bottom }} />
 
       <GlassBar radius="sheet" style={{ position: 'absolute', top: insets.top + 8, left: layout.barGutter, right: layout.barGutter }} contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 6 }}>
-        <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        <RoundButton label={words.common.back} onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Txt variant="control" weight={800} numberOfLines={1} accessibilityRole="header">
             {j.title}
@@ -107,11 +107,11 @@ export default function JourneyMapScreen() {
       </GlassBar>
 
       <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(insets.bottom, 12) + 8, gap: 12 }}>
-        <Button label="List" variant="ink" icon={(c) => <ListIcon size={18} color={c} />} onPress={() => setListing(true)} style={{ alignSelf: 'center', boxShadow: shadow.md }} />
+        <Button label={words.map.list} variant="ink" icon={(c) => <ListIcon size={18} color={c} />} onPress={() => setListing(true)} style={{ alignSelf: 'center', boxShadow: shadow.md }} />
         {stop ? (
           <ScrollView horizontal pagingEnabled={stop.pins.length > 1} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: layout.barGutter, gap: 10 }}>
             {stop.pins.map((pin) => (
-              <Tap key={pin.entryId} accessibilityRole="button" accessibilityLabel={`${entryEyebrow(pin)}. ${pin.title || 'Open the entry'}`} onPress={() => openEntry(pin)} scaleTo={0.985} style={{ width: stop.pins.length > 1 ? cardWidth - 28 : cardWidth, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 10, paddingRight: 14, borderRadius: radius.panel, backgroundColor: colors.surface, boxShadow: shadow.md }}>
+              <Tap key={pin.entryId} accessibilityRole="button" accessibilityLabel={words.map.cardSpoken(entryEyebrow(pin), pin.title)} onPress={() => openEntry(pin)} scaleTo={0.985} style={{ width: stop.pins.length > 1 ? cardWidth - 28 : cardWidth, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 10, paddingRight: 14, borderRadius: radius.panel, backgroundColor: colors.surface, boxShadow: shadow.md }}>
                 {pin.thumbUrl ? <Photo uri={pin.thumbUrl} radius="photo" style={{ width: 104, height: 104 }} /> : null}
                 <View style={{ flex: 1, paddingLeft: pin.thumbUrl ? 0 : 8, paddingVertical: pin.thumbUrl ? 0 : 10 }}>
                   <Eyebrow>{entryEyebrow(pin)}</Eyebrow>
@@ -120,7 +120,7 @@ export default function JourneyMapScreen() {
                   </Txt>
                   {stop.pins.length > 1 ? (
                     <Txt variant="footnote" color="muted" style={{ marginTop: 4 }}>
-                      {stop.pins.indexOf(pin) + 1} of {stop.pins.length} here
+                      {words.map.hereOf(stop.pins.indexOf(pin) + 1, stop.pins.length)}
                     </Txt>
                   ) : null}
                 </View>
@@ -130,7 +130,7 @@ export default function JourneyMapScreen() {
         ) : null}
       </View>
 
-      <Sheet visible={listing} onClose={() => setListing(false)} title="Stops" subtitle={capped ?? undefined} tall>
+      <Sheet visible={listing} onClose={() => setListing(false)} title={words.map.stops} subtitle={capped ?? undefined} tall>
         {pins.map((pin, index) => (
           <PinRow
             key={pin.entryId}
@@ -152,7 +152,7 @@ export default function JourneyMapScreen() {
 function PinRow({ pin, number, last, onPress }: { pin: MapPinResponse; number: number; last: boolean; onPress: () => void }) {
   const { colors } = useTheme();
   return (
-    <Tap accessibilityRole="button" accessibilityLabel={`Stop ${number}. ${entryEyebrow(pin)}${pin.isMilestone ? ', milestone' : ''}. ${pin.title || 'Open the entry'}`} onPress={onPress} scaleTo={0.985} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
+    <Tap accessibilityRole="button" accessibilityLabel={words.map.stopSpoken(number, entryEyebrow(pin), pin.isMilestone, pin.title)} onPress={onPress} scaleTo={0.985} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
       {/* The line that joins the stops, like the route on the map. */}
       {number === 1 && last ? null : <View style={{ position: 'absolute', left: layout.rowGutter + 15, top: number === 1 ? '50%' : 0, bottom: last ? '50%' : 0, width: 2, backgroundColor: colors.fill2 }} />}
       <View style={{ width: 32, height: 32, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: pin.isMilestone ? colors.accent : colors.text }}>

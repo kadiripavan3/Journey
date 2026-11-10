@@ -2,8 +2,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { fromISODate, monthTitle, toISODate } from '@/lib/dates';
+import { fromISODate, toISODate } from '@/lib/dates';
 import { layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Sheet } from './Sheet';
 import { Txt } from './Txt';
@@ -19,8 +20,6 @@ type Props = {
   min?: string;
   max?: string;
 };
-
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /** A month calendar in a sheet, for picking one day. Days outside the allowed range are greyed out. */
 export function DayPicker({ visible, onClose, title, value, onChange, min, max }: Props) {
@@ -53,14 +52,14 @@ export function DayPicker({ visible, onClose, title, value, onChange, min, max }
     <Sheet visible={visible} onClose={onClose} title={title}>
       <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, paddingBottom: 8 }}>
-          <MonthButton label="Previous month" disabled={!canGoBack} onPress={() => move(-1)} icon={<ChevronLeft size={20} color={colors.text} />} />
+          <MonthButton label={words.dates.previousMonth} disabled={!canGoBack} onPress={() => move(-1)} icon={<ChevronLeft size={20} color={colors.text} />} />
           <Txt variant="headline" accessibilityLiveRegion="polite" weight={800}>
-            {monthTitle(shown.year, shown.month)}
+            {words.dates.month(shown.month, shown.year)}
           </Txt>
-          <MonthButton label="Next month" disabled={!canGoForward} onPress={() => move(1)} icon={<ChevronRight size={20} color={colors.text} />} />
+          <MonthButton label={words.dates.nextMonth} disabled={!canGoForward} onPress={() => move(1)} icon={<ChevronRight size={20} color={colors.text} />} />
         </View>
         <View style={{ flexDirection: 'row' }}>
-          {WEEKDAYS.map((d, i) => (
+          {words.dates.weekdayInitials.map((d, i) => (
             <Txt key={i} variant="label" color="muted" center accessible={false} style={{ flex: 1, paddingVertical: 6 }}>
               {d}
             </Txt>
@@ -76,7 +75,7 @@ export function DayPicker({ visible, onClose, title, value, onChange, min, max }
               <Pressable
                 key={i}
                 accessibilityRole="button"
-                accessibilityLabel={`${day} ${monthTitle(shown.year, shown.month)}`}
+                accessibilityLabel={words.dates.dayInCalendar(day, shown.month, shown.year)}
                 accessibilityState={{ selected: on, disabled: off }}
                 disabled={off}
                 onPress={() => {

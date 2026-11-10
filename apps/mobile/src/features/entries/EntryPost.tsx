@@ -7,6 +7,7 @@ import { Card } from '@/ui/Card';
 import { Eyebrow } from '@/ui/Eyebrow';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { EntryPhotos } from './EntryPhotos';
 import { entryEyebrow, entryHeadline } from './labels';
@@ -48,7 +49,7 @@ export function EntryPost({ entry, onPress, height, frame = 'plain', fresh = fal
 
   if (story) {
     return (
-      <Tap accessibilityRole="button" accessibilityLabel={`${entryHeadline(entry)}${fresh ? '. New' : ''}`} onPress={onPress} scaleTo={0.985} style={style}>
+      <Tap accessibilityRole="button" accessibilityLabel={words.entry.cardSpoken(entryHeadline(entry), !!fresh)} onPress={onPress} scaleTo={0.985} style={style}>
         <Card style={{ padding: fresh ? 8 : 10, borderWidth: fresh ? 2 : 0, borderColor: colors.accent }}>
           {author}
           <EntryPhotos entry={entry} height={height ?? 176} radius="field" inset={10} milestone={false} />
@@ -69,7 +70,7 @@ export function EntryPost({ entry, onPress, height, frame = 'plain', fresh = fal
   }
 
   return (
-    <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} scaleTo={0.985} style={style}>
+    <Tap accessibilityRole="button" accessibilityLabel={words.entry.rowSpoken(entryEyebrow(entry), entryHeadline(entry))} onPress={onPress} scaleTo={0.985} style={style}>
       {author}
       {hasPhoto ? (
         <View style={{ marginBottom: 12 }}>

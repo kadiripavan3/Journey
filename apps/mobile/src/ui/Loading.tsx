@@ -2,6 +2,7 @@ import { WifiOff } from 'lucide-react-native';
 import { ActivityIndicator, View } from 'react-native';
 
 import { darkTheme, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Txt } from './Txt';
 
@@ -24,16 +25,16 @@ export function Loading({ offline, tone = 'page' }: Props) {
       <View accessibilityLiveRegion="polite" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 }}>
         <WifiOff size={24} color={colors.muted} />
         <Txt variant="titleSmall" accessibilityRole="header" center style={{ color: colors.text }}>
-          You&apos;re offline
+          {words.states.offline.title}
         </Txt>
         <Txt variant="bodySmall" center style={{ color: colors.muted }}>
-          This hasn&apos;t been loaded on this phone yet. It shows up by itself when you&apos;re back online.
+          {words.states.offline.body}
         </Txt>
       </View>
     );
   }
   return (
-    <View accessibilityLabel="Loading" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+    <View accessibilityLabel={words.states.loading} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
       <ActivityIndicator color={colors.muted} />
     </View>
   );

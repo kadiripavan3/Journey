@@ -22,6 +22,7 @@ import { Pill } from '@/ui/Pill';
 import { RoundButton } from '@/ui/RoundButton';
 import { Stat } from '@/ui/Stat';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const STAGE = darkTheme.colors.stage;
 const ON = darkTheme.colors.onPhoto;
@@ -42,7 +43,7 @@ export default function Recap() {
       <LinearGradient colors={[withAlpha(STAGE, 0.5), withAlpha(STAGE, 0.1), withAlpha(STAGE, 0.75), withAlpha(STAGE, 0.96)]} locations={[0, 0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: layout.rowGutter }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginHorizontal: -4 }}>
-          <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
+          <RoundButton tone="photo" label={words.common.close} onPress={leave} icon={(c) => <X size={20} color={c} />} />
           <Emoji char="🎉" size={40} />
           <View style={{ width: 40 }} />
         </View>
@@ -50,19 +51,21 @@ export default function Recap() {
           recap.isError ? <PageProblem inset={false} tone="onPhoto" error={recap.error} onRetry={() => void recap.refetch()} retrying={recap.isFetching} /> : <Loading tone="onPhoto" offline={recap.isPaused} />
         ) : (
           <View style={{ gap: 12, paddingBottom: 12 }}>
-            <Pill tone="photo" frost="blur" label={r.journey.status === 'completed' ? 'Journey complete' : 'So far'} />
+            <Pill tone="photo" frost="blur" label={r.journey.status === 'completed' ? words.journey.recap.complete : words.journey.recap.soFar} />
             <Txt variant="displayLarge" accessibilityRole="header" style={{ color: ON }}>
               {r.journey.title}
             </Txt>
             <Txt variant="control" weight={500} style={{ color: ON, opacity: 0.84 }}>
-              {r.journey.owner.displayName}
-              {r.lastDay ? (r.lastDay === r.journey.startDate ? ` · ${formatDay(r.lastDay)}` : ` · ${formatDay(r.journey.startDate)} to ${formatDay(r.lastDay)}`) : ''}
+              {words.common.join([
+                r.journey.owner.displayName,
+                r.lastDay ? (r.lastDay === r.journey.startDate ? formatDay(r.lastDay) : words.dates.range(formatDay(r.journey.startDate), formatDay(r.lastDay))) : null,
+              ])}
             </Txt>
             <View style={{ flexDirection: 'row', marginTop: 4, paddingVertical: 14, borderRadius: radius.card, backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
-              <Stat size="title" color={ON} value={r.dayCount} label={r.dayCount === 1 ? 'day' : 'days'} />
-              <Stat size="title" color={ON} value={r.entryCount} label={r.entryCount === 1 ? 'entry' : 'entries'} />
-              <Stat size="title" color={ON} value={r.placeCount} label={r.placeCount === 1 ? 'place' : 'places'} onPress={r.placeCount > 0 ? () => router.push(`/journey/${id}/map`) : undefined} />
-              <Stat size="title" color={ON} value={r.photoCount} label={r.photoCount === 1 ? 'photo' : 'photos'} />
+              <Stat size="title" color={ON} value={r.dayCount} label={words.common.unit.days(r.dayCount)} />
+              <Stat size="title" color={ON} value={r.entryCount} label={words.common.unit.entries(r.entryCount)} />
+              <Stat size="title" color={ON} value={r.placeCount} label={words.common.unit.places(r.placeCount)} onPress={r.placeCount > 0 ? () => router.push(`/journey/${id}/map`) : undefined} />
+              <Stat size="title" color={ON} value={r.photoCount} label={words.common.unit.photos(r.photoCount)} />
             </View>
             {r.momentUrls.length > 0 ? (
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -73,11 +76,11 @@ export default function Recap() {
             ) : null}
             {r.journey.closingNote ? (
               <Txt variant="bodyLarge" italic style={{ color: ON, marginVertical: 4 }}>
-                “{r.journey.closingNote}”
+                {words.common.quoted(r.journey.closingNote)}
               </Txt>
             ) : null}
-            {r.journey.shareUrl ? <Button label="Share recap" size="lg" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => setSharing(true)} /> : null}
-            <Button label="Read the whole journey" size="lg" variant={r.journey.shareUrl ? 'glass' : 'primary'} block icon={(c) => <BookOpen size={19} color={c} />} onPress={() => router.push(`/journey/${id}/timeline`)} />
+            {r.journey.shareUrl ? <Button label={words.journey.recap.share} size="lg" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => setSharing(true)} /> : null}
+            <Button label={words.journey.recap.readAll} size="lg" variant={r.journey.shareUrl ? 'glass' : 'primary'} block icon={(c) => <BookOpen size={19} color={c} />} onPress={() => router.push(`/journey/${id}/timeline`)} />
           </View>
         )}
       </SafeAreaView>

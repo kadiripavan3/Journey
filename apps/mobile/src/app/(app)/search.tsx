@@ -6,14 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type JourneyResponse, useGetDiscover, useSearch } from '@/api/generated/journey';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
-import { STATUS } from '@/features/journeys/status';
 import { useLeave } from '@/features/navigation/useLeave';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { PersonRow } from '@/features/people/PersonRow';
 import { useRecentSearches } from '@/features/search/recent';
 import { PageProblem } from '@/features/states/PageProblem';
 import { followingLabel } from '@/lib/following';
-import { plural } from '@/lib/plural';
 import { useDebounced } from '@/lib/useDebounced';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { BarLink } from '@/ui/AppBar';
@@ -23,6 +21,7 @@ import { Tap } from '@/ui/Motion';
 import { MAX_TEXT_SCALE, Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 import { WordTabs } from '@/ui/WordTabs';
+import { words } from '@/words';
 
 /** The tags a list of journeys uses, most used first, with how many of the journeys use each. */
 function tagsOf(journeys: readonly JourneyResponse[]): { tag: string; count: number }[] {
@@ -42,16 +41,16 @@ export default function Search() {
   const { recent, remember } = useRecentSearches();
   const [text, setText] = useState('');
   const [tab, setTab] = useState<'journeys' | 'people' | 'tags'>('journeys');
-  const words = useDebounced(text.trim(), 300);
-  const searching = words.length >= 2;
-  const results = useSearch({ q: words }, { query: { enabled: searching } });
+  const query = useDebounced(text.trim(), 300);
+  const searching = query.length >= 2;
+  const results = useSearch({ q: query }, { query: { enabled: searching } });
   const trending = useGetDiscover(undefined, { query: { enabled: !searching } });
 
   // Popular tags are the ones the trending journeys use most.
   const popular = tagsOf(trending.data?.trending ?? []).slice(0, 8);
 
   const open = (href: Href) => {
-    if (words) remember(words);
+    if (query) remember(query);
     router.push(href);
   };
   const journeys = results.data?.journeys ?? [];
@@ -65,10 +64,10 @@ export default function Search() {
           <SearchIcon size={18} color={colors.text} />
           <TextInput
             maxFontSizeMultiplier={MAX_TEXT_SCALE}
-            accessibilityLabel="Search journeys, people and tags"
+            accessibilityLabel={words.search.spoken}
             value={text}
             onChangeText={setText}
-            placeholder="Journeys, people, #tags"
+            placeholder={words.search.hint}
             placeholderTextColor={colors.muted}
             selectionColor={colors.accent}
             autoFocus
@@ -78,21 +77,21 @@ export default function Search() {
             style={[webNoOutline, textStyle('item', 600, { oneLine: true }), { flex: 1, padding: 0, color: colors.text }]}
           />
           {text ? (
-            <Tap accessibilityRole="button" accessibilityLabel="Clear" hitSlop={13} scaleTo={0.9} onPress={() => setText('')}>
+            <Tap accessibilityRole="button" accessibilityLabel={words.search.clear} hitSlop={13} scaleTo={0.9} onPress={() => setText('')}>
               <X size={18} color={colors.muted} />
             </Tap>
           ) : null}
         </View>
-        <BarLink label="Cancel" quiet onPress={leave} />
+        <BarLink label={words.common.cancel} quiet onPress={leave} />
       </View>
 
       {!searching ? (
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
           {recent.length > 0 ? (
             <>
-              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Recent</GroupLabel>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.search.recent}</GroupLabel>
               {recent.map((r) => (
-                <Tap key={r} accessibilityRole="button" accessibilityLabel={`Search for ${r}`} scaleTo={0.985} onPress={() => setText(r)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingVertical: 11, paddingHorizontal: layout.gutter }}>
+                <Tap key={r} accessibilityRole="button" accessibilityLabel={words.search.searchFor(r)} scaleTo={0.985} onPress={() => setText(r)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingVertical: 11, paddingHorizontal: layout.gutter }}>
                   <SearchIcon size={16} color={colors.muted} />
                   <Txt variant="item" weight={600}>
                     {r}
@@ -103,10 +102,10 @@ export default function Search() {
           ) : null}
           {popular.length > 0 ? (
             <>
-              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Popular tags</GroupLabel>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.search.popularTags}</GroupLabel>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: layout.rowGutter }}>
                 {popular.map(({ tag }) => (
-                  <Tap key={tag} accessibilityRole="button" accessibilityLabel={`Search for the tag ${tag}`} hitSlop={{ top: 5, bottom: 5 }} scaleTo={0.94} onPress={() => setText(`#${tag}`)} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: radius.photo, backgroundColor: colors.fill }}>
+                  <Tap key={tag} accessibilityRole="button" accessibilityLabel={words.search.searchForTag(tag)} hitSlop={{ top: 5, bottom: 5 }} scaleTo={0.94} onPress={() => setText(`#${tag}`)} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: radius.photo, backgroundColor: colors.fill }}>
                     <Txt variant="note" weight={700}>
                       #{tag}
                     </Txt>
@@ -120,9 +119,9 @@ export default function Search() {
         <>
           <WordTabs
             tabs={[
-              { id: 'journeys', label: 'Journeys', count: results.data ? journeys.length : undefined },
-              { id: 'people', label: 'People', count: results.data ? people.length : undefined },
-              { id: 'tags', label: 'Tags', count: results.data ? tags.length : undefined },
+              { id: 'journeys', label: words.search.tabs.journeys, count: results.data ? journeys.length : undefined },
+              { id: 'people', label: words.search.tabs.people, count: results.data ? people.length : undefined },
+              { id: 'tags', label: words.search.tabs.tags, count: results.data ? tags.length : undefined },
             ]}
             value={tab}
             onChange={setTab}
@@ -133,37 +132,37 @@ export default function Search() {
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}>
               {tab === 'journeys' ? (
                 journeys.length === 0 ? (
-                  <Nothing words={words} what="journeys" />
+                  <Nothing query={query} what="journeys" />
                 ) : (
                   journeys.map((journey) => (
                     <JourneyRow
                       key={journey.id}
                       coverUrl={journey.coverThumbUrl}
                       title={journey.title}
-                      detail={`${STATUS[journey.status]} · ${journey.progressLabel} · ${journey.owner.displayName}${journey.followerCount > 0 ? ` · ${followingLabel(journey.followerCount)}` : ''}`}
+                      detail={words.common.join([words.journeys.status[journey.status], journey.progressLabel, journey.owner.displayName, journey.followerCount > 0 ? followingLabel(journey.followerCount) : null])}
                       onPress={() => open(`/journey/${journey.id}`)}
                     />
                   ))
                 )
               ) : tab === 'people' ? (
                 people.length === 0 ? (
-                  <Nothing words={words} what="people" />
+                  <Nothing query={query} what="people" />
                 ) : (
                   people.map((person) => (
                     <PersonRow
                       key={person.id}
                       person={person}
-                      detail={`@${person.username}${person.latestJourney ? ` · ${person.latestJourney}` : ''}`}
+                      detail={words.common.join([`@${person.username}`, person.latestJourney])}
                       onPress={() => open(`/profile/${person.username}`)}
                       trailing={person.viewer.isMe ? null : <PersonFollowButton username={person.username} isFollowing={person.viewer.isFollowing} />}
                     />
                   ))
                 )
               ) : tags.length === 0 ? (
-                <Nothing words={words} what="tags" />
+                <Nothing query={query} what="tags" />
               ) : (
                 tags.map(({ tag, count }) => (
-                  <Tap key={tag} accessibilityRole="button" accessibilityLabel={`Search for the tag ${tag}. ${plural(count, 'journey')} here`} scaleTo={0.985} onPress={() => setText(`#${tag}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingVertical: 10, paddingHorizontal: layout.rowGutter }}>
+                  <Tap key={tag} accessibilityRole="button" accessibilityLabel={words.search.tagSpoken(tag, count)} scaleTo={0.985} onPress={() => setText(`#${tag}`)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingVertical: 10, paddingHorizontal: layout.rowGutter }}>
                     <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
                       <Hash size={18} color={colors.text} />
                     </View>
@@ -171,7 +170,7 @@ export default function Search() {
                       {tag}
                     </Txt>
                     <Txt variant="footnote" color="muted">
-                      {plural(count, 'journey')}
+                      {words.search.tagCount(count)}
                     </Txt>
                   </Tap>
                 ))
@@ -184,10 +183,10 @@ export default function Search() {
   );
 }
 
-function Nothing({ words, what }: { words: string; what: string }) {
+function Nothing({ query, what }: { query: string; what: 'journeys' | 'people' | 'tags' }) {
   return (
     <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
-      No {what} match “{words}”. Try fewer or different words.
+      {words.search.nothing[what](query)}
     </Txt>
   );
 }

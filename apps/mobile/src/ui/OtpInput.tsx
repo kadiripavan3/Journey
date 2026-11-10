@@ -2,6 +2,7 @@ import { type ComponentRef, useRef } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Txt } from './Txt';
 import { webNoOutline } from './web';
@@ -62,7 +63,7 @@ export function OtpInput({ value, onChange, onComplete, length = 6, disabled }: 
         autoComplete="one-time-code"
         maxLength={length}
         caretHidden
-        accessibilityLabel={`${length}-digit code`}
+        accessibilityLabel={words.common.digitCode(length)}
         style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.01, color: 'transparent' }, webNoOutline]}
       />
     </Pressable>

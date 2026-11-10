@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChangeNotSent, useOnline } from '@/api/online';
 import { darkTheme, useTheme } from '@/theme';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** How tall the strip's one line is. The screens move down by this much while it shows. */
 export const STRIP_HEIGHT = 30;
@@ -49,15 +50,15 @@ function Strip({ dark }: { dark: boolean }) {
   const insets = useSafeAreaInsets();
   // A like or a follow that couldn't be sent has no room to say so itself; for a few seconds the strip does.
   const notSent = useChangeNotSent();
-  const headline = notSent ? "That didn't go through" : "You're offline";
-  const rest = notSent ? "Try again when you're back online" : "Showing what's saved on this phone";
+  const headline = notSent ? words.states.strip.notSent.headline : words.states.offline.title;
+  const rest = notSent ? words.states.strip.notSent.rest : words.states.strip.offlineRest;
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(160)}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`${headline}. ${rest}.`}
+      accessibilityLabel={words.states.strip.spoken(headline, rest)}
       // Nothing under it can be tapped anyway; this keeps it out of the way of a swipe from the top edge.
       pointerEvents="none"
       style={{

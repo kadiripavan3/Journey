@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { radius, type TypeVariant, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Txt } from './Txt';
 import { Tap } from './Motion';
@@ -44,7 +45,7 @@ export function Stat({ value, label, spoken, divider, onPress, dot, layout = 'ro
       </Txt>
     </>
   );
-  const says = `${spoken ?? value} ${label}`;
+  const says = words.common.stat(spoken ?? value, label);
   if (!onPress) {
     return (
       <View accessible accessibilityLabel={says} style={frame}>

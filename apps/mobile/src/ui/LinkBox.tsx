@@ -4,6 +4,7 @@ import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { copyText, shortLink } from '@/lib/share';
 import { radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Button } from './Button';
 import { Txt } from './Txt';
@@ -19,7 +20,7 @@ type Props = {
 };
 
 /** A link in a box with a Copy button beside it. The button says "Copied" for a moment once it worked. */
-export function LinkBox({ url, icon, copyLabel = 'Copy', style }: Props) {
+export function LinkBox({ url, icon, copyLabel = words.common.copy, style }: Props) {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -36,7 +37,7 @@ export function LinkBox({ url, icon, copyLabel = 'Copy', style }: Props) {
       </Txt>
       <View accessibilityLiveRegion="polite">
         <Button
-          label={copied ? 'Copied' : copyLabel}
+          label={copied ? words.common.copied : copyLabel}
           size="sm"
           variant="soft"
           inline

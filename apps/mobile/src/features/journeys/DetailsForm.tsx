@@ -6,7 +6,6 @@ import { View } from 'react-native';
 import type { LocalPhoto } from '@/api/upload';
 import { pickPhotos } from '@/features/media/pick';
 import { addDays, formatDayLong, today } from '@/lib/dates';
-import { PHOTOS_CLOSED } from '@/lib/words';
 import { radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { DayPicker } from '@/ui/DayPicker';
@@ -14,6 +13,7 @@ import { Emoji } from '@/ui/Emoji';
 import { Field, FieldButton } from '@/ui/Field';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { useCatalog } from './catalog';
 import { parseTags } from './draft';
@@ -55,23 +55,23 @@ export function DetailsForm({ value, onChange, coverUri, onCover, problem, title
       const [photo] = await pickPhotos(1);
       if (photo) onCover(photo);
     } catch {
-      setPhotoProblem(PHOTOS_CLOSED);
+      setPhotoProblem(words.media.photosClosed);
     }
   };
 
   return (
     <>
       <View style={{ height: 168, marginBottom: 16, borderRadius: radius.cardLarge, overflow: 'hidden', backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}>
-        {coverUri ? <Image source={{ uri: coverUri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" accessibilityLabel="The journey's cover" /> : null}
+        {coverUri ? <Image source={{ uri: coverUri }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" accessibilityLabel={words.journeys.details.cover} /> : null}
         {coverUri ? (
           <View style={{ position: 'absolute', right: 12, bottom: 12 }}>
-            <Button label="Change cover" size="sm" variant="glass" icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} />
+            <Button label={words.journeys.details.changeCover} size="sm" variant="glass" icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} />
           </View>
         ) : (
           <>
-            <Button label="Add a cover" size="sm" variant="soft" icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} style={{ alignSelf: 'center', backgroundColor: colors.bg }} />
+            <Button label={words.journeys.details.addCover} size="sm" variant="soft" icon={(c) => <Camera size={16} color={c} />} onPress={() => void chooseCover()} style={{ alignSelf: 'center', backgroundColor: colors.bg }} />
             <Txt variant="footnote" color="muted" center style={{ marginTop: 8, marginHorizontal: 30 }}>
-              Optional. Your first photo is the cover until you choose one.
+              {words.journeys.details.coverNote}
             </Txt>
           </>
         )}
@@ -83,26 +83,26 @@ export function DetailsForm({ value, onChange, coverUri, onCover, problem, title
       ) : null}
 
       <View style={{ gap: 12 }}>
-        <Field label="Title" value={value.title} onChangeText={(title) => onChange({ title })} maxLength={80} autoCapitalize="sentences" returnKeyType="next" placeholder={titlePlaceholder} />
+        <Field label={words.journeys.details.title} value={value.title} onChangeText={(title) => onChange({ title })} maxLength={80} autoCapitalize="sentences" returnKeyType="next" placeholder={titlePlaceholder} />
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <FieldButton label="Starts" value={formatDayLong(value.startDate)} icon={<CalendarDays size={18} color={colors.text} />} onPress={() => setPicking('day')} />
-          <FieldButton label="Category" value={category ? category.label : 'Choose'} icon={category ? <Emoji char={category.emoji} size={20} /> : undefined} onPress={() => setPicking('category')} />
+          <FieldButton label={words.journeys.details.starts} value={formatDayLong(value.startDate)} icon={<CalendarDays size={18} color={colors.text} />} onPress={() => setPicking('day')} />
+          <FieldButton label={words.journeys.details.category} value={category ? category.label : words.journeys.details.chooseCategory} icon={category ? <Emoji char={category.emoji} size={20} /> : undefined} onPress={() => setPicking('category')} />
         </View>
-        <Field label="What's it about? · optional" value={value.description} onChangeText={(description) => onChange({ description })} multiline maxLength={300} />
+        <Field label={words.journeys.details.about} value={value.description} onChangeText={(description) => onChange({ description })} multiline maxLength={300} />
         <Field
-          label="Tags · up to 5"
+          label={words.journeys.details.tags}
           value={value.tags}
           onChangeText={(text) => onChange({ tags: text })}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="iceland roadtrip vanlife"
-          note={tags.length > 0 ? tags.map((tag) => `#${tag}`).join('  ') : 'Separate tags with spaces.'}
+          placeholder={words.journeys.details.tagsHint}
+          note={tags.length > 0 ? tags.map((tag) => `#${tag}`).join('  ') : words.journeys.details.tagsNote}
         />
         {children}
       </View>
 
       <DayPicker visible={picking === 'day'} onClose={() => setPicking(null)} title={dayTitle} value={value.startDate} onChange={(startDate) => onChange({ startDate })} min={addDays(today(), -365 * 5)} max={addDays(today(), 365)} />
-      <Sheet visible={picking === 'category'} onClose={() => setPicking(null)} title="Category">
+      <Sheet visible={picking === 'category'} onClose={() => setPicking(null)} title={words.journeys.details.category}>
         {catalog.categories.map((c, index) => (
           <SheetRow
             key={c.id}

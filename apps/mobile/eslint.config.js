@@ -34,6 +34,45 @@ const emoji = [
   { selector: `TemplateElement[value.raw=/${EMOJI}/u]`, message: 'Draw emoji with the Emoji component, so they get their 3D icon.' },
 ];
 
+// Every word a person reads or hears lives in the catalog (src/words/en), so the app can be translated. These
+// rules keep sentences out of screens and components: there, text comes from `words` (import it from '@/words').
+const SAY = 'Put words people read or hear in src/words/en and use words.… here. A sentence with a number or a name in it is a function there.';
+// Props that hold words: any text in one of them belongs in the catalog. Add a prop here when a component gets one for text.
+const WORDY =
+  '^(label|title|subtitle|heading|placeholder|note|hint|body|message|text|caption|detail|line|badge|pill|tag|footnote|description|value|spoken|confirm|cancel|gone|problem|error|emptyTitle|emptyBody|confirmLabel|cancelLabel|copyLabel|dayTitle|titlePlaceholder|accessibilityLabel|accessibilityHint|aria-label)$';
+const LETTER = '[A-Za-z]';
+// A string that reads like words: it starts with a capital letter and goes on in small ones ("Save", "Add a place",
+// "A trip"). Two words of HTTP look like that too and are let through.
+const READS = "^(?!(Authorization|Bearer)\\b)([A-Z][a-z']+( |$)|[A-Z] [a-z])";
+// A piece of a sentence in small letters, kept to be glued into one: 'photos or clips', 'waiting to upload'.
+const fragment = { selector: `Literal[value=/^[a-z']+ [a-z']+ [a-z']+/]:not(ImportDeclaration > *, NewExpression[callee.name=/Error$/] > *)`, message: SAY };
+const words = [
+  { selector: `JSXText[value=/${LETTER}{2,}/]`, message: SAY },
+  // label="Save", label={'Save'}, label={`Save ${n}`}
+  { selector: `JSXAttribute[name.name=/${WORDY}/] > Literal[value=/${LETTER}/]`, message: SAY },
+  { selector: `JSXAttribute[name.name=/${WORDY}/] > JSXExpressionContainer > Literal[value=/${LETTER}/]`, message: SAY },
+  { selector: `JSXAttribute[name.name=/${WORDY}/] > JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=/${LETTER}/]`, message: SAY },
+  // label={saving ? 'Saving…' : 'Save'}, title={title ?? 'Untitled'}: what a choice comes out as, however deep.
+  { selector: `JSXAttribute[name.name=/${WORDY}/] ConditionalExpression > Literal.consequent[value=/${LETTER}/]`, message: SAY },
+  { selector: `JSXAttribute[name.name=/${WORDY}/] ConditionalExpression > Literal.alternate[value=/${LETTER}/]`, message: SAY },
+  { selector: `JSXAttribute[name.name=/${WORDY}/] LogicalExpression > Literal.right[value=/${LETTER}/]`, message: SAY },
+  { selector: `JSXAttribute[name.name=/${WORDY}/] :matches(ConditionalExpression, LogicalExpression) > TemplateLiteral > TemplateElement[value.raw=/${LETTER}/]`, message: SAY },
+  // Any other prop given something that reads like words: name="A trip". (A testID is for tests, not for people.)
+  { selector: `JSXAttribute[name.name!=/${WORDY}|^testID$/] > Literal[value=/${READS}/]`, message: SAY },
+  // Anything else that reads like words, wherever it is kept (a variable, a list, an object, a call):
+  // 'Add a place', { label: 'All' }, setProgress('Saving'), `Day ${n}`, `${n} new since your last visit`.
+  // What a developer reads when the code itself is wrong (`throw new Error('…')`) is not for the catalog.
+  { selector: `Literal[value=/${READS}/]:not(JSXAttribute > *, ImportDeclaration > *, NewExpression[callee.name=/Error$/] > *)`, message: SAY },
+  { selector: `TemplateLiteral > TemplateElement:first-child[value.raw=/${READS}/]`, message: SAY },
+  { selector: `TemplateLiteral > TemplateElement[value.raw=/ [a-z']{2,} [a-z']{2,}/]`, message: SAY },
+  fragment,
+];
+// Only the catalog's index is for the rest of the app: a screen that reached into one language would never be translated.
+const catalogOnly = {
+  group: ['@/words/en', '@/words/en/*', '@/words/rich'],
+  message: "Import `words` from '@/words'. The files under src/words/en are one language's catalog, chosen there.",
+};
+
 module.exports = defineConfig([
   expoConfig,
   {
@@ -42,17 +81,30 @@ module.exports = defineConfig([
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/theme/**', 'src/**/__tests__/**'],
-    rules: { 'no-restricted-syntax': ['error', type, ...corners, ...colours, ...emoji] },
+    rules: {
+      'no-restricted-syntax': ['error', type, ...corners, ...colours, ...emoji, ...words],
+      'no-restricted-imports': ['error', { patterns: [catalogOnly] }],
+    },
+  },
+  {
+    // The catalog itself is where the words are, and the helpers for tests make up people and journeys.
+    files: ['src/words/**/*.ts', 'src/test/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', type, ...corners, ...colours, ...emoji], 'no-restricted-imports': 'off' },
+  },
+  {
+    // The drafts kept on the phone are asked for in SQL, which reads like a sentence in small letters.
+    files: ['src/features/drafts/store.ts'],
+    rules: { 'no-restricted-syntax': ['error', type, ...corners, ...colours, ...emoji, ...words.filter((rule) => rule !== fragment)] },
   },
   {
     // Sizes worked out from a size prop (an avatar's initials, an emoji without a picture) can't be a variant.
     files: ['src/ui/Avatar.tsx', 'src/ui/Emoji.tsx'],
-    rules: { 'no-restricted-syntax': ['error', ...corners, ...colours, ...emoji] },
+    rules: { 'no-restricted-syntax': ['error', ...corners, ...colours, ...emoji, ...words] },
   },
   {
     // Other companies' logos keep their own colours, and the app's mark its own proportions.
     files: ['src/ui/Brand.tsx'],
-    rules: { 'no-restricted-syntax': ['error', type, ...emoji] },
+    rules: { 'no-restricted-syntax': ['error', type, ...emoji, ...words] },
   },
   {
     // The design system knows nothing about journeys, people or the API. Features build on it, not the other way round.
@@ -63,6 +115,7 @@ module.exports = defineConfig([
         {
           patterns: [
             { group: ['@/features/*', '@/api/*', '@/auth/*', '@/app/*'], message: 'src/ui is the design system: no features, no API, no session. Move this component to src/features.' },
+            catalogOnly,
           ],
         },
       ],
@@ -71,7 +124,7 @@ module.exports = defineConfig([
   {
     files: ['src/features/**/*.{ts,tsx}', 'src/lib/**/*.ts', 'src/api/**/*.ts'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [{ group: ['@/app/*'], message: 'Screens use features, not the other way round.' }] }],
+      'no-restricted-imports': ['error', { patterns: [{ group: ['@/app/*'], message: 'Screens use features, not the other way round.' }, catalogOnly] }],
     },
   },
 ]);

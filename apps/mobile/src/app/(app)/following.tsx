@@ -13,7 +13,6 @@ import { CaughtUp } from '@/features/journeys/CaughtUp';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { PageProblem } from '@/features/states/PageProblem';
 import { timeAgo } from '@/lib/dates';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -28,6 +27,7 @@ import { Rise, Tap } from '@/ui/Motion';
 import { Pill } from '@/ui/Pill';
 import { CardSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 3.2 and 3.3 The Following feed: newest first, grouped per journey, and it ends with "You're all caught up". */
 export default function Following() {
@@ -61,16 +61,16 @@ export default function Following() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <AppBar title="Following" trailing={<View style={{ width: 40 }} />} />
+      <AppBar title={words.following.title} trailing={<View style={{ width: 40 }} />} />
       {!feed.data ? (
         feed.isError ? <PageProblem error={feed.error} onRetry={() => void feed.refetch()} retrying={feed.isFetching} /> : feed.isPaused ? <Loading offline /> : <CardSkeleton />
       ) : count === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 60 }}>
           <EmptyState
             emoji="🧭"
-            title="You don't follow any journeys yet"
-            body="Follow a journey and its new entries land here, newest first."
-            action={<Button label="Explore journeys" onPress={() => router.navigate('/discover')} />}
+            title={words.following.none.title}
+            body={words.following.none.body}
+            action={<Button label={words.following.none.explore} onPress={() => router.navigate('/discover')} />}
           />
         </View>
       ) : (
@@ -86,7 +86,7 @@ export default function Following() {
           header={
             present.length > 1 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingBottom: 16 }}>
-                <Chip tone="filter" label="All" selected={category === null} onPress={() => setCategory(null)} />
+                <Chip tone="filter" label={words.following.all} selected={category === null} onPress={() => setCategory(null)} />
                 {present.map((c) => (
                   <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id)} />
                 ))}
@@ -102,18 +102,18 @@ export default function Following() {
               return (
                 <CaughtUp
                   style={{ marginTop: 16, marginBottom: 18 }}
-                  line={`That's every new entry from the ${plural(count, 'journey')} you follow.`}
-                  action={<Button label="Find more in Discover" variant="line" onPress={() => router.navigate('/discover')} />}
+                  line={words.following.caughtUp(count)}
+                  action={<Button label={words.following.findMore} variant="line" onPress={() => router.navigate('/discover')} />}
                 />
               );
             }
-            if (item.kind === 'label') return <GroupLabel style={{ marginHorizontal: layout.rowGutter, marginTop: 8 }}>Nothing new in</GroupLabel>;
+            if (item.kind === 'label') return <GroupLabel style={{ marginHorizontal: layout.rowGutter, marginTop: 8 }}>{words.following.nothingNewIn}</GroupLabel>;
             return (
               <JourneyRow
                 quiet
                 coverUrl={item.journey.coverThumbUrl}
                 title={item.journey.title}
-                detail={`${item.journey.owner.displayName} · ${item.journey.progressLabel}`}
+                detail={words.common.join([item.journey.owner.displayName, item.journey.progressLabel])}
                 onPress={() => router.push(`/journey/${item.journey.id}`)}
               />
             );
@@ -144,7 +144,7 @@ function FeedGroup({ group, lead }: { group: FeedGroupResponse; lead: boolean })
     <Card style={{ marginHorizontal: layout.barGutter, marginBottom: 14, borderRadius: radius.panel, overflow: 'hidden' }}>
       <Tap
         accessibilityRole="button"
-        accessibilityLabel={`${journey.title}, by ${journey.owner.displayName}. ${newCount} new.`}
+        accessibilityLabel={words.following.groupSpoken(journey.title, journey.owner.displayName, newCount)}
         scaleTo={0.985}
         onPress={openStory}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14 }}>
@@ -154,11 +154,10 @@ function FeedGroup({ group, lead }: { group: FeedGroupResponse; lead: boolean })
             {journey.title}
           </Txt>
           <Txt variant="footnote" numberOfLines={1} color="muted">
-            {journey.owner.displayName}
-            {journey.lastEntryAt ? ` · ${timeAgo(journey.lastEntryAt)}` : ''}
+            {words.common.join([journey.owner.displayName, journey.lastEntryAt ? timeAgo(journey.lastEntryAt) : null])}
           </Txt>
         </View>
-        <Pill tone="accent" label={`${newCount} new`} style={{ alignSelf: 'center' }} />
+        <Pill tone="accent" label={words.journeys.newCount(newCount)} style={{ alignSelf: 'center' }} />
       </Tap>
       <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 14 }}>
         {first ? lead && first.media.length > 0 ? <EntryPost entry={first} onPress={() => openEntry(first.id)} /> : <EntryRow entry={first} photo={86} onPress={() => openEntry(first.id)} /> : null}
@@ -166,9 +165,9 @@ function FeedGroup({ group, lead }: { group: FeedGroupResponse; lead: boolean })
           <EntryRow key={entry.id} entry={entry} photo={86} onPress={() => openEntry(entry.id)} />
         ))}
         {left > 0 ? (
-          <Tap accessibilityRole="button" accessibilityLabel={`${plural(left, 'more entry', 'more entries')}. Open the story.`} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} onPress={openStory} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 2 }}>
+          <Tap accessibilityRole="button" accessibilityLabel={words.following.moreEntriesSpoken(left)} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} onPress={openStory} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 2 }}>
             <Txt variant="caption" weight={800} style={{ color: colors.accentText }}>
-              {plural(left, 'more entry', 'more entries')}
+              {words.following.moreEntries(left)}
             </Txt>
             <ChevronRight size={16} color={colors.accentText} />
           </Tap>

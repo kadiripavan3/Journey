@@ -14,7 +14,6 @@ import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
 import { followersLabel } from '@/lib/following';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -28,6 +27,7 @@ import { Ring } from '@/ui/Ring';
 import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 const FOR_YOU = 'for-you';
 
@@ -50,7 +50,7 @@ export default function Home() {
     setPulling(false);
   };
 
-  const tabs = [{ id: FOR_YOU, label: 'For you', emoji: '🧭' }, ...catalog.categories.slice(0, 4)];
+  const tabs = [{ id: FOR_YOU, label: words.home.forYou, emoji: '🧭' }, ...catalog.categories.slice(0, 4)];
   const current = mine.journeys.find((journey) => journey.status === 'active');
   const groups = (feed.data?.groups ?? []).filter((group) => !category || group.journey.category === category);
   const following = feed.data?.followingCount ?? 0;
@@ -66,7 +66,7 @@ export default function Home() {
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
         <Tap
           accessibilityRole="button"
-          accessibilityLabel="Find a journey"
+          accessibilityLabel={words.home.search.title}
           scaleTo={0.985}
           onPress={() => router.push('/search')}
           style={{
@@ -85,10 +85,10 @@ export default function Home() {
           <Search size={20} color={colors.text} />
           <View style={{ flex: 1 }}>
             <Txt variant="item">
-              Find a journey
+              {words.home.search.title}
             </Txt>
             <Txt variant="footnote" color="muted">
-              Trips, challenges and more, live now
+              {words.home.search.hint}
             </Txt>
           </View>
         </Tap>
@@ -98,17 +98,19 @@ export default function Home() {
         {current && tab === FOR_YOU ? (
           <Tap
             accessibilityRole="button"
-            accessibilityLabel={`${current.title}. ${current.progressLabel}. ${challenge ? "Post today's check-in." : 'Add an entry.'}`}
+            accessibilityLabel={words.home.current.spoken(current.title, current.progressLabel, challenge)}
             scaleTo={0.985}
             onPress={() => router.push(`/journey/${current.id}/add`)}>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18, marginHorizontal: layout.barGutter, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 }}>
               <View style={{ flex: 1 }}>
                 <Txt variant="headline" numberOfLines={2}>
-                  {current.entryCount === 0 ? `Start ${current.title}` : `${current.progressLabel} · ${current.title}`}
+                  {current.entryCount === 0 ? words.home.current.start(current.title) : words.common.join([current.progressLabel, current.title])}
                 </Txt>
                 <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ marginTop: 4 }}>
-                  {current.lastEntryAt ? `Last ${challenge ? 'check-in' : 'entry'} ${timeAgo(current.lastEntryAt)}` : challenge ? "Post today's check-in" : 'Add your first entry'}
-                  {current.followerCount > 0 ? ` · ${challenge ? `${plural(current.followerCount, 'person', 'people')} cheering you on` : followersLabel(current.followerCount)}` : ''}
+                  {words.common.join([
+                    current.lastEntryAt ? words.home.current.last(challenge, timeAgo(current.lastEntryAt)) : words.home.current.first(challenge),
+                    current.followerCount > 0 ? (challenge ? words.journeys.cheeringYouOn(current.followerCount) : followersLabel(current.followerCount)) : null,
+                  ])}
                 </Txt>
               </View>
               <Ring progress={current.targetDays ? current.latestNumber / current.targetDays : 0} emoji={catalog.template(current.template)?.emoji ?? '🧭'} />
@@ -133,15 +135,15 @@ export default function Home() {
           )
         ) : groups.length > 0 ? (
           <>
-            <SectionHeader title="New from journeys you follow" onPress={() => router.push('/following')} />
+            <SectionHeader title={words.home.newFromFollowed} onPress={() => router.push('/following')} />
             <Rail>
               {groups.map(({ journey, newCount, entries }) => (
                 <JourneyCard
                   key={journey.id}
                   journey={journey}
-                  pill={`${newCount} new`}
+                  pill={words.journeys.newCount(newCount)}
                   detail={entries[0] ? entryEyebrow(entries[0]) : journey.progressLabel}
-                  footnote={`${journey.owner.displayName}${journey.lastEntryAt ? ` · ${timeAgo(journey.lastEntryAt)}` : ''}`}
+                  footnote={words.common.join([journey.owner.displayName, journey.lastEntryAt ? timeAgo(journey.lastEntryAt) : null])}
                   onPress={() => router.push(`/journey/${journey.id}/timeline`)}
                 />
               ))}
@@ -151,25 +153,25 @@ export default function Home() {
           <View style={{ marginTop: 30, marginBottom: 4 }}>
             <EmptyState
               emoji="🧭"
-              title="Your Home is quiet"
-              body="Follow a journey and its new entries land here, newest first."
-              action={<Button label="Explore journeys" onPress={() => router.navigate('/discover')} />}
+              title={words.home.quiet.title}
+              body={words.following.none.body}
+              action={<Button label={words.following.none.explore} onPress={() => router.navigate('/discover')} />}
             />
           </View>
         ) : (
           <CaughtUp
             style={{ marginTop: 28 }}
-            line={category ? 'Nothing new here from the journeys you follow.' : `That's every new entry from the ${plural(following, 'journey')} you follow.`}
-            action={<Button label="See what you follow" variant="line" onPress={() => router.push('/following')} />}
+            line={category ? words.home.caughtUp.inCategory : words.home.caughtUp.all(following)}
+            action={<Button label={words.home.caughtUp.seeFollowed} variant="line" onPress={() => router.push('/following')} />}
           />
         )}
 
         {trending.length > 0 ? (
           <>
-            <SectionHeader title="Trending this week" onPress={() => router.navigate('/discover')} />
+            <SectionHeader title={words.home.trending} onPress={() => router.navigate('/discover')} />
             <Rail>
               {trending.map((journey) => (
-                <JourneyCard key={journey.id} journey={journey} size="sm" detail={`${journey.progressLabel} · ${followersLabel(journey.followerCount)}`} onPress={() => router.push(`/journey/${journey.id}`)} />
+                <JourneyCard key={journey.id} journey={journey} size="sm" detail={words.common.join([journey.progressLabel, followersLabel(journey.followerCount)])} onPress={() => router.push(`/journey/${journey.id}`)} />
               ))}
             </Rail>
           </>

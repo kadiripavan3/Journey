@@ -3,6 +3,7 @@ import type { ReactElement, Ref } from 'react';
 import { ActivityIndicator, RefreshControl, View } from 'react-native';
 
 import { useTheme } from '@/theme';
+import { words } from '@/words';
 
 type Props<T> = {
   data: readonly T[];
@@ -59,7 +60,7 @@ export function List<T>({ data, row, keyOf, typeOf, sticky, header, footer, empt
       ListFooterComponent={
         <>
           {loadingMore ? (
-            <View accessibilityLabel="Loading more" style={{ paddingVertical: 18 }}>
+            <View accessibilityLabel={words.states.loadingMore} style={{ paddingVertical: 18 }}>
               <ActivityIndicator color={colors.muted} />
             </View>
           ) : null}

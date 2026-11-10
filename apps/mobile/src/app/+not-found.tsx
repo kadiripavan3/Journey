@@ -5,6 +5,7 @@ import { useSession } from '@/auth/session';
 import { useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
+import { words } from '@/words';
 
 /**
  * Shown for an address the app has no screen for: a link made for a newer version of Journey, or one that
@@ -18,9 +19,9 @@ export default function NotFound() {
     <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 48, backgroundColor: colors.bg }}>
       <EmptyState
         emoji="🗺️"
-        title="There's nothing at this address"
-        body={signedIn ? 'The link may be old, or made for a newer Journey. Everything you follow is on Home.' : 'The link may be old, or made for a newer Journey.'}
-        action={<Button label={signedIn ? 'Go to Home' : 'Go to the start'} onPress={() => router.replace('/')} />}
+        title={words.states.notFound.title}
+        body={signedIn ? words.states.notFound.bodySignedIn : words.states.notFound.body}
+        action={<Button label={signedIn ? words.common.goHome : words.states.notFound.goToStart} onPress={() => router.replace('/')} />}
       />
     </View>
   );

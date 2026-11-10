@@ -12,6 +12,8 @@ import { OtpInput } from '@/ui/OtpInput';
 import { RoundButton } from '@/ui/RoundButton';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 /** 1.5 Email code: six boxes, checked as soon as the last digit is in. */
 export default function Code() {
@@ -29,18 +31,20 @@ export default function Code() {
     <Screen
       header={
         <View style={{ height: 56, paddingHorizontal: 16, justifyContent: 'center' }}>
-          <RoundButton label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+          <RoundButton label={words.common.back} onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
         </View>
       }>
       <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 6 }}>
-        Check your email
+        {words.signIn.code.title}
       </Txt>
       <Txt variant="lead" color="muted" style={{ marginTop: 10, marginBottom: 28 }}>
-        Enter the code we sent to{' '}
-        <Txt variant="lead" weight={700}>
-          {email}
-        </Txt>
-        .
+        {rich(words.signIn.code.sentTo(email), {
+          email: (text) => (
+            <Txt variant="lead" weight={700}>
+              {text}
+            </Txt>
+          ),
+        })}
       </Txt>
       <OtpInput value={code} onChange={setCode} onComplete={check} disabled={createToken.isPending} />
       {createToken.isError ? (
@@ -50,7 +54,7 @@ export default function Code() {
       ) : null}
       <Pressable accessibilityRole="button" disabled={resend.isPending} onPress={() => resend.mutate()} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
         <Txt variant="callout" color="accentText" weight={700} accessibilityLiveRegion="polite">
-          {resend.isPending ? 'Sending…' : resend.isSuccess ? 'Code sent again' : 'Send the code again'}
+          {resend.isPending ? words.signIn.code.sending : resend.isSuccess ? words.signIn.code.sentAgain : words.signIn.code.sendAgain}
         </Txt>
       </Pressable>
       {resend.isError ? (
@@ -61,7 +65,7 @@ export default function Code() {
       {authMode === 'local' ? (
         <View style={{ marginTop: 24, padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>
           <Txt variant="caption" weight={600}>
-            Test mode: no email is sent. The code is {LOCAL_TEST_CODE}.
+            {words.signIn.code.testMode(LOCAL_TEST_CODE)}
           </Txt>
         </View>
       ) : null}
