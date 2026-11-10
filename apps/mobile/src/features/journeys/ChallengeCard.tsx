@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { daysBetween, today } from '@/lib/dates';
-import { compact, plural } from '@/lib/plural';
+import { compact, plural } from '@/words/en/plural';
 import { radius, useTheme } from '@/theme';
 import { Card } from '@/ui/Card';
 import { Ring } from '@/ui/Ring';

@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import type { JourneySummaryResponse } from '@/api/generated/journey';
 import { entryDayLine } from '@/features/entries/labels';
 import { formatDay } from '@/lib/dates';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, useTheme } from '@/theme';
 import { GroupLabel } from '@/ui/Heading';
 import { Tap } from '@/ui/Motion';

@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { forgetDevice, registerDevice } from '@/api/generated/journey';
 import { beforeSignOut } from '@/auth/beforeSignOut';
 import { keep } from '@/lib/keep';
+import { words } from '@/words';
 
 import { pushSupport } from './support';
 
@@ -163,7 +164,7 @@ function allowed(Notifications: Notifications, status: Awaited<ReturnType<Notifi
 /** Android shows its question only once the app has a channel to put notifications in. */
 async function prepareAndroid(Notifications: Notifications): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('default', { name: 'Journey', importance: Notifications.AndroidImportance.DEFAULT });
+  await Notifications.setNotificationChannelAsync('default', { name: words.common.appName, importance: Notifications.AndroidImportance.DEFAULT });
 }
 
 /** Where the phone is, such as "Europe/Berlin", so reminders arrive in the evening and not at night. */

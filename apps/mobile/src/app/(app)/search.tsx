@@ -13,7 +13,7 @@ import { PersonRow } from '@/features/people/PersonRow';
 import { useRecentSearches } from '@/features/search/recent';
 import { PageProblem } from '@/features/states/PageProblem';
 import { followingLabel } from '@/lib/following';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { useDebounced } from '@/lib/useDebounced';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { BarLink } from '@/ui/AppBar';

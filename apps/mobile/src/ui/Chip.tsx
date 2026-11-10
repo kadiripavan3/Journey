@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { Emoji } from './Emoji';
 import { Tap } from './Motion';
@@ -29,7 +30,7 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon, c
       scaleTo={0.94}
       accessibilityRole={filter ? 'button' : 'checkbox'}
       accessibilityState={filter ? { selected: !!selected } : { checked: !!selected }}
-      accessibilityLabel={count === undefined ? label : `${label}, ${count}`}
+      accessibilityLabel={count === undefined ? label : words.common.withCount(label, count)}
       hitSlop={{ top: 4, bottom: 4 }}
       onPress={onPress}
       style={{

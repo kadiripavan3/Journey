@@ -5,7 +5,7 @@ import { Linking, View } from 'react-native';
 import { messageFor } from '@/api/fetcher';
 import { type EntryResponse, type JourneyResponse, useGetEntryShareLink, useGetMe, useGetMyShareLink } from '@/api/generated/journey';
 import { entryHeadline } from '@/features/entries/labels';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { copyText, mailLink, messageLink, shareLink, shortLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { LinkBox } from '@/ui/LinkBox';

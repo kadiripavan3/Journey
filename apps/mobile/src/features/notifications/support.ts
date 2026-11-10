@@ -13,9 +13,3 @@ export function pushSupport(): PushSupport {
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'expoGo';
   return 'ready';
 }
-
-/** What to tell someone where notifications can't work. Nothing they follow is lost: it is all in Activity. */
-export const WHY_NOT: Record<Exclude<PushSupport, 'ready'>, string> = {
-  browser: 'Notifications arrive on your phone. In the browser, everything new shows in Activity.',
-  expoGo: 'Notifications need the installed Journey app. In Expo Go, everything new shows in Activity.',
-};

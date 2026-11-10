@@ -1,5 +1,5 @@
 import { timeAgo } from '@/lib/dates';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 
 import type { Draft, Progress } from './types';
 

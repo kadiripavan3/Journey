@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ChevronRight, CloudUpload, TriangleAlert, WifiOff } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
 import { ProgressBar } from '@/ui/ProgressBar';

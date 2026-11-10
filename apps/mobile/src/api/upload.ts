@@ -1,5 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import { words } from '@/words';
+
 import { ApiError } from './fetcher';
 import { completeUpload, startUpload } from './generated/journey';
 import { removeFile, sendFile } from './transfer';
@@ -31,7 +33,7 @@ export async function uploadPhoto(photo: LocalPhoto): Promise<string> {
     copy = (await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.82 })).uri;
   } catch {
     // Not a connection that is gone: trying again later can't fix a photo that can't be read.
-    throw new ApiError(400, 'file_gone', "A photo of this entry can't be read any more. Open the entry, take it out and add it again.");
+    throw new ApiError(400, 'file_gone', words.media.uploads.photoUnreadable);
   }
 
   try {
@@ -43,12 +45,12 @@ export async function uploadPhoto(photo: LocalPhoto): Promise<string> {
     try {
       response = await fetch(target.uploadUrl, { method: target.method, headers: target.headers, body: file, signal: limit.signal });
     } catch {
-      throw new ApiError(0, 'unreachable', "A photo couldn't be uploaded. Check your connection and try again.");
+      throw new ApiError(0, 'unreachable', words.media.uploads.photoUnreachable);
     } finally {
       clearTimeout(timer);
     }
     if (!response.ok) {
-      throw new ApiError(response.status, 'upload_failed', "A photo couldn't be uploaded. Try again.");
+      throw new ApiError(response.status, 'upload_failed', words.media.uploads.photoFailed);
     }
     // Tell the API the file is there. It checks it and makes the smaller versions; only then can it be used.
     await completeUpload(target.mediaId);
@@ -68,10 +70,10 @@ export async function uploadClip(clip: LocalClip, onProgress?: (fraction: number
   const target = await startUpload({ kind: 'video', contentType, ...(clip.durationSeconds ? { durationSeconds: clip.durationSeconds } : {}) });
   const status = await sendFile(clip.uri, { uploadUrl: target.uploadUrl, method: target.method, headers: { 'Content-Type': contentType, ...target.headers } }, onProgress);
   if (status === 0) {
-    throw new ApiError(0, 'unreachable', "A clip couldn't be uploaded. Check your connection and try again.");
+    throw new ApiError(0, 'unreachable', words.media.uploads.clipUnreachable);
   }
   if (status < 200 || status >= 300) {
-    throw new ApiError(status, 'upload_failed', "A clip couldn't be uploaded. Try again.");
+    throw new ApiError(status, 'upload_failed', words.media.uploads.clipFailed);
   }
   await completeUpload(target.mediaId);
   return target.mediaId;

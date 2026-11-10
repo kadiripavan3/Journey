@@ -4,7 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } 
 
 import { type EntryResponse, useLikeEntry, useUnlikeEntry } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
-import { compact } from '@/lib/plural';
+import { compact } from '@/words/en/plural';
 import { useTheme } from '@/theme';
 import { SPRING, Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';

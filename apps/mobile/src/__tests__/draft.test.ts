@@ -1,6 +1,6 @@
 import { parseTags } from '@/features/journeys/draft';
 import { followersLabel } from '@/lib/following';
-import { compact, plural } from '@/lib/plural';
+import { compact, plural } from '@/words/en/plural';
 
 describe('parseTags', () => {
   it('accepts spaces, commas and hashes between tags', () => {

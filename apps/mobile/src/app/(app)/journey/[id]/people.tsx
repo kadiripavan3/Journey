@@ -15,7 +15,7 @@ import { MoreButton } from '@/ui/MoreButton';
 import { formatDay, timeAgo } from '@/lib/dates';
 import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { shareLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';

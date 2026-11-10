@@ -11,7 +11,7 @@ import { stopsOf } from '@/features/map/stops';
 import { PageProblem } from '@/features/states/PageProblem';
 import { loadState } from '@/lib/loading';
 import { useLeave } from '@/features/navigation/useLeave';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';

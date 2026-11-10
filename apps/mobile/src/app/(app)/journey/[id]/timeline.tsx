@@ -14,7 +14,7 @@ import type { StoryRow } from '@/features/story/rows';
 import { useStory } from '@/features/story/useStory';
 import { formatDay } from '@/lib/dates';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';

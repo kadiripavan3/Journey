@@ -13,7 +13,7 @@ import { CaughtUp } from '@/features/journeys/CaughtUp';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { PageProblem } from '@/features/states/PageProblem';
 import { timeAgo } from '@/lib/dates';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';

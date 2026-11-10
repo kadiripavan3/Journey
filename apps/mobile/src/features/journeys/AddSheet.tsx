@@ -6,7 +6,7 @@ import { messageFor } from '@/api/fetcher';
 import { useOutbox } from '@/features/drafts/outbox';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Loading } from '@/ui/Loading';

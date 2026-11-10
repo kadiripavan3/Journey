@@ -1,3 +1,5 @@
+import { words } from '@/words';
+
 /** The same rules as the API (app.journey.api.profile.Usernames). The API has the final say; this gives instant feedback. */
 export function normalizeUsername(raw: string): string {
   const value = raw.trim().toLowerCase();
@@ -6,10 +8,10 @@ export function normalizeUsername(raw: string): string {
 
 /** Null when the name is allowed; otherwise a plain sentence saying why not. */
 export function usernameProblem(username: string): string | null {
-  if (username.length < 3) return 'Use at least 3 characters.';
-  if (username.length > 20) return 'Use 20 characters or fewer.';
-  if (!/^[a-z0-9._]+$/.test(username)) return 'Use only letters, numbers, dots and underscores.';
-  if (username.startsWith('.') || username.endsWith('.') || username.includes('..')) return "Dots can't be first, last or doubled.";
+  if (username.length < 3) return words.profile.username.tooShort;
+  if (username.length > 20) return words.profile.username.tooLong;
+  if (!/^[a-z0-9._]+$/.test(username)) return words.profile.username.badCharacters;
+  if (username.startsWith('.') || username.endsWith('.') || username.includes('..')) return words.profile.username.badDots;
   return null;
 }
 

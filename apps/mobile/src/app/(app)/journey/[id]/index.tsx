@@ -20,7 +20,7 @@ import { PageProblem } from '@/features/states/PageProblem';
 import { daysBetween, today } from '@/lib/dates';
 import { loadState } from '@/lib/loading';
 import { firstName } from '@/lib/names';
-import { compact, plural } from '@/lib/plural';
+import { compact, plural } from '@/words/en/plural';
 import { layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';

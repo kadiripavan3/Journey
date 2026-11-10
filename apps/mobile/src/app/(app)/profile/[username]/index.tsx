@@ -19,7 +19,7 @@ import { PageProblem } from '@/features/states/PageProblem';
 import { wentAway } from '@/lib/loading';
 import { firstName } from '@/lib/names';
 import { followersLabel } from '@/lib/following';
-import { compact } from '@/lib/plural';
+import { compact } from '@/words/en/plural';
 import { layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';

@@ -6,7 +6,6 @@ import { View } from 'react-native';
 import type { LocalPhoto } from '@/api/upload';
 import { pickPhotos } from '@/features/media/pick';
 import { addDays, formatDayLong, today } from '@/lib/dates';
-import { PHOTOS_CLOSED } from '@/lib/words';
 import { radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { DayPicker } from '@/ui/DayPicker';
@@ -14,6 +13,7 @@ import { Emoji } from '@/ui/Emoji';
 import { Field, FieldButton } from '@/ui/Field';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { useCatalog } from './catalog';
 import { parseTags } from './draft';
@@ -55,7 +55,7 @@ export function DetailsForm({ value, onChange, coverUri, onCover, problem, title
       const [photo] = await pickPhotos(1);
       if (photo) onCover(photo);
     } catch {
-      setPhotoProblem(PHOTOS_CLOSED);
+      setPhotoProblem(words.media.photosClosed);
     }
   };
 

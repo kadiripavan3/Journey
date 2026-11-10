@@ -4,6 +4,7 @@ import { radius, useTheme } from '@/theme';
 import { Emoji } from '@/ui/Emoji';
 import { Tap } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 type Props = { emoji: string; name: string; description: string; selected?: boolean; tag?: string; onPress?: () => void };
 
@@ -13,7 +14,7 @@ export function TemplateCard({ emoji, name, description, selected, tag, onPress 
   return (
     <Tap
       accessibilityRole="button"
-      accessibilityLabel={`${name}. ${description}`}
+      accessibilityLabel={words.common.spoken([name, description])}
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
       style={{

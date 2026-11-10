@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { layout, radius, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { AvoidKeyboard } from './AvoidKeyboard';
 import { Txt } from './Txt';
@@ -30,7 +31,7 @@ export function Sheet({ visible, onClose, title, subtitle, children, footer, act
       <AvoidKeyboard style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={words.common.close}
           onPress={onClose}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim }}
         />
@@ -87,7 +88,7 @@ export function SheetRow({ icon, label, note, onPress, danger, trailing, first }
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={note ? `${label}. ${note}` : label}
+      accessibilityLabel={words.common.spoken([label, note])}
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: 'row',

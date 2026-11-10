@@ -9,7 +9,6 @@ import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { ActivityLine } from '@/features/activity/ActivityLine';
 import { type ActivityGroup, GROUPS, inGroup } from '@/features/activity/kinds';
 import { PageProblem } from '@/features/states/PageProblem';
-import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Emoji } from '@/ui/Emoji';
 import { EmptyState } from '@/ui/EmptyState';
@@ -19,6 +18,7 @@ import { Rise, Tap } from '@/ui/Motion';
 import { ListSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 import { WordTabs } from '@/ui/WordTabs';
+import { words } from '@/words';
 
 /** 8.1 Activity: one calm inbox. New entries are grouped per journey and likes are batched into a single line. */
 export default function Activity() {
@@ -62,7 +62,7 @@ export default function Activity() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
-        Activity
+        {words.activity.title}
       </Txt>
       <WordTabs tabs={GROUPS} value={filter} onChange={setFilter} style={{ marginTop: 6 }} />
 
@@ -76,17 +76,17 @@ export default function Activity() {
           {week && week.entryCount > 0 && filter === 'all' ? (
             <Tap
               accessibilityRole="button"
-              accessibilityLabel={`This week: ${plural(week.entryCount, 'new entry', 'new entries')} in ${plural(week.journeys.length, 'journey')}. Open the weekly digest.`}
+              accessibilityLabel={words.activity.week.spoken(week.entryCount, week.journeys.length)}
               scaleTo={0.985}
               onPress={() => router.push('/digest')}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, marginHorizontal: layout.barGutter, padding: 14, borderRadius: radius.card, backgroundColor: colors.fill }}>
               <Emoji char="🗞️" size={34} />
               <View style={{ flex: 1 }}>
                 <Txt variant="item" weight={800}>
-                  This week in the journeys you follow
+                  {words.activity.week.title}
                 </Txt>
                 <Txt variant="caption" weight={500} color="muted">
-                  {plural(week.entryCount, 'new entry', 'new entries')} in {plural(week.journeys.length, 'journey')}
+                  {words.activity.week.count(week.entryCount, week.journeys.length)}
                 </Txt>
               </View>
             </Tap>
@@ -95,19 +95,19 @@ export default function Activity() {
             <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
               <EmptyState
                 emoji="🔔"
-                title={filter === 'all' ? 'Nothing new yet' : 'Nothing here yet'}
-                body="New entries from journeys you follow, and likes, comments and followers on yours, arrive here."
+                title={filter === 'all' ? words.activity.none.all : words.activity.none.underTab}
+                body={words.activity.none.body}
               />
             </View>
           ) : (
             <>
-              {recent.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>New</GroupLabel> : null}
+              {recent.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{words.activity.groups.fresh}</GroupLabel> : null}
               {recent.map((item, index) => (
                 <Rise key={item.id} index={index}>
                   <ActivityLine item={item} fresh />
                 </Rise>
               ))}
-              {earlier.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{recent.length > 0 ? 'Earlier' : 'This month'}</GroupLabel> : null}
+              {earlier.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>{recent.length > 0 ? words.activity.groups.earlier : words.activity.groups.thisMonth}</GroupLabel> : null}
               {earlier.map((item, index) => (
                 <Rise key={item.id} index={index}>
                   <ActivityLine item={item} />

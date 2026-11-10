@@ -18,6 +18,7 @@ import { Rail } from '@/ui/Rail';
 import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 /** 4.1 Discover: search, category chips, then Trending now, New journeys and Recently completed. */
 export default function Discover() {
@@ -48,17 +49,17 @@ export default function Discover() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
         <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
-          Discover
+          {words.discover.title}
         </Txt>
         <Tap
           accessibilityRole="button"
-          accessibilityLabel="Search journeys, people and tags"
+          accessibilityLabel={words.discover.search.spoken}
           scaleTo={0.985}
           onPress={() => router.push('/search')}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, marginTop: 12, marginHorizontal: layout.barGutter, paddingHorizontal: 18, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
           <Search size={18} color={colors.text} />
           <Txt variant="control">
-            Search journeys, people, #tags
+            {words.discover.search.hint}
           </Txt>
         </Tap>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 14 }}>
@@ -82,25 +83,25 @@ export default function Discover() {
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
             <EmptyState
               emoji={chosen?.emoji ?? '🧭'}
-              title={chosen ? `No ${chosen.label.toLowerCase()} journeys yet` : 'Nothing to discover yet'}
-              body="Public journeys with a cover and three entries show up here. Yours could be the first."
+              title={chosen ? words.discover.none.inCategory(chosen.label) : words.discover.none.all}
+              body={words.discover.none.body}
             />
           </View>
         ) : (
           <>
             {data.trending.length > 0 ? (
               <>
-                <SectionHeader title="Trending now" onPress={seeAll} />
+                <SectionHeader title={words.discover.trending} onPress={seeAll} />
                 <Rail>
                   {data.trending.map((journey, index) => (
-                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? 'Trending' : undefined} pillEmoji="🔥" onPress={() => open(journey.id)} />
+                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? words.discover.trendingPill : undefined} pillEmoji="🔥" onPress={() => open(journey.id)} />
                   ))}
                 </Rail>
               </>
             ) : null}
             {fresh.length > 0 ? (
               <>
-                <SectionHeader title="New journeys" onPress={seeAll} />
+                <SectionHeader title={words.discover.fresh} onPress={seeAll} />
                 <Rail>
                   {fresh.map((journey) => (
                     <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => open(journey.id)} />
@@ -110,7 +111,7 @@ export default function Discover() {
             ) : null}
             {data.completed.length > 0 ? (
               <>
-                <SectionHeader title="Recently completed" onPress={seeAll} />
+                <SectionHeader title={words.discover.completed} onPress={seeAll} />
                 <Rail>
                   {data.completed.map((journey) => (
                     <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => open(journey.id)} />

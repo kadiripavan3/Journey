@@ -3,6 +3,7 @@ import { type DimensionValue, type StyleProp, View, type ViewStyle } from 'react
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { layout, type Radius, radius as radii, useTheme } from '@/theme';
+import { words } from '@/words';
 
 /**
  * 13.1 Loading: grey shapes in the screen's own layout while content loads, never a spinner on a blank page.
@@ -22,7 +23,7 @@ export function Sk({ width, height, radius = 'tile', style }: { width?: Dimensio
 /** Photo cards in a row, as on Home and Discover. */
 export function RailSkeleton({ size = 232, count = 2 }: { size?: number; count?: number }) {
   return (
-    <View accessibilityLabel="Loading" style={{ marginTop: 24 }}>
+    <View accessibilityLabel={words.states.loading} style={{ marginTop: 24 }}>
       <Sk width={210} height={22} style={{ marginLeft: layout.rowGutter, marginBottom: 14 }} />
       <View style={{ flexDirection: 'row', gap: 14, paddingHorizontal: layout.barGutter, overflow: 'hidden' }}>
         {Array.from({ length: count }, (_, i) => (
@@ -40,7 +41,7 @@ export function RailSkeleton({ size = 232, count = 2 }: { size?: number; count?:
 /** Rows with a small picture and two lines, as in lists of journeys, people and Activity. */
 export function ListSkeleton({ count = 5 }: { count?: number }) {
   return (
-    <View accessibilityLabel="Loading" style={{ paddingTop: 8 }}>
+    <View accessibilityLabel={words.states.loading} style={{ paddingTop: 8 }}>
       {Array.from({ length: count }, (_, i) => (
         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: layout.rowGutter }}>
           <Sk width={56} height={56} radius="field" />
@@ -57,7 +58,7 @@ export function ListSkeleton({ count = 5 }: { count?: number }) {
 /** Cards with a wide photo, as in the Following feed and the story line. */
 export function CardSkeleton({ count = 2 }: { count?: number }) {
   return (
-    <View accessibilityLabel="Loading" style={{ paddingHorizontal: layout.barGutter, paddingTop: 8, gap: 14 }}>
+    <View accessibilityLabel={words.states.loading} style={{ paddingHorizontal: layout.barGutter, paddingTop: 8, gap: 14 }}>
       {Array.from({ length: count }, (_, i) => (
         <View key={i} style={{ gap: 10 }}>
           <Sk height={200} radius="card" />
@@ -76,7 +77,7 @@ export function CardSkeleton({ count = 2 }: { count?: number }) {
 export function HeroSkeleton({ photo = 338 }: { photo?: number }) {
   const { colors } = useTheme();
   return (
-    <View accessibilityLabel="Loading" style={{ flex: 1 }}>
+    <View accessibilityLabel={words.states.loading} style={{ flex: 1 }}>
       <Sk height={photo} radius="none" />
       <View style={{ flex: 1, marginTop: -30, paddingTop: 52, paddingHorizontal: layout.gutter, alignItems: 'center', gap: 12, borderTopLeftRadius: radii.sheet, borderTopRightRadius: radii.sheet, backgroundColor: colors.bg }}>
         <View style={{ position: 'absolute', top: -38, borderRadius: radii.pill, borderWidth: 4, borderColor: colors.bg, backgroundColor: colors.bg }}>

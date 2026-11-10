@@ -10,6 +10,8 @@ import { LightStatusBar } from '@/ui/LightStatusBar';
 import { BrandMark } from '@/ui/Brand';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
+import { rich } from '@/ui/rich';
+import { words } from '@/words';
 
 /** 1.1 Welcome: one full-bleed photo and one promise. Always dark, so the photo leads. */
 export default function Welcome() {
@@ -28,28 +30,31 @@ export default function Welcome() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12 }}>
           <BrandMark size={36} />
           <Txt variant="titleSmall" color="onPhoto">
-            Journey
+            {words.common.appName}
           </Txt>
         </View>
         <View style={{ gap: 12, paddingBottom: 12 }}>
           <Txt variant="hero" accessibilityRole="header" color="onPhoto">
-            Follow the journey, not just the moment.
+            {words.signIn.welcome.title}
           </Txt>
           <Txt variant="bodyLarge" color="onPhoto" style={{ opacity: 0.84, marginBottom: 10 }}>
-            Trips, challenges and everything in between, told day by day.
+            {words.signIn.welcome.body}
           </Txt>
-          <Button label="Get started" size="lg" block onPress={() => router.push('/how-it-works')} />
-          <Button label="I already have an account" size="lg" variant="glass" block onPress={() => router.push('/sign-in')} />
+          <Button label={words.signIn.welcome.start} size="lg" block onPress={() => router.push('/how-it-works')} />
+          <Button label={words.signIn.welcome.haveAccount} size="lg" variant="glass" block onPress={() => router.push('/sign-in')} />
           <Txt variant="tiny" color="onPhoto" center weight={500} style={{ opacity: 0.62, marginTop: 4, marginBottom: 2 }}>
-            By continuing you agree to the{' '}
-            <Txt variant="tiny" color="onPhoto" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ textDecorationLine: 'underline' }}>
-              Terms
-            </Txt>{' '}
-            and{' '}
-            <Txt variant="tiny" color="onPhoto" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ textDecorationLine: 'underline' }}>
-              Privacy Policy
-            </Txt>
-            .
+            {rich(words.signIn.welcome.agree, {
+              terms: (text) => (
+                <Txt variant="tiny" color="onPhoto" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ textDecorationLine: 'underline' }}>
+                  {text}
+                </Txt>
+              ),
+              privacy: (text) => (
+                <Txt variant="tiny" color="onPhoto" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ textDecorationLine: 'underline' }}>
+                  {text}
+                </Txt>
+              ),
+            })}
           </Txt>
         </View>
       </SafeAreaView>

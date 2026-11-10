@@ -6,7 +6,7 @@ import { messageFor } from '@/api/fetcher';
 import { useDeleteAccount, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
 import { useLeave } from '@/features/navigation/useLeave';
-import { compact, plural } from '@/lib/plural';
+import { compact, plural } from '@/words/en/plural';
 import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';

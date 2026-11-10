@@ -4,7 +4,7 @@ import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { Button } from '@/ui/Button';
 import { GlassBar } from '@/ui/GlassBar';
 import { Txt } from '@/ui/Txt';

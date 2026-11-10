@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
 
 import { radius, textStyle, useTheme } from '@/theme';
+import { words } from '@/words';
 
 import { MAX_TEXT_SCALE, Txt } from './Txt';
 import { webNoOutline } from './web';
@@ -95,7 +96,7 @@ export function FieldButton({ label, value, icon, onPress }: { label: string; va
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}. Change`}
+      accessibilityLabel={words.common.fieldChange(label, value)}
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,

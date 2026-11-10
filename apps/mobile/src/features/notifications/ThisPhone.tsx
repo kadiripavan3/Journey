@@ -4,9 +4,10 @@ import { Linking, View } from 'react-native';
 import { layout } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
+import { words } from '@/words';
 
 import { pushAllowed, turnOnPush } from './device';
-import { pushSupport, WHY_NOT } from './support';
+import { pushSupport } from './support';
 
 /**
  * Under the notification switches: whether this phone gets notifications at all, and a way to turn them on.
@@ -36,24 +37,24 @@ export function ThisPhone() {
     setState(answer === 'on' ? 'on' : 'blocked');
   };
 
-  const words =
+  const says =
     support !== 'ready'
-      ? WHY_NOT[support]
+      ? words.notifications.whyNot[support]
       : state === 'on'
-        ? 'This phone gets the notifications you switched on. Everything also shows in Activity.'
+        ? words.notifications.thisPhone.on
         : state === 'blocked'
-          ? "Notifications for Journey are off in your phone's settings. Until you turn them on there, everything shows in Activity."
+          ? words.notifications.thisPhone.blocked
           : state === 'off'
-            ? "Notifications are off on this phone. Your choices above are saved for when you turn them on; until then everything shows in Activity."
+            ? words.notifications.thisPhone.off
             : '';
 
   return (
     <View style={{ marginTop: 14, marginHorizontal: layout.gutter, gap: 12 }}>
       <Txt variant="footnote" color="muted" accessibilityLiveRegion="polite">
-        {words}
+        {says}
       </Txt>
-      {support === 'ready' && state === 'off' ? <Button label="Turn on notifications" variant="soft" loading={asking} onPress={() => void turnOn()} /> : null}
-      {support === 'ready' && state === 'blocked' ? <Button label="Open the phone's settings" variant="soft" onPress={() => void Linking.openSettings()} /> : null}
+      {support === 'ready' && state === 'off' ? <Button label={words.notifications.ask.turnOn} variant="soft" loading={asking} onPress={() => void turnOn()} /> : null}
+      {support === 'ready' && state === 'blocked' ? <Button label={words.notifications.thisPhone.openSettings} variant="soft" onPress={() => void Linking.openSettings()} /> : null}
     </View>
   );
 }

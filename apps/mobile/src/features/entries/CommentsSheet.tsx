@@ -12,7 +12,7 @@ import { ReportSheet } from '@/features/safety/SafetySheets';
 import { timeAgo } from '@/lib/dates';
 import { newClientId } from '@/lib/ids';
 import { firstName } from '@/lib/names';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { ConfirmSheet } from '@/ui/ConfirmSheet';

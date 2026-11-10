@@ -12,7 +12,6 @@ import { pickSquarePhoto } from '@/features/media/pick';
 import { useLeave } from '@/features/navigation/useLeave';
 import { useDebounced } from '@/lib/useDebounced';
 import { normalizeUsername, usernameProblem } from '@/lib/username';
-import { PHOTOS_CLOSED } from '@/lib/words';
 import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -23,6 +22,7 @@ import { GroupLabel } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 import { Tap } from '@/ui/Motion';
+import { words } from '@/words';
 
 /** 9.3 Edit profile: photo, name, username, a short bio and one link, plus the interests that shape Discover. */
 export default function EditProfile() {
@@ -61,7 +61,7 @@ export default function EditProfile() {
         setRemovePhoto(false);
       }
     } catch {
-      setFailure(new ApiError(0, 'photos', PHOTOS_CLOSED));
+      setFailure(new ApiError(0, 'photos', words.media.photosClosed));
     }
   };
 

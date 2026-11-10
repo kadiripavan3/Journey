@@ -17,7 +17,7 @@ import { type FoundPlace, type PickedPlace, placeFields, placeOf } from '@/featu
 import { daysBetween, formatDay, formatDayLong, momentFor, today } from '@/lib/dates';
 import { newClientId } from '@/lib/ids';
 import { loadState } from '@/lib/loading';
-import { PHOTOS_CLOSED } from '@/lib/words';
+import { words } from '@/words';
 
 /** A photo or clip in the composer: already uploaded (it has a media id) or still on the phone. */
 export type Shot = DraftMedia;
@@ -190,7 +190,7 @@ export function useComposer({ journeyId, entryId, draftId, was }: Args) {
       }
       setShots((now) => [...now, ...picked.map((item, i) => ({ key: `${Date.now()}-${i}`, kind: item.kind, uri: item.uri, width: item.width, height: item.height, durationSeconds: item.durationSeconds, mimeType: item.mimeType }))]);
     } catch {
-      setProblem(PHOTOS_CLOSED);
+      setProblem(words.media.photosClosed);
     } finally {
       setPicking(false);
     }

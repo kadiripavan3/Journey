@@ -10,7 +10,7 @@ import { type ListedPersonResponse, useGetFollowersInfinite, useGetFollowingInfi
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { PersonRow } from '@/features/people/PersonRow';
 import { wentAway } from '@/lib/loading';
-import { compact } from '@/lib/plural';
+import { compact } from '@/words/en/plural';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Loading } from '@/ui/Loading';

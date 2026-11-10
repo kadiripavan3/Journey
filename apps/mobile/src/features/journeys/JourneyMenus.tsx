@@ -8,7 +8,7 @@ import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useDeleteJourney, useUpdateJourney } from '@/api/generated/journey';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { useGoHome } from '@/features/states/PageProblem';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { layout } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet, SheetRow } from '@/ui/Sheet';

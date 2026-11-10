@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
 import type { LocalPhoto } from '@/api/upload';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 
 import { photoDay, photoPoint, type Point } from './exif';
 

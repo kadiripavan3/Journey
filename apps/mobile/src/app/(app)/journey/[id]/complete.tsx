@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { messageFor } from '@/api/fetcher';
 import { useCompleteJourney, useGetRecap } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';

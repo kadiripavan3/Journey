@@ -3,7 +3,7 @@ import { ChevronRight, ShieldAlert } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 
 import type { EntryResponse } from '@/api/generated/journey';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { darkTheme, radius, useTheme, withAlpha } from '@/theme';
 import { Frost } from '@/ui/Frost';
 import { Tap } from '@/ui/Motion';

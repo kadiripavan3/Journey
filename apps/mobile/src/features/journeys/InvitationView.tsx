@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import type { JourneyResponse, PersonResponse } from '@/api/generated/journey';
-import { plural } from '@/lib/plural';
+import { plural } from '@/words/en/plural';
 import { darkTheme, layout, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';

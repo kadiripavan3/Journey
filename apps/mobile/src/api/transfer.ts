@@ -1,5 +1,7 @@
 import { File, UploadType } from 'expo-file-system';
 
+import { words } from '@/words';
+
 import { ApiError } from './fetcher';
 
 /** Where a file goes, as the API hands it out. */
@@ -14,7 +16,7 @@ export type Target = { uploadUrl: string; method: string; headers: Record<string
  */
 export async function sendFile(uri: string, target: Target, onProgress?: (fraction: number) => void): Promise<number> {
   const file = new File(uri);
-  if (!file.exists) throw new ApiError(400, 'file_gone', FILE_GONE);
+  if (!file.exists) throw new ApiError(400, 'file_gone', words.media.uploads.fileGone);
   try {
     const result = await file.upload(target.uploadUrl, {
       httpMethod: target.method.toUpperCase() === 'POST' ? 'POST' : 'PUT',
@@ -27,7 +29,7 @@ export async function sendFile(uri: string, target: Target, onProgress?: (fracti
   } catch (error) {
     // "Unable to upload" is what the transfer service says when the connection failed, on both kinds of phone.
     if (codeOf(error) === 'ERR_UNABLE_TO_UPLOAD') return 0;
-    throw new ApiError(400, 'upload_failed', "A file couldn't be uploaded. Open the entry and try again.");
+    throw new ApiError(400, 'upload_failed', words.media.uploads.fileFailed);
   }
 }
 
@@ -40,8 +42,6 @@ export function removeFile(uri: string): void {
     // It sits in the phone's temporary space, which the phone clears by itself.
   }
 }
-
-const FILE_GONE = 'A photo or clip of this entry is no longer on your phone. Open the entry, take it out and add it again.';
 
 function codeOf(error: unknown): unknown {
   return typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined;
