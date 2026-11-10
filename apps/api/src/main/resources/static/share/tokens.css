@@ -32,6 +32,11 @@
   --on-photo: #FFFFFF;
   --photo-glass: rgba(16, 16, 20, .36);
   --photo-glass-line: rgba(255, 255, 255, .24);
+  --photo-tint: rgba(16, 16, 20, .22);
+  --stage: #08080A;
+  --black: #000000;
+  --white: #FFFFFF;
+  --scrim: rgba(0, 0, 0, .44);
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -68,5 +73,10 @@
     --on-photo: #FFFFFF;
     --photo-glass: rgba(16, 16, 20, .36);
     --photo-glass-line: rgba(255, 255, 255, .24);
+    --photo-tint: rgba(16, 16, 20, .22);
+    --stage: #08080A;
+    --black: #000000;
+    --white: #FFFFFF;
+    --scrim: rgba(0, 0, 0, .44);
   }
 }

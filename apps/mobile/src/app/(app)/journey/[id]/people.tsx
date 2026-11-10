@@ -7,12 +7,14 @@ import { type MemberResponse, useGetInvitable, useGetJourney, useGetMe, useGetMe
 import { useRefreshAll } from '@/api/refresh';
 import { timeAgo } from '@/lib/dates';
 import { plural } from '@/lib/plural';
-import { useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
-import { Card, Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { GroupLabel } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
 
 const RULES = [
@@ -57,7 +59,7 @@ export default function JourneyPeople() {
           : `${me ? 'You · ' : ''}Can add entries · ${member.entryCount} so far`;
     const action =
       member.role === 'owner' ? (
-        <Txt color="muted" weight={700} style={{ fontSize: 13, lineHeight: 18 }}>
+        <Txt variant="caption" color="muted" weight={700}>
           Owner
         </Txt>
       ) : isOwner ? (
@@ -66,13 +68,13 @@ export default function JourneyPeople() {
         <Button label="Leave" inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
       ) : null;
     return (
-      <View key={member.person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: 20 }}>
+      <View key={member.person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
         <Avatar uri={member.person.avatarUrl} name={member.person.displayName} size={48} />
         <View style={{ flex: 1 }}>
-          <Txt numberOfLines={1} weight={700} style={{ fontSize: 15, lineHeight: 20 }}>
+          <Txt variant="item" numberOfLines={1}>
             {member.person.displayName}
           </Txt>
-          <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+          <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
             {detail}
           </Txt>
         </View>
@@ -87,23 +89,23 @@ export default function JourneyPeople() {
       {members.isPending ? (
         <Loading />
       ) : members.isError || !data ? (
-        <Problem error={members.error} onRetry={() => void members.refetch()} retrying={members.isRefetching} />
+        <Problem message={messageFor(members.error)} onRetry={() => void members.refetch()} retrying={members.isRefetching} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           {failed ? (
-            <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8, marginHorizontal: 20 }}>
+            <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8, marginHorizontal: layout.rowGutter }}>
               {messageFor(failed)}
             </Txt>
           ) : null}
-          <GroupLabel style={{ marginHorizontal: 22 }}>On this journey</GroupLabel>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>On this journey</GroupLabel>
           {joined.map(row)}
-          {waiting.length > 0 ? <GroupLabel style={{ marginHorizontal: 22 }}>Invited</GroupLabel> : null}
+          {waiting.length > 0 ? <GroupLabel style={{ marginHorizontal: layout.gutter }}>Invited</GroupLabel> : null}
           {waiting.map(row)}
 
           {isOwner ? (
             <>
-              <GroupLabel style={{ marginHorizontal: 22 }}>Add people</GroupLabel>
-              <Txt color="muted" style={{ fontSize: 14, lineHeight: 20, marginHorizontal: 20, marginBottom: 6 }}>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Add people</GroupLabel>
+              <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginBottom: 6 }}>
                 {data.spotsLeft > 0
                   ? `You can invite ${plural(data.spotsLeft, 'more person', 'more people')}. They add their own entries, and you stay in charge of the journey.`
                   : 'A journey has up to 4 authors. Remove someone to invite another person.'}
@@ -113,18 +115,18 @@ export default function JourneyPeople() {
                   <Loading />
                 </View>
               ) : (invitable.data ?? []).length === 0 ? (
-                <Txt color="muted" style={{ fontSize: 14, lineHeight: 20, marginHorizontal: 20, marginTop: 6 }}>
+                <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginTop: 6 }}>
                   You can invite people who follow you. When someone follows you, they show up here.
                 </Txt>
               ) : (
                 (invitable.data ?? []).map((person) => (
-                  <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: 20 }}>
+                  <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
                     <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
                     <View style={{ flex: 1 }}>
-                      <Txt numberOfLines={1} weight={700} style={{ fontSize: 15, lineHeight: 20 }}>
+                      <Txt variant="item" numberOfLines={1}>
                         {person.displayName}
                       </Txt>
-                      <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+                      <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
                         @{person.username}
                       </Txt>
                     </View>
@@ -135,27 +137,27 @@ export default function JourneyPeople() {
             </>
           ) : null}
 
-          <GroupLabel style={{ marginHorizontal: 22 }}>Who can do what</GroupLabel>
-          <Card style={{ marginHorizontal: 16, borderRadius: 20 }}>
+          <GroupLabel style={{ marginHorizontal: layout.gutter }}>Who can do what</GroupLabel>
+          <Card style={{ marginHorizontal: 16, borderRadius: radius.card }}>
             {RULES.map((rule, index) => (
-              <View key={rule.what} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: colors.line }}>
+              <View key={rule.what} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: layout.barGutter, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: colors.line }}>
                 <View style={{ flex: 1 }}>
-                  <Txt weight={600} style={{ fontSize: 15, lineHeight: 20 }}>
+                  <Txt variant="item" weight={600}>
                     {rule.what}
                   </Txt>
                   {rule.note ? (
-                    <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+                    <Txt variant="footnote" color="muted">
                       {rule.note}
                     </Txt>
                   ) : null}
                 </View>
-                <Txt color="muted" style={{ fontSize: 14, lineHeight: 19 }}>
+                <Txt variant="callout" color="muted">
                   {rule.who}
                 </Txt>
               </View>
             ))}
           </Card>
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 18, marginTop: 12, marginHorizontal: 22 }}>
+          <Txt variant="footnote" color="muted" style={{ marginTop: 12, marginHorizontal: layout.gutter }}>
             A friend can leave at any time. Their entries stay unless they delete them.
           </Txt>
         </ScrollView>

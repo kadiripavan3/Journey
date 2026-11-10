@@ -9,24 +9,28 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { messageFor } from '@/api/fetcher';
 import { type EntryResponse, useDeleteEntry, useGetEntry, useGetTimeline } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
+import { CommentsSheet } from '@/features/entries/CommentsSheet';
+import { entryEyebrow } from '@/features/entries/labels';
+import { MilestonePill } from '@/features/entries/MilestonePill';
+import { Reactions } from '@/features/entries/Reactions';
+import { PhotoViewer } from '@/features/media/PhotoViewer';
+import { ReportSheet } from '@/features/safety/SafetySheets';
 import { formatDay } from '@/lib/dates';
-import { darkTheme, useTheme } from '@/theme';
+import { firstName } from '@/lib/names';
+import { darkTheme, layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Eyebrow, Loading, Problem } from '@/ui/Bits';
-import { Frost } from '@/ui/Frost';
-import { PhotoViewer } from '@/ui/PhotoViewer';
 import { Button } from '@/ui/Button';
-import { CommentsSheet } from '@/ui/CommentsSheet';
-import { entryEyebrow, MilestonePill } from '@/ui/EntryBits';
-import { Reactions } from '@/ui/Reactions';
+import { Eyebrow } from '@/ui/Eyebrow';
+import { Frost } from '@/ui/Frost';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
-import { ReportSheet } from '@/ui/SafetySheets';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
 const GAP = 14;
 const SIDE = 22;
-const STAGE = '#08080A';
+const STAGE = darkTheme.colors.stage;
 const REPLY_BAR = 66;
 
 /** 6.1 Entry: each entry is a card you swipe through like a story, with the next one peeking in. Milestones get a badge. */
@@ -64,12 +68,12 @@ export default function EntryView() {
     <View style={{ flex: 1, backgroundColor: STAGE }}>
       <StatusBar style="light" />
       {backdrop ? <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} accessible={false} /> : null}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.52)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(darkTheme.colors.black, 0.52) }]} />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: insets.top + 8, paddingHorizontal: 20 }}>
-        <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: 18, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: insets.top + 8, paddingHorizontal: layout.rowGutter }}>
+        <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
           <Frost tone="dark" />
-          <Txt accessibilityLiveRegion="polite" weight={700} style={{ fontSize: 13, lineHeight: 17, color: darkTheme.colors.onPhoto }}>
+          <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
             {current ? `Entry ${index + 1} of ${entries.length}` : ' '}
           </Txt>
         </View>
@@ -80,7 +84,7 @@ export default function EntryView() {
       </View>
 
       {failed ? (
-        <Problem error={failed} onRetry={() => void opened.refetch()} retrying={opened.isRefetching} />
+        <Problem message={messageFor(failed)} onRetry={() => void opened.refetch()} retrying={opened.isRefetching} />
       ) : !opened.data || (journeyId && timeline.isPending) ? (
         <Loading />
       ) : (
@@ -118,7 +122,7 @@ export default function EntryView() {
             height: 54,
             paddingLeft: 20,
             paddingRight: 8,
-            borderRadius: 27,
+            borderRadius: radius.pill,
             overflow: 'hidden',
             flexDirection: 'row',
             alignItems: 'center',
@@ -128,10 +132,10 @@ export default function EntryView() {
             borderColor: darkTheme.colors.photoGlassLine,
           }}>
           <Frost tone="dark" />
-          <Txt numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 19, color: darkTheme.colors.onPhoto }}>
-            Say something nice to {current.author.displayName.trim().split(/\s+/)[0]}…
+          <Txt variant="callout" numberOfLines={1} style={{ flex: 1, color: darkTheme.colors.onPhoto }}>
+            Say something nice to {firstName(current.author.displayName)}…
           </Txt>
-          <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: darkTheme.colors.accent }}>
+          <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: darkTheme.colors.accent }}>
             <Send size={18} color={darkTheme.colors.onAccent} />
           </View>
         </Pressable>
@@ -145,12 +149,12 @@ export default function EntryView() {
 
 function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; maxHeight: number; onComments: () => void }) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const [viewing, setViewing] = useState<number | null>(null);
   const shown = entry.media[0];
   const many = entry.media.length > 1;
   return (
-    <View style={{ maxHeight, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.surface, boxShadow: '0 30px 60px -20px rgba(0, 0, 0, 0.6)' }}>
+    <View style={{ maxHeight, borderRadius: radius.stage, overflow: 'hidden', backgroundColor: colors.surface, boxShadow: shadow.stage }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {shown ? (
           <Pressable
@@ -163,22 +167,22 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
             {many ? (
               <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
                 {entry.media.map((m, i) => (
-                  <View key={m.id} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: darkTheme.colors.onPhoto, opacity: i === 0 ? 1 : 0.5 }} />
+                  <View key={m.id} style={{ width: 6, height: 6, borderRadius: radius.pill, backgroundColor: darkTheme.colors.onPhoto, opacity: i === 0 ? 1 : 0.5 }} />
                 ))}
               </View>
             ) : null}
           </Pressable>
         ) : null}
-        <View style={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: 20 }}>
+        <View style={{ paddingTop: 18, paddingHorizontal: layout.rowGutter, paddingBottom: 20 }}>
           {!shown && entry.isMilestone ? <MilestonePill style={{ marginBottom: 10 }} /> : null}
           <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
           {entry.title ? (
-            <Txt accessibilityRole="header" weight={800} style={{ fontSize: 23, lineHeight: 26, letterSpacing: -0.7, marginTop: 6 }}>
+            <Txt variant="title" accessibilityRole="header" style={{ marginTop: 6 }}>
               {entry.title}
             </Txt>
           ) : null}
           {entry.body ? (
-            <Txt color={entry.title ? 'muted' : 'text'} style={{ fontSize: entry.title ? 14.5 : 16, lineHeight: entry.title ? 22 : 24, marginTop: 8 }}>
+            <Txt variant={entry.title ? 'bodySmall' : 'bodyLarge'} color={entry.title ? 'muted' : 'text'} style={{ marginTop: 8 }}>
               {entry.body}
             </Txt>
           ) : null}
@@ -186,10 +190,10 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${entry.author.displayName}'s profile`}
-            onPress={() => router.push(`/profile/${entry.author.username}` as never)}
+            onPress={() => router.push(`/profile/${entry.author.username}`)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
             <Avatar uri={entry.author.avatarUrl} name={entry.author.displayName} size={28} />
-            <Txt numberOfLines={1} color="muted" style={{ flex: 1, fontSize: 12.5, lineHeight: 17 }}>
+            <Txt variant="footnote" numberOfLines={1} color="muted" style={{ flex: 1 }}>
               {entry.author.displayName} · {formatDay(entry.happenedOn)}
               {entry.edited ? ' · Edited' : ''}
             </Txt>
@@ -241,12 +245,12 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
   return (
     <Sheet visible={visible} onClose={close} title={confirming ? 'Delete this entry?' : undefined} subtitle={confirming ? "It will be gone for good, for you and everyone following." : undefined}>
       {remove.isError ? (
-        <Txt variant="caption" color="danger" style={{ paddingHorizontal: 22, paddingBottom: 8 }}>
+        <Txt variant="caption" color="danger" style={{ paddingHorizontal: layout.gutter, paddingBottom: 8 }}>
           {messageFor(remove.error)}
         </Txt>
       ) : null}
       {confirming ? (
-        <View style={{ gap: 10, paddingHorizontal: 20, paddingTop: 6 }}>
+        <View style={{ gap: 10, paddingHorizontal: layout.rowGutter, paddingTop: 6 }}>
           <Button label="Delete entry" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate({ id: entry.id })} />
           <Button label="Keep it" variant="soft" size="lg" block onPress={() => setConfirming(false)} />
         </View>
@@ -259,7 +263,7 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
               label="Edit entry"
               onPress={() => {
                 close();
-                router.push(`/journey/${entry.journeyId}/add?entry=${entry.id}` as never);
+                router.push(`/journey/${entry.journeyId}/add?entry=${entry.id}`);
               }}
             />
           ) : null}

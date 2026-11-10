@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
 import { Frost } from './Frost';
 import { Tap } from './Motion';
@@ -28,7 +28,7 @@ export function RoundButton({ label, onPress, icon, tone = 'soft' }: Props) {
       style={{
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: radius.pill,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',

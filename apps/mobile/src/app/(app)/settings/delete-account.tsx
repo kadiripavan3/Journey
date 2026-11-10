@@ -7,7 +7,7 @@ import { messageFor } from '@/api/fetcher';
 import { useDeleteAccount, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
 import { compact, plural } from '@/lib/plural';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Heading, Lead } from '@/ui/Heading';
@@ -53,7 +53,7 @@ export default function DeleteAccount() {
           <Button label="Keep my account" variant="line" size="lg" block onPress={() => router.back()} />
         </>
       }>
-      <View style={{ width: 72, height: 72, borderRadius: 22, marginTop: 14, marginBottom: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
+      <View style={{ width: 72, height: 72, borderRadius: radius.cardLarge, marginTop: 14, marginBottom: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
         <Trash2 size={32} color={colors.danger} />
       </View>
       <Heading>Delete your account?</Heading>
@@ -61,8 +61,8 @@ export default function DeleteAccount() {
       <View style={{ gap: 10, marginTop: 18 }}>
         {losses.map((loss) => (
           <View key={loss} style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 8, backgroundColor: colors.text }} />
-            <Txt weight={600} style={{ flex: 1, fontSize: 15, lineHeight: 22 }}>
+            <View style={{ width: 6, height: 6, borderRadius: radius.pill, marginTop: 8, backgroundColor: colors.text }} />
+            <Txt variant="body" weight={600} style={{ flex: 1 }}>
               {loss}
             </Txt>
           </View>

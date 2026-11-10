@@ -1,15 +1,14 @@
-import type { BottomTabBarProps } from 'expo-router/tabs';
 import { BlurView } from 'expo-blur';
+import type { BottomTabBarProps } from 'expo-router/tabs';
 import { Bell, Compass, House, Plus, User } from 'lucide-react-native';
 import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { useGetActivity } from '@/api/generated/journey';
-import { fontFor, useTheme } from '@/theme';
-
-import { AddSheet } from './AddSheet';
-import { Tap } from './Motion';
-import { Txt } from './Txt';
+import { AddSheet } from '@/features/journeys/AddSheet';
+import { radius, useTheme } from '@/theme';
+import { Tap } from '@/ui/Motion';
+import { Txt } from '@/ui/Txt';
 
 const ICONS: Record<string, (color: string) => ReactNode> = {
   index: (c) => <House size={24} color={c} />,
@@ -43,9 +42,9 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
         style={{ width: 62, height: 56, alignItems: 'center', justifyContent: 'center', gap: 3 }}>
         {ICONS[route.name]?.(color)}
         {route.name === 'activity' && hasNews ? (
-          <View style={{ position: 'absolute', top: 7, right: 17, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.like, borderWidth: 1.5, borderColor: colors.bg }} />
+          <View style={{ position: 'absolute', top: 7, right: 17, width: 9, height: 9, borderRadius: radius.pill, backgroundColor: colors.like, borderWidth: 1.5, borderColor: colors.bg }} />
         ) : null}
-        <Txt style={{ fontFamily: fontFor[700], fontSize: 10.5, lineHeight: 13, color }}>{label}</Txt>
+        <Txt variant="micro" weight={700} style={{ color }}>{label}</Txt>
       </Pressable>
     );
   };
@@ -55,7 +54,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
       <View
         style={{
           height: 70,
-          borderRadius: 35,
+          borderRadius: radius.pill,
           overflow: 'hidden',
           borderWidth: 1,
           borderColor: colors.glassLine,
@@ -70,7 +69,7 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
             accessibilityLabel="Add an entry or start a journey"
             onPress={() => setAdding(true)}
             scaleTo={0.9}
-            style={{ width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}>
+            style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}>
             <Plus size={26} color={colors.onAccent} strokeWidth={2.4} />
           </Tap>
           {tab(2)}

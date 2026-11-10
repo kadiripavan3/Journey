@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { messageFor } from '@/api/fetcher';
 import { useGetDiscover } from '@/api/generated/journey';
-import { useCatalog } from '@/journey/catalog';
-import { useTheme } from '@/theme';
-import { Problem, Rail, SectionHeader } from '@/ui/Bits';
+import { useCatalog } from '@/features/journeys/catalog';
+import { JourneyCard } from '@/features/journeys/JourneyCard';
+import { layout, radius, useTheme } from '@/theme';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
-import { JourneyCard } from '@/ui/JourneyCard';
+import { Problem } from '@/ui/Problem';
+import { Rail } from '@/ui/Rail';
+import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
@@ -38,20 +41,20 @@ export default function Discover() {
         contentContainerStyle={{ paddingBottom: 130, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
-        <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 36, letterSpacing: -1.2, marginTop: 10, marginHorizontal: 20 }}>
+        <Txt variant="heading" accessibilityRole="header" style={{ marginTop: 10, marginHorizontal: layout.rowGutter }}>
           Discover
         </Txt>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Search journeys, people and tags"
-          onPress={() => router.push('/search' as never)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, height: 50, marginTop: 12, marginHorizontal: 16, paddingHorizontal: 18, borderRadius: 25, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
+          onPress={() => router.push('/search')}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, height: 50, marginTop: 12, marginHorizontal: 16, paddingHorizontal: 18, borderRadius: radius.pill, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
           <Search size={18} color={colors.text} />
-          <Txt weight={700} style={{ fontSize: 14.5, lineHeight: 20 }}>
+          <Txt variant="control">
             Search journeys, people, #tags
           </Txt>
         </Pressable>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingTop: 14 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 14 }}>
           {catalog.categories.map((c) => (
             <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id === category ? null : c.id)} />
           ))}
@@ -63,7 +66,7 @@ export default function Discover() {
             <RailSkeleton size={158} count={3} />
           </>
         ) : discover.isError ? (
-          <Problem error={discover.error} onRetry={() => void discover.refetch()} retrying={discover.isRefetching} />
+          <Problem message={messageFor(discover.error)} onRetry={() => void discover.refetch()} retrying={discover.isRefetching} />
         ) : nothing ? (
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
             <EmptyState
@@ -79,7 +82,7 @@ export default function Discover() {
                 <SectionHeader title="Trending now" />
                 <Rail>
                   {data.trending.map((journey, index) => (
-                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? '🔥 Trending' : undefined} onPress={() => router.push(`/journey/${journey.id}` as never)} />
+                    <JourneyCard key={journey.id} journey={journey} pill={index === 0 ? 'Trending' : undefined} pillEmoji="🔥" onPress={() => router.push(`/journey/${journey.id}`)} />
                   ))}
                 </Rail>
               </>
@@ -89,7 +92,7 @@ export default function Discover() {
                 <SectionHeader title="Recently completed" />
                 <Rail>
                   {data.completed.map((journey) => (
-                    <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => router.push(`/journey/${journey.id}` as never)} />
+                    <JourneyCard key={journey.id} journey={journey} size="sm" onPress={() => router.push(`/journey/${journey.id}`)} />
                   ))}
                 </Rail>
               </>

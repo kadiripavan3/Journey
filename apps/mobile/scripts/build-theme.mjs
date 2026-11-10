@@ -23,11 +23,19 @@ const palette = (mode) => ({
   onPhoto: tokens.onPhoto.text,
   photoGlass: tokens.onPhoto.glass,
   photoGlassLine: tokens.onPhoto.glassLine,
+  photoTint: tokens.onPhoto.tint,
+  stage: tokens.fixed.stage,
+  black: tokens.fixed.black,
+  white: tokens.fixed.white,
+  scrim: tokens.fixed.scrim,
 });
+
+// "Body small" becomes bodySmall.
+const variantName = (name) => name.toLowerCase().replace(/ ([a-z0-9])/g, (_, c) => c.toUpperCase());
 
 const type = Object.fromEntries(
   tokens.type.map((t) => [
-    t.name.toLowerCase(),
+    variantName(t.name),
     {
       fontSize: t.size,
       lineHeight: t.line,
@@ -44,9 +52,24 @@ export const accentName = ${JSON.stringify(accentName)} as const;
 
 export const palettes = ${JSON.stringify({ light: palette('light'), dark: palette('dark') }, null, 2)} as const;
 
-/** Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. */
+/**
+ * Shadows as CSS box-shadow values: "md" lifts cards and bars, "sm" outlines quiet surfaces. The rest are the same
+ * in light and dark: under a sheet, under a switch's knob, around a picture that overlaps a photo, under a card on the stage.
+ */
 export const shadows = ${JSON.stringify(
-  Object.fromEntries(['light', 'dark'].map((mode) => [mode, { md: tokens.shadow[mode].shadow, sm: tokens.shadow[mode]['shadow-sm'] }])),
+  Object.fromEntries(
+    ['light', 'dark'].map((mode) => [
+      mode,
+      {
+        md: tokens.shadow[mode].shadow,
+        sm: tokens.shadow[mode]['shadow-sm'],
+        sheet: tokens.shadow.fixed.sheet,
+        knob: tokens.shadow.fixed.knob,
+        float: tokens.shadow.fixed.float,
+        stage: tokens.shadow.fixed.stage,
+      },
+    ]),
+  ),
   null,
   2,
 )} as const;
@@ -55,6 +78,9 @@ export const radius = ${JSON.stringify(tokens.radius, null, 2)} as const;
 
 /** The spacing scale, in points. */
 export const space = ${JSON.stringify(tokens.space)} as const;
+
+/** Where a screen's content starts from the edge ("gutter" for text and cards, "rowGutter" for full-width rows, "barGutter" for bars and rails), and the room above a section. */
+export const layout = ${JSON.stringify(Object.fromEntries(Object.entries(tokens.layout).filter(([key]) => key !== 'note')))} as const;
 
 export const type = ${JSON.stringify(type, null, 2)} as const;
 

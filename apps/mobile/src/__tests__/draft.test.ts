@@ -1,4 +1,4 @@
-import { parseTags } from '@/journey/draft';
+import { parseTags } from '@/features/journeys/draft';
 import { compact, followersLabel, plural } from '@/lib/plural';
 
 describe('parseTags', () => {

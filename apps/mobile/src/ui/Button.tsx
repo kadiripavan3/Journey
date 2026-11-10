@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, type StyleProp, Text, type ViewStyle } from 'react-native';
+import { ActivityIndicator, type StyleProp, type ViewStyle } from 'react-native';
 
-import { fontFor, useTheme } from '@/theme';
+import { radius, type TypeVariant, useTheme } from '@/theme';
 
 import { Frost } from './Frost';
 import { Tap } from './Motion';
+import { Txt } from './Txt';
 
 type Variant = 'primary' | 'ink' | 'line' | 'soft' | 'glass' | 'quiet' | 'danger';
 type Size = 'lg' | 'md' | 'sm';
@@ -26,7 +27,7 @@ type Props = {
 };
 
 const HEIGHT = { lg: 54, md: 46, sm: 36 } as const;
-const FONT_SIZE = { lg: 16, md: 15, sm: 14 } as const;
+const TEXT: Record<Size, TypeVariant> = { lg: 'headline', md: 'item', sm: 'callout' };
 const PADDING = { lg: 22, md: 20, sm: 16 } as const;
 
 export function Button({ label, onPress, variant = 'primary', size = 'md', icon, loading, disabled, block, inline, style }: Props) {
@@ -54,7 +55,7 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
         {
           height: HEIGHT[size],
           paddingHorizontal: PADDING[size],
-          borderRadius: HEIGHT[size] / 2,
+          borderRadius: radius.pill,
           backgroundColor: bg,
           borderWidth: border ? 1.5 : 0,
           borderColor: border,
@@ -70,17 +71,9 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
       ]}>
       {variant === 'glass' ? <Frost tone="dark" /> : null}
       {loading ? <ActivityIndicator color={fg} /> : icon?.(fg)}
-      <Text
-        numberOfLines={1}
-        style={{
-          fontFamily: fontFor[700],
-          fontSize: FONT_SIZE[size],
-          letterSpacing: -0.15,
-          color: fg,
-          textDecorationLine: variant === 'quiet' ? 'underline' : 'none',
-        }}>
+      <Txt variant={TEXT[size]} weight={700} numberOfLines={1} style={{ color: fg, textDecorationLine: variant === 'quiet' ? 'underline' : 'none' }}>
         {label}
-      </Text>
+      </Txt>
     </Tap>
   );
 }

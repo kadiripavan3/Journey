@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetMe, useGetSettings } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
-import { useTheme } from '@/theme';
+import { layout, useTheme } from '@/theme';
 import { useAppearance } from '@/theme/appearance';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
@@ -37,10 +37,10 @@ export default function Settings() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
               <Avatar uri={profile.avatarUrl} name={profile.displayName} size={52} />
               <View style={{ flex: 1 }}>
-                <Txt numberOfLines={1} weight={700} style={{ fontSize: 16, lineHeight: 21 }}>
+                <Txt variant="headline" numberOfLines={1}>
                   {profile.displayName}
                 </Txt>
-                <Txt numberOfLines={1} color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+                <Txt variant="footnote" numberOfLines={1} color="muted">
                   @{profile.username} · {me?.email}
                 </Txt>
               </View>
@@ -48,20 +48,20 @@ export default function Settings() {
           </RowGroup>
         ) : null}
 
-        <GroupLabel style={{ marginHorizontal: 22 }}>You</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>You</GroupLabel>
         <RowGroup>
-          <Row first icon={(c) => <UserRound size={18} color={c} />} label="Account" onPress={() => router.push('/settings/account' as never)} />
+          <Row first icon={(c) => <UserRound size={18} color={c} />} label="Account" onPress={() => router.push('/settings/account')} />
           <Row
             icon={(c) => <Bell size={18} color={c} />}
             label="Notifications"
             value={switches ? `${switches.filter(Boolean).length} of ${switches.length} on` : undefined}
-            onPress={() => router.push('/settings/notifications' as never)}
+            onPress={() => router.push('/settings/notifications')}
           />
-          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label="Privacy and safety" onPress={() => router.push('/settings/privacy' as never)} />
-          <Row icon={(c) => <Palette size={18} color={c} />} label="Appearance" value={APPEARANCE[appearance]} onPress={() => router.push('/settings/appearance' as never)} />
+          <Row icon={(c) => <ShieldCheck size={18} color={c} />} label="Privacy and safety" onPress={() => router.push('/settings/privacy')} />
+          <Row icon={(c) => <Palette size={18} color={c} />} label="Appearance" value={APPEARANCE[appearance]} onPress={() => router.push('/settings/appearance')} />
         </RowGroup>
 
-        <GroupLabel style={{ marginHorizontal: 22 }}> </GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}> </GroupLabel>
         <RowGroup>
           <Row first icon={(c) => <LogOut size={18} color={c} />} label="Sign out" onPress={() => void session.signOut()} trailing={<View />} />
         </RowGroup>

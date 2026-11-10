@@ -6,9 +6,8 @@ import { type EntryResponse, useLikeEntry, useUnlikeEntry } from '@/api/generate
 import { useRefreshAll } from '@/api/refresh';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
-
-import { SPRING } from './Motion';
-import { Txt } from './Txt';
+import { SPRING } from '@/ui/Motion';
+import { Txt } from '@/ui/Txt';
 
 /** The heart and the comment count under an entry. The heart fills straight away when tapped. */
 export function Reactions({ entry, onComments }: { entry: EntryResponse; onComments: () => void }) {
@@ -43,13 +42,13 @@ export function Reactions({ entry, onComments }: { entry: EntryResponse; onComme
         <Animated.View style={heart}>
           <Heart size={22} color={liked ? colors.like : colors.text} fill={liked ? colors.like : 'transparent'} />
         </Animated.View>
-        <Txt weight={700} style={{ fontSize: 14, lineHeight: 19, color: liked ? colors.like : colors.text }}>
+        <Txt variant="callout" weight={700} style={{ color: liked ? colors.like : colors.text }}>
           {compact(Math.max(count, 0))}
         </Txt>
       </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={`Comments. ${entry.commentCount}`} hitSlop={10} onPress={onComments} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <MessageCircle size={22} color={colors.text} />
-        <Txt weight={700} style={{ fontSize: 14, lineHeight: 19 }}>
+        <Txt variant="callout" weight={700}>
           {compact(entry.commentCount)}
         </Txt>
       </Pressable>
@@ -65,13 +64,13 @@ export function ReactionCounts({ entry }: { entry: EntryResponse }) {
     <View accessible accessibilityLabel={`${entry.likeCount} likes, ${entry.commentCount} comments`} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
         <Heart size={17} color={entry.viewer.hasLiked ? colors.like : colors.text} fill={entry.viewer.hasLiked ? colors.like : 'transparent'} />
-        <Txt weight={700} style={{ fontSize: 13, lineHeight: 17, color: entry.viewer.hasLiked ? colors.like : colors.text }}>
+        <Txt variant="caption" weight={700} style={{ color: entry.viewer.hasLiked ? colors.like : colors.text }}>
           {compact(entry.likeCount)}
         </Txt>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
         <MessageCircle size={17} color={colors.text} />
-        <Txt weight={700} style={{ fontSize: 13, lineHeight: 17 }}>
+        <Txt variant="caption" weight={700}>
           {compact(entry.commentCount)}
         </Txt>
       </View>

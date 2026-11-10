@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetMe } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
-import { useTheme } from '@/theme';
+import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { GroupLabel } from '@/ui/Heading';
 import { Row, RowGroup } from '@/ui/Rows';
@@ -20,14 +20,14 @@ export default function Account() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Account" trailing={<View style={{ width: 40 }} />} />
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-        <GroupLabel style={{ marginHorizontal: 22 }}>Sign in with</GroupLabel>
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>Sign in with</GroupLabel>
         <RowGroup>
           <Row first icon={(c) => <Mail size={18} color={c} />} label="Email code" note={me?.email} />
         </RowGroup>
         <View style={{ height: 24 }} />
         <RowGroup>
           <Row first icon={(c) => <LogOut size={18} color={c} />} label="Sign out" onPress={() => void session.signOut()} trailing={<View />} />
-          <Row danger icon={(c) => <Trash2 size={18} color={c} />} label="Delete account" onPress={() => router.push('/settings/delete-account' as never)} />
+          <Row danger icon={(c) => <Trash2 size={18} color={c} />} label="Delete account" onPress={() => router.push('/settings/delete-account')} />
         </RowGroup>
       </ScrollView>
     </SafeAreaView>

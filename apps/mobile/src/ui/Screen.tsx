@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme';
+import { layout, useTheme } from '@/theme';
 
 type Props = {
   children: ReactNode;
@@ -21,12 +21,12 @@ export function Screen({ children, footer, header }: Props) {
         {header}
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          contentContainerStyle={{ paddingHorizontal: layout.rowGutter, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
-        {footer ? <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12, gap: 10 }}>{footer}</View> : null}
+        {footer ? <View style={{ paddingHorizontal: layout.rowGutter, paddingTop: 12, paddingBottom: 12, gap: 10 }}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

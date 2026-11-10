@@ -2,19 +2,20 @@ import { View } from 'react-native';
 
 import type { EntryResponse, JourneyResponse } from '@/api/generated/journey';
 import { daysBetween, today } from '@/lib/dates';
-import { useTheme } from '@/theme';
-
-import { Card } from './Bits';
-import { Ring } from './Ring';
-import { Txt } from './Txt';
+import { radius, useTheme } from '@/theme';
+import { Card } from '@/ui/Card';
+import { Ring } from '@/ui/Ring';
+import { Txt } from '@/ui/Txt';
 
 /** 5.5 Challenge: a progress ring and a grid of days show the arc. A missed day is just a gap, never a lost streak. */
 export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; entries: EntryResponse[] }) {
   const { colors } = useTheme();
   const target = journey.targetDays ?? 0;
   if (target <= 0) return null;
-  const done = new Set(entries.map((entry) => entry.number).filter((n) => n >= 1 && n <= target));
-  // Day 1 is the start date, so today's number is the days since then plus one.
+  // Day 1 is the start date. An entry's day comes from its date, not its label: a journey that counts in parts
+  // has "Part 3" on a day that may be the tenth.
+  const dayOf = (entry: EntryResponse) => daysBetween(journey.startDate, entry.happenedOn) + 1;
+  const done = new Set(entries.map(dayOf).filter((n) => n >= 1 && n <= target));
   const todayNumber = journey.status === 'completed' ? target + 1 : daysBetween(journey.startDate, today()) + 1;
   const percent = Math.round((done.size / target) * 100);
   // Today counts as done once it has a check-in.
@@ -26,10 +27,10 @@ export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
         <Ring progress={done.size / target} emoji="🔥" size={70} />
         <View style={{ flex: 1 }}>
-          <Txt weight={800} style={{ fontSize: 19, lineHeight: 24, letterSpacing: -0.4 }}>
+          <Txt variant="subtitle">
             {done.size} of {target} days
           </Txt>
-          <Txt color="muted" style={{ fontSize: 13, lineHeight: 18, marginTop: 2 }}>
+          <Txt variant="caption" weight={500} color="muted" style={{ marginTop: 2 }}>
             {percent}% there{journey.status === 'completed' ? '' : left > 0 ? ` · ${left} ${left === 1 ? 'day' : 'days'} to go` : ' · last day'}
           </Txt>
         </View>
@@ -44,7 +45,7 @@ export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; 
               <View
                 style={{
                   flex: 1,
-                  borderRadius: 9,
+                  borderRadius: radius.chip,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: checked ? colors.accent : colors.fill,
@@ -52,7 +53,7 @@ export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; 
                   borderColor: colors.text,
                   opacity: missed ? 0.5 : 1,
                 }}>
-                <Txt weight={700} style={{ fontSize: 11.5, lineHeight: 14, color: checked ? colors.onAccent : missed ? colors.muted : colors.text }}>
+                <Txt variant="tiny" style={{ color: checked ? colors.onAccent : missed ? colors.muted : colors.text }}>
                   {day}
                 </Txt>
               </View>
@@ -60,7 +61,7 @@ export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; 
           );
         })}
       </View>
-      <Txt color="muted" style={{ fontSize: 12, lineHeight: 17, marginTop: 10 }}>
+      <Txt variant="small" weight={500} color="muted" style={{ marginTop: 10 }}>
         Missed a day? No streaks to lose.
       </Txt>
     </Card>

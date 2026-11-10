@@ -8,11 +8,11 @@ import { ApiError, messageFor } from '@/api/fetcher';
 import { saveProfile, useCheckUsername, useGetMe } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
-import { useCatalog } from '@/journey/catalog';
-import { pickSquarePhoto } from '@/journey/pick';
+import { useCatalog } from '@/features/journeys/catalog';
+import { pickSquarePhoto } from '@/features/media/pick';
 import { useDebounced } from '@/lib/useDebounced';
 import { normalizeUsername, usernameProblem } from '@/lib/username';
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
@@ -90,11 +90,11 @@ export default function EditProfile() {
       <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 18, gap: 10 }}>
         <Pressable accessibilityRole="button" accessibilityLabel={picture ? 'Change your photo' : 'Add a photo'} onPress={() => void choosePhoto()}>
           {photo ? (
-            <Image source={{ uri: photo.uri }} style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.fill2 }} contentFit="cover" />
+            <Image source={{ uri: photo.uri }} style={{ width: 104, height: 104, borderRadius: radius.pill, backgroundColor: colors.fill2 }} contentFit="cover" />
           ) : (
             <Avatar uri={picture} name={displayName || ' '} size={104} />
           )}
-          <View style={{ position: 'absolute', right: -2, bottom: 0, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.text, borderWidth: 3, borderColor: colors.bg }}>
+          <View style={{ position: 'absolute', right: -2, bottom: 0, width: 36, height: 36, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.text, borderWidth: 3, borderColor: colors.bg }}>
             <Camera size={16} color={colors.bg} />
           </View>
         </Pressable>

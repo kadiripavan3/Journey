@@ -10,14 +10,15 @@ import { messageFor } from '@/api/fetcher';
 import { useAcceptInvitation, useGetInvitations, useGetMe, useRemoveMember } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { plural } from '@/lib/plural';
-import { darkTheme } from '@/theme';
+import { darkTheme, layout, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
 
-const STAGE = '#08080A';
+const STAGE = darkTheme.colors.stage;
 const ON = darkTheme.colors.onPhoto;
 const WHO = { public: "It's public", unlisted: 'Only people with the link see it', private: 'Only its authors see it' } as const;
 
@@ -33,7 +34,7 @@ export default function Invitation() {
     mutation: {
       onSuccess: async () => {
         await refresh();
-        router.replace(`/journey/${id}` as never);
+        router.replace(`/journey/${id}`);
       },
     },
   });
@@ -60,18 +61,18 @@ export default function Invitation() {
     <View style={{ flex: 1, backgroundColor: STAGE }}>
       <StatusBar style="light" />
       {j?.coverUrl ? <Image source={{ uri: j.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} /> : null}
-      <LinearGradient colors={['rgba(8,8,10,0.45)', 'rgba(8,8,10,0.05)', 'rgba(8,8,10,0.8)', 'rgba(8,8,10,0.96)']} locations={[0, 0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
-      <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: 20 }}>
+      <LinearGradient colors={[withAlpha(STAGE, 0.45), withAlpha(STAGE, 0.05), withAlpha(STAGE, 0.8), withAlpha(STAGE, 0.96)]} locations={[0, 0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
+      <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: layout.rowGutter }}>
         <View style={{ paddingTop: 8, marginLeft: -4 }}>
           <RoundButton tone="photo" label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
         </View>
         {invitations.isPending ? (
           <Loading />
         ) : invitations.isError ? (
-          <Problem error={invitations.error} onRetry={() => void invitations.refetch()} retrying={invitations.isRefetching} />
+          <Problem message={messageFor(invitations.error)} onRetry={() => void invitations.refetch()} retrying={invitations.isRefetching} />
         ) : !invitation || !j ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <Txt center style={{ fontSize: 15, lineHeight: 22, color: ON }}>
+            <Txt variant="body" center style={{ color: ON }}>
               This invitation isn&apos;t there any more.
             </Txt>
           </View>
@@ -79,18 +80,18 @@ export default function Invitation() {
           <View style={{ gap: 12, paddingBottom: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Avatar uri={invitation.invitedBy.avatarUrl} name={invitation.invitedBy.displayName} size={36} />
-              <Txt weight={700} style={{ fontSize: 15, lineHeight: 20, color: ON }}>
+              <Txt variant="item" style={{ color: ON }}>
                 {invitation.invitedBy.displayName} invited you
               </Txt>
             </View>
-            <Txt accessibilityRole="header" weight={800} style={{ fontSize: 34, lineHeight: 36, letterSpacing: -1.2, color: ON }}>
+            <Txt variant="display" accessibilityRole="header" style={{ color: ON }}>
               Add to {j.title}?
             </Txt>
             <View style={{ gap: 9, marginVertical: 6 }}>
               {points.map((point) => (
                 <View key={point} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Check size={18} color={darkTheme.colors.accent} strokeWidth={2.6} />
-                  <Txt style={{ flex: 1, fontSize: 15, lineHeight: 21, color: ON, opacity: 0.9 }}>{point}</Txt>
+                  <Txt variant="body" style={{ flex: 1, color: ON, opacity: 0.9 }}>{point}</Txt>
                 </View>
               ))}
             </View>

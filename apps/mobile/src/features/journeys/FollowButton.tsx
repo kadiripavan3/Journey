@@ -1,10 +1,9 @@
 import { Check, Plus } from 'lucide-react-native';
 
-import type { JourneyResponse } from '@/api/generated/journey';
 import { useFollowJourney, useUnfollowJourney } from '@/api/generated/journey';
+import type { JourneyResponse } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
-
-import { Button } from './Button';
+import { Button } from '@/ui/Button';
 
 type Props = { journey: JourneyResponse; size?: 'sm' | 'md'; onChanged?: (following: boolean) => void };
 

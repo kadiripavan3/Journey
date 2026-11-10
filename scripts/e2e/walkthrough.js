@@ -6,11 +6,14 @@
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
 // Before running: the API on port 8080 with the local profile, and the web build served on 8081
-// (see CLAUDE.md, "Check the app in a browser").
+// (see CLAUDE.md, "Check the app in a browser"). Other addresses: set API_URL and WEB_URL, and build the
+// web app with EXPO_PUBLIC_API_URL set to the same API address.
 // usage: node scripts/e2e/walkthrough.js <outDir> <light|dark>
 const path = require('path');
 const { chromium } = require('playwright');
 const IMG = path.join(__dirname, '../../design/hub/img');
+const API_URL = (process.env.API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/, '');
 (async () => {
   const [out, scheme] = process.argv.slice(2);
   const tag = Math.random().toString(36).slice(2, 7);
@@ -20,7 +23,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
   let expectNotFound = false; // true while a blocked person's pages are meant to disappear
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error' && !(expectNotFound && /404/.test(m.text()))) errors.push('console: ' + m.text().slice(0, 300)); });
-  page.on('response', r => { if (r.status() >= 400 && r.url().includes(':8080') && !(expectNotFound && r.status() === 404)) errors.push(`http ${r.status()} ${r.request().method()} ${r.url()}`); });
+  page.on('response', r => { if (r.status() >= 400 && r.url().startsWith(API_URL) && !(expectNotFound && r.status() === 404)) errors.push(`http ${r.status()} ${r.request().method()} ${r.url()}`); });
   // Screens underneath the current one stay in the page on the web, so always take the last (topmost) match.
   const T = (...a) => page.getByText(...a).last();
   const R = (...a) => page.getByRole(...a).last();
@@ -30,7 +33,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
   const step = async (name, fn) => { try { await fn(); } catch (e) { await page.screenshot({ path: `${out}/${scheme}-FAILED-${name}.png` }); throw new Error(`${name}: ${e.message.split('\n')[0]}`); } };
 
   await step('sign-up', async () => {
-    await page.goto('http://localhost:8081/');
+    await page.goto(WEB_URL + '/');
     await T('Get started').click({ timeout: 20000 });
     await T('A story, told day by day').waitFor();
     await shot('how-it-works');
@@ -308,7 +311,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
 
   // A second person, made through the API, invites the new person to their journey.
   const api = async (token, method, path, body) => {
-    const response = await fetch('http://localhost:8080' + path, {
+    const response = await fetch(API_URL + path, {
       method,
       headers: { 'content-type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: body ? JSON.stringify(body) : undefined,

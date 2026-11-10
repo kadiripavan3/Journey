@@ -1,33 +1,32 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { Search as SearchIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, TextInput, type TextStyle, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, type ListedPersonResponse, useGetDiscover, useSearch } from '@/api/generated/journey';
+import { JourneyRow } from '@/features/journeys/JourneyRow';
+import { STATUS } from '@/features/journeys/status';
+import { PersonFollowButton } from '@/features/people/PersonFollowButton';
+import { useRecentSearches } from '@/features/search/recent';
 import { compact } from '@/lib/plural';
 import { useDebounced } from '@/lib/useDebounced';
-import { fontFor, useTheme } from '@/theme';
+import { layout, radius, textStyle, useTheme } from '@/theme';
 import { BarLink } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
-import { JourneyRow, Loading, Problem } from '@/ui/Bits';
 import { GroupLabel } from '@/ui/Heading';
-import { PersonFollowButton } from '@/ui/PersonFollowButton';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
-
-const webNoOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
-const STATUS = { active: 'Active', paused: 'Paused', completed: 'Completed' } as const;
-
-/** What was searched for earlier in this run of the app, newest first. */
-let recent: string[] = [];
-const remember = (words: string) => {
-  recent = [words, ...recent.filter((r) => r !== words)].slice(0, 5);
-};
+import { webNoOutline } from '@/ui/web';
+import { WordTabs } from '@/ui/WordTabs';
 
 /** 4.2 and 4.3 Search: popular tags before you type, then journeys and people in two tabs. */
 export default function Search() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { recent, remember } = useRecentSearches();
   const [text, setText] = useState('');
   const [tab, setTab] = useState<'journeys' | 'people'>('journeys');
   const words = useDebounced(text.trim(), 300);
@@ -40,17 +39,17 @@ export default function Search() {
   for (const journey of trending.data?.trending ?? []) for (const tag of journey.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
   const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag]) => tag);
 
-  const open = (href: string) => {
+  const open = (href: Href) => {
     if (words) remember(words);
-    router.push(href as never);
+    router.push(href);
   };
   const journeys = results.data?.journeys ?? [];
   const people = results.data?.people ?? [];
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 }}>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 16, borderRadius: 23, borderWidth: 2, borderColor: colors.text }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: layout.barGutter, paddingTop: 8, paddingBottom: 10 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 16, borderRadius: radius.pill, borderWidth: 2, borderColor: colors.text }}>
           <SearchIcon size={18} color={colors.text} />
           <TextInput
             accessibilityLabel="Search journeys, people and tags"
@@ -63,7 +62,7 @@ export default function Search() {
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
-            style={[webNoOutline, { flex: 1, padding: 0, fontFamily: fontFor[600], fontSize: 15, color: colors.text }]}
+            style={[webNoOutline, textStyle('item', 600, { oneLine: true }), { flex: 1, padding: 0, color: colors.text }]}
           />
           {text ? (
             <Pressable accessibilityRole="button" accessibilityLabel="Clear" hitSlop={10} onPress={() => setText('')}>
@@ -78,11 +77,11 @@ export default function Search() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
           {recent.length > 0 ? (
             <>
-              <GroupLabel style={{ marginHorizontal: 22 }}>Recent</GroupLabel>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Recent</GroupLabel>
               {recent.map((r) => (
-                <Pressable key={r} accessibilityRole="button" accessibilityLabel={`Search for ${r}`} onPress={() => setText(r)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 22 }}>
+                <Pressable key={r} accessibilityRole="button" accessibilityLabel={`Search for ${r}`} onPress={() => setText(r)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: layout.gutter }}>
                   <SearchIcon size={16} color={colors.muted} />
-                  <Txt weight={600} style={{ fontSize: 15, lineHeight: 20 }}>
+                  <Txt variant="item" weight={600}>
                     {r}
                   </Txt>
                 </Pressable>
@@ -91,11 +90,11 @@ export default function Search() {
           ) : null}
           {tags.length > 0 ? (
             <>
-              <GroupLabel style={{ marginHorizontal: 22 }}>Popular tags</GroupLabel>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20 }}>
+              <GroupLabel style={{ marginHorizontal: layout.gutter }}>Popular tags</GroupLabel>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: layout.rowGutter }}>
                 {tags.map((tag) => (
-                  <Pressable key={tag} accessibilityRole="button" accessibilityLabel={`Search for the tag ${tag}`} onPress={() => setText(`#${tag}`)} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 18, backgroundColor: colors.fill }}>
-                    <Txt weight={700} style={{ fontSize: 13.5, lineHeight: 18 }}>
+                  <Pressable key={tag} accessibilityRole="button" accessibilityLabel={`Search for the tag ${tag}`} onPress={() => setText(`#${tag}`)} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: radius.photo, backgroundColor: colors.fill }}>
+                    <Txt variant="note" weight={700}>
                       #{tag}
                     </Txt>
                   </Pressable>
@@ -106,14 +105,18 @@ export default function Search() {
         </ScrollView>
       ) : (
         <>
-          <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 24, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.line }}>
-            <ResultTab label="Journeys" count={results.data ? journeys.length : undefined} on={tab === 'journeys'} onPress={() => setTab('journeys')} />
-            <ResultTab label="People" count={results.data ? people.length : undefined} on={tab === 'people'} onPress={() => setTab('people')} />
-          </View>
+          <WordTabs
+            tabs={[
+              { id: 'journeys', label: 'Journeys', count: results.data ? journeys.length : undefined },
+              { id: 'people', label: 'People', count: results.data ? people.length : undefined },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
           {results.isPending ? (
             <Loading />
           ) : results.isError ? (
-            <Problem error={results.error} onRetry={() => void results.refetch()} retrying={results.isRefetching} />
+            <Problem message={messageFor(results.error)} onRetry={() => void results.refetch()} retrying={results.isRefetching} />
           ) : (
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}>
               {tab === 'journeys' ? (
@@ -142,14 +145,14 @@ function JourneyResult({ journey, onPress }: { journey: JourneyResponse; onPress
 
 function PersonResult({ person, onPress }: { person: ListedPersonResponse; onPress: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: 20 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
       <Pressable accessibilityRole="button" accessibilityLabel={`${person.displayName}, @${person.username}`} onPress={onPress} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
         <View style={{ flex: 1 }}>
-          <Txt numberOfLines={1} weight={700} style={{ fontSize: 15, lineHeight: 20 }}>
+          <Txt variant="item" numberOfLines={1}>
             {person.displayName}
           </Txt>
-          <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+          <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
             @{person.username}
             {person.latestJourney ? ` · ${person.latestJourney}` : ''}
           </Txt>
@@ -162,26 +165,8 @@ function PersonResult({ person, onPress }: { person: ListedPersonResponse; onPre
 
 function Nothing({ words, what }: { words: string; what: string }) {
   return (
-    <Txt color="muted" center style={{ fontSize: 14.5, lineHeight: 22, marginTop: 60, marginHorizontal: 40 }}>
+    <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
       No {what} match “{words}”. Try fewer or different words.
     </Txt>
-  );
-}
-
-function ResultTab({ label, count, on, onPress }: { label: string; count?: number; on: boolean; onPress: () => void }) {
-  const { colors } = useTheme();
-  const color = on ? colors.text : colors.muted;
-  return (
-    <Pressable accessibilityRole="tab" accessibilityLabel={count === undefined ? label : `${label}, ${count}`} accessibilityState={{ selected: on }} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 12 }}>
-      <Txt weight={700} style={{ fontSize: 15, lineHeight: 20, color }}>
-        {label}
-      </Txt>
-      {count === undefined ? null : (
-        <Txt weight={600} style={{ fontSize: 12.5, lineHeight: 17, color }}>
-          {count}
-        </Txt>
-      )}
-      {on ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 2.5, borderRadius: 2, backgroundColor: colors.text }} /> : null}
-    </Pressable>
   );
 }

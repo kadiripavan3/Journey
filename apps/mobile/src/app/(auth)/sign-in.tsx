@@ -7,7 +7,7 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { authMode } from '@/auth/mode';
-import { useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 import { AppleLogo, BrandMark, GoogleLogo } from '@/ui/Brand';
 import { Button } from '@/ui/Button';
 import { RoundButton } from '@/ui/RoundButton';
@@ -34,31 +34,31 @@ export default function SignIn() {
             <RoundButton label="Close" tone="photo" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
           </View>
         </View>
-        <View style={{ flex: 1, marginTop: -30, paddingTop: 50, paddingBottom: insets.bottom + 16, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: colors.bg }}>
-          <View style={{ position: 'absolute', top: -32, left: 20, borderRadius: 22, borderWidth: 4, borderColor: colors.bg }}>
+        <View style={{ flex: 1, marginTop: -30, paddingTop: 50, paddingBottom: insets.bottom + 16, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, backgroundColor: colors.bg }}>
+          <View style={{ position: 'absolute', top: -32, left: 20, borderRadius: radius.cardLarge, borderWidth: 4, borderColor: colors.bg }}>
             <BrandMark size={64} />
           </View>
-          <View style={{ paddingHorizontal: 20, gap: 10 }}>
-            <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 34, letterSpacing: -1.2 }}>
+          <View style={{ paddingHorizontal: layout.rowGutter, gap: 10 }}>
+            <Txt variant="heading" accessibilityRole="header">
               Log in or sign up
             </Txt>
-            <Txt color="muted" style={{ fontSize: 15.5, lineHeight: 23 }}>
+            <Txt variant="lead" color="muted">
               Use an account you already have. There&apos;s no password to remember.
             </Txt>
           </View>
-          <View style={{ paddingHorizontal: 20, gap: 10, marginTop: 24 }}>
+          <View style={{ paddingHorizontal: layout.rowGutter, gap: 10, marginTop: 24 }}>
             <Button label="Continue with Apple" size="lg" variant="ink" block onPress={notYet('Apple')} icon={(c) => <AppleLogo color={c} />} />
             <Button label="Continue with Google" size="lg" variant="line" block onPress={notYet('Google')} icon={() => <GoogleLogo />} />
             <Button label="Continue with email" size="lg" variant="line" block onPress={() => router.push('/email')} icon={(c) => <Mail size={19} color={c} />} />
             {note ? (
-              <View accessibilityLiveRegion="polite" style={{ padding: 13, borderRadius: 16, backgroundColor: colors.fill }}>
+              <View accessibilityLiveRegion="polite" style={{ padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>
                 <Txt variant="caption" weight={600}>
                   {note}
                 </Txt>
               </View>
             ) : null}
           </View>
-          <Txt variant="caption" color="muted" center weight={500} style={{ fontSize: 12, lineHeight: 17, marginTop: 18, marginHorizontal: 34 }}>
+          <Txt variant="small" color="muted" center weight={500} style={{ marginTop: 18, marginHorizontal: 34 }}>
             By continuing you agree to the Terms and Privacy Policy, and confirm you&apos;re 13 or older.
           </Txt>
         </View>

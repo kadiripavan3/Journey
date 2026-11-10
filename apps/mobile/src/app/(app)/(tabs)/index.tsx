@@ -4,18 +4,22 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { messageFor } from '@/api/fetcher';
 import { useGetDiscover, useGetFeed, useGetMyJourneys } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
-import { useCatalog } from '@/journey/catalog';
+import { useCatalog } from '@/features/journeys/catalog';
+import { CategoryTabs } from '@/features/journeys/CategoryTabs';
+import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { timeAgo } from '@/lib/dates';
 import { followersLabel, plural } from '@/lib/plural';
-import { useTheme } from '@/theme';
-import { Card, Problem, Rail, SectionHeader } from '@/ui/Bits';
+import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
-import { CategoryTabs } from '@/ui/CategoryTabs';
+import { Card } from '@/ui/Card';
 import { EmptyState } from '@/ui/EmptyState';
-import { JourneyCard } from '@/ui/JourneyCard';
+import { Problem } from '@/ui/Problem';
+import { Rail } from '@/ui/Rail';
 import { Ring } from '@/ui/Ring';
+import { SectionHeader } from '@/ui/SectionHeader';
 import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
@@ -55,7 +59,7 @@ export default function Home() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Find a journey"
-          onPress={() => router.push('/search' as never)}
+          onPress={() => router.push('/search')}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -64,16 +68,16 @@ export default function Home() {
             marginTop: 10,
             marginHorizontal: 16,
             paddingHorizontal: 22,
-            borderRadius: 31,
+            borderRadius: radius.pill,
             backgroundColor: colors.surface,
             boxShadow: shadow.sm,
           }}>
           <Search size={20} color={colors.text} />
           <View style={{ flex: 1 }}>
-            <Txt weight={700} style={{ fontSize: 15, lineHeight: 20, letterSpacing: -0.15 }}>
+            <Txt variant="item">
               Find a journey
             </Txt>
-            <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+            <Txt variant="footnote" color="muted">
               Trips, challenges and more, live now
             </Txt>
           </View>
@@ -82,13 +86,13 @@ export default function Home() {
         <CategoryTabs tabs={tabs} value={tab} onChange={setTab} />
 
         {current && tab === FOR_YOU ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`${current.title}. ${current.progressLabel}. Add an entry.`} onPress={() => router.push(`/journey/${current.id}/add` as never)}>
-            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18, marginHorizontal: 16, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${current.title}. ${current.progressLabel}. Add an entry.`} onPress={() => router.push(`/journey/${current.id}/add`)}>
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18, marginHorizontal: layout.barGutter, paddingVertical: 16, paddingLeft: 18, paddingRight: 16 }}>
               <View style={{ flex: 1 }}>
-                <Txt numberOfLines={2} weight={700} style={{ fontSize: 16, lineHeight: 21, letterSpacing: -0.25 }}>
+                <Txt variant="headline" numberOfLines={2}>
                   {current.entryCount === 0 ? `Start ${current.title}` : `${current.progressLabel} · ${current.title}`}
                 </Txt>
-                <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18, marginTop: 4 }}>
+                <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ marginTop: 4 }}>
                   {current.lastEntryAt ? `Last entry ${timeAgo(current.lastEntryAt)}` : 'Add your first entry'}
                   {current.followerCount > 0 ? ` · ${followersLabel(current.followerCount)}` : ''}
                 </Txt>
@@ -105,11 +109,11 @@ export default function Home() {
           </>
         ) : feed.isError ? (
           <View style={{ height: 300 }}>
-            <Problem error={feed.error} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />
+            <Problem message={messageFor(feed.error)} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />
           </View>
         ) : groups.length > 0 ? (
           <>
-            <SectionHeader title="New from journeys you follow" onPress={() => router.push('/following' as never)} />
+            <SectionHeader title="New from journeys you follow" onPress={() => router.push('/following')} />
             <Rail>
               {groups.map(({ journey, newCount, entries }) => (
                 <JourneyCard
@@ -118,7 +122,7 @@ export default function Home() {
                   pill={`${newCount} new`}
                   detail={entries[0] ? `${entries[0].label}${entries[0].placeName ? ` · ${entries[0].placeName}` : ''}` : journey.progressLabel}
                   footnote={`${journey.owner.displayName}${journey.lastEntryAt ? ` · ${timeAgo(journey.lastEntryAt)}` : ''}`}
-                  onPress={() => router.push(`/journey/${journey.id}/timeline` as never)}
+                  onPress={() => router.push(`/journey/${journey.id}/timeline`)}
                 />
               ))}
             </Rail>
@@ -134,16 +138,16 @@ export default function Home() {
           </View>
         ) : (
           <View style={{ alignItems: 'center', gap: 6, marginTop: 28, marginHorizontal: 30 }}>
-            <View style={{ width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
+            <View style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
               <Check size={26} color={colors.ok} strokeWidth={2.6} />
             </View>
-            <Txt accessibilityRole="header" weight={800} center style={{ fontSize: 19, lineHeight: 24, letterSpacing: -0.4, marginTop: 4 }}>
+            <Txt variant="subtitle" accessibilityRole="header" center style={{ marginTop: 4 }}>
               You&apos;re all caught up
             </Txt>
-            <Txt color="muted" center style={{ fontSize: 14, lineHeight: 20 }}>
+            <Txt variant="callout" color="muted" center>
               {category ? 'Nothing new here from the journeys you follow.' : `That's every new entry from the ${plural(following, 'journey')} you follow.`}
             </Txt>
-            <Button label="See what you follow" variant="line" onPress={() => router.push('/following' as never)} style={{ alignSelf: 'center', marginTop: 8 }} />
+            <Button label="See what you follow" variant="line" onPress={() => router.push('/following')} style={{ alignSelf: 'center', marginTop: 8 }} />
           </View>
         )}
 
@@ -152,7 +156,7 @@ export default function Home() {
             <SectionHeader title="Trending this week" onPress={() => router.navigate('/discover')} />
             <Rail>
               {trending.map((journey) => (
-                <JourneyCard key={journey.id} journey={journey} size="sm" detail={`${journey.progressLabel} · ${followersLabel(journey.followerCount)}`} onPress={() => router.push(`/journey/${journey.id}` as never)} />
+                <JourneyCard key={journey.id} journey={journey} size="sm" detail={`${journey.progressLabel} · ${followersLabel(journey.followerCount)}`} onPress={() => router.push(`/journey/${journey.id}`)} />
               ))}
             </Rail>
           </>

@@ -3,7 +3,7 @@ import { ArrowLeft, X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { radius, useTheme } from '@/theme';
 
 import { RoundButton } from './RoundButton';
 import { Txt } from './Txt';
@@ -39,12 +39,12 @@ export function AppBar({ title, subtitle, leading = 'back', left, trailing, cent
         {center ?? (
           <>
             {title ? (
-              <Txt accessibilityRole="header" numberOfLines={1} weight={800} style={{ fontSize: 17, lineHeight: 22, letterSpacing: -0.3 }}>
+              <Txt variant="subheading" accessibilityRole="header" numberOfLines={1}>
                 {title}
               </Txt>
             ) : null}
             {subtitle ? (
-              <Txt variant="caption" color="muted" numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>
+              <Txt variant="small" color="muted" numberOfLines={1}>
                 {subtitle}
               </Txt>
             ) : null}
@@ -69,7 +69,7 @@ export function StepProgress({ step, of = 3 }: { step: number; of?: number }) {
 
 function StepBar({ on }: { on: boolean }) {
   const { colors } = useTheme();
-  return <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: on ? colors.accent : colors.fill2 }} />;
+  return <View style={{ flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: on ? colors.accent : colors.fill2 }} />;
 }
 
 /** A text action in the bar, such as Save or Cancel. */
@@ -77,7 +77,7 @@ export function BarLink({ label, onPress, quiet, disabled }: { label: string; on
   const { colors } = useTheme();
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} hitSlop={10} onPress={onPress}>
-      <Txt weight={800} style={{ fontSize: 15, lineHeight: 20, color: quiet ? colors.muted : colors.accentText, opacity: disabled ? 0.4 : 1 }}>
+      <Txt variant="item" weight={800} style={{ color: quiet ? colors.muted : colors.accentText, opacity: disabled ? 0.4 : 1 }}>
         {label}
       </Txt>
     </Pressable>

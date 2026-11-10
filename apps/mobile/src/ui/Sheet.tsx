@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTheme } from '@/theme';
+import { layout, radius, useTheme } from '@/theme';
 
 import { Txt } from './Txt';
 
@@ -22,7 +22,7 @@ type Props = {
 
 /** A sheet that slides up from the bottom over a dimmed page. Tapping outside closes it. */
 export function Sheet({ visible, onClose, title, subtitle, children, footer, action, tall }: Props) {
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -31,7 +31,7 @@ export function Sheet({ visible, onClose, title, subtitle, children, footer, act
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={onClose}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.44)' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim }}
         />
         <View
           accessibilityViewIsModal
@@ -40,22 +40,22 @@ export function Sheet({ visible, onClose, title, subtitle, children, footer, act
             height: tall ? '82%' : undefined,
             paddingTop: 10,
             paddingBottom: footer ? 0 : Math.max(insets.bottom, 16) + 8,
-            borderTopLeftRadius: 30,
-            borderTopRightRadius: 30,
+            borderTopLeftRadius: radius.sheet,
+            borderTopRightRadius: radius.sheet,
             backgroundColor: colors.surface,
-            boxShadow: '0 -12px 40px rgba(0, 0, 0, 0.2)',
+            boxShadow: shadow.sheet,
           }}>
-          <View style={{ alignSelf: 'center', width: 38, height: 5, borderRadius: 3, marginBottom: 8, backgroundColor: colors.fill2 }} />
+          <View style={{ alignSelf: 'center', width: 38, height: 5, borderRadius: radius.pill, marginBottom: 8, backgroundColor: colors.fill2 }} />
           {title ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 22, paddingRight: 16, paddingTop: 8, paddingBottom: 4 }}>
-              <Txt accessibilityRole="header" weight={800} style={{ flex: 1, fontSize: 20, lineHeight: 26, letterSpacing: -0.5 }}>
+              <Txt variant="titleSmall" accessibilityRole="header" style={{ flex: 1 }}>
                 {title}
               </Txt>
               {action}
             </View>
           ) : null}
           {subtitle ? (
-            <Txt color="muted" style={{ fontSize: 14, lineHeight: 20, paddingHorizontal: 22, paddingBottom: 10 }}>
+            <Txt variant="callout" color="muted" style={{ paddingHorizontal: layout.gutter, paddingBottom: 10 }}>
               {subtitle}
             </Txt>
           ) : null}
@@ -100,11 +100,11 @@ export function SheetRow({ icon, label, note, onPress, danger, trailing, first }
       })}>
       {icon?.(color)}
       <View style={{ flex: 1, gap: 1 }}>
-        <Txt weight={600} style={{ fontSize: 16, lineHeight: 22, color }}>
+        <Txt variant="headline" weight={600} style={{ color }}>
           {label}
         </Txt>
         {note ? (
-          <Txt color="muted" style={{ fontSize: 12.5, lineHeight: 17 }}>
+          <Txt variant="footnote" color="muted">
             {note}
           </Txt>
         ) : null}

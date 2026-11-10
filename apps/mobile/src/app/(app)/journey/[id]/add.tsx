@@ -2,25 +2,30 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarDays, ChevronRight, ImagePlus, MapPin, Star, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, type TextStyle, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { addEntry, changeEntry, type SaveEntryRequest, useGetEntry, useGetJourney } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { uploadPhoto } from '@/api/upload';
-import { useCatalog } from '@/journey/catalog';
-import { pickPhotos } from '@/journey/pick';
+import { useCatalog } from '@/features/journeys/catalog';
+import { pickPhotos } from '@/features/media/pick';
 import { daysBetween, formatDayLong, momentFor, today } from '@/lib/dates';
-import { fontFor, useTheme } from '@/theme';
-import { Card, Loading, Photo, Problem, Toggle } from '@/ui/Bits';
+import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { DayPicker } from '@/ui/DayPicker';
+import { EmptyState } from '@/ui/EmptyState';
+import { Loading } from '@/ui/Loading';
+import { Photo } from '@/ui/Photo';
+import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
+import { Toggle } from '@/ui/Toggle';
 import { Txt } from '@/ui/Txt';
+import { webNoOutline } from '@/ui/web';
 
 const MAX_PHOTOS = 10;
-const webNoOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 /** A photo in the composer: either already uploaded (it has a media id) or still on the phone. */
 type Shot = { key: string; uri: string; width: number; height: number; mediaId?: string };
@@ -61,10 +66,10 @@ export default function Composer() {
   if (journey.isError || (entryId && editing.isError)) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
           <RoundButton label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
         </View>
-        <Problem error={journey.error ?? editing.error} onRetry={() => void journey.refetch()} />
+        <Problem message={messageFor(journey.error ?? editing.error)} onRetry={() => void journey.refetch()} />
       </SafeAreaView>
     );
   }
@@ -77,6 +82,25 @@ export default function Composer() {
   }
 
   const j = journey.data;
+  // Entries are dated from the journey's first day on, and never in the future. Until that day comes there is
+  // no day an entry could have, so say when it starts and offer the way to change that.
+  if (!entryId && j.startDate > today()) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
+          <RoundButton label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 60 }}>
+          <EmptyState
+            emoji="🧳"
+            title={`It starts on ${formatDayLong(j.startDate)}`}
+            body={j.viewer.isOwner ? 'You can add entries from that day on. Already on your way? Move the start date.' : 'You can add entries from that day on.'}
+            action={j.viewer.isOwner ? <Button label="Change the start date" variant="line" onPress={() => router.replace(`/journey/${id}/edit`)} /> : undefined}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
   const prompts = catalog.template(j.template)?.prompts ?? [];
   const dayLabel = j.labelStyle === 'day' ? `Day ${daysBetween(j.startDate, day) + 1} · ${formatDayLong(day)}` : formatDayLong(day);
   const hasContent = shots.length > 0 || title.trim().length > 0 || body.trim().length > 0;
@@ -127,7 +151,7 @@ export default function Composer() {
       else await addEntry(id, data);
       await refresh();
       if (entryId) router.back();
-      else router.dismissTo(`/journey/${id}/timeline` as never);
+      else router.dismissTo(`/journey/${id}/timeline`);
     } catch (error) {
       setProblem(messageFor(error));
     } finally {
@@ -140,26 +164,26 @@ export default function Composer() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ height: 58, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <RoundButton label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
-          <Txt accessibilityRole="header" weight={800} style={{ fontSize: 17, lineHeight: 22, letterSpacing: -0.3 }}>
+          <Txt variant="subheading" accessibilityRole="header">
             {entryId ? 'Edit entry' : 'New entry'}
           </Txt>
           <Button label={entryId ? 'Save' : 'Post'} inline size="sm" disabled={!hasContent} loading={busy} onPress={() => void post()} />
         </View>
 
         <ScrollView contentContainerStyle={{ gap: 16, paddingTop: 8, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, marginHorizontal: 16, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: 22, backgroundColor: colors.fill }}>
-            <Photo uri={j.coverUrl} radius={14} style={{ width: 28, height: 28, backgroundColor: colors.fill2 }} />
-            <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18, maxWidth: 270 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, marginHorizontal: 16, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: radius.cardLarge, backgroundColor: colors.fill }}>
+            <Photo uri={j.coverUrl} radius="thumb" style={{ width: 28, height: 28, backgroundColor: colors.fill2 }} />
+            <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ maxWidth: 270 }}>
               {entryId ? 'In ' : 'Posting to '}
-              <Txt weight={700} style={{ fontSize: 13, lineHeight: 18 }}>
+              <Txt variant="caption" weight={700}>
                 {j.title}
               </Txt>
             </Txt>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: layout.barGutter }} keyboardShouldPersistTaps="handled">
             {shots.map((shot, index) => (
-              <View key={shot.key} style={{ width: 104, height: 140, borderRadius: 18, overflow: 'hidden', backgroundColor: colors.fill }}>
+              <View key={shot.key} style={{ width: 104, height: 140, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: colors.fill }}>
                 <Image source={{ uri: shot.uri }} style={{ flex: 1 }} contentFit="cover" accessibilityLabel={`Photo ${index + 1}`} />
                 <Pressable
                   accessibilityRole="button"
@@ -167,7 +191,7 @@ export default function Composer() {
                   hitSlop={8}
                   disabled={busy}
                   onPress={() => setShots((now) => now.filter((s) => s.key !== shot.key))}
-                  style={{ position: 'absolute', top: 7, right: 7, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.photoGlass }}>
+                  style={{ position: 'absolute', top: 7, right: 7, width: 24, height: 24, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.photoGlass }}>
                   <X size={13} color={colors.onPhoto} strokeWidth={2.6} />
                 </Pressable>
               </View>
@@ -181,7 +205,7 @@ export default function Composer() {
                 style={({ pressed }) => ({
                   width: 104,
                   height: 140,
-                  borderRadius: 18,
+                  borderRadius: radius.photo,
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
@@ -190,14 +214,14 @@ export default function Composer() {
                   opacity: pressed || picking ? 0.6 : 1,
                 })}>
                 <ImagePlus size={22} color={colors.muted} />
-                <Txt color="muted" weight={700} style={{ fontSize: 12.5, lineHeight: 17 }}>
+                <Txt variant="footnote" color="muted" weight={700}>
                   {shots.length === 0 ? 'Add photos' : 'Add'}
                 </Txt>
               </Pressable>
             ) : null}
           </ScrollView>
 
-          <View style={{ marginHorizontal: 16, gap: 6 }}>
+          <View style={{ marginHorizontal: layout.barGutter, gap: 6 }}>
             <TextInput
               accessibilityLabel="Title, optional"
               value={title}
@@ -206,7 +230,7 @@ export default function Composer() {
               placeholderTextColor={colors.muted}
               selectionColor={colors.accent}
               maxLength={80}
-              style={[webNoOutline, { padding: 0, fontFamily: fontFor[800], fontSize: 22, letterSpacing: -0.5, color: colors.text }]}
+              style={[webNoOutline, textStyle('title', 800, { oneLine: true }), { padding: 0, color: colors.text }]}
             />
             <TextInput
               accessibilityLabel="What happened"
@@ -217,20 +241,20 @@ export default function Composer() {
               selectionColor={colors.accent}
               multiline
               maxLength={2000}
-              style={[webNoOutline, { padding: 0, minHeight: 96, fontFamily: fontFor[500], fontSize: 17, lineHeight: 25, color: colors.text, textAlignVertical: 'top' }]}
+              style={[webNoOutline, textStyle('bodyLarge'), { padding: 0, minHeight: 96, color: colors.text, textAlignVertical: 'top' }]}
             />
           </View>
 
           {prompts.length > 0 && body.length === 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter }} keyboardShouldPersistTaps="handled">
               {prompts.map((prompt) => (
                 <Pressable
                   key={prompt}
                   accessibilityRole="button"
                   accessibilityLabel={`Start with: ${prompt}`}
                   onPress={() => setBody(`${prompt} `)}
-                  style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, backgroundColor: colors.accentSoft }}>
-                  <Txt weight={700} style={{ fontSize: 13, lineHeight: 18, color: colors.accentText }}>
+                  style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.photo, backgroundColor: colors.accentSoft }}>
+                  <Txt variant="caption" weight={700} style={{ color: colors.accentText }}>
                     {prompt}
                   </Txt>
                 </Pressable>
@@ -238,7 +262,7 @@ export default function Composer() {
             </ScrollView>
           ) : null}
 
-          <Card style={{ marginHorizontal: 16, borderRadius: 20 }}>
+          <Card style={{ marginHorizontal: 16, borderRadius: radius.card }}>
             <Row icon={<CalendarDays size={20} color={colors.text} />}>
               <DayRow label={dayLabel} journeyStart={j.startDate} day={day} onChange={setDay} />
             </Row>
@@ -251,11 +275,11 @@ export default function Composer() {
                 placeholderTextColor={colors.muted}
                 selectionColor={colors.accent}
                 maxLength={80}
-                style={[webNoOutline, { flex: 1, padding: 0, fontFamily: fontFor[600], fontSize: 15, color: colors.text }]}
+                style={[webNoOutline, textStyle('item', 600, { oneLine: true }), { flex: 1, padding: 0, color: colors.text }]}
               />
             </Row>
             <Row icon={<Star size={20} color={colors.text} />} divider>
-              <Txt weight={600} style={{ flex: 1, fontSize: 15, lineHeight: 20 }}>
+              <Txt variant="item" weight={600} style={{ flex: 1 }}>
                 Mark as milestone
               </Txt>
               <Toggle label="Mark as milestone" value={milestone} onChange={setMilestone} />
@@ -290,7 +314,7 @@ function DayRow({ label, journeyStart, day, onChange }: { label: string; journey
   return (
     <>
       <Pressable accessibilityRole="button" accessibilityLabel={`${label}. Change the day`} onPress={() => setOpen(true)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Txt weight={600} style={{ flex: 1, fontSize: 15, lineHeight: 20 }}>
+        <Txt variant="item" weight={600} style={{ flex: 1 }}>
           {label}
         </Txt>
         <ChevronRight size={18} color={colors.muted} />

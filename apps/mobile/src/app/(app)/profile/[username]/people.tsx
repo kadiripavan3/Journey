@@ -3,14 +3,17 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { messageFor } from '@/api/fetcher';
 import { type ListedPersonResponse, useGetFollowers, useGetFollowing, useGetProfile } from '@/api/generated/journey';
+import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { compact } from '@/lib/plural';
-import { useTheme } from '@/theme';
+import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
-import { Loading, Problem } from '@/ui/Bits';
-import { PersonFollowButton } from '@/ui/PersonFollowButton';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Txt } from '@/ui/Txt';
+import { WordTabs } from '@/ui/WordTabs';
 
 type Tab = 'followers' | 'following';
 
@@ -31,16 +34,20 @@ export default function People() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title={username} trailing={<View style={{ width: 40 }} />} />
-      <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 24, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.line }}>
-        <PeopleTab label="Followers" count={profile.data?.followerCount} on={tab === 'followers'} onPress={() => setTab('followers')} />
-        <PeopleTab label="Following" count={profile.data?.followingCount} on={tab === 'following'} onPress={() => setTab('following')} />
-      </View>
+      <WordTabs
+        tabs={[
+          { id: 'followers', label: 'Followers', count: profile.data ? compact(profile.data.followerCount) : undefined },
+          { id: 'following', label: 'Following', count: profile.data ? compact(profile.data.followingCount) : undefined },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
       {list.isPending ? (
         <Loading />
       ) : list.isError ? (
-        <Problem error={list.error} onRetry={() => void list.refetch()} retrying={list.isRefetching} />
+        <Problem message={messageFor(list.error)} onRetry={() => void list.refetch()} retrying={list.isRefetching} />
       ) : list.data.length === 0 ? (
-        <Txt color="muted" center style={{ fontSize: 14.5, lineHeight: 22, marginTop: 60, marginHorizontal: 40 }}>
+        <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
           {tab === 'followers' ? (isMe ? 'Nobody follows you yet. Share a journey and they will.' : 'No followers yet.') : isMe ? "You don't follow anyone yet." : 'Not following anyone yet.'}
         </Txt>
       ) : (
@@ -57,18 +64,18 @@ export default function People() {
 function PersonRow({ person, followsYou }: { person: ListedPersonResponse; followsYou: boolean }) {
   const router = useRouter();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: 20 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${person.displayName}, @${person.username}`}
-        onPress={() => router.push(`/profile/${person.username}` as never)}
+        onPress={() => router.push(`/profile/${person.username}`)}
         style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.8 : 1 })}>
         <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
         <View style={{ flex: 1 }}>
-          <Txt numberOfLines={1} weight={700} style={{ fontSize: 15, lineHeight: 20 }}>
+          <Txt variant="item" numberOfLines={1}>
             {person.displayName}
           </Txt>
-          <Txt numberOfLines={1} color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+          <Txt variant="caption" weight={500} numberOfLines={1} color="muted">
             @{person.username}
             {person.latestJourney ? ` · ${person.latestJourney}` : ''}
           </Txt>
@@ -76,23 +83,5 @@ function PersonRow({ person, followsYou }: { person: ListedPersonResponse; follo
       </Pressable>
       {person.viewer.isMe ? null : <PersonFollowButton username={person.username} isFollowing={person.viewer.isFollowing} followsYou={followsYou} />}
     </View>
-  );
-}
-
-function PeopleTab({ label, count, on, onPress }: { label: string; count?: number; on: boolean; onPress: () => void }) {
-  const { colors } = useTheme();
-  const color = on ? colors.text : colors.muted;
-  return (
-    <Pressable accessibilityRole="tab" accessibilityLabel={count === undefined ? label : `${label}, ${count}`} accessibilityState={{ selected: on }} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 12 }}>
-      <Txt weight={700} style={{ fontSize: 15, lineHeight: 20, color }}>
-        {label}
-      </Txt>
-      {count === undefined ? null : (
-        <Txt weight={600} style={{ fontSize: 12.5, lineHeight: 17, color }}>
-          {compact(count)}
-        </Txt>
-      )}
-      {on ? <View style={{ position: 'absolute', left: 0, right: 0, bottom: -1, height: 2.5, borderRadius: 2, backgroundColor: colors.text }} /> : null}
-    </Pressable>
   );
 }

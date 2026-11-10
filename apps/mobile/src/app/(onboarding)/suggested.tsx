@@ -5,11 +5,13 @@ import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useFollowJourney, useGetSuggestedJourneys, useUnfollowJourney } from '@/api/generated/journey';
+import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { compact } from '@/lib/plural';
 import { AppBar, StepProgress } from '@/ui/AppBar';
-import { JourneyRow, Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { Heading, Lead } from '@/ui/Heading';
+import { Loading } from '@/ui/Loading';
+import { Problem } from '@/ui/Problem';
 import { Screen } from '@/ui/Screen';
 import { Txt } from '@/ui/Txt';
 
@@ -51,7 +53,7 @@ export default function Suggested() {
             </Txt>
           ) : null}
           <Button label="Continue" size="lg" block disabled={follow.isPending || unfollow.isPending} onPress={() => router.push('/ready')} />
-          <Txt color="muted" center style={{ fontSize: 12, lineHeight: 17 }}>
+          <Txt variant="small" weight={500} color="muted" center>
             Find more any time in Discover.
           </Txt>
         </>
@@ -61,7 +63,7 @@ export default function Suggested() {
       <View style={{ marginTop: 16, marginHorizontal: -20 }}>
         {!list && suggested.isError ? (
           <View style={{ height: 260 }}>
-            <Problem error={suggested.error} onRetry={() => void suggested.refetch()} retrying={suggested.isRefetching} />
+            <Problem message={messageFor(suggested.error)} onRetry={() => void suggested.refetch()} retrying={suggested.isRefetching} />
           </View>
         ) : !list ? (
           <View style={{ height: 200 }}>
