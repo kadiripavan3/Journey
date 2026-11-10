@@ -66,11 +66,13 @@ export function timeAgo(instant: string, now: Date = new Date()): string {
 }
 
 /**
- * The moment to store for an entry on a given day: now for today, midday for an earlier day.
+ * The moment to store for an entry on a given day: the moment it was written when that was on that day,
+ * midday for any other day. `written` is now unless the entry waited on the phone: then it is when it was
+ * written, not when it finally went up.
  * The API keeps both the day (for "Day 14") and the moment (for ordering within a day).
  */
-export function momentFor(day: string): string {
-  if (day === today()) return new Date().toISOString();
+export function momentFor(day: string, written: Date = new Date()): string {
+  if (!Number.isNaN(written.getTime()) && day === toISODate(written)) return written.toISOString();
   const date = fromISODate(day);
   date.setHours(12, 0, 0, 0);
   return date.toISOString();

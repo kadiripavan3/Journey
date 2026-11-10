@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, connectSession, messageFor } from '@/api/fetcher';
+import { ApiError, apiFetch, connectSession, isUnreachable, lastAnswerAt, messageFor, onAnswer, TIME_LIMIT_MS } from '@/api/fetcher';
 
 const respond = (status: number, body?: unknown) =>
   Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), { status }));
@@ -55,5 +55,50 @@ describe('apiFetch', () => {
   it('says so plainly when the API cannot be reached', async () => {
     fetchMock.mockRejectedValue(new TypeError('Network request failed'));
     await expect(apiFetch('/v1/me')).rejects.toMatchObject({ code: 'unreachable', message: "Can't reach Journey right now. Check your connection and try again." });
+  });
+
+  /** A request that never answers, and stops the way a real one does when its signal says so. */
+  const hangs = (_url: string, init: RequestInit) =>
+    new Promise<Response>((_, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))));
+
+  it('gives up on a request that takes too long, and says so', async () => {
+    jest.useFakeTimers();
+    try {
+      fetchMock.mockImplementation(hangs);
+      const failed = apiFetch('/v1/feed').catch((e: unknown) => e);
+      await jest.advanceTimersByTimeAsync(TIME_LIMIT_MS);
+      const error = await failed;
+      expect(error).toMatchObject({ status: 0, code: 'unreachable', message: expect.stringContaining('taking too long') });
+      expect(isUnreachable(error)).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('stops when the screen that asked has closed, without calling it a failure', async () => {
+    fetchMock.mockImplementation(hangs);
+    const screen = new AbortController();
+    const asked = apiFetch('/v1/feed', { signal: screen.signal }).catch((e: unknown) => e);
+    screen.abort();
+    expect(await asked).not.toBeInstanceOf(ApiError);
+  });
+
+  it('tells whoever counts about every yes, and never about a no', async () => {
+    const heard: string[] = [];
+    const stop = onAnswer((method, path, answer) => heard.push(`${method} ${path} ${JSON.stringify(answer)}`));
+    const broken = onAnswer(() => {
+      throw new Error('a listener that breaks');
+    });
+    try {
+      const before = Date.now();
+      fetchMock.mockReturnValueOnce(respond(200, { id: 'j1' })).mockReturnValueOnce(respond(400, { code: 'invalid_input' }));
+      await expect(apiFetch('/v1/journeys', { method: 'POST' })).resolves.toEqual({ id: 'j1' });
+      await apiFetch('/v1/journeys', { method: 'POST' }).catch(() => undefined);
+      expect(heard).toEqual(['POST /v1/journeys {"id":"j1"}']);
+      expect(lastAnswerAt()).toBeGreaterThanOrEqual(before);
+    } finally {
+      stop();
+      broken();
+    }
   });
 });

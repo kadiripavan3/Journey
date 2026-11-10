@@ -45,12 +45,18 @@ export type Draft = {
   state: DraftState;
   /** Why it failed, in a sentence for the person. */
   problem?: string;
+  /**
+   * When it was written: the first time it was kept on the phone. The entry is posted with this moment, so
+   * one that waited a day for a connection still sits where it was written. (Drafts from before this was
+   * kept have none; they use when they were last saved.)
+   */
+  writtenAt?: string;
   /** When it was last saved. */
   savedAt: string;
 };
 
-/** What the composer hands over to be kept: everything but who owns it and where it is. */
-export type DraftInput = Omit<Draft, 'owner' | 'state' | 'problem' | 'savedAt'>;
+/** What the composer hands over to be kept: everything but who owns it, where it is and when it was written. */
+export type DraftInput = Omit<Draft, 'owner' | 'state' | 'problem' | 'writtenAt' | 'savedAt'>;
 
 /** How far a draft that is going up has come. */
 export type Progress = {
@@ -63,6 +69,8 @@ export type Progress = {
   then: number;
   /** The whole draft, from 0 to 1. */
   fraction: number;
+  /** True while a clip is still being made smaller on the phone, before it goes up. */
+  preparing?: boolean;
 };
 
 /** Where drafts are kept. The phone uses SQLite and its own folder; a browser, and the tests, something simpler. */
@@ -72,6 +80,8 @@ export type DraftStore = {
   save(draft: Draft): Promise<void>;
   /** Forgets a draft and the files kept for it. */
   remove(clientId: string): Promise<void>;
+  /** Forgets every draft of this person and their files: the account is gone. */
+  removeAll(owner: string): Promise<void>;
   /** Copies a picked file to where it stays until the draft is sent: what the picker hands out doesn't last. */
   keep(clientId: string, media: DraftMedia): Promise<DraftMedia>;
 };

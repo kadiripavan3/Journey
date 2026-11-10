@@ -2,14 +2,14 @@ import { Platform } from 'react-native';
 
 /**
  * Crash reports, with Sentry. Like analytics, it is switched on by a key (EXPO_PUBLIC_SENTRY_DSN) that only
- * real builds have; without it nothing is loaded. A report says what broke and where in the code. It carries
- * the account's id and nothing a person wrote: no names, no addresses of the pages they looked at, no log lines.
+ * real builds have; without it nothing is loaded. A report says what broke and where in the code, on which
+ * kind of phone. It is not tied to a person: no account id, no names, no addresses of the pages they looked
+ * at, no log lines. And it is only crashes: nothing times screens or requests.
  */
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
 type Reporter = {
   captureException: (error: unknown) => unknown;
-  setUser: (user: { id: string } | null) => unknown;
 };
 
 let reporter: Promise<Reporter | null> | null = null;
@@ -36,15 +36,21 @@ function load(): Promise<Reporter | null> {
       Sentry.init({
         dsn: DSN,
         sendDefaultPii: false,
-        // Only crashes and errors; no timing of screens or requests.
-        tracesSampleRate: 0,
+        // Only crashes and errors. There is no `tracesSampleRate` here on purpose: giving one, even 0, makes
+        // the library install the parts that time screens, taps and requests and follow the router.
         beforeBreadcrumb: (crumb) => {
-          // Log lines can hold anything a person typed, so they stay on the phone.
-          if (crumb.category === 'console') return null;
+          // Log lines can hold anything a person typed, and the trail of screens says whose pages they
+          // looked at. Both stay on the phone.
+          if (crumb.category === 'console' || crumb.category === 'navigation') return null;
           if ((crumb.category === 'xhr' || crumb.category === 'fetch') && crumb.data) {
             crumb.data = { method: crumb.data.method, status_code: crumb.data.status_code, url: withoutDetails(crumb.data.url) };
           }
           return crumb;
+        },
+        // Whatever part of the library may have put a person on the report: taken off before it leaves.
+        beforeSend: (event) => {
+          delete event.user;
+          return event;
         },
       });
       return Sentry;
@@ -61,9 +67,4 @@ export function startCrashReports(): void {
 /** Something broke that the app caught and showed a friendly page for. */
 export function reportCrash(error: unknown): void {
   void load().then((sentry) => sentry?.captureException(error));
-}
-
-/** Whose phone a crash happened on, by account id only; null after signing out. */
-export function crashesBelongTo(accountId: string | null): void {
-  void load().then((sentry) => sentry?.setUser(accountId ? { id: accountId } : null));
 }

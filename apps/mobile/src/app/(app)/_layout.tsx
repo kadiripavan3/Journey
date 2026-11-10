@@ -1,11 +1,11 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
-import { watchConnection } from '@/api/online';
 import { useOnboarding } from '@/auth/onboarding';
 import { OutboxProvider } from '@/features/drafts/outbox';
 import { NewJourneyProvider } from '@/features/journeys/draft';
-import { OfflineBanner } from '@/features/navigation/OfflineBanner';
+import { OfflineStrip } from '@/features/navigation/OfflineStrip';
+import { AskAboutNotifications } from '@/features/notifications/AskAboutNotifications';
 import { usePushNotifications } from '@/features/notifications/usePushNotifications';
 import { RecentSearchesProvider } from '@/features/search/recent';
 import { takeLink } from '@/lib/links';
@@ -13,8 +13,9 @@ import { takeLink } from '@/lib/links';
 // A screen that breaks while drawing shows a friendly page with a way to try again.
 export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
 
-// Without a connection, what was loaded stays on screen and asking again waits until the phone is back.
-watchConnection();
+// The tabs are always underneath. When a link or a notification opens the app straight onto a journey or an
+// entry, Back and Close still have somewhere to go: Home.
+export const unstable_settings = { anchor: '(tabs)' };
 
 /** Everything a signed-in person sees: the four tabs, and the screens that open on top of them. */
 export default function AppLayout() {
@@ -43,15 +44,28 @@ export default function AppLayout() {
       <NewJourneyProvider>
         {/* Entries on their way up, and drafts: above every screen, so they keep going whichever one is open. */}
         <OutboxProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="entry/[id]" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-            <Stack.Screen name="journey/[id]/add" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="journey/[id]/live" options={{ animation: 'fade', gestureEnabled: false }} />
-            <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
-          </Stack>
+          {/* Without a connection a strip across the top says so, and the screens make room for it. */}
+          <OfflineStrip>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              {/*
+                The entry viewer draws its own full-screen stage. It is an ordinary screen that fades in, not
+                a modal: a profile or a review page opened from it is then an ordinary screen on top of it.
+                It closes with its Close button only, so swiping sideways always means "the next entry".
+              */}
+              <Stack.Screen name="entry/[id]" options={{ animation: 'fade', gestureEnabled: false }} />
+              {/*
+                The composer can't be swiped away: what was written is only left through its own Close, which
+                asks what to do with it. (Android's back button is the composer's own business.)
+              */}
+              <Stack.Screen name="journey/[id]/add" options={{ presentation: 'modal', gestureEnabled: false }} />
+              <Stack.Screen name="journey/[id]/live" options={{ animation: 'fade', gestureEnabled: false }} />
+              <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+            </Stack>
+          </OfflineStrip>
+          {/* Someone who never saw the question about notifications is asked once, after following or posting. */}
+          <AskAboutNotifications />
         </OutboxProvider>
-        <OfflineBanner />
       </NewJourneyProvider>
     </RecentSearchesProvider>
   );

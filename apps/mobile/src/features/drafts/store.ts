@@ -9,17 +9,32 @@ import type { Draft, DraftMedia, DraftStore } from './types';
  */
 let opened: Promise<SQLite.SQLiteDatabase> | null = null;
 
+/**
+ * The version of what is kept, written into the database itself. When the table or the shape of a draft has
+ * to change, raise this and add the step that brings an older database up to it (`if (version < 2) …`).
+ */
+const VERSION = 1;
+
 function database(): Promise<SQLite.SQLiteDatabase> {
   opened ??= SQLite.openDatabaseAsync('outbox.db').then(async (db) => {
-    await db.execAsync(
-      'create table if not exists drafts (client_id text primary key not null, owner text not null, journey_id text not null, state text not null, payload text not null, saved_at text not null)',
-    );
+    const version = (await db.getFirstAsync<{ user_version: number }>('pragma user_version'))?.user_version ?? 0;
+    if (version < 1) {
+      await db.execAsync(
+        'create table if not exists drafts (client_id text primary key not null, owner text not null, journey_id text not null, state text not null, payload text not null, saved_at text not null)',
+      );
+    }
+    if (version < VERSION) await db.execAsync(`pragma user_version = ${VERSION}`);
     return db;
   });
   return opened;
 }
 
 const folderOf = (clientId: string) => new Directory(Paths.document, 'drafts', clientId);
+
+function removeFolder(clientId: string) {
+  const folder = folderOf(clientId);
+  if (folder.exists) folder.delete();
+}
 
 /** The app's folder moves when the app is updated, so a kept file is found by its name, not by its old address. */
 function located(clientId: string, media: DraftMedia): DraftMedia {
@@ -60,8 +75,14 @@ export const draftStore: DraftStore = {
   async remove(clientId) {
     const db = await database();
     await db.runAsync('delete from drafts where client_id = ?', clientId);
-    const folder = folderOf(clientId);
-    if (folder.exists) folder.delete();
+    removeFolder(clientId);
+  },
+
+  async removeAll(owner) {
+    const db = await database();
+    const theirs = await db.getAllAsync<{ client_id: string }>('select client_id from drafts where owner = ?', owner);
+    await db.runAsync('delete from drafts where owner = ?', owner);
+    for (const row of theirs) removeFolder(row.client_id);
   },
 
   async keep(clientId, media) {

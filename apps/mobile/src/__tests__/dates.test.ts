@@ -34,4 +34,15 @@ describe('dates', () => {
     expect(moment.getHours()).toBe(12);
     expect(toISODate(moment)).toBe('2020-06-15');
   });
+
+  it('gives an entry that waited on the phone the moment it was written, not the moment it went up', () => {
+    const written = new Date(2026, 3, 7, 9, 41, 12);
+    // Written on its own day: that very moment, however much later it is sent.
+    expect(momentFor('2026-04-07', written)).toBe(written.toISOString());
+    // Written for another day (back-dated): midday of that day.
+    expect(new Date(momentFor('2026-04-05', written)).getHours()).toBe(12);
+    expect(toISODate(new Date(momentFor('2026-04-05', written)))).toBe('2026-04-05');
+    // A moment that can't be read counts as none.
+    expect(toISODate(new Date(momentFor('2026-04-05', new Date('nonsense'))))).toBe('2026-04-05');
+  });
 });

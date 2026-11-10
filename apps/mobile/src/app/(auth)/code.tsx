@@ -48,11 +48,16 @@ export default function Code() {
           {messageFor(createToken.error)}
         </Txt>
       ) : null}
-      <Pressable accessibilityRole="button" onPress={() => resend.mutate()} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
-        <Txt variant="callout" color="accentText" weight={700}>
-          {resend.isSuccess ? 'Code sent again' : 'Send the code again'}
+      <Pressable accessibilityRole="button" disabled={resend.isPending} onPress={() => resend.mutate()} style={{ marginTop: 18, alignSelf: 'flex-start' }} hitSlop={8}>
+        <Txt variant="callout" color="accentText" weight={700} accessibilityLiveRegion="polite">
+          {resend.isPending ? 'Sending…' : resend.isSuccess ? 'Code sent again' : 'Send the code again'}
         </Txt>
       </Pressable>
+      {resend.isError ? (
+        <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8 }}>
+          {messageFor(resend.error)}
+        </Txt>
+      ) : null}
       {authMode === 'local' ? (
         <View style={{ marginTop: 24, padding: 13, borderRadius: radius.field, backgroundColor: colors.fill }}>
           <Txt variant="caption" weight={600}>

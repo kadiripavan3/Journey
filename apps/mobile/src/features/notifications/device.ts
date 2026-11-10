@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { forgetDevice, registerDevice } from '@/api/generated/journey';
 import { beforeSignOut } from '@/auth/beforeSignOut';
+import { keep } from '@/lib/keep';
 
 import { pushSupport } from './support';
 
@@ -27,8 +28,16 @@ export function loadNotifications(): Promise<Notifications> {
   return library;
 }
 
-/** The address of this phone at the push service, once the API knows it. Kept so signing out can take it back. */
+/**
+ * The address of this phone at the push service, once the API knows it, and the time zone it was sent with.
+ * The address is also written down on the phone: signing out has to take it back in a later run of the app
+ * too, when this run never got as far as connecting (no connection at start-up, say).
+ */
 let connected: string | null = null;
+let sentZone: string | undefined;
+const ADDRESS_KEY = 'journey.push.address';
+/** Set once the person has seen Journey's own question about notifications on this phone. */
+const ASKED_KEY = 'journey.push.asked';
 
 /** What came of asking: notifications are on, the person (or the phone) said no, or this copy of the app can't have them. */
 export type PushAnswer = 'on' | 'off' | 'unavailable';
@@ -76,16 +85,59 @@ export async function connectThisPhone(): Promise<boolean> {
   }
 }
 
-/** Takes this phone off the person's list, so the next person to sign in here doesn't get their notifications. */
+/**
+ * The app came back to the front. A phone that travelled meanwhile tells the API its new time zone, so
+ * reminders keep arriving in the evening and not at night.
+ */
+export async function reconnectIfMoved(): Promise<void> {
+  if (connected && timeZone() !== sentZone) await connectThisPhone();
+}
+
+/**
+ * Takes this phone off the person's list, so nothing of theirs arrives here once they are signed out, and
+ * the next person to sign in here doesn't get their notifications. When the API can't be told (no
+ * connection, or the sign-in had ended already), the phone itself stops listening instead; the API then
+ * drops the address as soon as the push service says it is gone.
+ */
 export async function forgetThisPhone(): Promise<void> {
-  const token = connected;
-  if (!token) return;
+  if (pushSupport() !== 'ready') return;
+  const token = connected ?? (await keep.get(ADDRESS_KEY));
   connected = null;
+  sentZone = undefined;
+  if (!token) return;
+  await keep.remove(ADDRESS_KEY);
   try {
     await forgetDevice({ token });
   } catch {
-    // Not reachable, or the sign-in ended already. The API forgets a phone by itself once the push service says it is gone.
+    try {
+      const Notifications = await loadNotifications();
+      await Notifications.unregisterForNotificationsAsync();
+    } catch {
+      // Nothing more this phone can do. The API still forgets it once the push service says so.
+    }
   }
+}
+
+/**
+ * True when Journey's own question about notifications is still worth showing on this phone: notifications
+ * can work here, the phone hasn't been asked (or would ask again), and the person hasn't seen our question
+ * on this install. Someone who signed up on another phone, or reinstalled, never saw it.
+ */
+export async function shouldAskAboutPush(): Promise<boolean> {
+  if (pushSupport() !== 'ready') return false;
+  if ((await keep.get(ASKED_KEY)) !== null) return false;
+  try {
+    const Notifications = await loadNotifications();
+    const status = await Notifications.getPermissionsAsync();
+    return !allowed(Notifications, status) && status.canAskAgain;
+  } catch {
+    return false;
+  }
+}
+
+/** The person has seen Journey's question about notifications on this phone. It isn't shown again. */
+export function askedAboutPush(): Promise<void> {
+  return keep.set(ASKED_KEY, '1');
 }
 
 // Signing out goes through here first, while the API still knows who is asking.
@@ -96,8 +148,11 @@ async function connect(Notifications: Notifications): Promise<boolean> {
   const projectId: unknown = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (typeof projectId !== 'string' || !projectId) return false;
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-  await registerDevice({ token, platform: Platform.OS === 'ios' ? 'ios' : 'android', timeZone: timeZone() });
+  const zone = timeZone();
+  await registerDevice({ token, platform: Platform.OS === 'ios' ? 'ios' : 'android', timeZone: zone });
   connected = token;
+  sentZone = zone;
+  await keep.set(ADDRESS_KEY, token);
   return true;
 }
 

@@ -4,7 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useOutbox } from '@/features/drafts/outbox';
+import { useOutbox, useProgress } from '@/features/drafts/outbox';
 import { ProgressBar } from '@/features/drafts/PostingBanner';
 import type { Draft } from '@/features/drafts/types';
 import { draftSaved, draftTitle, draftWhere, progressLine } from '@/features/drafts/words';
@@ -32,9 +32,13 @@ export default function Uploads() {
   const failed = outbox.drafts.filter((draft) => draft.state === 'failed');
   const drafts = outbox.drafts.filter((draft) => draft.state === 'draft');
 
-  /** Opens a draft in the composer. One that is in line is taken out of it first, so it doesn't go up half changed. */
+  /**
+   * Opens a draft in the composer. One that is in line is taken out of it first, so it doesn't go up half
+   * changed; the composer is told where it was (`was`), so closing it without a change puts it back there.
+   */
   const open = (draft: Draft) => {
-    if (outbox.hold(draft.clientId)) router.push(`/journey/${draft.journeyId}/add?draft=${draft.clientId}`);
+    const was = draft.state;
+    if (outbox.hold(draft.clientId)) router.push(`/journey/${draft.journeyId}/add?draft=${draft.clientId}&was=${was}`);
   };
 
   return (
@@ -57,24 +61,11 @@ export default function Uploads() {
           ) : null}
 
           {going.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>{outbox.online ? 'Uploading' : 'Waiting to upload'}</GroupLabel> : null}
-          {going.map((draft, index) => {
-            const progress = outbox.progress[draft.clientId];
-            const waiting = draft.state === 'queued';
-            return (
-              <Rise key={draft.clientId} index={index}>
-                <Item draft={draft} sub={draftWhere(draft)} onPress={waiting ? () => open(draft) : undefined} label={`${draftTitle(draft)}. ${progressLine(progress, outbox.online)}`}>
-                  {waiting ? null : (
-                    <View style={{ marginTop: 4, marginBottom: 2 }}>
-                      <ProgressBar fraction={progress?.fraction ?? 0} />
-                    </View>
-                  )}
-                  <Txt variant="footnote" color="muted" numberOfLines={1}>
-                    {progressLine(progress, outbox.online)}
-                  </Txt>
-                </Item>
-              </Rise>
-            );
-          })}
+          {going.map((draft, index) => (
+            <Rise key={draft.clientId} index={index}>
+              <Going draft={draft} online={outbox.online} onOpen={() => open(draft)} />
+            </Rise>
+          ))}
 
           {failed.length > 0 ? <GroupLabel style={{ marginTop: layout.section, marginHorizontal: layout.gutter, marginBottom: 8 }}>Couldn&apos;t upload</GroupLabel> : null}
           {failed.map((draft) => (
@@ -87,7 +78,8 @@ export default function Uploads() {
               onRemove={() => setRemoving(draft)}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 5 }}>
                 <TriangleAlert size={14} color={colors.warn} style={{ marginTop: 2 }} />
-                <Txt variant="footnote" weight={700} numberOfLines={3} style={{ flex: 1, color: colors.warn }}>
+                {/* The mark carries the warning colour; the sentence is in the text colour, so it reads well on white. */}
+                <Txt variant="footnote" weight={700} numberOfLines={3} style={{ flex: 1 }}>
                   {draft.problem ?? "It couldn't be posted."}
                 </Txt>
               </View>
@@ -121,6 +113,24 @@ export default function Uploads() {
         </View>
       </Sheet>
     </SafeAreaView>
+  );
+}
+
+/** An entry that is going up or waiting for its turn. Only this row draws again as its upload moves on. */
+function Going({ draft, online, onOpen }: { draft: Draft; online: boolean; onOpen: () => void }) {
+  const progress = useProgress(draft.clientId);
+  const waiting = draft.state === 'queued';
+  return (
+    <Item draft={draft} sub={draftWhere(draft)} onPress={waiting ? onOpen : undefined} label={`${draftTitle(draft)}. ${progressLine(progress, online)}`}>
+      {waiting ? null : (
+        <View style={{ marginTop: 4, marginBottom: 2 }}>
+          <ProgressBar fraction={progress?.fraction ?? 0} />
+        </View>
+      )}
+      <Txt variant="footnote" color="muted" numberOfLines={1}>
+        {progressLine(progress, online)}
+      </Txt>
+    </Item>
   );
 }
 
@@ -178,7 +188,7 @@ function Item({ draft, sub, label, onPress, trailing, onRemove, children }: { dr
       )}
       {trailing}
       {onRemove ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${draftTitle(draft)}`} hitSlop={10} onPress={onRemove}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${draftTitle(draft)}`} hitSlop={13} onPress={onRemove}>
           <Trash2 size={18} color={colors.muted} />
         </Pressable>
       ) : null}

@@ -1,13 +1,18 @@
+import { ApiError } from './fetcher';
+
 /** Where a file goes, as the API hands it out. */
 export type Target = { uploadUrl: string; method: string; headers: Record<string, string> };
 
-/** Sends a file the browser holds to where the API said, and returns the answer's status (0 when nothing answered). */
+/**
+ * Sends a file the browser holds to where the API said, and returns the answer's status (0 when nothing
+ * answered). A file the browser no longer has is a failure with its own sentence, not a lost connection.
+ */
 export async function sendFile(uri: string, target: Target, onProgress?: (fraction: number) => void): Promise<number> {
   let body: Blob;
   try {
     body = await (await fetch(uri)).blob();
   } catch {
-    return 0;
+    throw new ApiError(400, 'file_gone', 'A photo or clip of this entry is no longer on your phone. Open the entry, take it out and add it again.');
   }
   return new Promise((resolve) => {
     const request = new XMLHttpRequest();
@@ -19,6 +24,14 @@ export async function sendFile(uri: string, target: Target, onProgress?: (fracti
     request.onload = () => resolve(request.status);
     request.onerror = () => resolve(0);
     request.onabort = () => resolve(0);
+    // A clip that hasn't gone up after a quarter of an hour isn't going to.
+    request.timeout = 15 * 60 * 1000;
+    request.ontimeout = () => resolve(0);
     request.send(body);
   });
+}
+
+/** Lets go of a file the app made only for an upload. In a browser that is a picture held in memory. */
+export function removeFile(uri: string): void {
+  if (uri.startsWith('blob:')) URL.revokeObjectURL(uri);
 }

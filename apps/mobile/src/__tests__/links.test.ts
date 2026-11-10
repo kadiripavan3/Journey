@@ -1,4 +1,4 @@
-import { rememberLink, screenFor, takeLink } from '@/lib/links';
+import { linksKnowSession, rememberLink, screenFor, takeLink } from '@/lib/links';
 import { mailLink, shortLink } from '@/lib/share';
 
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn(() => Promise.resolve(true)) }));
@@ -35,6 +35,37 @@ describe('links that open the app', () => {
     rememberLink('/192.168.1.5:8081/--/', 1_000);
     rememberLink('/terms', 1_000);
     expect(takeLink(2_000)).toBeNull();
+  });
+
+  it('remembers a link only for someone who still has to sign in', () => {
+    try {
+      // Opened before signing in: it is still there once they are in.
+      rememberLink('/invite/k7m2-x9qd', 1_000);
+      linksKnowSession(true);
+      expect(takeLink(2_000)).toBe('/invite/k7m2-x9qd');
+
+      // Opened while signed in: the router has shown it already. Remembering it would open it a second
+      // time, later, from wherever the person has gone since.
+      rememberLink('/journey/8f2c', 3_000);
+      expect(takeLink(4_000)).toBeNull();
+
+      linksKnowSession(false);
+      rememberLink('/journey/8f2c', 5_000);
+      expect(takeLink(6_000)).toBe('/journey/8f2c');
+    } finally {
+      linksKnowSession(false);
+    }
+  });
+
+  it('takes web addresses only from the address the build answers to, when it has one', () => {
+    // A build with EXPO_PUBLIC_LINK_HOST=go.journey.app
+    expect(screenFor('https://go.journey.app/j/8f2c', 'go.journey.app')).toBe('/journey/8f2c');
+    expect(screenFor('https://GO.journey.app/i/k7m2-x9qd', 'go.journey.app')).toBe('/invite/k7m2-x9qd');
+    expect(screenFor('https://elsewhere.example/j/8f2c', 'go.journey.app')).toBe('https://elsewhere.example/j/8f2c');
+    // A path without an address (the app's own) is taken as before.
+    expect(screenFor('/e/41aa', 'go.journey.app')).toBe('/entry/41aa');
+    // A build that claims no address: nothing changes.
+    expect(screenFor('https://elsewhere.example/j/8f2c', null)).toBe('/journey/8f2c');
   });
 });
 

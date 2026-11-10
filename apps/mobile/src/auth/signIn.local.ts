@@ -15,6 +15,8 @@ export function localSignIn(): SignInService {
     },
     apple: null,
     google: null,
+    suggestedName: () => Promise.resolve(null),
+    signedInWith: () => Promise.resolve('email'),
     restore: loadToken,
     // A test token lasts 30 days and can't be renewed: the person signs in again.
     renew: () => Promise.resolve(null),

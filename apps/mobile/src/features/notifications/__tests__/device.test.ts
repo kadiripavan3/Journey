@@ -13,15 +13,26 @@ type World = {
   /** What the person answers when the phone asks. */
   answer?: boolean;
   canAskAgain?: boolean;
+  /** What the phone remembers from earlier runs of the app. A new one for a fresh install. */
+  kept?: Map<string, string>;
 };
 
 function world(w: World) {
   jest.resetModules();
+  const kept = w.kept ?? new Map<string, string>();
+  jest.doMock('@/lib/keep', () => ({
+    keep: {
+      get: async (key: string) => kept.get(key) ?? null,
+      set: async (key: string, value: string) => void kept.set(key, value),
+      remove: async (key: string) => void kept.delete(key),
+    },
+  }));
   const notifications = {
     setNotificationHandler: jest.fn(),
     getPermissionsAsync: jest.fn(async () => ({ granted: w.granted ?? false, canAskAgain: w.canAskAgain ?? true })),
     requestPermissionsAsync: jest.fn(async () => ({ granted: w.answer ?? false, canAskAgain: false })),
     getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[this-phone]' })),
+    unregisterForNotificationsAsync: jest.fn(async () => undefined),
     setNotificationChannelAsync: jest.fn(async () => null),
     IosAuthorizationStatus: { PROVISIONAL: 3 },
     AndroidImportance: { DEFAULT: 3 },
@@ -43,7 +54,7 @@ function world(w: World) {
   Object.defineProperty(Platform, 'OS', { configurable: true, get: () => w.os });
   const device = jest.requireActual<typeof import('../device')>('../device');
   const { runBeforeSignOut } = jest.requireActual<typeof import('@/auth/beforeSignOut')>('@/auth/beforeSignOut');
-  return { notifications, loaded, api, device, signOut: runBeforeSignOut };
+  return { notifications, loaded, api, device, kept, signOut: runBeforeSignOut };
 }
 
 describe('turning notifications on', () => {
@@ -126,14 +137,88 @@ describe('opening the app and signing out', () => {
     expect(api.forgetDevice).toHaveBeenCalledTimes(1);
   });
 
-  it('signs out all the same when the API cannot be reached, and has nothing to do for a phone never connected', async () => {
+  it('signs out all the same when the API cannot be told, and then the phone itself stops listening', async () => {
     const offline = await world({ os: 'ios', granted: true });
     await offline.device.connectThisPhone();
     offline.api.forgetDevice.mockRejectedValueOnce(new Error('offline'));
     await expect(offline.signOut()).resolves.toBeUndefined();
+    // Nothing of the person who signed out arrives here any more, whatever the API still believes.
+    expect(offline.notifications.unregisterForNotificationsAsync).toHaveBeenCalledTimes(1);
+
+    const reached = await world({ os: 'ios', granted: true });
+    await reached.device.connectThisPhone();
+    await reached.signOut();
+    expect(reached.notifications.unregisterForNotificationsAsync).not.toHaveBeenCalled();
 
     const never = await world({ os: 'web' });
     await never.signOut();
     expect(never.api.forgetDevice).not.toHaveBeenCalled();
+  });
+
+  it('takes the phone off the list in a later run of the app too, when that run never got to connect it', async () => {
+    const first = await world({ os: 'ios', granted: true });
+    await first.device.connectThisPhone();
+
+    // The app is opened again without a connection: the phone can't be connected this time. Then the person signs out.
+    const later = await world({ os: 'ios', granted: true, kept: first.kept });
+    later.api.registerDevice.mockRejectedValue(new Error('offline'));
+    expect(await later.device.connectThisPhone()).toBe(false);
+    await later.signOut();
+    expect(later.api.forgetDevice).toHaveBeenCalledWith({ token: 'ExponentPushToken[this-phone]' });
+
+    // And only once: the address is forgotten with it.
+    const afterwards = await world({ os: 'ios', granted: true, kept: first.kept });
+    await afterwards.signOut();
+    expect(afterwards.api.forgetDevice).not.toHaveBeenCalled();
+  });
+
+  it('tells the API the new time zone when the phone has travelled, and nothing when it has not', async () => {
+    const { device, api } = await world({ os: 'ios', granted: true });
+    await device.connectThisPhone();
+    await device.reconnectIfMoved();
+    expect(api.registerDevice).toHaveBeenCalledTimes(1);
+
+    const zone = jest.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({ timeZone: 'Asia/Tokyo' } as Intl.ResolvedDateTimeFormatOptions);
+    try {
+      await device.reconnectIfMoved();
+      expect(api.registerDevice).toHaveBeenCalledTimes(2);
+      expect(api.registerDevice).toHaveBeenLastCalledWith(expect.objectContaining({ timeZone: 'Asia/Tokyo' }));
+      await device.reconnectIfMoved();
+      expect(api.registerDevice).toHaveBeenCalledTimes(2);
+    } finally {
+      zone.mockRestore();
+    }
+
+    // A phone that never said yes has nothing to tell.
+    const no = await world({ os: 'ios', granted: false });
+    await no.device.reconnectIfMoved();
+    expect(no.api.registerDevice).not.toHaveBeenCalled();
+  });
+});
+
+describe('asking someone who never saw the question', () => {
+  it('is worth it once per install, while the phone has not been asked', async () => {
+    const fresh = await world({ os: 'ios', granted: false, canAskAgain: true });
+    expect(await fresh.device.shouldAskAboutPush()).toBe(true);
+    await fresh.device.askedAboutPush();
+    expect(await fresh.device.shouldAskAboutPush()).toBe(false);
+
+    // The next run of the app remembers; a new install doesn't.
+    const nextRun = await world({ os: 'ios', granted: false, canAskAgain: true, kept: fresh.kept });
+    expect(await nextRun.device.shouldAskAboutPush()).toBe(false);
+    const reinstalled = await world({ os: 'ios', granted: false, canAskAgain: true });
+    expect(await reinstalled.device.shouldAskAboutPush()).toBe(true);
+  });
+
+  it('is never worth it when the phone has answered already, or where notifications cannot work', async () => {
+    const yes = await world({ os: 'android', granted: true });
+    expect(await yes.device.shouldAskAboutPush()).toBe(false);
+    const no = await world({ os: 'ios', granted: false, canAskAgain: false });
+    expect(await no.device.shouldAskAboutPush()).toBe(false);
+    for (const where of [{ os: 'web' } as const, { os: 'ios', expoGo: true } as const]) {
+      const nowhere = await world(where);
+      expect(await nowhere.device.shouldAskAboutPush()).toBe(false);
+      expect(nowhere.loaded).not.toHaveBeenCalled();
+    }
   });
 });

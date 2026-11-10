@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 
 import { track } from '@/features/analytics/analytics';
 
-import { connectThisPhone, loadNotifications } from './device';
+import { connectThisPhone, loadNotifications, reconnectIfMoved } from './device';
 import { pushSupport } from './support';
 import { hrefFor } from './target';
 
@@ -11,9 +12,9 @@ import { hrefFor } from './target';
 let lastOpened: string | null = null;
 
 /**
- * For the signed-in app: keeps this phone connected for notifications (if the person said yes), and opens
- * the right screen when one is tapped, also when that tap is what started the app. In a browser and in
- * Expo Go it does nothing.
+ * For the signed-in app: keeps this phone connected for notifications (if the person said yes), tells the
+ * API when the phone's time zone has changed, and opens the right screen when a notification is tapped, also
+ * when that tap is what started the app. In a browser and in Expo Go it does nothing.
  */
 export function usePushNotifications() {
   const router = useRouter();
@@ -22,6 +23,10 @@ export function usePushNotifications() {
     if (pushSupport() !== 'ready') return;
     let mounted = true;
     let stop: (() => void) | undefined;
+    // Back from being put away: a phone that changed time zone meanwhile says so.
+    const resumed = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void reconnectIfMoved();
+    });
 
     void (async () => {
       try {
@@ -53,6 +58,7 @@ export function usePushNotifications() {
 
     return () => {
       mounted = false;
+      resumed.remove();
       stop?.();
     };
   }, [router]);

@@ -27,7 +27,8 @@ export default function Ready() {
   const count = followed.data?.items.length ?? 0;
 
   const leave = (then?: Href) => {
-    track('signed_up', { journeys_followed: count, starts_a_journey: then !== undefined });
+    // ("signed_up" is counted when the profile is made, by the API call; this says how sign-up ended.)
+    track('sign_up_finished', { journeys_followed: count, starts_a_journey: then !== undefined });
     void cache.everything();
     onboarding.finish(then);
   };
