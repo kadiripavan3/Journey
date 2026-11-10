@@ -56,7 +56,7 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Server data | **TanStack Query** | Caching, instant likes and retry. What was read is kept on the phone for a week (per account, removed at sign-out), so the app opens and shows it without a connection. |
 | Local state | React's own state and context | The session, the sign-up answers and the outbox are small; no library is needed |
 | Offline drafts and upload queue | **expo-sqlite** | A real database on the phone; works in Expo Go. MMKV and op-sqlite need a custom build. |
-| Uploads | **expo-file-system** upload tasks | A clip keeps uploading when the app goes to the background on an iPhone. Photos are small and go up while the app is open, and an entry that waited without a connection is posted the next time the app is open with one. |
+| Uploads | **expo-file-system** upload tasks | A clip that is on its way keeps uploading when the app goes to the background on an iPhone. Photos are small and go up while the app is open. The entry itself is posted when the app is open: at once with a connection, or the next time it is open with one. |
 | UI | Our own small component kit, styled with plain **StyleSheet** and a typed theme generated from `design/tokens.json` | No styling library to depend on. NativeWind 5 is still a release candidate, and Unistyles needs a custom build. |
 | Glass and blur | **expo-blur** on iPhone; a dense tint on Android | Blur on Android needs wiring on every screen that could not be checked without a device, so Android gets the tint for now |
 | Animation and gestures | **Reanimated 4**, **Gesture Handler** | The standard pair, included with Expo |
