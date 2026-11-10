@@ -12,6 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,18 +45,25 @@ public class MediaService {
 
             @Schema(nullable = true) Integer width,
             @Schema(nullable = true) Integer height,
-            @Schema(nullable = true) Integer durationSeconds) {}
+            @Schema(nullable = true) Integer durationSeconds,
+
+            @Schema(
+                    description =
+                            "True while the automatic check has this photo held for a reviewer. Only its owner ever sees a held photo.")
+            boolean held) {}
 
     public record NewUpload(UUID mediaId, MediaStorage.UploadTarget target) {}
 
     private final MediaStore store;
     private final MediaStorage storage;
     private final MediaSizes sizes;
+    private final ApplicationEventPublisher events;
 
-    MediaService(MediaStore store, MediaStorage storage, MediaSizes sizes) {
+    MediaService(MediaStore store, MediaStorage storage, MediaSizes sizes, ApplicationEventPublisher events) {
         this.store = store;
         this.storage = storage;
         this.sizes = sizes;
+        this.events = events;
     }
 
     @Transactional
@@ -107,6 +115,7 @@ public class MediaService {
             }
             MediaSizes.Dimensions size = clip ? null : sizes.make(row.storageKey());
             store.markReady(id, bytes, size == null ? null : size.width(), size == null ? null : size.height());
+            events.publishEvent(new MediaReady(id, ownerId, row.kind(), row.storageKey())); // the photo check listens
         } catch (ApiProblem refused) {
             deleteFiles(row.storageKey()); // nothing good comes of keeping a file that was refused
             throw refused;
@@ -167,6 +176,18 @@ public class MediaService {
                 .toList();
     }
 
+    /**
+     * For a cover or a profile picture, which everyone sees: the photo must be this person's and ready, and it
+     * can't be one that is being reviewed.
+     */
+    public void requireOwnShowable(UUID id, UUID ownerId) {
+        requireOwn(List.of(id), ownerId, MediaKind.PHOTO);
+        if (store.held(id)) {
+            throw ApiProblem.badRequest(
+                    "photo_under_review", "That photo is being reviewed, so it can't be used here yet.");
+        }
+    }
+
     /** The full-size file. */
     public String urlFor(String storageKey) {
         return storageKey == null ? null : storage.publicUrl(storageKey);
@@ -183,7 +204,13 @@ public class MediaService {
     }
 
     public MediaResponse view(
-            UUID id, MediaKind kind, String storageKey, Integer width, Integer height, Integer durationS) {
+            UUID id,
+            MediaKind kind,
+            String storageKey,
+            Integer width,
+            Integer height,
+            Integer durationS,
+            boolean held) {
         return new MediaResponse(
                 id,
                 kind,
@@ -191,7 +218,20 @@ public class MediaService {
                 kind == MediaKind.PHOTO ? storage.publicUrl(MediaSize.MEDIUM.keyFor(storageKey)) : null,
                 width,
                 height,
-                durationS);
+                durationS,
+                held);
+    }
+
+    /**
+     * Removes one upload for good: its record now, its files once that change is kept. For a reviewer who
+     * removes a held photo.
+     */
+    @Transactional
+    public void remove(UUID id) {
+        store.find(id).ifPresent(row -> {
+            store.delete(List.of(id));
+            afterCommit(() -> deleteFiles(row.storageKey()));
+        });
     }
 
     /** Deletes everything a person uploaded: the records now, the files right after. */

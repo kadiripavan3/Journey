@@ -354,8 +354,9 @@ class RulesTest extends ApiTest {
         mvc.perform(put("/v1/me/profile")
                         .header("Authorization", half)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Half\",\"username\":\"half\",\"avatarMediaId\":\"%s\"}"
-                                .formatted(photo)))
+                        .content(
+                                "{\"ageConfirmed\":true,\"displayName\":\"Half\",\"username\":\"half\",\"avatarMediaId\":\"%s\"}"
+                                        .formatted(photo)))
                 .andExpect(status().isOk());
         mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", half))
                 .andExpect(status().isOk());

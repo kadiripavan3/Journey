@@ -77,7 +77,12 @@ class MeController {
             UUID avatarMediaId,
 
             @Schema(description = "True to go back to no picture")
-            Boolean removeAvatar) {}
+            Boolean removeAvatar,
+
+            @Schema(
+                    description =
+                            "The person confirms they are 13 or older. Needed, and must be true, when the profile is first created.")
+            Boolean ageConfirmed) {}
 
     record UsernameCheckResponse(
             String username,
@@ -104,7 +109,8 @@ class MeController {
                 request.link(),
                 request.interests(),
                 request.avatarMediaId(),
-                Boolean.TRUE.equals(request.removeAvatar())));
+                Boolean.TRUE.equals(request.removeAvatar()),
+                Boolean.TRUE.equals(request.ageConfirmed())));
     }
 
     private ProfileResponse view(Profile profile) {

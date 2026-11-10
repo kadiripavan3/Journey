@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${person.displayName + ' (@' + person.username + ') · Journey'}">Journey</title>
+  <meta name="description" th:content="${person.bio != '' ? person.bio : 'Follow ' + person.displayName + ' on Journey.'}">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="Journey">
+  <meta property="og:title" th:content="${'Follow ' + person.displayName + ' on Journey'}">
+  <meta property="og:description" th:content="${person.bio != '' ? person.bio : person.journeyCount + (person.journeyCount == 1 ? ' journey' : ' journeys')}">
+  <meta property="og:image" th:if="${person.avatarUrl != null}" th:content="${person.avatarUrl}">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" th:href="@{/share/tokens.css}">
+  <link rel="stylesheet" th:href="@{/share/page.css}">
+  <link rel="stylesheet" th:href="@{/share/pages.css}">
+</head>
+<body class="plain">
+  <main class="wide">
+    <p class="brandline"><span class="brand">Journey</span></p>
+    <div class="who">
+      <img th:if="${person.avatarUrl != null}" th:src="${person.avatarUrl}" alt="">
+      <span class="initials" th:if="${person.avatarUrl == null}" th:text="${#strings.substring(person.displayName, 0, 1)}">N</span>
+      <div>
+        <h1 th:text="${person.displayName}">Name</h1>
+        <small th:text="${'@' + person.username}">@username</small>
+      </div>
+    </div>
+    <p class="lede" th:if="${person.bio != ''}" th:text="${person.bio}">Bio</p>
+    <a class="cta" th:href="${appLink}" th:text="${'Follow ' + person.displayName + ' in the app'}">Follow in the app</a>
+    <p class="hint">Following a person brings their next journeys to your Home.</p>
+
+    <p class="empty" th:if="${#lists.isEmpty(journeys)}">No public journeys yet.</p>
+    <ul class="cards">
+      <li th:each="j : ${journeys}">
+        <a th:href="@{'/j/' + ${j.id}}">
+          <span class="pic" th:style="${j.coverThumbUrl != null} ? 'background-image:url(' + ${j.coverThumbUrl} + ')' : ''"></span>
+          <b th:text="${j.title}">Title</b>
+          <span th:text="${j.progressLabel + ' · ' + j.entryCount + (j.entryCount == 1 ? ' entry' : ' entries')}">Day 3 · 4 entries</span>
+        </a>
+      </li>
+    </ul>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

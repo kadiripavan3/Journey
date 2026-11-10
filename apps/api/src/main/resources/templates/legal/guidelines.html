@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{legal/parts :: head('Community guidelines')}"></head>
+<body class="plain">
+  <main class="text">
+    <p class="brandline"><span class="brand">Journey</span></p>
+    <p th:replace="~{legal/parts :: draft}"></p>
+    <h1>Community guidelines</h1>
+    <p class="lede">Journey is for telling a story as it happens and cheering other people on. A few things don't belong here.</p>
+
+    <h2>Not on Journey</h2>
+    <ul>
+      <li><b>Hate and harassment.</b> No attacks on people for who they are, no threats, no bullying, no piling on.</li>
+      <li><b>Nudity and sexual content.</b> Beach and swimwear photos are fine. Explicit content is not.</li>
+      <li><b>Violence and dangerous acts.</b> No graphic violence, and nothing that encourages people to hurt themselves or others.</li>
+      <li><b>Pretending to be someone else.</b> Be yourself, or be clearly a fan or parody account.</li>
+      <li><b>Spam and scams.</b> No selling, no fake giveaways, no posting the same thing over and over.</li>
+      <li><b>Other people's private details.</b> Don't post someone's address, documents or private messages.</li>
+      <li><b>Anything illegal</b> where you are or where it is shown.</li>
+    </ul>
+
+    <h2>What happens when something is reported</h2>
+    <p>Anyone can report a journey, an entry, a comment or a person. A report is private and a person reads each one. Until they have, a reported journey is left out of Discover and search. If it breaks these guidelines it is removed; if it doesn't, nothing changes.</p>
+
+    <h2>The automatic check</h2>
+    <p>Every photo is checked when it is uploaded. If the check has doubts, the photo is hidden from everyone but you until a person has looked at it. You are told, and you can ask for a second look. A comment with certain words is held the same way.</p>
+
+    <h2>If we got it wrong</h2>
+    <p>Tell us: <span th:replace="~{legal/parts :: reach}"></span>.</p>
+    <nav th:replace="~{legal/parts :: links}"></nav>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

@@ -15,7 +15,8 @@ class ProfileTest extends ApiTest {
         return mvc.perform(put("/v1/me/profile")
                 .header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json));
+                // Being 13 or older is confirmed in every one of these; ModerationTest covers leaving it out.
+                .content(json.replaceFirst("\\{", "{\"ageConfirmed\":true,")));
     }
 
     private static final String NORA = """

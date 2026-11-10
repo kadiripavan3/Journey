@@ -56,7 +56,7 @@ public class JourneyStore {
                select m.storage_key from entries e
                join entry_media em on em.entry_id = e.id
                join media m on m.id = em.media_id
-               where e.journey_id = j.id and m.kind = 'photo'
+               where e.journey_id = j.id and m.kind = 'photo' and %s
                order by e.happened_at, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
@@ -67,7 +67,7 @@ public class JourneyStore {
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
       left join media pa on pa.id = p.avatar_media_id
       left join media cm on cm.id = j.cover_media_id
-      """;
+      """.formatted(Rules.publicMedia("m"));
 
     private static final RowMapper<JourneyRow> ROW = (rs, n) -> new JourneyRow(
             rs.getObject("id", UUID.class),
@@ -136,6 +136,18 @@ public class JourneyStore {
 
     public Optional<JourneyRow> find(UUID id, UUID viewer) {
         return jdbc.sql(SELECT + " where j.id = :id" + VISIBLE)
+                .param("viewer", viewer)
+                .param("id", id)
+                .query(ROW)
+                .optional();
+    }
+
+    /**
+     * For someone holding an invite link: they may look at the journey before joining, even when it is private,
+     * because its owner gave them the link. Blocking still hides it.
+     */
+    public Optional<JourneyRow> findForLink(UUID id, UUID viewer) {
+        return jdbc.sql(SELECT + " where j.id = :id and " + Rules.notBlocked("j.owner_id", ":viewer"))
                 .param("viewer", viewer)
                 .param("id", id)
                 .query(ROW)
@@ -367,9 +379,9 @@ public class JourneyStore {
             select count(*) as entries, count(distinct nullif(e.place_name, '')) as places, coalesce(sum(e.like_count), 0) as likes,
                    min(e.happened_on) as first_day, max(e.happened_on) as last_day,
                    (select count(*) from entry_media em join entries x on x.id = em.entry_id join media m on m.id = em.media_id
-                     where x.journey_id = :id and m.kind = 'photo') as photos
+                     where x.journey_id = :id and m.kind = 'photo' and %s) as photos
             from entries e where e.journey_id = :id
-            """)
+            """.formatted(Rules.publicMedia("m")))
                 .param("id", journeyId)
                 .query((rs, n) -> new Totals(
                         rs.getInt("entries"),
@@ -386,11 +398,11 @@ public class JourneyStore {
         return jdbc.sql("""
             select m.storage_key from entries e
             join entry_media em on em.entry_id = e.id and em.position = 0
-            join media m on m.id = em.media_id and m.kind = 'photo'
+            join media m on m.id = em.media_id and m.kind = 'photo' and %s
             where e.journey_id = :id
             order by e.is_milestone desc, e.like_count desc, e.happened_at
             limit :limit
-            """)
+            """.formatted(Rules.publicMedia("m")))
                 .param("id", journeyId)
                 .param("limit", limit)
                 .query(String.class)

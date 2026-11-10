@@ -289,8 +289,9 @@ class ShapeTest extends ApiTest {
         mvc.perform(put("/v1/me/profile")
                         .header("Authorization", maya)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"displayName\":\"Maya\",\"username\":\"maya\",\"avatarMediaId\":\"%s\"}"
-                                .formatted(big)))
+                        .content(
+                                "{\"ageConfirmed\":true,\"displayName\":\"Maya\",\"username\":\"maya\",\"avatarMediaId\":\"%s\"}"
+                                        .formatted(big)))
                 .andExpect(status().isOk());
         String journey = journey(maya, "Southeast Asia", "public", 3);
         String body = mvc.perform(post("/v1/journeys/" + journey + "/entries")

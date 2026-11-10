@@ -54,6 +54,13 @@ public class ProfileStore {
     }
 
     /** Creates the profile the first time and changes it after that. The database's unique rule on usernames has the last word. */
+    /** Records that the person said they are 13 or older, the moment a new profile is made. Kept once; never changed. */
+    public void confirmAge(UUID id) {
+        jdbc.sql("update profiles set age_confirmed_at = now() where id = :id and age_confirmed_at is null")
+                .param("id", id)
+                .update();
+    }
+
     public void save(
             UUID id,
             String username,

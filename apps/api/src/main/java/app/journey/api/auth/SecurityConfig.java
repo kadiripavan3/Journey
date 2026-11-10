@@ -54,6 +54,11 @@ class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/j/**", "/share/**")
                         .permitAll() // the public web pages behind shared links, and their stylesheet
+                        .requestMatchers("/e/**", "/u/**", "/i/**", "/.well-known/**")
+                        .permitAll() // an entry's page, a person's, an invitation, and the files that let links open
+                        // the app
+                        .requestMatchers("/terms", "/privacy", "/guidelines", "/contact", "/delete-account")
+                        .permitAll() // the legal pages, and asking on the web for an account to be deleted
                         .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
                         .permitAll() // these controllers only exist in local mode; uploads carry their own token
                         .requestMatchers("/v1/**")

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{legal/parts :: head('Delete your account')}"></head>
+<body class="plain">
+  <main class="text">
+    <p class="brandline"><span class="brand">Journey</span></p>
+    <h1>Delete your account</h1>
+    <p class="lede">The quickest way is in the app: Settings, Account, Delete account. It happens straight away. If you can't open the app any more, ask here.</p>
+
+    <h2>What is deleted</h2>
+    <p>Your profile, journeys, entries, photos, clips, comments, likes and follows. For good: it can't be undone.</p>
+
+    <h2>Ask us to delete it</h2>
+    <p>We write to the address you give, to make sure the request comes from you, and delete the account once you answer.</p>
+    <form method="post" th:action="@{/delete-account}">
+      <label for="email">The email address you signed up with</label>
+      <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" th:value="${email}">
+      <label for="username">Your username, if you remember it</label>
+      <input id="username" name="username" type="text" autocomplete="username" maxlength="40" th:value="${username}">
+      <label for="note">Anything we should know (optional)</label>
+      <textarea id="note" name="note" maxlength="500" th:text="${note}"></textarea>
+      <p class="problem" role="alert" th:if="${problem != null}" th:text="${problem}">Problem</p>
+      <button class="btn big" type="submit">Ask to delete my account</button>
+    </form>
+    <nav th:replace="~{legal/parts :: links}"></nav>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

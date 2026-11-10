@@ -171,8 +171,8 @@ public class EntryService {
                 shown.size() > latestCount ? shown.get(latestCount) : null,
                 shown.subList(0, latestCount),
                 entries.photos(journeyId, viewer, SUMMARY_PHOTOS).stream()
-                        .map(m ->
-                                media.view(m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS()))
+                        .map(m -> media.view(
+                                m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS(), m.held()))
                         .toList(),
                 entries.photoCount(journeyId, viewer),
                 journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
@@ -385,14 +385,20 @@ public class EntryService {
 
     public List<EntryResponse> views(List<EntryRow> rows, UUID viewer) {
         Map<UUID, List<EntryMediaRow>> mediaByEntry =
-                entries.mediaFor(rows.stream().map(EntryRow::id).toList());
+                entries.mediaFor(rows.stream().map(EntryRow::id).toList(), viewer);
         return rows.stream()
                 .map(e -> {
                     boolean day = e.labelStyle() == LabelStyle.DAY;
                     int number = day ? e.dayNumber() : e.position();
                     List<MediaResponse> files = mediaByEntry.getOrDefault(e.id(), List.of()).stream()
                             .map(m -> media.view(
-                                    m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS()))
+                                    m.mediaId(),
+                                    m.kind(),
+                                    m.storageKey(),
+                                    m.width(),
+                                    m.height(),
+                                    m.durationS(),
+                                    m.held()))
                             .toList();
                     return new EntryResponse(
                             e.id(),

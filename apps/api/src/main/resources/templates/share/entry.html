@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${(entry.title != '' ? entry.title : entry.label) + ' · ' + journey.title + ' · Journey'}">Journey</title>
+  <meta name="description" th:content="${entry.body != '' ? #strings.abbreviate(entry.body, 160) : journey.title + ' · by ' + entry.author.displayName}">
+  <meta name="robots" content="noindex" th:if="${journey.visibility.code() != 'public'}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Journey">
+  <meta property="og:title" th:content="${(entry.title != '' ? entry.title : entry.label) + ' · ' + journey.title}">
+  <meta property="og:description" th:content="${entry.body != '' ? #strings.abbreviate(entry.body, 160) : entry.label + ' · by ' + entry.author.displayName}">
+  <meta property="og:image" th:if="${!#lists.isEmpty(entry.media) and entry.media[0].thumbUrl != null}" th:content="${entry.media[0].url}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" th:href="@{/share/tokens.css}">
+  <link rel="stylesheet" th:href="@{/share/page.css}">
+  <link rel="stylesheet" th:href="@{/share/pages.css}">
+</head>
+<body class="plain">
+  <main>
+    <p class="brandline"><a class="brand" th:href="@{'/j/' + ${journey.id}}">Journey</a></p>
+    <p class="eyebrow" th:text="${entry.placeName != null ? entry.label + ' · ' + entry.placeName : entry.label}">Day 1</p>
+    <h1 th:text="${entry.title != '' ? entry.title : journey.title}">Title</h1>
+    <p class="by">From <b th:text="${journey.title}">the journey</b> by <b th:text="${entry.author.displayName}">Name</b></p>
+    <img class="shot" th:each="m : ${entry.media}" th:if="${m.thumbUrl != null}" th:src="${m.url}" alt="" loading="lazy">
+    <p class="body" th:if="${entry.body != ''}" th:text="${entry.body}">Body</p>
+    <a class="cta" th:href="${appLink}">Open in the app</a>
+    <p class="hint">Likes and comments are in the app.</p>
+    <a class="back" th:href="@{'/j/' + ${journey.id}}">Read the whole story</a>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

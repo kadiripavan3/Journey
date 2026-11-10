@@ -100,6 +100,22 @@ public class MemberStore {
                 .update();
     }
 
+    /**
+     * Puts someone on a journey as a friend who has joined, whether or not they had been asked before. For a
+     * person who came by an invite link: the link was the invitation and opening it was the yes.
+     */
+    public void join(UUID journeyId, UUID userId, UUID invitedBy) {
+        jdbc.sql("""
+            insert into journey_members (journey_id, user_id, status, invited_by, joined_at)
+            values (:journey, :user, 'joined', :by, now())
+            on conflict (journey_id, user_id) do update set status = 'joined', joined_at = coalesce(journey_members.joined_at, now())
+            """)
+                .param("journey", journeyId)
+                .param("user", userId)
+                .param("by", invitedBy)
+                .update();
+    }
+
     /** True when there was an invitation to say yes to. */
     public boolean accept(UUID journeyId, UUID userId) {
         return jdbc.sql(

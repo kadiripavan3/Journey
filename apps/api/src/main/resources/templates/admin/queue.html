@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review queue · Journey</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" th:href="@{/share/tokens.css}">
+  <link rel="stylesheet" th:href="@{/share/page.css}">
+  <link rel="stylesheet" th:href="@{/share/pages.css}">
+</head>
+<body class="plain">
+  <main class="wide">
+    <p class="eyebrow">Journey · for reviewers</p>
+    <h1>Review queue</h1>
+    <p class="lede">Signed in as <b th:text="${reviewer}">reviewer</b>. Everything you decide here is recorded with your name. Nothing is removed until you remove it.</p>
+
+    <h2>Reports <span class="count" th:text="${#lists.size(queue.reports)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.reports)}">No open reports.</p>
+    <section class="item" th:each="r : ${queue.reports}">
+      <p class="eyebrow" th:text="${r.targetType.code() + ' · ' + r.reason + ' · ' + @reviewTimes.utc(r.createdAt)}">entry · spam</p>
+      <p class="what" th:if="${r.what != null}" th:text="${r.what}">What was reported</p>
+      <p class="what gone" th:if="${r.what == null}">Already gone.</p>
+      <p class="meta">
+        <span th:if="${r.byWhom != null}" th:text="${'By @' + r.byWhom + '. '}">By @someone.</span>
+        <span th:text="${r.reporter != null ? 'Reported by @' + r.reporter + '.' : 'The reporter has left.'}">Reported by</span>
+        <span th:if="${r.note != ''}" th:text="${'They wrote: “' + r.note + '”'}">Note</span>
+        <a th:if="${r.what != null and r.targetType.code() == 'journey'}" th:href="@{'/j/' + ${r.targetId}}">Open the journey's page</a>
+        <a th:if="${r.what != null and r.targetType.code() == 'entry'}" th:href="@{'/e/' + ${r.targetId}}">Open the entry's page</a>
+        <a th:if="${r.byWhom != null and r.targetType.code() == 'profile'}" th:href="@{'/u/' + ${r.byWhom}}">Open the profile's page</a>
+      </p>
+      <div class="actions">
+        <form method="post" th:action="@{'/admin/reports/' + ${r.id} + '/dismiss'}"><button class="btn line" type="submit">Nothing wrong, keep it</button></form>
+        <form method="post" th:if="${r.targetType.code() != 'profile' and r.what != null}" th:action="@{'/admin/reports/' + ${r.id} + '/remove'}"><button class="btn danger" type="submit" th:text="${'Remove the ' + r.targetType.code()}">Remove</button></form>
+      </div>
+    </section>
+
+    <h2>Held photos <span class="count" th:text="${#lists.size(queue.photos)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.photos)}">No photos are waiting.</p>
+    <section class="item photo" th:each="p : ${queue.photos}">
+      <img th:src="${p.url}" alt="The held photo" loading="lazy">
+      <div>
+        <p class="eyebrow" th:text="${p.askedAgainAt != null ? 'Asked for a second look' : 'Flagged by the automatic check'}">Flagged</p>
+        <p class="what" th:text="${p.reason != null ? p.reason : 'No reason given'}">Reason</p>
+        <p class="meta" th:text="${(p.owner != null ? 'Uploaded by @' + p.owner : 'The uploader has left') + ' · ' + @reviewTimes.utc(p.uploadedAt)}">Uploaded by</p>
+        <div class="actions">
+          <form method="post" th:action="@{'/admin/photos/' + ${p.id} + '/release'}"><button class="btn line" type="submit">It's fine, show it</button></form>
+          <form method="post" th:action="@{'/admin/photos/' + ${p.id} + '/remove'}"><button class="btn danger" type="submit">Remove the photo</button></form>
+        </div>
+      </div>
+    </section>
+
+    <h2>Held comments <span class="count" th:text="${#lists.size(queue.comments)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.comments)}">No comments are waiting.</p>
+    <section class="item" th:each="c : ${queue.comments}">
+      <p class="eyebrow" th:text="${'Caught by the word filter · ' + @reviewTimes.utc(c.createdAt)}">Caught</p>
+      <p class="what" th:text="${c.body}">The comment</p>
+      <p class="meta" th:text="${'By @' + c.author + ', on ' + c.journeyTitle}">By</p>
+      <div class="actions">
+        <form method="post" th:action="@{'/admin/comments/' + ${c.id} + '/release'}"><button class="btn line" type="submit">It's fine, show it</button></form>
+        <form method="post" th:action="@{'/admin/comments/' + ${c.id} + '/remove'}"><button class="btn danger" type="submit">Remove the comment</button></form>
+      </div>
+    </section>
+
+    <h2>Requests to delete an account <span class="count" th:text="${#lists.size(queue.deletionRequests)}">0</span></h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.deletionRequests)}">No requests are waiting.</p>
+    <section class="item" th:each="d : ${queue.deletionRequests}">
+      <p class="eyebrow" th:text="${'Asked on the web · ' + @reviewTimes.utc(d.createdAt)}">Asked</p>
+      <p class="what" th:text="${d.email + (d.username != '' ? ' · @' + d.username : '')}">email</p>
+      <p class="meta" th:if="${d.note != ''}" th:text="${'They wrote: “' + d.note + '”'}">Note</p>
+      <p class="meta">Check that the request really comes from the account's owner (write to the address and wait for a reply), delete the account, then mark this done.</p>
+      <div class="actions">
+        <form method="post" th:action="@{'/admin/deletion-requests/' + ${d.id} + '/done'}"><button class="btn line" type="submit">Done</button></form>
+      </div>
+    </section>
+
+    <h2>What reviewers did lately</h2>
+    <p class="empty" th:if="${#lists.isEmpty(queue.log)}">Nothing yet.</p>
+    <ul class="log">
+      <li th:each="l : ${queue.log}" th:text="${@reviewTimes.utc(l.at) + ' · ' + l.reviewer + ' ' + l.action + (l.note != '' ? ' (' + l.note + ')' : '')}">A line</li>
+    </ul>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

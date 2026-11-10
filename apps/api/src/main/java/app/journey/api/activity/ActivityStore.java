@@ -158,6 +158,7 @@ public class ActivityStore {
             join journeys j on j.id = e.journey_id
             left join comments pc on pc.id = c.parent_id
             where %s and c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s and %s
+              and not c.held
             order by c.created_at desc limit :limit
             """.formatted(VISIBLE, RECENT, Rules.notBlocked("c.author_id", ":me")))
                 .param("me", me)
@@ -268,9 +269,9 @@ public class ActivityStore {
             jdbc.sql("""
               select distinct on (em.entry_id) em.entry_id as id, m.storage_key
               from entry_media em join media m on m.id = em.media_id
-              where em.entry_id in (:ids) and m.kind = 'photo'
+              where em.entry_id in (:ids) and m.kind = 'photo' and %s
               order by em.entry_id, em.position
-              """)
+              """.formatted(Rules.publicMedia("m")))
                     .param("ids", entryIds)
                     .query((rs, n) -> keys.put(rs.getObject("id", UUID.class), rs.getString("storage_key")))
                     .list();
@@ -285,9 +286,9 @@ public class ActivityStore {
             jdbc.sql("""
               select distinct on (e.journey_id) e.journey_id as id, m.storage_key
               from entries e join entry_media em on em.entry_id = e.id join media m on m.id = em.media_id
-              where e.journey_id in (:ids) and m.kind = 'photo'
+              where e.journey_id in (:ids) and m.kind = 'photo' and %s
               order by e.journey_id, e.happened_at, em.position
-              """)
+              """.formatted(Rules.publicMedia("m")))
                     .param("ids", journeyIds)
                     .query((rs, n) -> keys.put(rs.getObject("id", UUID.class), rs.getString("storage_key")))
                     .list();

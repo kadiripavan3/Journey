@@ -1,7 +1,6 @@
 package app.journey.api.profile;
 
 import app.journey.api.common.ApiProblem;
-import app.journey.api.media.MediaKind;
 import app.journey.api.media.MediaService;
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +53,8 @@ public class ProfileService {
             String link,
             List<String> interests,
             UUID avatarMediaId,
-            boolean removeAvatar) {
+            boolean removeAvatar,
+            boolean ageConfirmed) {
         String username = Usernames.normalize(rawUsername);
         Usernames.problemWith(username).ifPresent(reason -> {
             throw ApiProblem.badRequest("invalid_username", reason);
@@ -63,6 +63,10 @@ public class ProfileService {
             throw taken();
         }
         Optional<Profile> current = profiles.find(userId);
+        if (current.isEmpty() && !ageConfirmed) {
+            throw ApiProblem.badRequest(
+                    "age_required", "Journey is for people aged 13 and over. Confirm your age to continue.");
+        }
         // Fields the request leaves out stay as they are, so a screen can save just what it shows.
         List<String> nextInterests = interests == null
                 ? current.map(Profile::interests).orElse(List.of())
@@ -78,7 +82,7 @@ public class ProfileService {
                         ? avatarMediaId
                         : current.map(Profile::avatarMediaId).orElse(null);
         if (avatarMediaId != null) {
-            media.requireOwn(List.of(avatarMediaId), userId, MediaKind.PHOTO);
+            media.requireOwnShowable(avatarMediaId, userId);
         }
         try {
             profiles.save(
@@ -92,6 +96,9 @@ public class ProfileService {
         } catch (DuplicateKeyException e) {
             // Two people asked for the same name at the same moment; the database's unique rule decided.
             throw taken();
+        }
+        if (current.isEmpty()) {
+            profiles.confirmAge(userId);
         }
         return profiles.find(userId).orElseThrow();
     }
