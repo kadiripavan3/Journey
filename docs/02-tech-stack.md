@@ -92,7 +92,7 @@ You asked whether the backend can be Java. It can, and for this project it is th
 
 ### How the API is put together
 
-These hold for every feature. New code follows them, and `RulesTest` and `ShapeTest` keep them true.
+These hold for every feature. New code follows them, and `RulesTest` and `ShapeTest` keep them true. Three more tests cover routes and queries added later: `ApiDescriptionTest` (rules read from `openapi.json` for every route: who may see what, cursors, `clientId`), `PagingTest` (every scrolled list read while it changes) and `QueryCostTest` (the main screens send the same number of statements for one journey as for twenty, and none of them reads a whole table).
 
 | Rule | What it means |
 |---|---|

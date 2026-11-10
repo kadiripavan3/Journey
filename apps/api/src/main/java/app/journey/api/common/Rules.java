@@ -61,9 +61,13 @@ public final class Rules {
      * @param viewer the parameter or column holding the viewer's id
      */
     public static String commentBy(String comment, String viewer) {
+        // "Under my entry" and "in my journey" are asked separately on purpose. Each then starts from rows that
+        // are the viewer's own (their entries, their journeys); asked as one question with an "or" inside,
+        // the database may decide to go through every entry there is to answer it.
         return ("(" + notBlocked("%1$s.author_id", viewer)
-                        + " or exists (select 1 from entries ce join journeys cj on cj.id = ce.journey_id"
-                        + " where ce.id = %1$s.entry_id and (ce.author_id = %2$s or cj.owner_id = %2$s)))")
+                        + " or exists (select 1 from entries ce where ce.id = %1$s.entry_id and ce.author_id = %2$s)"
+                        + " or exists (select 1 from journeys cj join entries cje on cje.journey_id = cj.id"
+                        + " where cje.id = %1$s.entry_id and cj.owner_id = %2$s))")
                 .formatted(comment, viewer);
     }
 

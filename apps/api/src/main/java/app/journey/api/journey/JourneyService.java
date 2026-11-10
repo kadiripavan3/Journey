@@ -274,8 +274,14 @@ public class JourneyService {
         journeys.delete(id);
     }
 
+    /**
+     * Follows a journey. The journey is held while the follow is saved, so a follow and "make it private" can't
+     * pass each other: either the journey is already private and the follow is refused, or the follow is there
+     * for the owner's change to take away. A follow is never left behind on a journey its follower can't see.
+     */
     @Transactional
     public JourneyResponse follow(UUID id, UUID viewer) {
+        journeys.lock(id);
         JourneyRow journey = require(id, viewer);
         if (journey.ownerId().equals(viewer) || journey.member()) {
             throw ApiProblem.badRequest("own_journey", "You write in this journey. You already see everything in it.");

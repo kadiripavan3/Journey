@@ -99,9 +99,17 @@ public class PeopleService {
         return profile(username, viewer);
     }
 
-    /** The people who follow someone, or the people they follow, newest first. */
+    /**
+     * The people who follow someone, or the people they follow, newest first. Nobody is listed for a person the
+     * viewer has blocked: their profile still opens, so that they can be unblocked, and that is all of them
+     * the viewer sees.
+     */
     public Page<ListedPersonResponse> listed(String username, boolean followers, UUID viewer, Keyset page) {
-        return people.listed(idOf(username, viewer), followers, viewer, page).map(rows -> listed(rows, viewer));
+        Found person = find(username, viewer);
+        if (person.blockedByViewer()) {
+            return new Page<>(List.of(), null);
+        }
+        return people.listed(person.id(), followers, viewer, page).map(rows -> listed(rows, viewer));
     }
 
     /** The shortest words an index can help to find: three letters. Shorter ones get the first matches, not the most followed. */
