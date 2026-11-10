@@ -1,11 +1,10 @@
 import { useRouter } from 'expo-router';
-import { Link as LinkIcon, Lock } from 'lucide-react-native';
+import { Link as LinkIcon, Lock, Settings as Gear } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type JourneyResponse, useGetMe, useGetMyJourneys, useGetProfile } from '@/api/generated/journey';
-import { useSession } from '@/auth/session';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
@@ -13,6 +12,7 @@ import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { JourneyCard } from '@/ui/JourneyCard';
+import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
 
 type Shelf = 'active' | 'completed' | 'private';
@@ -21,7 +21,6 @@ type Shelf = 'active' | 'completed' | 'private';
 export default function You() {
   const router = useRouter();
   const { colors, shadow } = useTheme();
-  const session = useSession();
   const me = useGetMe();
   const mine = useGetMyJourneys();
   const [shelf, setShelf] = useState<Shelf>('active');
@@ -48,9 +47,12 @@ export default function You() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 130 }}
+        contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8 }}>
+          <RoundButton label="Settings" onPress={() => router.push('/settings' as never)} icon={(c) => <Gear size={20} color={c} />} />
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, paddingVertical: 22, paddingHorizontal: 18, borderRadius: 26, backgroundColor: colors.surface, boxShadow: shadow.md }}>
           <View style={{ flex: 1.15, alignItems: 'center' }}>
             <Avatar uri={profile.avatarUrl} name={profile.displayName} size={96} />
@@ -125,10 +127,6 @@ export default function You() {
           </View>
         )}
 
-        <Txt variant="caption" color="muted" center style={{ marginTop: 28 }}>
-          Signed in as {me.data?.email}
-        </Txt>
-        <Button label="Sign out" variant="quiet" onPress={() => void session.signOut()} style={{ alignSelf: 'center' }} />
       </ScrollView>
     </SafeAreaView>
   );

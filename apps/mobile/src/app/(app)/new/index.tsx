@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { useGetSettings } from '@/api/generated/journey';
 import { useCatalog } from '@/journey/catalog';
 import { useNewJourney } from '@/journey/draft';
 import { useTheme } from '@/theme';
@@ -29,6 +30,12 @@ export default function ChooseTemplate() {
     reset(params.template);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the flow opens
   }, []);
+  // New journeys start as the person chose in Privacy and safety.
+  const startAs = useGetSettings().data?.defaultVisibility;
+  useEffect(() => {
+    if (startAs === 'public' || startAs === 'unlisted' || startAs === 'private') change({ visibility: startAs });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the setting arrives
+  }, [startAs]);
 
   const cards = catalog.templates.filter((t) => t.id !== 'journal');
   const journal = catalog.template('journal');

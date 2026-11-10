@@ -1,6 +1,7 @@
 // Walks through the app the way a new person would, in the web build, against the local API:
 // sign-up, following, Home, Discover, a journey and its story, starting a journey, posting and
-// editing an entry with photos, the profile, then Activity, likes, comments and following a creator.
+// editing an entry with photos, the profile, Activity, likes, comments, following a creator, search,
+// settings, completing a journey, reporting, blocking, and at the end deleting the account.
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
 // Before running: the API on port 8080 with the local profile, and the web build served on 8081
@@ -15,9 +16,10 @@ const IMG = path.join(__dirname, '../../design/hub/img');
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: scheme });
   const errors = [];
+  let expectNotFound = false; // true while a blocked person's pages are meant to disappear
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 300)); });
-  page.on('response', r => { if (r.status() >= 400 && r.url().includes(':8080')) errors.push(`http ${r.status()} ${r.request().method()} ${r.url()}`); });
+  page.on('console', m => { if (m.type() === 'error' && !(expectNotFound && /404/.test(m.text()))) errors.push('console: ' + m.text().slice(0, 300)); });
+  page.on('response', r => { if (r.status() >= 400 && r.url().includes(':8080') && !(expectNotFound && r.status() === 404)) errors.push(`http ${r.status()} ${r.request().method()} ${r.url()}`); });
   // Screens underneath the current one stay in the page on the web, so always take the last (topmost) match.
   const T = (...a) => page.getByText(...a).last();
   const R = (...a) => page.getByRole(...a).last();
@@ -181,7 +183,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await shot('plus-sheet');
     await page.mouse.click(195, 120);
     await R('tab', { name: 'You' }).click();
-    await T('Signed in as').waitFor();
+    await T('Edit profile').waitFor();
     await T('Photographer. Slow travel and long walks.').waitFor();
     await shot('you');
     await T('Iceland ring road').click();
@@ -204,7 +206,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await T('noralind.photo').waitFor({ timeout: 20000 });
     await shot('you-saved');
     await page.reload();
-    await T('Signed in as').waitFor({ timeout: 20000 });
+    await T('Edit profile').waitFor({ timeout: 20000 });
   });
 
   await step('social', async () => {
@@ -233,7 +235,9 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await R('button', { name: "Maya Rivera's profile" }).click();
     await T('@maya.rides').waitFor();
     await shot('creator-profile');
-    await R('button', { name: 'Follow Maya' }).click();
+    // Maya may be the sample creator who followed back earlier, in which case she is followed already.
+    const follow = page.getByRole('button', { name: /^Follow (Maya|back)$/ });
+    if (await follow.count()) await follow.last().click();
     await T("You'll get Maya's next journeys.").waitFor();
     await R('button', { name: /follower/ }).click();
     await T('Nora Lind').waitFor();
@@ -244,6 +248,107 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await R('tab', { name: 'You' }).click();
     await R('button', { name: /1 Followers/ }).waitFor();
     await shot('you-with-followers');
+  });
+
+  await step('search', async () => {
+    await R('tab', { name: 'Home' }).click();
+    await R('button', { name: 'Find a journey' }).click();
+    await T('Popular tags').waitFor();
+    await shot('search-start');
+    await L('Search journeys, people and tags').fill('asia');
+    await T('Southeast Asia by motorbike').waitFor();
+    await shot('search-results');
+    await L('Search journeys, people and tags').fill('@lea');
+    await R('tab', { name: /^People/ }).click();
+    await T('@lea.plays').waitFor();
+    await shot('search-people');
+    await T('Cancel').click();
+  });
+
+  await step('settings', async () => {
+    await R('tab', { name: 'You' }).click();
+    await R('button', { name: 'Settings' }).click();
+    await R('button', { name: /^Notifications\. 7 of 8 on/ }).waitFor();
+    await shot('settings');
+    await R('button', { name: /^Notifications/ }).click();
+    await R('switch', { name: 'Likes' }).click();
+    await R('switch', { name: 'Likes', checked: false }).waitFor();
+    await shot('notification-settings');
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
+    await R('button', { name: /^Privacy and safety/ }).click();
+    await R('button', { name: /^Start them as/ }).click();
+    await T('Only you.').click();
+    await R('button', { name: /^Start them as\. Private/ }).waitFor();
+    await shot('privacy');
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: /^Appearance/ }).click();
+    await R('button', { name: /^Dark/ }).click();
+    await shot('appearance-dark');
+    await R('button', { name: /^Automatic/ }).click();
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Back' }).click();
+  });
+
+  await step('complete', async () => {
+    await T('Iceland ring road').click();
+    await R('button', { name: 'Journey options' }).click();
+    await T('Complete journey').click();
+    await T('How did it end?').waitFor();
+    await L(/^Closing note/).fill('Fourteen days, one waterfall, no regrets.');
+    await shot('complete');
+    await R('button', { name: 'Complete journey' }).click();
+    await T('Journey complete').waitFor({ timeout: 20000 });
+    await shot('recap');
+    await R('button', { name: 'Close' }).click();
+    await T('See the recap').waitFor();
+    await shot('completed-journey');
+    await R('button', { name: 'Back' }).click();
+  });
+
+  await step('safety', async () => {
+    await R('tab', { name: 'Discover' }).click();
+    await T('30 days of guitar').click();
+    await T(/of 30 days/).waitFor();
+    await shot('challenge');
+    await R('button', { name: 'Journey options' }).click();
+    await T('Report this journey').click();
+    await R('radio', { name: 'Spam or a scam' }).click();
+    await shot('report');
+    await R('button', { name: 'Send report' }).click();
+    await T('Thanks for telling us').waitFor();
+    await R('button', { name: 'Done' }).click();
+    await R('button', { name: "Lea Martin's profile" }).click();
+    await T('@lea.plays').waitFor();
+    await R('button', { name: 'More options' }).click();
+    await T('Block Lea').click();
+    await T("They won't be told").waitFor();
+    await shot('block');
+    expectNotFound = true;
+    await R('button', { name: 'Block', exact: true }).click();
+    await T("This journey isn't available.").waitFor({ timeout: 20000 });
+    await R('button', { name: 'Back' }).click();
+    expectNotFound = false;
+    await R('tab', { name: 'You' }).click();
+    await R('button', { name: 'Settings' }).click();
+    await R('button', { name: /^Privacy and safety/ }).click();
+    await R('button', { name: /^Blocked accounts\. 1/ }).click();
+    await T('@lea.plays', { exact: false }).waitFor();
+    await shot('blocked');
+    await R('button', { name: 'Unblock' }).click();
+    await T("You haven't blocked anyone.").waitFor({ timeout: 20000 });
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Back' }).click();
+  });
+
+  await step('delete-account', async () => {
+    await R('button', { name: /^Account/ }).click();
+    await R('button', { name: 'Delete account' }).click();
+    await T('Delete your account?').waitFor();
+    await shot('delete-account');
+    await R('button', { name: 'Delete my account' }).click();
+    await T('Get started').waitFor({ timeout: 20000 });
+    await shot('after-delete');
   });
 
   console.log('errors', JSON.stringify(errors.slice(0, 10), null, 1));

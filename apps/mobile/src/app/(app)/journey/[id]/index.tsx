@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, BookOpen, Ellipsis, Pause, Play, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Sparkles, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,10 +15,12 @@ import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Loading, Photo, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { ChallengeCard } from '@/ui/ChallengeCard';
 import { EntryRow } from '@/ui/EntryBits';
 import { FollowButton } from '@/ui/FollowButton';
 import { GlassBar } from '@/ui/GlassBar';
 import { RoundButton } from '@/ui/RoundButton';
+import { ReportSheet } from '@/ui/SafetySheets';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
@@ -34,6 +36,7 @@ export default function JourneyPage() {
   const journey = useGetJourney(id);
   const timeline = useGetTimeline(id);
   const [menu, setMenu] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   if (journey.isPending) {
     return (
@@ -97,6 +100,12 @@ export default function JourneyPage() {
             <Stat value={compact(j.followerCount)} label="following" divider />
           </View>
 
+          {j.targetDays ? <ChallengeCard journey={j} entries={entries} /> : null}
+
+          {j.status === 'completed' ? (
+            <Button label="See the recap" variant="soft" block icon={(c) => <Sparkles size={18} color={c} />} onPress={() => router.push(`/journey/${j.id}/recap` as never)} style={{ marginTop: 18 }} />
+          ) : null}
+
           {photos.length >= 3 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`${plural(photos.length, 'photo')}. Open the story.`} onPress={openStory} style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 6, height: 206, marginTop: 18, borderRadius: 20, overflow: 'hidden' }}>
               <Photo uri={photos[0]} radius={0} style={{ flex: 1.25 }} />
@@ -150,7 +159,7 @@ export default function JourneyPage() {
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
         <RoundButton tone="photo" label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
-        {j.viewer.isOwner ? <RoundButton tone="photo" label="Journey options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
+        <RoundButton tone="photo" label="Journey options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />
       </View>
 
       <GlassBar
@@ -184,7 +193,22 @@ export default function JourneyPage() {
         )}
       </GlassBar>
 
-      {j.viewer.isOwner ? <OwnerMenu journey={j} visible={menu} onClose={() => setMenu(false)} /> : null}
+      {j.viewer.isOwner ? (
+        <OwnerMenu journey={j} visible={menu} onClose={() => setMenu(false)} />
+      ) : (
+        <Sheet visible={menu} onClose={() => setMenu(false)} title={j.title}>
+          <SheetRow
+            first
+            icon={(c) => <Flag size={22} color={c} />}
+            label="Report this journey"
+            onPress={() => {
+              setMenu(false);
+              setReporting(true);
+            }}
+          />
+        </Sheet>
+      )}
+      <ReportSheet target={reporting ? { type: 'journey', id: j.id, word: 'journey' } : null} onClose={() => setReporting(false)} />
     </View>
   );
 }
@@ -245,10 +269,33 @@ function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; vi
         </View>
       ) : (
         <>
+          {journey.status !== 'completed' ? (
+            <SheetRow
+              first
+              icon={(c) => <Pencil size={22} color={c} />}
+              label="Edit details"
+              note="Title, cover, start date, who can see it"
+              onPress={() => {
+                close();
+                router.push(`/journey/${journey.id}/edit` as never);
+              }}
+            />
+          ) : null}
+          {journey.status !== 'completed' && journey.entryCount > 0 ? (
+            <SheetRow
+              icon={(c) => <CircleCheck size={22} color={c} />}
+              label="Complete journey"
+              note="Add a closing note and get the recap"
+              onPress={() => {
+                close();
+                router.push(`/journey/${journey.id}/complete` as never);
+              }}
+            />
+          ) : null}
           {journey.status === 'active' ? (
-            <SheetRow first icon={(c) => <Pause size={22} color={c} />} label="Pause journey" note="Followers see it's on hold. A new entry starts it again." onPress={() => update.mutate({ id: journey.id, data: { status: 'paused' } })} />
+            <SheetRow icon={(c) => <Pause size={22} color={c} />} label="Pause journey" note="Followers see it's on hold. A new entry starts it again." onPress={() => update.mutate({ id: journey.id, data: { status: 'paused' } })} />
           ) : journey.status === 'paused' ? (
-            <SheetRow first icon={(c) => <Play size={22} color={c} />} label="Resume journey" onPress={() => update.mutate({ id: journey.id, data: { status: 'active' } })} />
+            <SheetRow icon={(c) => <Play size={22} color={c} />} label="Resume journey" onPress={() => update.mutate({ id: journey.id, data: { status: 'active' } })} />
           ) : null}
           <SheetRow first={journey.status === 'completed'} danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete journey" onPress={() => setConfirming(true)} />
         </>

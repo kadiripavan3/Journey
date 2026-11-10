@@ -13,6 +13,7 @@ import { fontFor, useTheme } from '@/theme';
 import { Avatar } from './Avatar';
 import { Loading, Problem } from './Bits';
 import { RoundButton } from './RoundButton';
+import { ReportSheet } from './SafetySheets';
 import { Sheet } from './Sheet';
 import { Txt } from './Txt';
 
@@ -27,6 +28,7 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
   const comments = useGetComments(entry.id, { query: { enabled: visible } });
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentResponse | null>(null);
+  const [reporting, setReporting] = useState<CommentResponse | null>(null);
   const add = useAddComment({
     mutation: {
       onSuccess: () => {
@@ -86,6 +88,13 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
               </Txt>
             </Pressable>
           ) : null}
+          {comment.author.id !== me?.id ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Report the comment by ${comment.author.displayName}`} hitSlop={8} onPress={() => setReporting(comment)}>
+              <Txt color="muted" weight={700} style={{ fontSize: 12.5, lineHeight: 17 }}>
+                Report
+              </Txt>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </View>
@@ -141,6 +150,7 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
           </View>
         </View>
       }>
+      <ReportSheet target={reporting ? { type: 'comment', id: reporting.id, word: 'comment' } : null} onClose={() => setReporting(null)} />
       <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
         {comments.isPending ? (
           <View style={{ height: 160 }}>

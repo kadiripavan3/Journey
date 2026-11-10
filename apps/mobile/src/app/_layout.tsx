@@ -19,10 +19,12 @@ import { useGetMe } from '@/api/generated/journey';
 import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
 import { useTheme } from '@/theme';
+import { loadAppearance } from '@/theme/appearance';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
 
 void SplashScreen.preventAutoHideAsync();
+void loadAppearance();
 
 export default function RootLayout() {
   const [queryClient] = useState(
@@ -94,7 +96,7 @@ function App() {
   const stage = !signedIn ? 'auth' : !me.data?.profile || onboarding.active ? 'onboarding' : 'app';
   return (
     <ThemeProvider value={navigationTheme}>
-      <StatusBar style="auto" />
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={stage === 'auth'}>
           <Stack.Screen name="(auth)" />

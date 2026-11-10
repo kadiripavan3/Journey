@@ -52,7 +52,7 @@ export default function Home() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Find a journey"
-          onPress={() => router.navigate('/discover')}
+          onPress={() => router.push('/search' as never)}
           style={{
             flexDirection: 'row',
             alignItems: 'center',

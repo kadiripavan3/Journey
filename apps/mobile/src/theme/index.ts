@@ -1,5 +1,6 @@
 import { useColorScheme } from 'react-native';
 
+import { useAppearance } from './appearance';
 import { palettes, radius, shadows, space, type } from './tokens';
 
 export type Scheme = 'light' | 'dark';
@@ -30,9 +31,11 @@ export function themeFor(scheme: Scheme): Theme {
   return { scheme, colors: palettes[scheme], shadow: shadows[scheme], radius, space, type };
 }
 
-/** The theme for the phone's current light or dark setting. */
+/** The theme in use: the person's own choice of light or dark, or else what the phone is set to. */
 export function useTheme(): Theme {
-  return themeFor(useColorScheme() === 'dark' ? 'dark' : 'light');
+  const system = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const chosen = useAppearance();
+  return themeFor(chosen === 'system' ? system : chosen);
 }
 
 /** Always-dark theme, for screens that sit on a full-bleed photo. */

@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Link as LinkIcon } from 'lucide-react-native';
+import { ArrowLeft, Ban, Ellipsis, Flag, Link as LinkIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useGetJourneysByUsername, useGetProfile } from '@/api/generated/journey';
+import { useGetJourneysByUsername, useGetProfile, useUnblockProfile } from '@/api/generated/journey';
+import { useRefreshAll } from '@/api/refresh';
 import { compact, followersLabel } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
@@ -15,6 +16,8 @@ import { Button } from '@/ui/Button';
 import { FollowButton } from '@/ui/FollowButton';
 import { PersonFollowButton } from '@/ui/PersonFollowButton';
 import { RoundButton } from '@/ui/RoundButton';
+import { BlockSheet, ReportSheet } from '@/ui/SafetySheets';
+import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
 /** 9.2 Creator profile: someone else's shelf of journeys. Following them also brings their next journeys; or follow just one from the list. */
@@ -26,6 +29,11 @@ export default function CreatorProfile() {
   const profile = useGetProfile(username);
   const journeys = useGetJourneysByUsername(username);
   const [shelf, setShelf] = useState<'active' | 'completed'>('active');
+  const [menu, setMenu] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const refresh = useRefreshAll();
+  const unblock = useUnblockProfile({ mutation: { onSuccess: () => refresh() } });
 
   if (profile.isPending || profile.isError) {
     return (
@@ -88,6 +96,13 @@ export default function CreatorProfile() {
           <View style={{ alignSelf: 'stretch', marginTop: 16, marginHorizontal: 22, gap: 8 }}>
             {p.viewer.isMe ? (
               <Button label="Edit profile" variant="soft" block onPress={() => router.push('/edit-profile' as never)} />
+            ) : p.viewer.hasBlocked ? (
+              <>
+                <Button label="Unblock" variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
+                <Txt color="muted" center style={{ fontSize: 12, lineHeight: 17 }}>
+                  You&apos;ve blocked {firstName}. Neither of you sees the other&apos;s journeys.
+                </Txt>
+              </>
             ) : (
               <>
                 <PersonFollowButton username={p.username} isFollowing={p.viewer.isFollowing} followsYou={p.viewer.followsYou} name={firstName} size="md" block />
@@ -132,9 +147,35 @@ export default function CreatorProfile() {
         </View>
       </ScrollView>
 
-      <View style={{ position: 'absolute', top: insets.top + 8, left: 16 }}>
+      <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
         <RoundButton tone="photo" label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        {p.viewer.isMe ? null : <RoundButton tone="photo" label="More options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />}
       </View>
+
+      <Sheet visible={menu} onClose={() => setMenu(false)} title={p.displayName}>
+        {p.viewer.hasBlocked ? null : (
+          <SheetRow
+            first
+            icon={(c) => <Ban size={22} color={c} />}
+            label={`Block ${firstName}`}
+            onPress={() => {
+              setMenu(false);
+              setBlocking(true);
+            }}
+          />
+        )}
+        <SheetRow
+          first={p.viewer.hasBlocked}
+          icon={(c) => <Flag size={22} color={c} />}
+          label={`Report ${firstName}`}
+          onPress={() => {
+            setMenu(false);
+            setReporting(true);
+          }}
+        />
+      </Sheet>
+      <BlockSheet person={blocking ? p : null} onClose={() => setBlocking(false)} onBlocked={() => router.back()} />
+      <ReportSheet target={reporting ? { type: 'profile', id: p.id, word: 'person' } : null} onClose={() => setReporting(false)} />
     </View>
   );
 }

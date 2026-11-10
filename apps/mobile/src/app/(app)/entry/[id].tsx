@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Ellipsis, Pencil, Send, Trash2, X } from 'lucide-react-native';
+import { Ellipsis, Flag, Pencil, Send, Trash2, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { CommentsSheet } from '@/ui/CommentsSheet';
 import { entryEyebrow, MilestonePill } from '@/ui/EntryBits';
 import { Reactions } from '@/ui/Reactions';
 import { RoundButton } from '@/ui/RoundButton';
+import { ReportSheet } from '@/ui/SafetySheets';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 
@@ -70,7 +71,7 @@ export default function EntryView() {
           </Txt>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {current?.viewer.canDelete ? <RoundButton tone="photo" label="Entry options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
+          {current ? <RoundButton tone="photo" label="Entry options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
           <RoundButton tone="photo" label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
         </View>
       </View>
@@ -200,6 +201,7 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
   const router = useRouter();
   const refresh = useRefreshAll();
   const [confirming, setConfirming] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const close = () => {
     setConfirming(false);
     onClose();
@@ -213,6 +215,24 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
       },
     },
   });
+  if (!entry.viewer.canDelete) {
+    return (
+      <>
+        <Sheet visible={visible} onClose={close}>
+          <SheetRow
+            first
+            icon={(c) => <Flag size={22} color={c} />}
+            label="Report this entry"
+            onPress={() => {
+              close();
+              setReporting(true);
+            }}
+          />
+        </Sheet>
+        <ReportSheet target={reporting ? { type: 'entry', id: entry.id, word: 'entry' } : null} onClose={() => setReporting(false)} />
+      </>
+    );
+  }
   return (
     <Sheet visible={visible} onClose={close} title={confirming ? 'Delete this entry?' : undefined} subtitle={confirming ? "It will be gone for good, for you and everyone following." : undefined}>
       {remove.isError ? (

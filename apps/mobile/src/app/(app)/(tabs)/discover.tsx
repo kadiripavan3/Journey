@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
+import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetDiscover } from '@/api/generated/journey';
@@ -12,10 +13,10 @@ import { EmptyState } from '@/ui/EmptyState';
 import { JourneyCard } from '@/ui/JourneyCard';
 import { Txt } from '@/ui/Txt';
 
-/** 4.1 Discover: category chips, then Trending now and Recently completed. Search arrives with the Discover milestone. */
+/** 4.1 Discover: search, category chips, then Trending now and Recently completed. */
 export default function Discover() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const catalog = useCatalog();
   const [category, setCategory] = useState<string | null>(null);
   const discover = useGetDiscover(category ? { category } : undefined);
@@ -39,6 +40,16 @@ export default function Discover() {
         <Txt accessibilityRole="header" weight={800} style={{ fontSize: 31, lineHeight: 36, letterSpacing: -1.2, marginTop: 10, marginHorizontal: 20 }}>
           Discover
         </Txt>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Search journeys, people and tags"
+          onPress={() => router.push('/search' as never)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, height: 50, marginTop: 12, marginHorizontal: 16, paddingHorizontal: 18, borderRadius: 25, backgroundColor: colors.surface, boxShadow: shadow.sm }}>
+          <Search size={18} color={colors.text} />
+          <Txt weight={700} style={{ fontSize: 14.5, lineHeight: 20 }}>
+            Search journeys, people, #tags
+          </Txt>
+        </Pressable>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingTop: 14 }}>
           {catalog.categories.map((c) => (
             <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id === category ? null : c.id)} />
