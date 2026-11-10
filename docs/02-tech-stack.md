@@ -128,20 +128,24 @@ These hold for every feature. New code follows them, and `RulesTest` and `ShapeT
 
 **How a push is sent.** Nothing is sent while a person waits for an answer. When something happens that someone should hear about (an entry, a like, a comment, a follow, an invitation), the service says so with an event, and `notify/Outbox` writes a row to the `notifications` table in the same transaction as the change. If the change is undone, so is the row.
 
+- **News for many people:** a new entry and a completed journey go to everyone who follows the journey. The author's request writes one row to `announcements`; the push job turns it into a row per follower (only people who already followed at that moment), so posting takes the same time with a hundred thousand followers as with none.
 - **Batching:** a row has a time before which it is not sent. New entries wait 10 minutes and likes an hour; until then more of the same join the same row, so three entries become one push ("Maya added 3 entries: …"). Comments, followers and invitations go out at once.
 - **Sending:** every 30 seconds `PushDelivery` takes the rows that are due (`for update skip locked`, so two copies of the API never take the same one), checks them against the person's switches, blocks and what they may still see, words them (`PushWording`) and hands them to the push service. A row is sent once; a failure is tried again up to five times.
 - **Where it opens:** every push carries a path in the app (`/journey/<id>/timeline`, `/entry/<id>?comments=1`, …). The app opens only the screens it knows (`features/notifications/target.ts`); anything else opens Activity.
 - **Activity** stays worked out from what happened, as before. The `notifications` table is only the list of pushes to send, and is emptied of old rows every night. Each kind of line starts from the person's own rows (the journeys they follow, the entries they wrote) and looks up what happened to each through an index (`ActivityStore`). The dot on the tab bar has its own small question, `GET /v1/activity/unseen`: one statement that asks each kind "is there anything since they last looked?" and stops at the first yes, without building the list.
 
-**The jobs.** Each claims its row in `job_runs` first, so with several copies of the API only one does the work.
+**The jobs.** Each runs through `Jobs.run`: it claims its row in `job_runs` first, so with several copies of the API only one does the work; a failure is logged by the job's name; and when it finished is written down.
 
 | Job | When | What it does |
 |---|---|---|
-| Push delivery | every 30 seconds | Sends the pushes that are due |
+| Push delivery | every 30 seconds | Tells followers what was announced, then sends the pushes that are due. Every quarter of an hour it also reads what the push service says became of earlier ones, and forgets phones that are gone. |
+| Email delivery | every minute | Sends the emails that wait, a couple a second; tries again when the email service is busy, gives up after six tries |
 | Reminders | every hour | For people who have reminders on and whose own clock shows their chosen hour (7 pm unless they change it; the time zone comes from their phone): one push at most per day. A challenge gets "Day 12 of 30 is waiting" on a day without a check-in. Any other journey gets a nudge after 3, 7 and 14 quiet days and then none; quiet days are counted from when the person last posted, not from the day an entry is dated. Paused and completed journeys never get one. The people who are due are chosen by the database in one statement (`ReminderStore.due`), so the hour costs the same for ten people or ten thousand. |
 | Auto-pause | daily, 04:15 UTC | An active journey with no entry for 30 days becomes paused and is marked as paused by itself, so its page can say "Paused after 30 quiet days". The owner hears once. A new entry wakes it. |
-| Trending | every hour (a start of the API counts as that hour's run) | Works out the score (below) of the public journeys where something happened in the last 8 days, and stores the ones that changed, a thousand at a time |
-| Weekly digest | Sundays, 18:00 UTC | One push, plus an email for people who asked for it, built from the same week as the digest page. Nothing in a week with nothing new. |
+| Trending | every hour (a start of the API counts as that hour's run) | Works out the score (below) of the public journeys where something happened in the last 8 days, and stores the ones that changed, a thousand at a time. Then counts the public journeys of each category and length of challenge, for the pages that say how many there are. |
+| Weekly digest | every hour | For everyone whose own clock shows Sunday evening (from 6 pm, until Monday noon for anyone missed): one push, plus an email for people who asked for it, built from the same week as the digest page. Each person is marked as they are done, so a deploy in the middle is simply continued. Nothing in a week with nothing new. |
+| Photos and clips | every minute, and every quarter of an hour | Removes files whose record is gone (and tries again until they are), uploads nobody used, and looks again at photos the check couldn't reach; asks the video service about clips it never reported on |
+| Accounts and records | nightly | Removes sign-ins of deleted accounts that are still there; forgets closed deletion requests after a month and the reviewers' log and decided reports after half a year; old pushes, emails and job runs |
 
 **What "Trending now" means.** A journey's score is worked out from four things anyone can check on its page:
 
@@ -199,7 +203,7 @@ flowchart LR
   end
   subgraph Java["Journey API (Spring Boot, Java) on Fly.io"]
     API["REST API: rules and privacy"]
-    JOBS["Scheduled jobs: auto-pause, trending, weekly digest"]
+    JOBS["Scheduled jobs: pushes and emails, auto-pause, trending, weekly digest, clean-up"]
     WEB["Web pages for shared links"]
   end
   subgraph SB["Supabase"]
@@ -213,7 +217,7 @@ flowchart LR
   DR -- "photos, by one-time link" --> R2["Cloudflare R2 + CDN"]
   DR -- "clips, by one-time link" --> MUX["Mux video"]
   MUX -- "clip ready" --> API
-  API --> PUSH["Expo Push → Apple / Google"]
+  JOBS --> PUSH["Expo Push → Apple / Google"]
   API --> MOD["Photo moderation"]
   JOBS --> MAIL["Resend email"]
   VIS["People without the app"] --> WEB
@@ -221,34 +225,73 @@ flowchart LR
 
 ## Data model (MVP)
 
+The tables as they are in the database (`apps/api/src/main/resources/db/migration`). Counts are kept by the database itself (triggers); the API never writes them.
+
+**What people make**
+
 | Table | Key columns |
 |---|---|
-| `profiles` | id (= the signed-in user), username (unique), display_name, avatar, bio, link, interests[] |
-| `journeys` | id, owner_id, title, slug, description, category, tags[], cover, visibility (public · unlisted · private), status (active · paused · completed), label_style (day · part), template, start_date, completed_at, closing_note, last_entry_at, entry_count, follower_count |
-| `entries` | id, journey_id, author_id, happened_at, body, place_name, lat, lng, location_precision (none · city · exact), is_milestone, like_count, comment_count, created_at, edited_at |
-| `entry_media` | id, entry_id, type (photo · video), path, thumb_path, width, height, blurhash, duration_s, video_id, status (processing · ready · failed), position |
-| `journey_members` | journey_id, user_id, role (owner · contributor), status (invited · active · left · removed), invited_by, joined_at |
+| `profiles` | id (= the signed-in user), username (unique), display_name, bio, link, interests[], avatar_media_id, age_confirmed_at, activity_seen_at, follower_count, following_count |
+| `journeys` | id, owner_id, title, description, category, template, label_style (day · part), visibility (public · unlisted · private), status (active · paused · completed), tags[], cover_media_id, start_date, target_days (a challenge's length), completed_at, closing_note, auto_paused_at, last_entry_at, entry_count, follower_count, trending_score, client_id |
+| `entries` | id, journey_id, author_id, happened_at, happened_on (the day), title, body, place_name, lat, lng, location_precision (none · city · exact), is_milestone, like_count, comment_count, created_at, edited_at, client_id |
+| `media` | A photo or a clip, before and after it is on an entry: id, owner_id, kind (photo · video), storage_key, width, height, duration_s, status (pending · processing · ready · failed), the video service's ids, held, held_reason, screened_at, appeal_at |
+| `entry_media` | entry_id, media_id, position |
+| `comments` | id, entry_id, author_id, parent_id (one level of replies), body, held, thread_id, thread_at, created_at, client_id |
+| `entry_likes` | entry_id, user_id, created_at |
+
+**Who follows and writes with whom**
+
+| Table | Key columns |
+|---|---|
+| `journey_follows` | user_id, journey_id, last_read_at (drives "new since your last visit"), author (the owner and friends who joined; not counted as followers), auto, created_at |
+| `profile_follows` | follower_id, followee_id, created_at |
+| `journey_members` | journey_id, user_id, status (invited · joined), invited_by, joined_at |
 | `invite_links` | id, journey_id, token_hash, created_by, expires_at, used_by, used_at (one-time links for friends who aren't on Journey yet; the link itself is never stored) |
-| `journey_follows` | user_id, journey_id, last_read_at (drives "new since your last visit"), notify |
-| `creator_follows` | follower_id, creator_id |
-| `likes` | user_id, entry_id |
-| `comments` | id, entry_id, author_id, parent_id (one level of replies), body, created_at, deleted_at |
-| `notifications` | The pushes waiting to be sent: id, user_id, kind, batch_key, actor_id, journey_id, entry_id, count, text, send_after, status (pending · sent · skipped), attempts. Activity is not read from here. |
+| `blocks` | blocker_id, blocked_id |
+| `settings` | user_id, one switch for each kind of notification (new entries, completed journeys, comments, followers and invitations, likes), reminders and reminder_hour, weekly_digest, digest_email, default_visibility |
+
+**Notifications and email**
+
+| Table | Key columns |
+|---|---|
 | `devices` | token (the phone's address at the push service), user_id, platform, time_zone, seen_at |
-| `notification_prefs` | user_id, one switch for each type (new entries, completed journeys, comments, followers and invitations, likes, reminders), digest_push, digest_email, checkin_time |
-| `reports`, `blocks` | reporter, target, reason, status, reviewed_by, reviewed_at, outcome (dismissed · removed) · blocker_id, blocked_id |
-| `review_log`, `deletion_requests` | reviewer, action, target, note, created_at · email, username, note, status (open · done), done_by, done_at |
-| `templates` | id, name, category, label_style, prompts (JSON) |
+| `announcements` | News for everyone who follows a journey (a new entry, a journey completed): one row, written by the request. The push job turns it into a row per follower. |
+| `notifications` | The pushes waiting to be sent: id, user_id, kind, batch_key, actor_id, journey_id, entry_id, count, text, send_after, status (pending · sending · sent · skipped), attempts. Activity is not read from here. |
+| `push_tickets` | What the push service said it would report on later: id, token |
+| `emails` | The emails waiting to be sent: id, user_id, subject, html, body, send_once_key, status (pending · sent · refused · gave_up), attempts, next_try_at |
+| `digest_sent` | user_id, week: who has had this week's digest |
+
+**Safety and accounts**
+
+| Table | Key columns |
+|---|---|
+| `reports` | reporter_id, target_type (journey · entry · comment · profile), target_id, reason, note, status, reviewed_by, reviewed_at, outcome (dismissed · removed) |
+| `review_log` | reviewer, action, target_type, target_id, note, created_at |
+| `deletion_requests` | email, username, note, status (open · done), done_by, done_at, outcome |
+| `deleted_accounts` | id, deleted_at, sign_in_removed_at: an account that was deleted stays deleted, and its sign-in is removed until that worked |
+| `banned_sign_ins` | email_hash: a fingerprint of the address a removed person signed in with; never the address |
+| `apple_sign_ins` | user_id, refresh_token: so that deleting the account can end its link with Apple |
+
+**Housekeeping**
+
+| Table | Key columns |
+|---|---|
+| `job_runs` | job, period, started_at, finished_at: one copy of the API runs each job once |
+| `removed_files`, `media_orphan_checks` | Files waiting to be removed from storage or the video service, and photos whose last use went away |
+| `journey_tallies` | category, target_days, in_progress, finished_this_month: counted hourly for the pages that show how many journeys there are |
+| `rate_limits` | Sign-in attempts per address and email, shared by every copy of the API |
+
+The fixed lists (categories, interests, templates) are code, not tables: `catalog/Catalog.java`. With the test sign-in there is one more table, `local_users`; with Supabase the people are in Supabase's own `auth.users`.
 
 The rules that matter:
 
 - **Timeline order** is `happened_at`. **Day N** = the date of `happened_at` − `start_date` + 1.
 - **Home feed order** is `created_at` (when it was posted), so a back-dated entry still shows up as new.
-- **Visibility** is enforced in the Journey API, in one place, with tests. *Public* means everyone. *Unlisted* means anyone with the link, but it never appears in Discover, search or profile lists. *Private* means the owner only. Blocks apply both ways. The database itself can't be reached from the app or the internet.
-- **Shared journeys:** a journey has one owner and up to 3 contributors. Active members can add entries and change their own; only the owner changes the journey or its members. Every entry keeps its `author_id`, and a profile lists the journeys a person owns or is an active member of.
+- **Visibility** is enforced in the Journey API, in one place, with tests. *Public* means everyone. *Unlisted* means anyone with the link, but it never appears in Discover, search or profile lists. *Private* means the people who write in it: the owner and the friends who joined (someone invited sees its title, cover and authors before answering). Blocks apply both ways. The database itself can't be reached from the app or the internet.
+- **Shared journeys:** a journey has one owner and up to 3 friends. Friends who joined can add entries and change their own; only the owner changes the journey or its members. Every entry keeps its `author_id`, and a profile lists the journeys a person owns or is an active member of.
 - **Photos** are served from the CDN at addresses that can't be guessed, and are listed nowhere a reader may not look. In this version that is also how a private journey's photos are protected: someone who was given a photo's address (a friend who has since left the journey, say) can still open that one photo. Short-lived signed links for private journeys are planned for after the beta.
 - **Auto-pause:** a daily job moves active journeys with no entry in 30 days to *paused* and nudges the creator.
-- **Weekly digest:** a weekly job gathers, for each person, the new entries in the journeys they follow. It sends one push, plus one email to people who opted in, and nothing when there is nothing new.
+- **Weekly digest:** on each person's own Sunday evening a job gathers the new entries in the journeys they follow. It sends one push, plus one email to people who opted in, and nothing when there is nothing new.
 - **Drafts live only on the phone** until they upload.
 - **Video limits:** at most 3 clips per entry, each up to 60 seconds. Followers see a clip only once Mux reports it ready.
 

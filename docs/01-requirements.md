@@ -124,7 +124,7 @@ There are two roles, and everyone can be both:
 - **I2** A smooth 60 fps timeline. Photos and video stills load progressively with placeholders. Photos and clips are compressed on the phone before upload.
 - **I3** Works on bad networks: retries, offline drafts, and what was read in the last week readable offline.
 - **I4** Analytics and crash reporting from day one.
-- **I5** English at launch, with all text ready for translation.
+- **I5** English at launch, with all text ready for translation. The app's own text is in one place for that; the sentences the API sends (errors, pushes, emails, web pages) are in English, each with a stable code, and are translated when a second language is chosen.
 
 ## 5. Later (not in the MVP)
 
@@ -218,7 +218,30 @@ Confirmed with you between 7 and 10 Nov 2026:
 | 15 | Build order | Local first: every feature is built and tested on one computer, with stand-ins for the outside services. The accounts are created and connected at the end. There is no rush to release (10 Nov 2026). |
 | 16 | Blocking and old comments | When you block someone, the comments they left on your journeys are removed for everyone, with the replies under them. What they wrote as a friend in a journey you own stays visible to you, so that you can remove it. Decided 10 Nov 2026. |
 | 17 | Small photos | Every photo gets two smaller versions (320 and 800 pixels on the long side) for lists and cards. The API makes them once, when the upload finishes, and stores them next to the original. No resizing service and no monthly cost; the work is the same with local files and with R2. Decided 10 Nov 2026. |
-| 18 | Reaching the database, and the rate limit | The API uses plain SQL only (no JPA). The rate limit counts changes and sign-in attempts in the database, shared by every copy of the API, and reads in memory. Left to Claude and decided 10 Nov 2026: both keep the code simple to debug and keep reads cheap. |
+| 18 | Reaching the database, and the rate limit | The API uses plain SQL only (no JPA). The rate limit counts sign-in attempts in the database, shared by every copy of the API, and counts reads and ordinary changes in memory, so neither costs a database write. Left to Claude and decided 10 Nov 2026; the second review moved ordinary changes to memory. |
 | 19 | Places | An entry's place comes from the phone: from the photo's location or the phone's own place search (Apple's on iPhone, Google's on Android), so no map provider account is needed. It is shown at city level unless the person chooses an exact pin. Decided 10 Nov 2026 as part of "finish the build". |
+| 20 | Old comments of someone you block | Confirmed 10 Nov 2026: they are removed for everyone (row 16). |
+| 21 | Small photos, and what is kept of an upload | Confirmed 10 Nov 2026 ("if it is worth it"): the API makes the smaller versions itself (row 17). It also makes the full photo afresh from what was uploaded and keeps only that: really a JPEG or PNG, the right way up, with nothing that travelled inside the file (location, camera, notes). |
 
-Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)).
+Left to Claude ("think about this and decide yourself", 10 Nov 2026) and made while fixing the second review. Each can be changed; tell me which you see differently.
+
+| # | Topic | The call |
+|---|---|---|
+| 22 | Private journeys' photos | Served from addresses that can't be guessed, like every photo, and listed nowhere a reader may not look. Short-lived signed links for private journeys wait until after the beta: they need a second storage path and would slow every private photo. |
+| 23 | What "Private" means | The owner and the friends invited to write in it, not "only you". Someone invited sees the title, cover and authors before answering. The screens and the privacy page say so. |
+| 24 | Blocking | Hides people from each other in the app. A public journey's web page stays open to anyone who isn't signed in, and the app and the privacy page say "in the app". |
+| 25 | Reports | A person can have one open report about a thing and make twenty a day, and only about what they can see. One report takes a journey out of Discover, search and suggestions until a reviewer has looked; it still opens by its link. |
+| 26 | Entries on a shared journey | Their author can always delete their own entry, also after leaving the journey. Changing one needs to still be on the journey. |
+| 27 | Before a profile exists | Someone who has signed in but not yet confirmed their age and made a profile can read nothing. |
+| 28 | Removing a person | A reviewer can remove an account that broke the guidelines. A fingerprint of the address it signed in with is kept, so the same address can't make a new profile; the address itself is not kept. |
+| 29 | The weekly digest's hour | It goes out on each person's own Sunday evening (by their phone's time zone), not at one moment for the whole world. |
+| 30 | New-entry notifications | They go to the people who followed the journey when the entry was posted. Someone who follows a minute later isn't told about the entry before. |
+| 31 | Numbers on a category's page | "In progress" and "finished this month" are counted once an hour, so they can be up to an hour old. |
+| 32 | A real build on an iPhone | Needs the paid Apple Developer Program: Apple doesn't sign Sign in with Apple and push notifications for a free Apple ID. Expo Go covers everything else. |
+| 33 | Deleting an account and Apple | The API ends the account's link with Apple when it is deleted, as the App Store asks. It needs a key from the Apple Developer account and is switched off until that is set. |
+| 34 | Glass on Android | A dense tint instead of a real blur, until it can be checked on a device. |
+| 35 | Large text | Text grows with the phone's text size up to 1.6 times; beyond that, bars and rows made for one line stop holding their words. |
+| 36 | Watching the API | Logs with an id per request, and Fly's own health checks. No error-reporting service for the API yet. |
+| 37 | Java | The API is written for Java 21 and runs on Java 25 in production; the automatic checks run on both. |
+
+Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)); whether one report should be enough to take a journey out of Discover, or several from different people; whether the app should have its own switch for counting what people do; and translating the sentences that come from the API when a second language is chosen (the app's own text is ready).
