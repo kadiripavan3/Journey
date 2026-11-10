@@ -20,5 +20,15 @@ export const discover = {
     title: 'Journeys',
     lead: 'Journeys that are going on now, and the ones that were just completed.',
     none: 'Nothing here yet',
+    /** Under the heading, once the numbers are known: "1,284 in progress · 312 finished this month". */
+    counts: (inProgress: number, finished: number) => `${inProgress.toLocaleString('en')} in progress · ${finished.toLocaleString('en')} finished this month`,
+  },
+
+  // The page of challenges: journeys with a number of days to reach
+  challenges: {
+    title: 'Challenges',
+    /** A quick filter: challenges of this many days. */
+    days: (days: number) => `${days} days`,
+    none: 'No challenges like that yet',
   },
 } as const;

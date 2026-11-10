@@ -1,5 +1,5 @@
 import { type Href, useRouter } from 'expo-router';
-import { Hash, Search as SearchIcon, X } from 'lucide-react-native';
+import { Hash, MapPin, Search as SearchIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,8 +31,9 @@ function tagsOf(journeys: readonly JourneyResponse[]): { tag: string; count: num
 }
 
 /**
- * 4.2 and 4.3 Search: popular tags before you type, then journeys, people and tags in tabs. The Tags tab lists
- * the tags the matching journeys use; tapping one searches for it.
+ * 4.2 and 4.3 Search: popular tags before you type, then journeys, people, tags and places in tabs. The Tags
+ * tab lists the tags the matching journeys use, and the Places tab the places whose name matches; tapping one
+ * searches for it.
  */
 export default function Search() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function Search() {
   const { colors } = useTheme();
   const { recent, remember } = useRecentSearches();
   const [text, setText] = useState('');
-  const [tab, setTab] = useState<'journeys' | 'people' | 'tags'>('journeys');
+  const [tab, setTab] = useState<'journeys' | 'people' | 'tags' | 'places'>('journeys');
   const query = useDebounced(text.trim(), 300);
   const searching = query.length >= 2;
   const results = useSearch({ q: query }, { query: { enabled: searching } });
@@ -56,6 +57,7 @@ export default function Search() {
   const journeys = results.data?.journeys ?? [];
   const people = results.data?.people ?? [];
   const tags = tagsOf(journeys);
+  const places = results.data?.places ?? [];
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -122,6 +124,7 @@ export default function Search() {
               { id: 'journeys', label: words.search.tabs.journeys, count: results.data ? journeys.length : undefined },
               { id: 'people', label: words.search.tabs.people, count: results.data ? people.length : undefined },
               { id: 'tags', label: words.search.tabs.tags, count: results.data ? tags.length : undefined },
+              { id: 'places', label: words.search.tabs.places, count: results.data ? places.length : undefined },
             ]}
             value={tab}
             onChange={setTab}
@@ -158,6 +161,34 @@ export default function Search() {
                     />
                   ))
                 )
+              ) : tab === 'places' ? (
+                places.length === 0 ? (
+                  <Nothing query={query} what="places" />
+                ) : (
+                  // A place is a way to more journeys: tapping it looks for the journeys that were there.
+                  places.map((place) => (
+                    <Tap
+                      key={place.name}
+                      accessibilityRole="button"
+                      accessibilityLabel={words.search.placeSpoken(place.name, place.journeyCount)}
+                      scaleTo={0.985}
+                      onPress={() => {
+                        setText(place.name);
+                        setTab('journeys');
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingVertical: 8, paddingHorizontal: layout.rowGutter }}>
+                      <View style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
+                        <MapPin size={18} color={colors.text} />
+                      </View>
+                      <Txt variant="item" numberOfLines={1} style={{ flex: 1 }}>
+                        {place.name}
+                      </Txt>
+                      <Txt variant="footnote" color="muted">
+                        {words.search.tagCount(place.journeyCount)}
+                      </Txt>
+                    </Tap>
+                  ))
+                )
               ) : tags.length === 0 ? (
                 <Nothing query={query} what="tags" />
               ) : (
@@ -183,7 +214,7 @@ export default function Search() {
   );
 }
 
-function Nothing({ query, what }: { query: string; what: 'journeys' | 'people' | 'tags' }) {
+function Nothing({ query, what }: { query: string; what: 'journeys' | 'people' | 'tags' | 'places' }) {
   return (
     <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
       {words.search.nothing[what](query)}

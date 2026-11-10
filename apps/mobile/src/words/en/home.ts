@@ -3,6 +3,7 @@ import { plural } from './plural';
 
 export const home = {
   forYou: 'For you',
+  challenges: 'Challenges',
   search: {
     title: 'Find a journey',
     hint: 'Trips, challenges and more, live now',

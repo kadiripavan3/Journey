@@ -146,6 +146,23 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T("You're offline").waitFor({ state: 'detached' });
     await R('tab', { name: 'Travel' }).click();
     await shot('home-travel');
+    // Challenges are a tab of their own, whatever they are about; their page says how many there are and
+    // can be narrowed to one length.
+    await R('tab', { name: 'Challenges' }).click();
+    await T('30 days of guitar').first().waitFor();
+    await shot('home-challenges');
+    await R('button', { name: 'Trending this week. See all' }).click();
+    await R('heading', { name: 'Challenges' }).waitFor();
+    await T(/^\d[\d,]* in progress · \d[\d,]* finished this month$/).waitFor();
+    await T('30 days of guitar').last().waitFor();
+    // Narrowed to one length and to what they are about, the page counts again: one of the samples is a
+    // 30-day challenge about fitness.
+    await R('button', { name: '30 days', exact: true }).click();
+    await R('button', { name: 'Fitness', exact: true }).click();
+    await T(/^1 in progress · \d[\d,]* finished this month$/).waitFor();
+    await T('Learn to surf').last().waitFor();
+    await shot('challenges');
+    await R('button', { name: 'Back' }).click();
     await R('tab', { name: 'For you' }).click();
     await R('button', { name: /New from journeys you follow/ }).click();
     await T("You're all caught up").waitFor();
@@ -406,6 +423,12 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: /follower/ }).click();
     await T('Nora Lind').waitFor();
     await shot('followers');
+    // The list can be searched: letters nobody has find nobody, and say so.
+    await R('textbox', { name: 'Search followers' }).fill('zzzz');
+    await T('Nobody here matches “zzzz”.').waitFor();
+    await R('textbox', { name: 'Search followers' }).fill('nora');
+    await T('Nora Lind').waitFor();
+    await shot('followers-search');
     await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
@@ -436,7 +459,8 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await shot('timeline-sticky-day');
     await R('button', { name: 'Jump to' }).click();
     await T('Start from the beginning').waitFor();
-    // Every day of the story is one tap away, as well as its milestones.
+    // Every day of the story is one tap away, and so are its highlights, each with its picture.
+    await T('Highlights', { exact: true }).waitFor();
     await T('Days', { exact: true }).waitFor();
     await shot('jump-to');
     await T('Newest entry').click();
@@ -692,6 +716,13 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('textbox', { name: 'Search journeys, people and tags' }).fill('asia');
     await T('Southeast Asia by motorbike').waitFor();
     await shot('search-results');
+    // A place is found by its name; tapping it shows the journeys that were there.
+    await R('textbox', { name: 'Search journeys, people and tags' }).fill('hoi an');
+    await R('tab', { name: /^Places/ }).click();
+    await R('button', { name: /^Search for journeys in Hoi An, Vietnam/ }).waitFor();
+    await shot('search-places');
+    await R('button', { name: /^Search for journeys in Hoi An, Vietnam/ }).click();
+    await T('Southeast Asia by motorbike').waitFor();
     await R('textbox', { name: 'Search journeys, people and tags' }).fill('@lea');
     await R('tab', { name: /^People/ }).click();
     await T('@lea.plays').waitFor();

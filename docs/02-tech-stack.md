@@ -68,6 +68,7 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Sign-in | **Supabase Auth** client with **expo-apple-authentication**, native Google sign-in, and email codes | Email codes work in Expo Go. Apple and Google need a build of Journey itself: in Expo Go, Apple's sign-in belongs to Expo Go, not to Journey. |
 | Push | **expo-notifications** | Works with the Expo Push Service; needs a development build |
 | Forms | Plain React state | The API checks every field and answers with a sentence for each, so the rules are written once |
+| Words | One typed catalog, `src/words` | Every sentence a person reads or hears is in `src/words/en`; a sentence with a number or a name in it is a function, so each language keeps its own plurals and word order. The phone's language picks the catalog when the app starts, and the linter refuses a sentence written in a screen. No translation library. |
 | Analytics and crashes | **PostHog**, **Sentry** | |
 | Tests | **Jest** with React Native Testing Library; **Maestro** for end-to-end flows later | |
 

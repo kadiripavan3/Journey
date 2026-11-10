@@ -243,5 +243,7 @@ Left to Claude ("think about this and decide yourself", 10 Nov 2026) and made wh
 | 35 | Large text | Text grows with the phone's text size up to 1.6 times; beyond that, bars and rows made for one line stop holding their words. |
 | 36 | Watching the API | Logs with an id per request, and Fly's own health checks. No error-reporting service for the API yet. |
 | 37 | Java | The API is written for Java 21 and runs on Java 25 in production; the automatic checks run on both. |
+| 38 | Challenges as a kind | A challenge is any journey with a number of days to reach, whatever its category. Home has a Challenges tab; its page says how many are in progress and can be narrowed to 30 or 100 days and to one category. A category's page can be narrowed to its challenges. |
+| 39 | A place in Search | The Places tab lists places whose name matches, with the number of public journeys that have an entry there; tapping one searches for it. A place written in several ways counts as one, shown the way most entries write it. |
 
 Still open: the store name, needed before the beta ends (see the [roadmap](03-roadmap.md)); whether one report should be enough to take a journey out of Discover, or several from different people; whether the app should have its own switch for counting what people do; and translating the sentences that come from the API when a second language is chosen (the app's own text is ready).

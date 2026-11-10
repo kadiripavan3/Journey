@@ -30,6 +30,8 @@ import { Txt } from '@/ui/Txt';
 import { words } from '@/words';
 
 const FOR_YOU = 'for-you';
+/** Not a category: journeys with a number of days to reach, whatever they are about. */
+const CHALLENGES = 'challenges';
 
 /** 3.1 Home: your own journey first, then what's new from the journeys you follow, then what's trending. */
 export default function Home() {
@@ -37,11 +39,12 @@ export default function Home() {
   const { colors, shadow } = useTheme();
   const catalog = useCatalog();
   const [tab, setTab] = useState(FOR_YOU);
-  const category = tab === FOR_YOU ? undefined : tab;
+  const challenges = tab === CHALLENGES;
+  const category = tab === FOR_YOU || challenges ? undefined : tab;
 
   const feed = useGetFeed();
   const mine = useMyJourneys();
-  const discover = useGetDiscover(category ? { category } : undefined);
+  const discover = useGetDiscover(challenges ? { challenges: true } : category ? { category } : undefined);
   useRefetchOnFocus(feed.refetch, mine.refetch);
   const [pulling, setPulling] = useState(false);
   const reload = async () => {
@@ -50,9 +53,15 @@ export default function Home() {
     setPulling(false);
   };
 
-  const tabs = [{ id: FOR_YOU, label: words.home.forYou, emoji: '🧭' }, ...catalog.categories.slice(0, 4)];
+  // As designed: for you, trips, challenges, then what else people make journeys about.
+  const tabs = [
+    { id: FOR_YOU, label: words.home.forYou, emoji: '🧭' },
+    ...catalog.categories.slice(0, 1),
+    { id: CHALLENGES, label: words.home.challenges, emoji: '🔥' },
+    ...catalog.categories.slice(1, 4),
+  ];
   const current = mine.journeys.find((journey) => journey.status === 'active');
-  const groups = (feed.data?.groups ?? []).filter((group) => !category || group.journey.category === category);
+  const groups = (feed.data?.groups ?? []).filter((group) => (challenges ? group.journey.targetDays != null : !category || group.journey.category === category));
   const following = feed.data?.followingCount ?? 0;
   const trending = (discover.data?.trending ?? []).filter((journey) => !journey.viewer.isOwner);
   // A challenge asks for a check-in a day; everything else just takes an entry.
@@ -161,14 +170,14 @@ export default function Home() {
         ) : (
           <CaughtUp
             style={{ marginTop: 28 }}
-            line={category ? words.home.caughtUp.inCategory : words.home.caughtUp.all(following)}
+            line={category || challenges ? words.home.caughtUp.inCategory : words.home.caughtUp.all(following)}
             action={<Button label={words.home.caughtUp.seeFollowed} variant="line" onPress={() => router.push('/following')} />}
           />
         )}
 
         {trending.length > 0 ? (
           <>
-            <SectionHeader title={words.home.trending} onPress={() => router.navigate('/discover')} />
+            <SectionHeader title={words.home.trending} onPress={() => (challenges ? router.push('/category/challenges') : router.navigate('/discover'))} />
             <Rail>
               {trending.map((journey) => (
                 <JourneyCard key={journey.id} journey={journey} size="sm" detail={words.common.join([journey.progressLabel, followersLabel(journey.followerCount)])} onPress={() => router.push(`/journey/${journey.id}`)} />

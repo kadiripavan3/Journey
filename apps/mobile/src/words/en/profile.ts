@@ -48,7 +48,10 @@ export const profile = {
       yourFollowers: 'Nobody follows you yet. Share a journey and they will.',
       following: 'Not following anyone yet.',
       yourFollowing: "You don't follow anyone yet.",
+      /** While searching the list. */
+      matching: (letters: string) => `Nobody here matches “${letters}”.`,
     },
+    search: { followers: 'Search followers', following: 'Search following', clear: 'Clear' },
   },
 
   // 9.4 Edit profile (the first three are also asked for when the profile is made)
