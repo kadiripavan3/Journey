@@ -13,6 +13,7 @@ Journey is a social app for iOS and Android where every post is part of a story:
    - `docs/04-design-brief.md`: design principles and cues
    - `docs/05-inspiration.md`: references
    - `docs/06-engagement.md`: engagement and growth plan: what is in the first version, what is added during the beta, and what waits for its numbers
+   - `docs/07-run-locally.md`: how the owner runs the app and the API on their Mac and iPhone
 4. For any UI work, open the screens in `design/hub/src/screens/` (one file per group, order in `index.json`), their styles in `design/hub/src/phone.css`, and `design/tokens.json`. The app must look like the screens and use only the tokens.
 
 ## Sources of truth
@@ -44,11 +45,27 @@ node design/hub/build.mjs --files    # the image list for the publish call
 2. In a new session, read the hub first (Artifact, action `read`), as the tool requires before updating it.
 3. Publish with the Artifact tool: `file_path` `design/hub/index.html`, `url` the hub URL above, `root` `design/hub`, `files` the `--files` list, `capabilities` `{"comments": {"composer_only": true}}`.
 
+## Build and test the code
+
+The app is in `apps/mobile` (Expo SDK 58), the API in `apps/api` (Spring Boot 4, Java 21 source level).
+
+```sh
+pg_ctlcluster 16 main start && PSQL="runuser -u postgres -- psql" ./scripts/local-db.sh   # once per container: the local databases
+cd apps/api && ./mvnw -q -B -ntp test          # API tests, against the local PostgreSQL
+cd apps/mobile && npm ci && npm run check      # types, lint, tests
+```
+
+- **Local first:** every outside service has a stand-in behind a switch in the API (`journey.auth.mode` and friends). Build features against the stand-ins; the real services are connected in the last milestone. The app must work with any email and the code 123456.
+- **API change:** write the test, then run `UPDATE_OPENAPI=1 ./mvnw test` in `apps/api` and `npm run api:generate` in `apps/mobile`. Commit `openapi.json` and the generated client with the change.
+- **Token change:** run `npm run theme` in `apps/mobile` and rebuild the hub.
+- **Screens:** build each one from its design in `design/hub/src/screens/`, using the components in `apps/mobile/src/ui` and only theme values. Check it in the web build with Playwright (`npx expo export -p web`, serve `dist`, run the API with the `local` profile), in light and dark.
+- **In this cloud environment** `npx expo install`, `expo lint` and `expo export` need `EXPO_OFFLINE=1`, because Expo's version service is not on the network allowlist.
+- **Messages people read** come from the API in plain English (`ApiProblem`); the app shows them as they are.
+
 ## Working rules
 
 - Work on the branch the session names. Don't push to `main` or open a pull request unless the owner asks.
 - Never commit secrets. API keys (Expo, Supabase, Fly.io, Cloudflare, Mux, Resend and the rest) go into the cloud environment's secrets.
 - The stack is final (`docs/02-tech-stack.md`). Check a library's current version and Expo SDK support before adding it, and ask the owner before swapping a chosen service.
-- API tests need the local PostgreSQL: start it with `pg_ctlcluster 16 main start`.
 - Write user-facing text in plain, friendly English (see the writing cues in `docs/04-design-brief.md`).
 - Ask the owner before changing a product decision; record the answer in the docs.

@@ -174,38 +174,39 @@ The rules that matter:
 - **Drafts live only on the phone** until they upload.
 - **Video limits:** at most 3 clips per entry, each up to 60 seconds. Followers see a clip only once Mux reports it ready.
 
-## Repository layout (when we scaffold)
+## Repository layout
 
 ```
 journey/
 ├── apps/
-│   ├── mobile/          # Expo app (iOS + Android), TypeScript
-│   └── api/             # Journey API: Spring Boot (Java), with its database migrations and share pages
-├── packages/
-│   └── api-client/      # TypeScript client generated from the API's OpenAPI document
+│   ├── mobile/          # Expo app (iOS + Android), TypeScript. src/api/generated is the client generated from the API.
+│   └── api/             # Journey API: Spring Boot (Java), with its database migrations and share pages. openapi.json describes it.
 ├── design/              # tokens.json and the Journey Hub
 ├── docs/                # these documents
-└── .github/workflows/   # tests and deploys
+├── scripts/             # dev.sh starts the database, the API and the app
+└── .github/workflows/   # tests on every push
 ```
 
 ## Testing without the store accounts
 
-Development can start today. The Apple and Google accounts are only needed to install a real build on a phone and to release in the stores.
+We build **local first** (decided on 10 Nov 2026): everything runs on one computer, with stand-ins for the outside services, and the accounts are connected at the end. [Run it on your Mac](07-run-locally.md) has the steps. The table shows what each stage of testing needs.
 
 | Stage | What you need | How we test | What it covers |
 |---|---|---|---|
 | **1. Now** | Nothing | I run the API's tests against a real database in the cloud, and I run the app as a web page that I check with screenshots | Screens, navigation, forms, and every rule in the API |
-| **2. On your iPhone** | Three free accounts: Expo, Supabase, Fly.io | **Expo Go.** Install it free from the App Store and sign in with your Expo account. I publish each change, and you open it from Expo Go's project list or a QR code. No cable. | Most of the first two milestones: sign-in with an email code or Apple, profiles, journeys, entries, photos and the timeline |
-| **3. A real build** | Apple Developer Program, US$99 a year | A development build of Journey installed on your iPhone; later TestFlight for the beta | What Expo Go can't run: push notifications, Google sign-in, video compression, links that open the app |
+| **2. On your iPhone** | A free Expo login, and your Mac | **Expo Go.** The database, the API and the app's dev server run on your Mac; you scan a QR code with your iPhone on the same Wi-Fi. No cable. | Most of the first two milestones: sign-in with an email code or Apple, profiles, journeys, entries, photos and the timeline |
+| **3. A real build** | Xcode and your free Apple ID (the build lasts 7 days), or the Apple Developer Program, US$99 a year | A build of Journey installed on your iPhone; later TestFlight for the beta, which needs the paid program | What Expo Go can't run: push notifications, Google sign-in, video compression, links that open the app |
 | **4. Android and the stores** | Google Play Console, US$25 once | Android testers, then the store | A new personal account must run a closed test with 12 testers for 14 days before it can publish |
 
 Good to know:
 
-- **Expo Go** on the App Store runs only the newest Expo version, SDK 58, which is the one we use. Expo's documentation describes opening a published update in Expo Go. I haven't run that end to end yet, so the first publish is the test. If it doesn't work, the fallbacks are an Android phone (a build installs with no account at all) and the web preview.
-- **A cable** only helps if you have a Mac with Xcode. Then a build can go onto your iPhone with a free Apple ID, but it expires after 7 days and can't use push notifications or Sign in with Apple.
-- **Enrol with Apple early.** Apple says processing can take up to 48 hours; in 2026 people report one to several weeks. We need it from the video milestone on.
+- **Expo Go** on the App Store runs only the newest Expo version, SDK 58, which is the one we use. It needs an Expo login on an iPhone.
+- **With your Mac and Xcode**, a build can go onto your iPhone with a free Apple ID. It expires after 7 days and can't use push notifications or Sign in with Apple; those need the paid program.
+- **The Apple Developer Program** can take a while: Apple says up to 48 hours, and in 2026 people report one to several weeks. Enrol a few weeks before you want TestFlight.
 
 ## Accounts, and when each is needed
+
+Building local first, no account is needed until its features are built. The last column shows which milestone's features use each one; all of them are connected in the final milestone.
 
 | Account | Cost | Used for | Needed from |
 |---|---|---|---|

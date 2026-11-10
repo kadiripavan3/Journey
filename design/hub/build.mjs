@@ -39,6 +39,7 @@ const DOCS = [
   { file: 'docs/06-engagement.md', view: 'engagement' },
   { file: 'docs/03-roadmap.md', view: 'roadmap' },
   { file: 'docs/02-tech-stack.md', view: 'tech' },
+  { file: 'docs/07-run-locally.md', view: 'run' },
 ];
 const VIEW_OF = Object.fromEntries(DOCS.map((d) => [basename(d.file), d.view]));
 const ARCH = src('architecture.html') + '\n';

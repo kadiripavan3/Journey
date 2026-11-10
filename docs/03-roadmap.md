@@ -12,7 +12,7 @@
 
 Durations are rough, for you working with Claude Code (give or take 50%).
 
-### Phase 0: Shape (1–2 weeks) ← we are here
+### Phase 0: Shape (done)
 
 - [x] Requirements and approach (these docs; decisions confirmed 7 Nov 2026)
 - [x] Tech stack final (9 Nov 2026): an Expo app, a Java (Spring Boot) API, PostgreSQL and sign-in on Supabase ([tech page](02-tech-stack.md))
@@ -24,18 +24,24 @@ Durations are rough, for you working with Claude Code (give or take 50%).
 - [ ] Prototype tested with 5–8 travelers and 5–8 challenge-takers. Can they create a journey and add an entry without help? Would they share it?
 - [ ] Accounts, each when it is first needed ([the list](02-tech-stack.md#accounts-and-when-each-is-needed)). Enrol in the Apple Developer Program now: it can take weeks.
 
-### Phase 1: Build the MVP (about 17–20 weeks)
+### Phase 1: Build the MVP (about 17–20 weeks) ← we are here
 
-Each milestone ends with something you can try on your phone: in Expo Go for the first two, then in a development build ([how we test](02-tech-stack.md#testing-without-the-store-accounts)).
+**Local first** (decided on 10 Nov 2026). Every feature is built and tested on one computer, with stand-ins for the outside services. The accounts are created and the real services connected at the end; expect a week or two of fixing then. There is no rush to release. You run each step on your Mac and open it on your iPhone in Expo Go ([how](07-run-locally.md)).
+
+Progress:
+
+- [x] **M1, step 1** (10 Nov 2026): the app and the Java API side by side, sign-in with a test code, creating a profile, the tab bar, automatic checks
+- [ ] M1, step 2: the rest of sign-up (how it works, interests, journeys to follow, notifications, all set) and editing your profile
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|
-| **M1 Foundations** | Repo scaffold (app and API), CI, design tokens as a theme, the API skeleton with its database and deploy, the generated API client, sign-in, profiles, onboarding shell, the app in Expo Go on your phone, the environment setup script | 3 |
+| **M1 Foundations** | Repo scaffold (app and API), CI, design tokens as a theme, the API skeleton with its database, the generated API client, sign-in, profiles, the sign-up flow, the app in Expo Go on your phone, the environment setup script | 3 |
 | **M2 Create** | Create a journey with templates (Trip and 30-Day Challenge first); add an entry (photos, text, date, place); offline drafts and the upload queue; the journey page and timeline; edit and delete; shared journeys (invite friends, join, who can do what) | 5 |
-| **M3 Video** | The first development build on your iPhone (needs the Apple Developer Program). Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
+| **M3 Video** | The first real build on your iPhone (through Xcode, with your free Apple ID). Short clips: pick and compress on the phone, upload to the video service, processing status, tap-to-play in the timeline and entry view, screening of clips | 2 |
 | **M4 Follow** | Follow journeys and creators, the Home feed, likes, comments, push notifications and the inbox, catch-up markers; shared journeys in the feed and on profiles; the weekly digest | 3–4 |
 | **M5 Discover and share** | The Discover tab, categories, tags, search, the trending job, share links and web share pages | 2 |
 | **M6 Finish and safety** | Map view, challenge progress, complete and recap, auto-pause, report and block, moderation, account deletion, settings, analytics, a performance and accessibility pass, store listings | 2–3 |
+| **M7 Connect the real services** | Create the accounts and switch each stand-in for the real thing: Supabase (database and sign-in), Cloudflare R2, Mux, Expo Push, Resend, hosting on Fly.io, moderation. Test each on a real phone. | 1–2 |
 
 ### Phase 2: Private beta (4–6 weeks)
 
@@ -81,5 +87,5 @@ v1.1, then v1.2, then v2, as listed in the [requirements](01-requirements.md#5-l
 
 1. Decisions: done on 7 Nov 2026 (see [§9 of the requirements](01-requirements.md#9-decisions)).
 2. Review all 66 screens and leave comments in the Journey Hub. I update the screens, then we confirm the accent colour (Sun for now).
-3. Enrol in the Apple Developer Program now. Apple says up to 48 hours, but it can take weeks, and we need it from the Video milestone. Google Play can wait until shortly before the beta; its rule above needs 14 days.
-4. I scaffold the app and the API (M1). This needs no accounts. For the first test on your iPhone you create three free accounts: Expo, Supabase and Fly.io.
+3. Run the first step on your Mac and open it on your iPhone ([instructions](07-run-locally.md)). It needs only a free Expo login.
+4. I continue with M1, step 2. The other accounts wait until the features are built; the Apple Developer Program is needed for TestFlight and the App Store, and can take weeks to approve when you do enrol.

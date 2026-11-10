@@ -1,11 +1,10 @@
 {
-  "phase": "Phase 0 · Shape",
-  "updated": "2026-11-09",
-  "summary": "The tech stack is final: an Expo app, a Java (Spring Boot) backend you can debug, and managed services around them. Building can start now without the store accounts. The first version takes about 17 to 20 weeks.",
+  "phase": "Phase 1 · Build (M1)",
+  "updated": "2026-11-10",
+  "summary": "Building has started, local first: everything runs on your Mac with stand-ins for the outside services, and the accounts come at the end. The first step works: the Java API and the app, sign-in with a test code, and creating a profile.",
   "next": [
-    "I scaffold the app and the Java API (milestone M1). This needs no accounts.",
-    "Enrol in the Apple Developer Program now (US$99 a year). It can take weeks and is needed from the Video milestone.",
-    "For the first test on your iPhone: create three free accounts (Expo, Supabase, Fly.io) and install Expo Go.",
+    "Run the first step on your Mac and open it on your iPhone in Expo Go (the Run it page has the steps). Tell me what you see.",
+    "I continue with M1, step 2: the rest of sign-up and editing your profile.",
     "Review the 66 screens on the Screens page and comment on anything to change.",
     "Confirm the accent colour once the screens are reviewed (Sun for now)."
   ],
@@ -24,6 +23,10 @@
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-10",
+      "text": "**Building has started.** M1, step 1: a Java (Spring Boot) API and the Expo app, sign-in with a test code, creating a profile, the tab bar, and automatic checks. Decided: **local first**, with accounts connected at the end. New page: Run it on your Mac."
+    },
     {
       "date": "2026-11-09",
       "text": "**Tech stack final.** The backend is Java (Spring Boot), so you can debug it; Supabase supplies the database and sign-in. Every choice was checked against current versions and prices. New on the Tech page: how we test without the store accounts, and which account is needed when."
