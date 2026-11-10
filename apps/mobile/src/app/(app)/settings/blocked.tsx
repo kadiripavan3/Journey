@@ -27,7 +27,7 @@ export default function Blocked() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Blocked accounts" trailing={<View style={{ width: 40 }} />} />
       <Txt variant="body" color="muted" style={{ marginTop: 6, marginHorizontal: layout.rowGutter }}>
-        Blocked people can&apos;t see, follow or comment on your journeys, and you won&apos;t see theirs. They aren&apos;t told.
+        Blocked people can&apos;t see, follow or comment on your journeys in the app, and you won&apos;t see theirs. They aren&apos;t told.
       </Txt>
       {unblock.isError ? (
         <Txt variant="caption" color="danger" accessibilityLiveRegion="polite" style={{ marginTop: 8, marginHorizontal: layout.rowGutter }}>

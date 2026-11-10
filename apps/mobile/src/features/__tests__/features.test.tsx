@@ -81,7 +81,7 @@ describe('recent searches', () => {
 describe('shared words', () => {
   it('has one place for what each visibility is called', () => {
     expect(VISIBILITY.map((v) => v.id)).toEqual(['public', 'unlisted', 'private']);
-    expect(visibility('private').badge).toBe('Only you');
+    expect(visibility('private').badge).toBe('Private');
     expect(visibility('something else').id).toBe('public');
   });
 

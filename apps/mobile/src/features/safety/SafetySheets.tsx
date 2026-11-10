@@ -100,7 +100,7 @@ export function BlockSheet({ person, onClose, onBlocked }: { person: { username:
       },
     },
   });
-  const points = ["They can't see, follow or comment on your journeys", "You won't see their journeys or comments", "They won't be told"];
+  const points = ["They can't see, follow or comment on your journeys in the app", "You won't see their journeys or comments", "They won't be told"];
   return (
     <Sheet visible={person !== null} onClose={onClose} title={`Block ${person?.displayName ?? ''}?`}>
       <View style={{ gap: 10, paddingHorizontal: layout.gutter, paddingTop: 8, paddingBottom: 16 }}>

@@ -20,7 +20,7 @@ type Choice = {
 export const VISIBILITY: readonly Choice[] = [
   { id: 'public', label: 'Public', note: 'Anyone. It can appear in Discover.', hint: '', badge: 'Public', icon: (c) => <Globe size={20} color={c} /> },
   { id: 'unlisted', label: 'Unlisted', note: 'Only people with the link.', hint: 'Good for family.', badge: 'Unlisted', icon: (c) => <LinkIcon size={20} color={c} /> },
-  { id: 'private', label: 'Private', note: 'Only you.', hint: 'A journal you can publish later.', badge: 'Only you', icon: (c) => <Lock size={20} color={c} /> },
+  { id: 'private', label: 'Private', note: 'Only you and friends you invite.', hint: 'A journal you can publish later.', badge: 'Private', icon: (c) => <Lock size={20} color={c} /> },
 ];
 
 export function visibility(id: string): Choice {

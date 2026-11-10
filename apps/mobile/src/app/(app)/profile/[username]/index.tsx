@@ -118,7 +118,7 @@ export default function CreatorProfile() {
               <>
                 <Button label="Unblock" variant="line" block loading={unblock.isPending} onPress={() => unblock.mutate({ username: p.username })} />
                 <Txt variant="small" weight={500} color="muted" center>
-                  You&apos;ve blocked {first}. Neither of you sees the other&apos;s journeys.
+                  You&apos;ve blocked {first}. Neither of you sees the other&apos;s journeys in the app.
                 </Txt>
               </>
             ) : (

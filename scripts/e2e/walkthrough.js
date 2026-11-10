@@ -719,7 +719,7 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: /^Notifications\. 5 of 8 on/ }).waitFor();
     await R('button', { name: /^Privacy and safety/ }).click();
     await R('button', { name: /^Start them as/ }).click();
-    await T('Only you.').click();
+    await T('Only you and friends you invite.').click();
     await R('button', { name: /^Start them as\. Private/ }).waitFor();
     await shot('privacy');
     await R('button', { name: 'Back' }).click();
