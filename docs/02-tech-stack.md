@@ -195,7 +195,7 @@ Development can start today. The Apple and Google accounts are only needed to in
 | Stage | What you need | How we test | What it covers |
 |---|---|---|---|
 | **1. Now** | Nothing | I run the API's tests against a real database in the cloud, and I run the app as a web page that I check with screenshots | Screens, navigation, forms, and every rule in the API |
-| **2. On your iPhone** | Three free accounts: Expo, Supabase, Fly.io | **Expo Go.** Install it free from the App Store and sign in with your Expo account. I publish each change, and you open it from Expo Go's project list or a QR code. No cable. | Most of the first two milestones: sign-in with an email code or Apple, profiles, journeys, entries, photos, the timeline, the map |
+| **2. On your iPhone** | Three free accounts: Expo, Supabase, Fly.io | **Expo Go.** Install it free from the App Store and sign in with your Expo account. I publish each change, and you open it from Expo Go's project list or a QR code. No cable. | Most of the first two milestones: sign-in with an email code or Apple, profiles, journeys, entries, photos and the timeline |
 | **3. A real build** | Apple Developer Program, US$99 a year | A development build of Journey installed on your iPhone; later TestFlight for the beta | What Expo Go can't run: push notifications, Google sign-in, video compression, links that open the app |
 | **4. Android and the stores** | Google Play Console, US$25 once | Android testers, then the store | A new personal account must run a closed test with 12 testers for 14 days before it can publish |
 
