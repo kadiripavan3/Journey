@@ -75,7 +75,8 @@ export default function Category() {
           </Txt>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 16 }}>
+        {/* A row that scrolls sideways inside a page that scrolls down: it keeps its own height. */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ alignItems: 'center', gap: 8, paddingHorizontal: layout.barGutter, paddingTop: 16 }}>
           {everyChallenge ? null : <Chip tone="filter" emoji="🔥" label={words.discover.challenges.title} selected={onlyChallenges} onPress={() => setOnlyChallenges(!onlyChallenges)} />}
           {LENGTHS.map((length) => (
             <Chip key={length} tone="filter" label={words.discover.challenges.days(length)} selected={days === length} onPress={() => setDays(days === length ? null : length)} />
@@ -109,7 +110,7 @@ export default function Category() {
                       journey={journey}
                       size="grid"
                       progress={journey.targetDays ? Math.min(journey.latestNumber / journey.targetDays, 1) : undefined}
-                      detail={words.common.join([journey.targetDays ? words.journeys.progressOf(journey.progressLabel, journey.targetDays) : journey.progressLabel, journey.followerCount > 0 ? audienceLabel(journey) : null])}
+                      detail={words.common.join([journey.progressLabel, journey.followerCount > 0 ? audienceLabel(journey) : null])}
                       onPress={() => open(journey)}
                     />
                   </View>

@@ -30,8 +30,6 @@ export const journeys = {
   cheeringYouOn: (count: number) => `${plural(count, 'person', 'people')} cheering you on`,
   /** "3 new": entries since the last visit. */
   newCount: (count: number) => `${count} new`,
-  /** "Day 12 of 30": how far along a challenge is. `progress` is the journey's own label. */
-  progressOf: (progress: string, target: number) => `${progress} of ${target}`,
   /** Where a feed ends. */
   caughtUp: "You're all caught up",
 
