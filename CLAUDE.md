@@ -80,6 +80,16 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Format the API code** with `./mvnw spotless:apply` before committing; `./mvnw verify` (what CI runs) fails on unformatted code and on compiler warnings.
 - **The stand-ins need the `local` profile.** The API refuses to start with local sign-in, local files or sample data switched on without it.
 
+### Safety, sharing and legal pages
+
+- **Held content:** a photo the automatic check flags (`media.held`) and a comment the word filter catches (`comments.held`) are seen only by the person who posted them until a reviewer decides. The rules are in `Rules`: `shownMedia` where an entry's own photos are read, `publicMedia` wherever a photo stands for something else (a cover, the journey's grid, Activity, the recap), `shownComment` for comments, `notUnderReview` for Discover, search and suggestions. A new query that reads photos or comments uses one of them.
+- **Trying it locally:** the local photo check flags a photo that is one solid magenta (`#ff00ff`); the word filter holds a comment with a word from `WordFilter`. The reviewer's queue is at `http://localhost:8080/admin`: any name, password `review`.
+- **Reviewer actions** go through `ModerationService` and write a line to `review_log`. Nothing is removed automatically.
+- **Web pages the API serves** (share, invitation, legal, the reviewer's queue) are Thymeleaf templates styled by `static/share/page.css` and `pages.css`, with colours from the generated `tokens.css` only. A new page needs its path opened in `SecurityConfig`.
+- **Links people share** come from the API (`shareUrl` on a journey, `/v1/entries/{id}/share-link`, `/v1/me/share-link`, `/v1/journeys/{id}/invite-link`). In the app they are shown with `ShareSheet` (`features/sharing`) or `LinkBox`; `src/lib/links.ts` maps a shared web address to its screen.
+- **Age:** a new profile needs `ageConfirmed: true` (13 and over). Tests and scripts that make a profile through the API send it.
+- **The walk-through and reports:** a reported journey leaves Discover until a reviewer has looked, so the walk-through dismisses its own report in the queue. Steps that load the app afresh (opening an invite link) come last.
+
 ## App structure and standards
 
 Where things live in `apps/mobile/src`:
