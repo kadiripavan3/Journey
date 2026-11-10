@@ -51,8 +51,8 @@ final class SettingsCheck {
         }
         if ("rekognition".equals(env.getProperty("journey.moderation.mode"))) {
             String or = "the photo check (step 9), or JOURNEY_MODERATION_MODE=off";
-            need(env, missing, "AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID", or);
-            need(env, missing, "AWS_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY", or);
+            need(env, missing, "journey.moderation.rekognition.access-key-id", "AWS_ACCESS_KEY_ID", or);
+            need(env, missing, "journey.moderation.rekognition.secret-access-key", "AWS_SECRET_ACCESS_KEY", or);
         }
         String address = env.getProperty("journey.public-url", "").trim();
         if (!address.startsWith("https://")) {

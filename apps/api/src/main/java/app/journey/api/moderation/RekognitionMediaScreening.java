@@ -16,7 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.rekognition.RekognitionClient;
@@ -35,8 +36,7 @@ import software.amazon.awssdk.services.rekognition.model.ModerationLabel;
  * <p>A picture Rekognition refuses to read is held for a person; an outage is not (the picture is shown, and
  * looked at once Rekognition is back).
  *
- * <p>It needs AWS credentials the usual way ({@code AWS_ACCESS_KEY_ID} and {@code AWS_SECRET_ACCESS_KEY} in the
- * environment) with permission for {@code rekognition:DetectModerationLabels}, and a region where Rekognition
+ * <p>It needs AWS keys ({@code AWS_ACCESS_KEY_ID} and {@code AWS_SECRET_ACCESS_KEY} in the environment) with permission for {@code rekognition:DetectModerationLabels}, and a region where Rekognition
  * runs ({@code journey.moderation.rekognition.region}).
  */
 @Component
@@ -65,27 +65,27 @@ class RekognitionMediaScreening implements MediaScreening {
     @Autowired
     RekognitionMediaScreening(
             @Value("${journey.moderation.rekognition.region:eu-west-1}") String region,
+            @Value("${journey.moderation.rekognition.access-key-id:}") String accessKeyId,
+            @Value("${journey.moderation.rekognition.secret-access-key:}") String secretAccessKey,
             @Value("${journey.moderation.rekognition.min-confidence:80}") float minConfidence) {
-        this(opened(region), minConfidence);
+        this(opened(region, accessKeyId, secretAccessKey), minConfidence);
     }
 
     /**
-     * The client, made when the API starts. Without credentials the check could look at nothing, and nobody
-     * would notice: so the API says so and doesn't start.
+     * The client, made when the API starts. Without keys the check could look at nothing, and nobody would
+     * notice: so the API says so and doesn't start.
      */
-    private static Supplier<RekognitionClient> opened(String region) {
-        try (DefaultCredentialsProvider keys =
-                DefaultCredentialsProvider.builder().build()) {
-            keys.resolveCredentials();
-        } catch (RuntimeException missing) {
+    private static Supplier<RekognitionClient> opened(String region, String accessKeyId, String secretAccessKey) {
+        if (accessKeyId.isBlank() || secretAccessKey.isBlank()) {
             throw new IllegalStateException(
-                    "journey.moderation.mode=rekognition needs AWS credentials: set AWS_ACCESS_KEY_ID and"
+                    "journey.moderation.mode=rekognition needs AWS keys: set AWS_ACCESS_KEY_ID and"
                             + " AWS_SECRET_ACCESS_KEY (or JOURNEY_MODERATION_MODE=off to run without the automatic"
-                            + " photo check for now).",
-                    missing);
+                            + " photo check for now).");
         }
         RekognitionClient client = RekognitionClient.builder()
                 .region(Region.of(region))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKeyId.trim(), secretAccessKey.trim())))
                 .overrideConfiguration(calls ->
                         calls.apiCallTimeout(Duration.ofSeconds(20)).apiCallAttemptTimeout(Duration.ofSeconds(8)))
                 .build();

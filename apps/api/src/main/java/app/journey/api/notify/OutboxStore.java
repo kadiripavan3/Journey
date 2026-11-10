@@ -21,11 +21,14 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class OutboxStore {
 
-    /** A message that is due, with the names needed to word it and whether it may still be sent. */
+    /**
+     * A message that is due, with the names needed to word it and whether it may still be sent.
+     *
+     * @param kind null for a kind this version of the API doesn't know (a newer one wrote it): it is dropped
+     */
     public record Due(
             UUID id,
             UUID userId,
-            /** Null for a kind this version of the API doesn't know (written by a newer one): it is dropped. */
             NotificationKind kind,
             int count,
             String text,

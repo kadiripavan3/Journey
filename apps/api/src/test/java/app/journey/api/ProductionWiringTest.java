@@ -42,6 +42,9 @@ import org.springframework.test.web.servlet.MockMvc;
             "journey.video.mux.token-secret=mux-secret",
             "journey.video.mux.webhook-secret=mux-webhook-secret",
             "journey.places.mode=device",
+            "journey.moderation.mode=rekognition",
+            "journey.moderation.rekognition.access-key-id=aws-key-id",
+            "journey.moderation.rekognition.secret-access-key=aws-secret",
             "journey.seed.enabled=false",
             "springdoc.api-docs.enabled=false",
             // The test database is shared with the other tests, which use the stand-in tables.
