@@ -39,9 +39,22 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Journey opens your photos so you can add them to your entries, your journeys and your profile.",
+          "photosPermission": "Journey opens your photos and videos so you can add them to your entries, your journeys and your profile.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      "expo-sqlite",
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Journey uses your location, only when you ask, to suggest the place for an entry you are writing.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ]
     ],

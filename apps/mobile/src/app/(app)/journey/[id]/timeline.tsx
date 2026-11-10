@@ -1,27 +1,32 @@
 import type { FlashListRef } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowDown, List as ListIcon, Plus, Star } from 'lucide-react-native';
+import { ArrowDown, List as ListIcon, Map as MapIcon, Plus, Star } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCache } from '@/api/cache';
 import { messageFor } from '@/api/fetcher';
-import { type EntryResponse, useGetJourney, useGetJourneySummary, useGetMe, useGetTimelineInfinite, useMarkJourneyRead } from '@/api/generated/journey';
+import { type EntryResponse, useGetJourney, useGetJourneySummary, useGetMe, useGetMembers, useGetTimelineInfinite, useMarkJourneyRead } from '@/api/generated/journey';
+import { PostingBanner } from '@/features/drafts/PostingBanner';
 import { entryHeadline } from '@/features/entries/labels';
 import { ReactionCounts } from '@/features/entries/Reactions';
+import { ClipBadge } from '@/features/media/ClipPlayer';
 import { formatDay } from '@/lib/dates';
+import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Chip } from '@/ui/Chip';
 import { List } from '@/ui/List';
 import { Rise, Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
 import { Problem } from '@/ui/Problem';
+import { RoundButton } from '@/ui/RoundButton';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { CardSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
@@ -33,6 +38,7 @@ type Opened = { since: string | null; newCount: number; firstNew: string | null 
  * 5.2 Story line: the journey in the order things happened, grouped by day, with quiet days and what's new
  * since your last visit. A long story is read a page at a time: it opens at the first new entry (or at the
  * start), loads further pages in both directions as the person scrolls, and "Jump to" can open it anywhere.
+ * A shared story can be narrowed to what one person wrote (10.4). The map of its places is one tap away.
  */
 export default function Timeline() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,7 +59,13 @@ export default function Timeline() {
     setAnchor(summary.data.firstNewEntryId);
   }
 
-  const timeline = useGetTimelineInfinite(id, anchor ? { around: anchor } : undefined, {
+  // On a shared story: the username of the one person whose entries are shown, or null for everyone's.
+  const [who, setWho] = useState<string | null>(null);
+  const shared = (journey.data?.authors.length ?? 0) > 1;
+  const members = useGetMembers(id, { query: { enabled: shared } });
+  const wrote = (personId: string) => members.data?.members.find((member) => member.person.id === personId)?.entryCount;
+
+  const timeline = useGetTimelineInfinite(id, anchor || who ? { ...(anchor ? { around: anchor } : {}), ...(who ? { author: who } : {}) } : undefined, {
     query: {
       enabled: anchor !== undefined,
       initialPageParam: undefined,
@@ -84,6 +96,12 @@ export default function Timeline() {
   /** Goes to an entry: scrolls there when it is already loaded, otherwise opens the story around it. */
   const jumpTo = (entryId: string | null) => {
     setJumping(false);
+    // The places to jump to are in the whole story, so jumping shows everyone's entries again.
+    if (who) {
+      setWho(null);
+      setAnchor(entryId);
+      return;
+    }
     const index = entryId ? (entries ?? []).findIndex((entry) => entry.id === entryId) : entries?.[0]?.position === 1 ? 0 : -1;
     if (index >= 0) void list.current?.scrollToIndex({ index, animated: true });
     else setAnchor(entryId);
@@ -94,12 +112,36 @@ export default function Timeline() {
   const failed = journey.error ?? summary.error ?? timeline.error;
   const retry = () => void Promise.all([journey.refetch(), summary.refetch(), timeline.refetch()]);
   const startIndex = anchor && entries ? Math.max(entries.findIndex((entry) => entry.id === anchor), 0) : 0;
+  /** Shows one person's part of the story, from its start; null shows everyone's again. */
+  const pickWho = (username: string | null) => {
+    setWho(username);
+    setAnchor(null);
+  };
+  const whoAuthor = who ? j?.authors.find((author) => author.username === who) : undefined;
+  const whoName = whoAuthor ? firstName(whoAuthor.displayName) : null;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ borderBottomWidth: 1, borderBottomColor: colors.line }}>
-        <AppBar title={j?.title ?? ''} subtitle={j ? `${j.authors.length > 1 ? `${j.owner.displayName} and ${plural(j.authors.length - 1, 'friend')}` : j.owner.displayName} · ${plural(j.entryCount, 'entry', 'entries')}` : undefined} trailing={<View style={{ width: 40 }} />} />
+        <AppBar title={j?.title ?? ''} subtitle={j ? `${j.authors.length > 1 ? `${j.owner.displayName} and ${plural(j.authors.length - 1, 'friend')}` : j.owner.displayName} · ${plural(j.entryCount, 'entry', 'entries')}` : undefined} trailing={<RoundButton label="Map of this journey" onPress={() => router.push(`/journey/${id}/map`)} icon={(c) => <MapIcon size={19} color={c} />} />} />
+        {j && shared ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingBottom: 10 }}>
+            <Chip tone="filter" label="Everyone" selected={who === null} onPress={() => pickWho(null)} />
+            {j.authors.map((author) => (
+              <Chip
+                key={author.id}
+                tone="filter"
+                label={firstName(author.displayName)}
+                count={wrote(author.id)}
+                selected={who === author.username}
+                onPress={() => pickWho(author.username)}
+                icon={<View style={{ marginLeft: -6, marginVertical: -3 }}><Avatar uri={author.avatarUrl} name={author.displayName} size={22} /></View>}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
       </View>
+      <PostingBanner journeyId={id} />
       {failed ? (
         <Problem message={messageFor(failed)} onRetry={retry} retrying={journey.isRefetching || summary.isRefetching || timeline.isRefetching} />
       ) : !j || !s || !entries ? (
@@ -107,14 +149,14 @@ export default function Timeline() {
       ) : entries.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 40 }}>
           <Txt variant="body" color="muted" center>
-            {j.viewer.isOwner ? 'Your story starts with the first entry.' : 'No entries yet. The first one will show up here.'}
+            {whoName ? `${whoName} hasn't added an entry yet.` : j.viewer.isOwner ? 'Your story starts with the first entry.' : 'No entries yet. The first one will show up here.'}
           </Txt>
-          {j.viewer.canAddEntry ? <Button label="Add the first entry" onPress={() => router.push(`/journey/${j.id}/add`)} style={{ alignSelf: 'center' }} /> : null}
+          {j.viewer.canAddEntry && !who ? <Button label="Add the first entry" onPress={() => router.push(`/journey/${j.id}/add`)} style={{ alignSelf: 'center' }} /> : null}
         </View>
       ) : (
         <List
           // A different opening point is a different list: it starts again at that entry.
-          key={anchor ?? 'start'}
+          key={`${who ?? 'everyone'}:${anchor ?? 'start'}`}
           listRef={list}
           data={entries}
           keyOf={(entry) => entry.id}
@@ -168,7 +210,7 @@ export default function Timeline() {
           }}
         />
       )}
-      {total > 3 ? (
+      {(who ? (j?.entryCount ?? 0) : total) > 3 ? (
         <View style={{ position: 'absolute', left: 16, bottom: Math.max(insets.bottom, 12) + 12 }}>
           <Button label="Jump to" size="lg" variant="ink" icon={(c) => <ListIcon size={19} color={c} />} onPress={() => setJumping(true)} />
         </View>
@@ -260,6 +302,7 @@ function EntryCard({ entry, fresh, showAuthor, onPress }: { entry: EntryResponse
         {cover ? (
           <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ height: 176 }}>
             {entry.media.length > 1 ? <Pill label={`1 / ${entry.media.length}`} style={{ position: 'absolute', top: 10, right: 10 }} /> : null}
+            {cover.kind === 'video' ? <ClipBadge seconds={cover.durationSeconds} style={{ position: 'absolute', left: 10, bottom: 10 }} /> : null}
           </Photo>
         ) : null}
         <Txt variant="headline" weight={800} style={{ marginTop: cover ? 8 : 2, marginHorizontal: 4 }}>

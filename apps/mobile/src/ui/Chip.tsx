@@ -14,10 +14,12 @@ type Props = {
   /** "choice" is for picking several (interests); "filter" is for one-of-many filters. */
   tone?: 'choice' | 'filter';
   icon?: ReactNode;
+  /** A number shown after the label, quieter than it: how many there are of this. */
+  count?: number;
 };
 
 /** A rounded, tappable label. */
-export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }: Props) {
+export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon, count }: Props) {
   const { colors } = useTheme();
   const filter = tone === 'filter';
   const bg = selected ? (filter ? colors.text : colors.fill) : colors.bg;
@@ -27,7 +29,7 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
       scaleTo={0.94}
       accessibilityRole={filter ? 'button' : 'checkbox'}
       accessibilityState={filter ? { selected: !!selected } : { checked: !!selected }}
-      accessibilityLabel={label}
+      accessibilityLabel={count === undefined ? label : `${label}, ${count}`}
       onPress={onPress}
       style={{
         flexDirection: 'row',
@@ -46,6 +48,11 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
       <Txt variant={filter ? 'note' : 'control'} weight={700} style={{ color: fg }}>
         {label}
       </Txt>
+      {count === undefined ? null : (
+        <Txt variant="small" weight={600} style={{ color: fg, opacity: 0.6 }}>
+          {count}
+        </Txt>
+      )}
     </Tap>
   );
 }

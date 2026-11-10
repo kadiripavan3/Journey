@@ -13,6 +13,7 @@ import { CommentsSheet } from '@/features/entries/CommentsSheet';
 import { entryEyebrow } from '@/features/entries/labels';
 import { MilestonePill } from '@/features/entries/MilestonePill';
 import { Reactions } from '@/features/entries/Reactions';
+import { ClipBadge } from '@/features/media/ClipPlayer';
 import { PhotoViewer } from '@/features/media/PhotoViewer';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { formatDay } from '@/lib/dates';
@@ -189,11 +190,12 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
         {shown ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
+            accessibilityLabel={shown.kind === 'video' ? (many ? `A clip and ${entry.media.length - 1} more. Open them full screen.` : 'Open the clip full screen') : many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
             onPress={() => setViewing(0)}
             style={{ height: 268, backgroundColor: colors.fill }}>
             <Image source={{ uri: shown.url }} style={{ flex: 1 }} contentFit="cover" transition={120} />
             {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
+            {shown.kind === 'video' ? <ClipBadge seconds={shown.durationSeconds} style={{ position: 'absolute', left: 12, bottom: 12 }} /> : null}
             {many ? (
               <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
                 {entry.media.map((m, i) => (

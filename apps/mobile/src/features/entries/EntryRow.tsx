@@ -6,6 +6,8 @@ import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';
 import { Txt } from '@/ui/Txt';
 
+import { ClipBadge } from '@/features/media/ClipPlayer';
+
 import { entryEyebrow, entryHeadline } from './labels';
 
 /** An entry as a row: small photo, label, title and a line of text. */
@@ -13,7 +15,11 @@ export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse;
   const cover = entry.media[0];
   return (
     <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-      {cover ? <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ width: photo, height: photo }} /> : null}
+      {cover ? (
+        <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ width: photo, height: photo, alignItems: 'center', justifyContent: 'center' }}>
+          {cover.kind === 'video' ? <ClipBadge compact /> : null}
+        </Photo>
+      ) : null}
       <View style={{ flex: 1 }}>
         <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
         <Txt variant="headline" numberOfLines={2} style={{ marginTop: 2 }}>
