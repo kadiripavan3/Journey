@@ -24,7 +24,22 @@ jest.mock('@supabase/auth-js', () => ({
     mockMade.push(options);
     return mockAuth;
   }),
+  // Supabase's own name for "nothing answered": no connection, or its servers are away.
+  isAuthRetryableFetchError: (error: { name?: string } | null) => error?.name === 'AuthRetryableFetchError',
 }));
+
+const mockNetwork = { isConnected: true };
+jest.mock('expo-network', () => ({ getNetworkStateAsync: () => Promise.resolve(mockNetwork) }));
+
+const mockSecure = new Map<string, string>();
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: (key: string) => Promise.resolve(mockSecure.get(key) ?? null),
+  setItemAsync: (key: string, value: string) => Promise.resolve(void mockSecure.set(key, value)),
+  deleteItemAsync: (key: string) => Promise.resolve(void mockSecure.delete(key)),
+}));
+
+const notAsked = { name: 'AuthRetryableFetchError', status: 0, message: 'Network request failed' };
+const refused = { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token' };
 
 describe('real sign-in (Supabase)', () => {
   const load = () => {
@@ -37,6 +52,8 @@ describe('real sign-in (Supabase)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockMade.length = 0;
+    mockSecure.clear();
+    mockNetwork.isConnected = true;
   });
 
   it('asks Supabase for a code and signs in with it; the session hears the token', async () => {
@@ -77,6 +94,76 @@ describe('real sign-in (Supabase)', () => {
     mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 400, message: 'refresh token revoked' } });
     await expect(service.renew()).resolves.toBeNull();
     expect(service.google).toBeNull(); // no client id in this build
+  });
+
+  it('opens the app without a connection for someone whose token has run out, and without asking for one that is still good', async () => {
+    const service = load();
+    const anHourAgo = Math.floor(Date.now() / 1000) - 3600;
+    mockSecure.set('journey.supabase', JSON.stringify({ access_token: 'run-out', refresh_token: 'r', expires_at: anHourAgo }));
+    mockNetwork.isConnected = false;
+    mockAuth.getSession.mockReturnValue(new Promise(() => {})); // Supabase keeps trying for half a minute
+    await expect(service.restore()).resolves.toBe('run-out');
+
+    // With a connection the fresh token is waited for; when Supabase couldn't be asked after all, the old one stands.
+    mockNetwork.isConnected = true;
+    mockAuth.getSession.mockResolvedValue({ data: { session: { access_token: 'fresh' } }, error: null });
+    await expect(service.restore()).resolves.toBe('fresh');
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: notAsked });
+    await expect(service.restore()).resolves.toBe('run-out');
+    // A real no (Supabase has removed the session by then): signed out.
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: refused });
+    await expect(service.restore()).resolves.toBeNull();
+
+    // Still good for a while: used as it is, and nobody is asked.
+    mockAuth.getSession.mockClear();
+    mockSecure.set('journey.supabase', JSON.stringify({ access_token: 'good', refresh_token: 'r', expires_at: anHourAgo + 7200 }));
+    await expect(service.restore()).resolves.toBe('good');
+    expect(mockAuth.getSession).not.toHaveBeenCalled();
+  });
+
+  it('does not wait long at start-up for a renewal on a slow connection', async () => {
+    const service = load();
+    mockSecure.set('journey.supabase', JSON.stringify({ access_token: 'run-out', refresh_token: 'r', expires_at: 1 }));
+    mockAuth.getSession.mockReturnValue(new Promise(() => {}));
+    jest.useFakeTimers();
+    try {
+      const restored = service.restore();
+      await jest.advanceTimersByTimeAsync(4000);
+      await expect(restored).resolves.toBe('run-out');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('tells a renewal that was refused from one that could not be asked for', async () => {
+    const service = load();
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: notAsked });
+    await expect(service.renew()).rejects.toMatchObject({ code: 'unreachable' });
+    mockAuth.refreshSession.mockResolvedValue({ data: { session: null }, error: refused });
+    await expect(service.renew()).resolves.toBeNull();
+  });
+
+  it('gives every request to Supabase a time limit, and passes "slow down" while renewing on as "try later"', async () => {
+    const service = load();
+    mockAuth.signInWithOtp.mockResolvedValue({ error: null });
+    await service.requestCode('maya@example.com'); // makes the client
+    const { fetch: limited } = mockMade[0] as { fetch: typeof fetch };
+    const real = jest.fn();
+    globalThis.fetch = real as unknown as typeof fetch;
+
+    real.mockResolvedValue(new Response(null, { status: 429 }));
+    expect((await limited('https://project.supabase.example/auth/v1/token?grant_type=refresh_token', { method: 'POST' })).status).toBe(503);
+    expect((await limited('https://project.supabase.example/auth/v1/otp', { method: 'POST' })).status).toBe(429);
+
+    jest.useFakeTimers();
+    try {
+      real.mockImplementation((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(new Error('stopped')))));
+      const asked = limited('https://project.supabase.example/auth/v1/otp', { method: 'POST' }).catch((error: Error) => error.message);
+      await jest.advanceTimersByTimeAsync(15_000);
+      await expect(asked).resolves.toBe('stopped');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('does nothing, and breaks nothing, in a build without the project settings', async () => {
@@ -120,5 +207,50 @@ describe('a token that ran out', () => {
     await expect(apiFetch('/v1/me')).rejects.toBeInstanceOf(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(signedOut).toBe(1);
+  });
+
+  it('keeps the person signed in when the renewal could not be asked for: a weak connection is not a no', async () => {
+    let signedOut = 0;
+    connectSession({ getToken: () => 'old', renew: () => Promise.reject(new ApiError(0, 'unreachable', 'No connection')), onSignedOut: () => (signedOut += 1) });
+    fetchMock.mockReturnValue(respond(401, { code: 'signed_out', detail: 'Please sign in again.' }));
+
+    await expect(apiFetch('/v1/me')).rejects.toMatchObject({ status: 0, code: 'unreachable' });
+    expect(signedOut).toBe(0);
+  });
+
+  it('is renewed once for all the requests that were refused together', async () => {
+    let token = 'old';
+    let renewals = 0;
+    let finish: (fresh: string) => void = () => {};
+    connectSession({
+      getToken: () => token,
+      renew: () => {
+        renewals += 1;
+        return new Promise<string>((resolve) => {
+          finish = (fresh) => {
+            token = fresh;
+            resolve(fresh);
+          };
+        });
+      },
+      onSignedOut: () => {},
+    });
+    fetchMock.mockImplementation((_url: string, init: RequestInit) =>
+      new Headers(init.headers).get('Authorization') === 'Bearer new' ? respond(200, { ok: true }) : respond(401, { code: 'signed_out', detail: 'Please sign in again.' }),
+    );
+
+    const all = Promise.all([apiFetch('/v1/me'), apiFetch('/v1/feed'), apiFetch('/v1/activity')]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    finish('new');
+    await expect(all).resolves.toEqual([{ ok: true }, { ok: true }, { ok: true }]);
+    expect(renewals).toBe(1);
+
+    // One that was sent with the old token just before the renewal, and refused after it: it takes the new
+    // token; there is no second renewal.
+    token = 'old';
+    const late = apiFetch('/v1/digest');
+    token = 'new';
+    await expect(late).resolves.toEqual({ ok: true });
+    expect(renewals).toBe(1);
   });
 });

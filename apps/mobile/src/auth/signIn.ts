@@ -16,9 +16,15 @@ export interface SignInService {
   apple: (() => Promise<void>) | null;
   /** Sign in with Google, or null where it isn't offered. */
   google: (() => Promise<void>) | null;
-  /** When the app starts: the token of whoever was signed in last time, renewed if it had run out. */
+  /**
+   * When the app starts: the token of whoever was signed in last time. It is renewed first when it had run
+   * out and there is a connection; without one the old token is handed back, so the app still opens.
+   */
   restore(): Promise<string | null>;
-  /** After the API refused a token: a fresh one, or null when the person has to sign in again. */
+  /**
+   * After the API refused a token: a fresh one, or null when the sign-in service refused as well and the
+   * person has to sign in again. It throws when the service couldn't be asked: that ends nothing.
+   */
   renew(): Promise<string | null>;
   /** Hears every new token (a sign-in, a renewal) and null when the sign-in ends. Returns how to stop listening. */
   onToken(listener: (token: string | null) => void): () => void;

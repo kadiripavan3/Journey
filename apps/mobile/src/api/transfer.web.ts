@@ -19,6 +19,9 @@ export async function sendFile(uri: string, target: Target, onProgress?: (fracti
     request.onload = () => resolve(request.status);
     request.onerror = () => resolve(0);
     request.onabort = () => resolve(0);
+    // A clip that hasn't gone up after a quarter of an hour isn't going to.
+    request.timeout = 15 * 60 * 1000;
+    request.ontimeout = () => resolve(0);
     request.send(body);
   });
 }

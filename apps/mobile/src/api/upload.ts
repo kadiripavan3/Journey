@@ -6,6 +6,8 @@ import { sendFile } from './transfer';
 
 /** The longest side a photo is uploaded at. Bigger photos are resized on the phone first. */
 const MAX_SIDE = 2048;
+/** How long one photo may take to go up, on the slowest connection worth waiting for. After that it counts as "nothing answered". */
+const PHOTO_TIME_LIMIT_MS = 2 * 60 * 1000;
 
 export type LocalPhoto = { uri: string; width: number; height: number };
 
@@ -28,10 +30,14 @@ export async function uploadPhoto(photo: LocalPhoto): Promise<string> {
   const target = await startUpload({ kind: 'photo', contentType: 'image/jpeg' });
   const file = await (await fetch(saved.uri)).blob();
   let response: Response;
+  const limit = new AbortController();
+  const timer = setTimeout(() => limit.abort(), PHOTO_TIME_LIMIT_MS);
   try {
-    response = await fetch(target.uploadUrl, { method: target.method, headers: target.headers, body: file });
+    response = await fetch(target.uploadUrl, { method: target.method, headers: target.headers, body: file, signal: limit.signal });
   } catch {
     throw new ApiError(0, 'unreachable', "A photo couldn't be uploaded. Check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
   }
   if (!response.ok) {
     throw new ApiError(response.status, 'upload_failed', "A photo couldn't be uploaded. Try again.");

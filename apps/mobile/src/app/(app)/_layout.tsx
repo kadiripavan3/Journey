@@ -1,7 +1,6 @@
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 
-import { watchConnection } from '@/api/online';
 import { useOnboarding } from '@/auth/onboarding';
 import { OutboxProvider } from '@/features/drafts/outbox';
 import { NewJourneyProvider } from '@/features/journeys/draft';
@@ -12,9 +11,6 @@ import { takeLink } from '@/lib/links';
 
 // A screen that breaks while drawing shows a friendly page with a way to try again.
 export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
-
-// Without a connection, what was loaded stays on screen and asking again waits until the phone is back.
-watchConnection();
 
 /** Everything a signed-in person sees: the four tabs, and the screens that open on top of them. */
 export default function AppLayout() {

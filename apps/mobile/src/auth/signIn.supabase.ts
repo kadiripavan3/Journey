@@ -1,11 +1,44 @@
-import { AuthClient, type AuthError, type GoTrueClient, type Session } from '@supabase/auth-js';
+import { AuthClient, type AuthError, type GoTrueClient, isAuthRetryableFetchError, type Session } from '@supabase/auth-js';
 import * as Crypto from 'expo-crypto';
+import * as Network from 'expo-network';
 import { AppState, Platform } from 'react-native';
 
-import { ApiError } from '@/api/fetcher';
+import { ApiError, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
 
 import type { SignInService } from './signIn';
 import { sessionStore } from './storage';
+
+const STORAGE_KEY = 'journey.supabase';
+/** When the app starts with a token that has run out: how long it waits for a fresh one before opening anyway. */
+const START_PATIENCE_MS = 4000;
+
+/**
+ * Every request to Supabase has a time limit. And "too many requests" while renewing is passed on as "try
+ * later": Supabase's client ends the sign-in over any plain no, and being asked to slow down isn't one.
+ */
+const fetchWithLimit: typeof fetch = async (input, init) => {
+  const limit = new AbortController();
+  const timer = setTimeout(() => limit.abort(), TIME_LIMIT_MS);
+  try {
+    const response = await fetch(input, { ...init, signal: limit.signal });
+    const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (response.status === 429 && address.includes('grant_type=refresh_token')) return new Response(null, { status: 503 });
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/** The sign-in as the phone kept it, read without asking anyone. */
+async function storedSession(): Promise<{ access_token: string; expires_at?: number } | null> {
+  try {
+    const stored: unknown = JSON.parse((await sessionStore.getItem(STORAGE_KEY)) ?? 'null');
+    const token = typeof stored === 'object' && stored !== null ? (stored as { access_token?: unknown }).access_token : null;
+    return typeof token === 'string' && token ? (stored as { access_token: string; expires_at?: number }) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Real sign-in, with Supabase Auth: a code by email, Apple on an iPhone, and Google once its client ids are
@@ -26,7 +59,8 @@ export function supabaseSignIn(): SignInService {
         url: `${url}/auth/v1`,
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         storage: sessionStore,
-        storageKey: 'journey.supabase',
+        storageKey: STORAGE_KEY,
+        fetch: fetchWithLimit,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
@@ -107,13 +141,39 @@ export function supabaseSignIn(): SignInService {
     google: googleWebClientId && Platform.OS !== 'web' ? withGoogle : null,
     async restore() {
       if (!url || !key) return null;
-      const { data } = await client().getSession(); // renews it first if it had run out
-      return data.session?.access_token ?? null;
+      // The phone's own copy first: someone who was signed in stays signed in, also without a connection.
+      const stored = await storedSession();
+      if (stored) {
+        const stillGood = !stored.expires_at || stored.expires_at * 1000 - Date.now() > 60_000;
+        if (stillGood) return stored.access_token;
+        const connected = await Network.getNetworkStateAsync()
+          .then((state) => state.isConnected !== false)
+          .catch(() => true);
+        // Run out, and nobody to ask: the app opens with what is on the phone. The token is renewed by the
+        // first request that needs it, once there is a connection.
+        if (!connected) return stored.access_token;
+      }
+      // Supabase renews a token that has run out before it answers. On a slow connection that isn't waited for.
+      const asked = client()
+        .getSession()
+        .then(({ data, error }) => ({ token: data.session?.access_token ?? null, couldNotAsk: !!error && isAuthRetryableFetchError(error) }));
+      let patience: ReturnType<typeof setTimeout> | undefined;
+      const slow = new Promise<null>((resolve) => {
+        patience = setTimeout(() => resolve(null), START_PATIENCE_MS);
+      });
+      const answer = stored ? await Promise.race([asked, slow]).catch(() => null) : await asked;
+      clearTimeout(patience);
+      if (answer?.token) return answer.token;
+      // No answer (yet), or Supabase couldn't be asked: the sign-in on the phone stands. A real no removes it.
+      return !answer || answer.couldNotAsk ? (stored?.access_token ?? null) : null;
     },
     async renew() {
       if (!url || !key) return null;
       const { data, error } = await client().refreshSession();
-      return error ? null : (data.session?.access_token ?? null);
+      if (data.session) return data.session.access_token;
+      // Supabase couldn't be asked (no connection, or it is away): that says nothing about the sign-in.
+      if (error && isAuthRetryableFetchError(error)) throw unreachable();
+      return null;
     },
     onToken(listener) {
       if (!url || !key) return () => {};

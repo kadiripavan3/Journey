@@ -6,7 +6,7 @@ import {
   PlusJakartaSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -14,8 +14,9 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { ApiError } from '@/api/fetcher';
+import { makeQueryClient } from '@/api/client';
 import { useGetMe } from '@/api/generated/journey';
+import { useOnline, watchConnection } from '@/api/online';
 import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
 import { useTelemetry } from '@/features/analytics/useTelemetry';
@@ -29,20 +30,11 @@ export { ErrorBoundary } from '@/features/navigation/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
 void loadAppearance();
+// Before the first request: without a connection, reading waits instead of failing.
+watchConnection();
 
 export default function RootLayout() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 30_000,
-            // Asking again won't fix "not allowed" or "not found".
-            retry: (failures, error) => !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failures < 2,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(makeQueryClient);
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
@@ -62,6 +54,7 @@ function App() {
   const session = useSession();
   const onboarding = useOnboarding();
   const signedIn = session.status === 'signedIn';
+  const online = useOnline();
   const me = useGetMe({ query: { enabled: signedIn } });
   // Counting and crash reports, in builds that have the keys for them. Elsewhere this does nothing.
   useTelemetry(signedIn ? me.data?.profile?.id : undefined);
@@ -73,8 +66,11 @@ function App() {
     PlusJakartaSans_800ExtraBold,
   });
 
-  const waitingForProfile = signedIn && me.isPending;
-  const ready = fontsLoaded && session.status !== 'loading' && !waitingForProfile;
+  // The app opens as soon as it knows who this is: from the API, or from what the phone kept of the last run
+  // (then without waiting for anyone). Only while the answer is on its way does the splash screen stay.
+  const known = me.data !== undefined;
+  const asking = signedIn && me.isPending && me.fetchStatus === 'fetching';
+  const ready = fontsLoaded && session.status !== 'loading' && !asking;
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
@@ -83,14 +79,15 @@ function App() {
   const base = theme.scheme === 'dark' ? DarkTheme : DefaultTheme;
   const navigationTheme = { ...base, colors: { ...base.colors, background: theme.colors.bg, card: theme.colors.bg, text: theme.colors.text } };
 
-  if (signedIn && me.isError) {
+  // Signed in, but nothing is known about the person and the API can't be asked: the one case with nothing to show.
+  if (signedIn && !known) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', gap: 12, padding: 32, backgroundColor: theme.colors.bg }}>
-        <Txt variant="title" center>
-          We can&apos;t reach Journey
+        <Txt variant="title" center accessibilityRole="header">
+          {online ? "We can't reach Journey" : "You're offline"}
         </Txt>
         <Txt color="muted" center>
-          Check your connection and try again. You&apos;re still signed in.
+          {online ? "Check your connection and try again. You're still signed in." : "Journey opens as soon as you're back online. You're still signed in."}
         </Txt>
         <Button label="Try again" block loading={me.isRefetching} onPress={() => void me.refetch()} style={{ marginTop: 12 }} />
         <Button label="Sign out" variant="quiet" block onPress={() => void session.signOut()} />
