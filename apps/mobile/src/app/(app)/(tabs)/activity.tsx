@@ -3,9 +3,10 @@ import { useCallback, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type ActivityItemResponse, useGetActivity, useMarkActivitySeen } from '@/api/generated/journey';
+import { type ActivityItemResponse, useGetActivity, useGetDigest, useMarkActivitySeen } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { timeAgo } from '@/lib/dates';
+import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Loading, Photo, Problem } from '@/ui/Bits';
@@ -26,6 +27,8 @@ export default function Activity() {
   const { colors } = useTheme();
   const activity = useGetActivity();
   const markSeen = useMarkActivitySeen();
+  const week = useGetDigest().data;
+  const router = useRouter();
   useRefetchOnFocus(activity.refetch);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [pulling, setPulling] = useState(false);
@@ -84,6 +87,25 @@ export default function Activity() {
           contentContainerStyle={{ paddingBottom: 130, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
+          {week && week.entryCount > 0 && filter === 'all' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`This week: ${plural(week.entryCount, 'new entry', 'new entries')} in ${plural(week.journeys.length, 'journey')}. Open the weekly digest.`}
+              onPress={() => router.push('/digest' as never)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, marginHorizontal: 16, padding: 14, borderRadius: 20, backgroundColor: colors.fill }}>
+              <Txt accessible={false} style={{ fontSize: 26, lineHeight: 32 }}>
+                🗞️
+              </Txt>
+              <View style={{ flex: 1 }}>
+                <Txt weight={800} style={{ fontSize: 15, lineHeight: 20 }}>
+                  This week in the journeys you follow
+                </Txt>
+                <Txt color="muted" style={{ fontSize: 13, lineHeight: 18 }}>
+                  {plural(week.entryCount, 'new entry', 'new entries')} in {plural(week.journeys.length, 'journey')}
+                </Txt>
+              </View>
+            </Pressable>
+          ) : null}
           {shown.length === 0 ? (
             <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
               <EmptyState

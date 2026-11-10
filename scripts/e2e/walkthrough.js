@@ -1,7 +1,7 @@
 // Walks through the app the way a new person would, in the web build, against the local API:
 // sign-up, following, Home, Discover, a journey and its story, starting a journey, posting and
 // editing an entry with photos, the profile, Activity, likes, comments, following a creator, search,
-// shared journeys (inviting a friend, and being invited), settings, completing a journey, reporting,
+// the weekly digest, sharing a link, shared journeys (inviting a friend, and being invited), settings, completing a journey, reporting,
 // blocking, and at the end deleting the account.
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
@@ -15,7 +15,7 @@ const IMG = path.join(__dirname, '../../design/hub/img');
   const [out, scheme] = process.argv.slice(2);
   const tag = Math.random().toString(36).slice(2, 7);
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: scheme });
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: scheme, permissions: ['clipboard-read', 'clipboard-write'] });
   const errors = [];
   let expectNotFound = false; // true while a blocked person's pages are meant to disappear
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -95,6 +95,12 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await T('Couch to 10K').first().click();
     await T('Read the story').waitFor();
     await shot('journey');
+    // Sharing: a browser has no share sheet, so the link is copied; the page behind it opens without signing in.
+    await R('button', { name: 'Share this journey' }).click();
+    await T('Link copied').waitFor();
+    const shared = await page.evaluate(() => navigator.clipboard.readText());
+    const sharePage = await fetch(shared);
+    if (!sharePage.ok || !(await sharePage.text()).includes('Couch to 10K')) throw new Error('the share page did not open: ' + shared);
     await R('button', { name: 'Follow', exact: true }).click();
     await T("You follow").waitFor();
     await shot('journey-followed');
@@ -216,6 +222,10 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await T(/started following you/).waitFor({ timeout: 20000 });
     await T(/liked/).waitFor();
     await shot('activity');
+    await T('This week in the journeys you follow').click();
+    await T("That's your week").waitFor();
+    await shot('digest');
+    await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Follow back' }).click();
     await R('button', { name: 'Follow back' }).waitFor({ state: 'detached', timeout: 20000 });
     await T(/liked/).click();

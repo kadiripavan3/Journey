@@ -189,6 +189,11 @@ export interface JourneyResponse {
   completedAt: string | null;
   /** @nullable */
   closingNote: string | null;
+  /**
+     * The web page to share: it opens for anyone, with or without the app. Null for a private journey.
+     * @nullable
+     */
+  shareUrl: string | null;
   owner: PersonResponse;
   /** Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared. */
   authors: PersonResponse[];
@@ -607,6 +612,25 @@ export interface DiscoverResponse {
   trending: JourneyResponse[];
   fresh: JourneyResponse[];
   completed: JourneyResponse[];
+}
+
+export interface DigestJourneyResponse {
+  journey: JourneyResponse;
+  newCount: number;
+  /** The newest of the week's entries */
+  latest: EntryResponse;
+}
+
+export interface DigestResponse {
+  from: string;
+  to: string;
+  /** How many entries the week brought, across all followed journeys */
+  entryCount: number;
+  /** The most liked entry of the week */
+  moment: EntryResponse | null;
+  journeys: DigestJourneyResponse[];
+  /** Followed journeys that were completed this week */
+  finished: JourneyResponse[];
 }
 
 export interface CategoryResponse {
@@ -5076,6 +5100,107 @@ export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetDiscoverQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDigestUrl = () => {
+
+
+
+
+  return `/v1/digest`
+}
+
+/**
+ * @summary This week in the journeys you follow
+ */
+export const getDigest = async ( options?: Parameters<typeof apiFetch>[1]): Promise<DigestResponse> => {
+
+  return apiFetch<DigestResponse>(getGetDigestUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDigestQueryKey = () => {
+    return [
+    `/v1/digest`
+    ] as const;
+    }
+
+
+export const getGetDigestQueryOptions = <TData = Awaited<ReturnType<typeof getDigest>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDigestQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDigest>>> = ({ signal }) => getDigest({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDigestQueryResult = NonNullable<Awaited<ReturnType<typeof getDigest>>>
+export type GetDigestQueryError = unknown
+
+
+/** @summary This week in the journeys you follow */
+export function useGetDigest<TData = Awaited<ReturnType<typeof getDigest>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDigest>>,
+          TError,
+          Awaited<ReturnType<typeof getDigest>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary This week in the journeys you follow */
+export function useGetDigest<TData = Awaited<ReturnType<typeof getDigest>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDigest>>,
+          TError,
+          Awaited<ReturnType<typeof getDigest>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary This week in the journeys you follow */
+export function useGetDigest<TData = Awaited<ReturnType<typeof getDigest>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary This week in the journeys you follow */
+export function useGetDigest<TData = Awaited<ReturnType<typeof getDigest>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDigest>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDigestQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

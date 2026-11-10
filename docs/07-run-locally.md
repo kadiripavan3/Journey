@@ -14,6 +14,8 @@ The app opens with **ten sample creators and their journeys**, so there is somet
 - **People:** like and comment on entries (with replies), creator profiles, following people, followers and following, and Activity with a dot on its tab
 - **Finishing:** challenge journeys show their progress and a grid of days; complete a journey with a closing note and get its recap; change a journey's details later
 - **Finding:** search for journeys and people, with popular tags
+- **Sharing:** every public or unlisted journey has a link to a web page anyone can open. On your Mac the link uses the Mac's own address, so it opens only on the same Wi-Fi until the API is hosted
+- **The weekly digest:** "This week in the journeys you follow", from the card at the top of Activity
 - **Together:** shared journeys. Invite people who follow you to add their own entries, accept an invitation, see who writes in a journey, leave or remove someone
 - **You:** your profile with your journeys, editing it (photo, name, username, bio, link, interests), and Settings: notifications, privacy, appearance, your account, and deleting it
 - **Safety:** report a journey, an entry, a comment or a person; block and unblock people
@@ -21,7 +23,7 @@ The app opens with **ten sample creators and their journeys**, so there is somet
 
 **Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. Invite that follower to one of your journeys (the ⋯ menu, then People on this journey) and they accept and add an entry. That is only so you can see likes, comments, Activity and shared journeys work with one phone.
 
-Not built yet: the map, the weekly digest, share links, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
+Not built yet: the map, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
 
 ## One-time setup
 
@@ -96,7 +98,7 @@ We build local first (decided on 10 Nov 2026). Each outside service has a stand-
 | Photo storage | Photos are saved in a folder next to the API (`apps/api/.dev/media`) and served by it |
 | Video | Arrives with the Video milestone: clips stored and played as plain files |
 | Push notifications | Shown in the Activity inbox only |
-| Email | Written to the API's log |
+| Email and the weekly digest message | Written to the API's log |
 | Other people | Ten sample creators, added to an empty database. They react when you post, as described above |
 
 Switching a stand-in for the real service is a setting in the API. The app and the rest of the API don't change.

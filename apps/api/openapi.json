@@ -1333,6 +1333,25 @@
         }
       }
     },
+    "/v1/digest" : {
+      "get" : {
+        "tags" : [ "Weekly digest" ],
+        "summary" : "This week in the journeys you follow",
+        "operationId" : "getDigest",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DigestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/catalog" : {
       "get" : {
         "tags" : [ "catalog" ],
@@ -1679,6 +1698,10 @@
           "closingNote" : {
             "type" : [ "string", "null" ]
           },
+          "shareUrl" : {
+            "type" : [ "string", "null" ],
+            "description" : "The web page to share: it opens for anyone, with or without the app. Null for a private journey."
+          },
           "owner" : {
             "$ref" : "#/components/schemas/PersonResponse"
           },
@@ -1693,7 +1716,7 @@
             "$ref" : "#/components/schemas/JourneyViewerResponse"
           }
         },
-        "required" : [ "authors", "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
+        "required" : [ "authors", "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
       },
       "JourneyViewerResponse" : {
         "type" : "object",
@@ -2481,6 +2504,63 @@
           }
         },
         "required" : [ "completed", "fresh", "trending" ]
+      },
+      "DigestJourneyResponse" : {
+        "type" : "object",
+        "properties" : {
+          "journey" : {
+            "$ref" : "#/components/schemas/JourneyResponse"
+          },
+          "newCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "latest" : {
+            "$ref" : "#/components/schemas/EntryResponse",
+            "description" : "The newest of the week's entries"
+          }
+        },
+        "required" : [ "journey", "latest", "newCount" ]
+      },
+      "DigestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "from" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "to" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries the week brought, across all followed journeys"
+          },
+          "moment" : {
+            "description" : "The most liked entry of the week",
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/EntryResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "journeys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DigestJourneyResponse"
+            }
+          },
+          "finished" : {
+            "type" : "array",
+            "description" : "Followed journeys that were completed this week",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          }
+        },
+        "required" : [ "entryCount", "finished", "from", "journeys", "moment", "to" ]
       },
       "CatalogResponse" : {
         "type" : "object",

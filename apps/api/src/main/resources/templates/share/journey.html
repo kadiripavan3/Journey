@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${journey.title + ' · Journey'}">Journey</title>
+  <meta name="description" th:content="${journey.description}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Journey">
+  <meta property="og:title" th:content="${journey.title}">
+  <meta property="og:description" th:content="${journey.description != '' ? journey.description : journey.progressLabel + ' · by ' + journey.owner.displayName}">
+  <meta property="og:image" th:if="${journey.coverUrl != null}" th:content="${journey.coverUrl}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" th:href="@{/share/tokens.css}">
+  <link rel="stylesheet" th:href="@{/share/page.css}">
+</head>
+<body>
+  <header class="cover" th:style="${journey.coverUrl != null} ? 'background-image:url(' + ${journey.coverUrl} + ')' : ''">
+    <span class="brand">Journey</span>
+  </header>
+  <main>
+    <h1 th:text="${journey.title}">Title</h1>
+    <p class="lede" th:if="${journey.description != ''}" th:text="${journey.description}">Description</p>
+    <p class="by">
+      <span th:each="author, it : ${journey.authors}"><span th:if="${!it.first}" th:text="${it.last ? ' and ' : ', '}"></span><b th:text="${author.displayName}">Name</b></span>
+    </p>
+    <ul class="stats">
+      <li><b th:text="${journey.progressLabel}">Day 14</b><span th:text="${journey.status == 'completed' ? 'Completed' : journey.status == 'paused' ? 'Paused' : 'Active'}">Active</span></li>
+      <li><b th:text="${journey.entryCount}">23</b><span th:text="${journey.entryCount == 1 ? 'entry' : 'entries'}">entries</span></li>
+      <li><b th:text="${journey.followerCount}">12</b><span>following</span></li>
+    </ul>
+    <a class="cta" th:href="${appLink}">Follow in the app</a>
+    <p class="hint">New entries arrive in the app as they're posted. This page is the story so far.</p>
+
+    <p class="empty" th:if="${#lists.isEmpty(entries)}">No entries yet. The story starts soon.</p>
+    <article th:each="entry : ${entries}" th:id="${'e-' + entry.id}">
+      <img th:if="${!#lists.isEmpty(entry.media)}" th:src="${entry.media[0].url}" alt="" loading="lazy">
+      <p class="eyebrow" th:text="${entry.placeName != null ? entry.label + ' · ' + entry.placeName : entry.label}">Day 1</p>
+      <h2 th:if="${entry.title != ''}" th:text="${entry.title}">Title</h2>
+      <p class="body" th:if="${entry.body != ''}" th:text="${entry.body}">Body</p>
+      <p class="meta" th:text="${entry.author.displayName}">Author</p>
+    </article>
+
+    <p class="note" th:if="${journey.closingNote != null and journey.closingNote != ''}" th:text="${'“' + journey.closingNote + '”'}">Closing note</p>
+  </main>
+  <footer>Journey. Follow the journey, not just the moment.</footer>
+</body>
+</html>

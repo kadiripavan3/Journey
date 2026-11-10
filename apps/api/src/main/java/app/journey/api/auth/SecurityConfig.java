@@ -46,6 +46,8 @@ class SecurityConfig {
                 requests
                     .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
+                    .requestMatchers("/j/**", "/share/**")
+                    .permitAll() // the public web pages behind shared links, and their stylesheet
                     .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
                     .permitAll() // these controllers only exist in local mode; uploads carry their own token
                     .requestMatchers("/v1/**")

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Sparkles, Trash2, Users } from 'lucide-react-native';
+import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Share2, Sparkles, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { type JourneyResponse, useDeleteJourney, useGetJourney, useGetTimeline, 
 import { useRefreshAll } from '@/api/refresh';
 import { useCatalog } from '@/journey/catalog';
 import { compact, plural } from '@/lib/plural';
+import { shareLink } from '@/lib/share';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Loading, Photo, Pill, Problem } from '@/ui/Bits';
@@ -37,6 +38,7 @@ export default function JourneyPage() {
   const timeline = useGetTimeline(id);
   const [menu, setMenu] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   if (journey.isPending) {
     return (
@@ -175,7 +177,25 @@ export default function JourneyPage() {
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
         <RoundButton tone="photo" label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
-        <RoundButton tone="photo" label="Journey options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {j.shareUrl ? (
+            <RoundButton
+              tone="photo"
+              label="Share this journey"
+              icon={(c) => <Share2 size={19} color={c} />}
+              onPress={() => {
+                const url = j.shareUrl;
+                if (!url) return;
+                void shareLink(j.title, url).then((result) => {
+                  if (result !== 'copied') return;
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2500);
+                });
+              }}
+            />
+          ) : null}
+          <RoundButton tone="photo" label="Journey options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />
+        </View>
       </View>
 
       <GlassBar
@@ -208,6 +228,14 @@ export default function JourneyPage() {
           <FollowButton journey={j} size="md" />
         )}
       </GlassBar>
+
+      {copied ? (
+        <View accessibilityLiveRegion="polite" style={{ position: 'absolute', alignSelf: 'center', bottom: Math.max(insets.bottom, 12) + 96, paddingVertical: 11, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.text }}>
+          <Txt weight={700} style={{ fontSize: 13.5, lineHeight: 18, color: colors.bg }}>
+            Link copied
+          </Txt>
+        </View>
+      ) : null}
 
       {j.viewer.isOwner ? (
         <OwnerMenu journey={j} visible={menu} onClose={() => setMenu(false)} />

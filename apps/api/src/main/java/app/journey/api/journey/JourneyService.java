@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /** The rules for journeys: who may see, change and follow them. */
 @Service
@@ -46,6 +47,7 @@ public class JourneyService {
       @Schema(nullable = true) Instant lastEntryAt,
       @Schema(nullable = true) Instant completedAt,
       @Schema(nullable = true) String closingNote,
+      @Schema(nullable = true, description = "The web page to share: it opens for anyone, with or without the app. Null for a private journey.") String shareUrl,
       PersonResponse owner,
       @Schema(description = "Everyone who writes in this journey: the owner first, then the friends who joined. More than one means it is shared.") List<PersonResponse> authors,
       JourneyViewerResponse viewer) {}
@@ -282,6 +284,7 @@ public class JourneyService {
         j.id(), j.title(), j.description(), j.category(), j.template(), j.labelStyle(), j.visibility(), j.status(), j.tags(),
         media.urlFor(j.coverKey()), j.startDate(), j.targetDays(), latest, progressLabel(j, latest), j.entryCount(), j.followerCount(),
         j.lastEntryAt(), j.completedAt(), j.closingNote(),
+        "private".equals(j.visibility()) ? null : ServletUriComponentsBuilder.fromCurrentContextPath().path("/j/").path(j.id().toString()).toUriString(),
         owner, authors,
         new JourneyViewerResponse(j.ownerId().equals(viewer), j.following(), canAddEntry(j, viewer), j.member(), j.lastReadAt()));
   }

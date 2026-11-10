@@ -36,7 +36,8 @@ Progress:
 - [x] **Search, settings and safety** (10 Nov 2026; from M5 and M6): search for journeys and people, settings (notifications, privacy, appearance, account), deleting your account, report and block
 - [x] **Finishing a journey** (10 Nov 2026; from M6): challenge progress, completing a journey with a closing note, its recap, and changing a journey's details
 - [x] **Shared journeys** (10 Nov 2026; from M2 and M4): invite up to three followers, join by accepting, write together, people and roles, on every author's profile. Not yet: the one-time link for a friend who isn't on Journey (it comes with share links)
-- [ ] Still to build, in this order: the map; the weekly digest; share pages; short clips; offline drafts and the upload queue; asking for notifications (with push); a place for a reviewer to handle reports; the loading and offline states from the designs; then connecting the real services (M7)
+- [x] **The weekly digest and share links** (10 Nov 2026; from M4 and M5): "This week in the journeys you follow" with a weekly message (written to the log until push and email are connected), and a public web page for every public or unlisted journey, with link previews
+- [ ] Still to build: the map (entries need a place with coordinates first); short clips (needs the first real build on a phone); offline drafts and the upload queue; asking for notifications (with push); the one-time link that invites a friend who isn't on Journey; a place for a reviewer to handle reports; the loading and offline states from the designs; then connecting the real services (M7)
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|

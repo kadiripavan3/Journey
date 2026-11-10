@@ -2,11 +2,12 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Camera, X } from 'lucide-react-native';
+import { Camera, Share2, X } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetJourney } from '@/api/generated/journey';
+import { shareLink } from '@/lib/share';
 import { darkTheme } from '@/theme';
 import { Loading, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
@@ -15,12 +16,12 @@ import { Txt } from '@/ui/Txt';
 
 const STAGE = '#08080A';
 const WHO = {
-  public: { pill: 'Public', title: 'is live', note: "Add your first entry to get it going. Once it has a cover and three entries, people can find it in Discover." },
-  unlisted: { pill: 'Unlisted', title: 'is ready', note: 'Add your first entry to get it going. Only people you give the link to will see it.' },
+  public: { pill: 'Public', title: 'is live', note: 'Share the link so friends can follow from day one. Once it has a cover and three entries, people can also find it in Discover.' },
+  unlisted: { pill: 'Unlisted', title: 'is ready', note: 'Only people you give the link to will see it. Share it with the ones you want along.' },
   private: { pill: 'Private', title: 'is ready', note: 'Add your first entry to get it going. Only you can see it until you decide to publish.' },
 } as const;
 
-/** 7.7 Journey is live: the journey exists. The next step is the first entry. Sharing the link arrives with share pages. */
+/** 7.7 Journey is live: the journey exists and has a link. Two next steps: add the first entry, or share the link. */
 export default function JourneyLive() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -53,7 +54,11 @@ export default function JourneyLive() {
             </Txt>
             <Txt style={{ fontSize: 15.5, lineHeight: 23, color: darkTheme.colors.onPhoto, opacity: 0.84, marginBottom: 8 }}>{WHO[j.visibility].note}</Txt>
             <Button label="Add your first entry" size="lg" block icon={(c) => <Camera size={19} color={c} strokeWidth={2.4} />} onPress={() => router.replace(`/journey/${id}/add` as never)} />
-            <Button label="Maybe later" size="lg" variant="glass" block onPress={leave} />
+            {j.shareUrl ? (
+              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => j.shareUrl && void shareLink(j.title, j.shareUrl)} />
+            ) : (
+              <Button label="Maybe later" size="lg" variant="glass" block onPress={leave} />
+            )}
           </View>
         )}
       </SafeAreaView>

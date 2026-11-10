@@ -57,7 +57,7 @@ jobs:
         run: |
           npm run theme
           npm run api:generate
-          git diff --exit-code -- src/theme/tokens.ts src/api/generated
+          git diff --exit-code -- src/theme/tokens.ts src/api/generated ../api/src/main/resources/static/share/tokens.css
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

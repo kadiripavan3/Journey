@@ -60,4 +60,20 @@ export const type = ${JSON.stringify(type, null, 2)} as const;
 `;
 
 writeFileSync(join(here, '../src/theme/tokens.ts'), out);
+
+// The public share pages (served by the API) use the same colours, as CSS variables.
+const kebab = (key) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).replace(/([a-z])([0-9])/g, '$1-$2');
+const cssVars = (mode) => Object.entries(palette(mode)).map(([key, value]) => `  --${kebab(key)}: ${value};`).join('\n');
+const css = `/* Generated from design/tokens.json by apps/mobile/scripts/build-theme.mjs. Do not edit: change the tokens and run \`npm run theme\`. */
+:root {
+${cssVars('light')}
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+${cssVars('dark').replace(/^/gm, '  ')}
+  }
+}
+`;
+writeFileSync(join(here, '../../api/src/main/resources/static/share/tokens.css'), css);
 console.log(`Theme written with the ${accentName} accent.`);

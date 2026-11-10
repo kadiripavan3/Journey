@@ -57,7 +57,7 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 
 - **Local first:** every outside service has a stand-in behind a switch in the API (`journey.auth.mode` and friends). Build features against the stand-ins; the real services are connected in the last milestone. The app must work with any email and the code 123456.
 - **API change:** write the test, then run `UPDATE_OPENAPI=1 ./mvnw test` in `apps/api` and `npm run api:generate` in `apps/mobile`. Commit `openapi.json` and the generated client with the change.
-- **Token change:** run `npm run theme` in `apps/mobile` and rebuild the hub.
+- **Token change:** run `npm run theme` in `apps/mobile` (it writes the app's theme and the share page's `tokens.css` in the API) and rebuild the hub.
 - **Screens:** build each one from its design in `design/hub/src/screens/`, using the components in `apps/mobile/src/ui` and only theme values. Check it in the web build with Playwright (`npx expo export -p web`, serve `dist`, run the API with the `local` profile), in light and dark.
 - **In this cloud environment** `npx expo install`, `expo lint` and `expo export` need `EXPO_OFFLINE=1`, because Expo's version service is not on the network allowlist.
 - **Check the app in a browser** after changing screens. With the API running (`cd apps/api && ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=local`):
