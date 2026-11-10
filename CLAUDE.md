@@ -137,6 +137,12 @@ How screens get and keep their data:
 
 To add a screen: build it in `src/app` from its design, with components from `src/ui` and `src/features`. A piece used by one screen stays in that screen's file; the second screen that needs it moves it to `features/<name>/` (or to `ui/` if it knows nothing about the domain). Add the screen to the walk-through.
 
+How the screens are stacked (`src/app/(app)/_layout.tsx`):
+
+- **The tabs are always underneath** (`unstable_settings.anchor`): a link or a notification that opens the app straight onto a journey or an entry still has Home to go back to. An address without a screen gets `src/app/+not-found.tsx`.
+- **No screen is a full-screen modal.** The entry viewer is an ordinary screen that fades in, so what it opens (a profile, the review page) is an ordinary screen on top of it. The composer and Edit profile are sheets on an iPhone; the composer can't be swiped away (`gestureEnabled: false`).
+- **Offline, a strip across the top says so** (`features/navigation/OfflineStrip`). It is part of the layout and moves the screens down, so it covers nothing. A screen that says "you're offline" in its own words is listed in `SAYS_SO_ITSELF`; a screen whose top is a photo or the dark stage in `DARK_ON_TOP`. A like or a follow that couldn't be sent shows there for a few seconds (`changeNotSent` in `api/online.ts`).
+
 Component tests use React Native Testing Library (`render` and presses are awaited). `npm run check` runs them. In this cloud environment run it as `EXPO_OFFLINE=1 npm run check`.
 
 The walk-through reads `API_URL` and `WEB_URL` when the API and the web build are not on 8080 and 8081; build the web app with `EXPO_PUBLIC_API_URL` set to the same API address.

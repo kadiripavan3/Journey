@@ -61,7 +61,20 @@ export function cacheFor(client: QueryClient) {
     client.invalidateQueries({
       predicate: (query) => query.queryKey.some((part) => typeof part === 'string' && addresses.some((address) => part.startsWith(address))),
     });
-  const put = (is: (value: Bag) => boolean, next: { id: string }) => client.setQueriesData<unknown>({}, (data: unknown) => swap(data, is, next));
+  /**
+   * Writes the object into every loaded answer that holds the old one. An answer that doesn't hold it is not
+   * touched at all, and a list that does is no fresher for it: whether it still has to be fetched again
+   * stays as it was. Only the object's own page ("this journey", "this entry") counts as just read.
+   */
+  const put = (is: (value: Bag) => boolean, next: { id: string }) => {
+    for (const query of client.getQueryCache().getAll()) {
+      const data: unknown = query.state.data;
+      const swapped = swap(data, is, next);
+      if (swapped === data) continue;
+      if (swapped === next) client.setQueryData(query.queryKey, swapped);
+      else query.setState({ data: swapped });
+    }
+  };
   const putJourney = (journey: JourneyResponse) => put(isJourney, journey);
   const putEntry = (entry: EntryResponse) => put(isEntry, entry);
   /** Asks for a journey again and shows the answer everywhere: its counts, cover and progress changed. */

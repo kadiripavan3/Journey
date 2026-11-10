@@ -59,6 +59,26 @@ describe('what the app does with loaded data after a change', () => {
     expect(client.getQueryData(['/v1/discover'])).toBe(discover);
   });
 
+  it('does not call a list fresh because a liked entry was written into it, or because it was looked through', () => {
+    const client = newClient();
+    const longAgo = Date.now() - 10 * 60 * 1000;
+    // A story waiting to be fetched again, an old list that has nothing to do with the entry, and the entry's own page.
+    client.setQueryData(['infinite', '/v1/journeys/j1/entries'], { pages: [{ items: [entry('e1', 2)], nextCursor: null }], pageParams: [undefined] }, { updatedAt: longAgo });
+    client.setQueryData(['/v1/discover'], { trending: [journey('j1', 4)] }, { updatedAt: longAgo });
+    client.setQueryData(['/v1/entries/e1'], entry('e1', 2), { updatedAt: longAgo });
+    void client.invalidateQueries({ queryKey: ['infinite', '/v1/journeys/j1/entries'], refetchType: 'none' });
+
+    cacheFor(client).entryReacted(entry('e1', 3));
+
+    // The story shows the new count, and still has to be fetched again; it is as old as it was.
+    expect(client.getQueryData<{ pages: { items: EntryResponse[] }[] }>(['infinite', '/v1/journeys/j1/entries'])?.pages[0]?.items[0]?.likeCount).toBe(3);
+    expect(client.getQueryState(['infinite', '/v1/journeys/j1/entries'])).toMatchObject({ isInvalidated: true, dataUpdatedAt: longAgo });
+    // Discover didn't hold the entry: its age is untouched, so it is fetched again when it is opened.
+    expect(client.getQueryState(['/v1/discover'])?.dataUpdatedAt).toBe(longAgo);
+    // The entry's own page is what the API just sent: that one is fresh.
+    expect(client.getQueryState(['/v1/entries/e1'])?.dataUpdatedAt).toBeGreaterThan(longAgo);
+  });
+
   it('fetches everything again after a block, because a block changes what can be seen everywhere', async () => {
     const client = newClient();
     client.setQueryData(['/v1/discover'], { trending: [] });

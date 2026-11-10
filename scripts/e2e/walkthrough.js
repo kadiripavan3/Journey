@@ -729,6 +729,76 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Back' }).click();
   });
 
+  // [foundations] A link that opens the app cold, an address the app doesn't know, and a cold start without a
+  // connection. Each of them loads the app afresh, so this comes after everything that reads what was loaded
+  // before. For "no connection" the app's own files are still on the phone (this script answers for them)
+  // and everything else is gone.
+  await step('offline-start', async () => {
+    const mine = await page.evaluate(() => localStorage.getItem('journey.session'));
+    const notebook = await api(mine, 'POST', '/v1/journeys', { title: 'Notes without a signal', template: 'trip', startDate: new Date().toISOString().slice(0, 10), visibility: 'public' });
+    // Opened straight onto a story, as a link or a notification does: the tabs are underneath, so Back lands on Home.
+    await page.goto(`${WEB_URL}/journey/${notebook.id}/timeline`);
+    await T('Notes without a signal').waitFor({ timeout: 20000 });
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Find a journey' }).waitFor();
+    // An address the app has no screen for says so in its own words, and offers Home.
+    await page.goto(`${WEB_URL}/nothing/here`);
+    await T("There's nothing at this address").waitFor({ timeout: 20000 });
+    await shot('not-found');
+    await R('button', { name: 'Go to Home' }).click();
+    await R('button', { name: 'Find a journey' }).waitFor();
+    // The journey is read once with a connection. A moment later the phone has its own copy of what was read.
+    await R('tab', { name: 'You' }).click();
+    await T('Notes without a signal', { exact: true }).click();
+    await T('Your journey').waitFor();
+    await page.waitForFunction((id) => { const kept = localStorage.getItem('journey.kept.v1') || ''; return kept.includes(`/v1/journeys/${id}/summary`) && kept.includes('/v1/feed'); }, notebook.id, { timeout: 15000 });
+
+    const installed = async (route) => {
+      const file = await fetch(route.request().url());
+      await route.fulfill({ status: file.status, headers: { 'content-type': file.headers.get('content-type') || 'application/octet-stream' }, body: Buffer.from(await file.arrayBuffer()) });
+    };
+    // (A page this script answered for counts as "from elsewhere" to the browser, which then wants a
+    // permission before that page may talk to an API on this computer again, once it is back online.)
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write', 'local-network-access']);
+    await page.route(`${WEB_URL}/**`, installed);
+    const errorsBefore = errors.length;
+    await page.context().setOffline(true);
+    await page.goto(`${WEB_URL}/`);
+    // The app opens on Home with what was read, and says it is offline in a strip that covers nothing.
+    await R('button', { name: 'Find a journey' }).waitFor({ timeout: 20000 });
+    await T("You're offline").waitFor();
+    if (await page.getByText("We can't reach Journey").count()) throw new Error('the app says it cannot be reached although it opened from what the phone kept');
+    await shot('offline-start-home');
+    // A screen with a photo on top: the strip is dark there.
+    await R('tab', { name: 'You' }).click();
+    await T('Notes without a signal', { exact: true }).click();
+    await T('Your journey').waitFor();
+    await shot('offline-journey');
+    // The composer opens for a journey the phone knows. It says "offline" in its own words, so the strip stays away.
+    await R('button', { name: 'Entry', exact: true }).click();
+    await T('New entry').waitFor();
+    await T(/^You.re offline\. Post it anyway/).waitFor();
+    if (await page.getByText("Showing what's saved on this phone").count()) throw new Error('the offline strip is on the composer, which says it already');
+    await L('Title, optional').fill('Written in a tunnel');
+    await shot('offline-composer');
+    await R('button', { name: 'Post' }).click();
+    await T(/^Saved: "Written in a tunnel"/).waitFor();
+    await T("You're offline").waitFor();
+    await shot('offline-story');
+    await R('button', { name: /Open drafts and uploads/ }).click();
+    await T('Waiting to upload').waitFor();
+    await T('Waiting for a connection').waitFor();
+    await shot('offline-uploads');
+    // Back online, what was written goes up by itself.
+    await page.context().setOffline(false);
+    await page.unroute(`${WEB_URL}/**`, installed);
+    // Pictures that couldn't load without a connection are not errors of the app.
+    for (let i = errors.length - 1; i >= errorsBefore; i -= 1) if (/ERR_INTERNET_DISCONNECTED/.test(errors[i])) errors.splice(i, 1);
+    await T('Nothing waiting').waitFor({ timeout: 30000 });
+    await R('button', { name: 'Back' }).click();
+    await page.getByRole('button', { name: /^Written in a tunnel$/ }).last().waitFor({ timeout: 20000 });
+  });
+
   await step('invite-link', async () => {
     // A third person sends the new person a one-time link. Opening it in the app shows the invitation; yes joins.
     // (Opening a link loads the app afresh, which is why this comes after everything that reads what was loaded before.)
