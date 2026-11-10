@@ -7,7 +7,7 @@ import { type EntryResponse, useGetJourney, useGetJourneySummary, useGetMe, useG
 import { isGone, loadState } from '@/lib/loading';
 import { firstName } from '@/lib/names';
 
-import { loadedDays, rowOf, type StoryRow, storyRows } from './rows';
+import { rowOf, type StoryRow, storyRows } from './rows';
 
 /** What was new when the screen opened. Fixed then, so the markers stay while the person reads. */
 type Opened = { since: string | null; newCount: number; firstNew: string | null };
@@ -119,8 +119,5 @@ export function useStory(id: string, list: RefObject<FlashListRef<StoryRow> | nu
     },
 
     jumpTo,
-    /** The days that are loaded, newest first, and whether that is every day of the story. */
-    days: rows ? loadedDays(rows) : [],
-    everyDay: !!timeline.data && !timeline.hasNextPage && !timeline.hasPreviousPage && !who,
   };
 }

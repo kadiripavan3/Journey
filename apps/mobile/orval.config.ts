@@ -12,6 +12,7 @@ const PAGED = [
   'getInvitations',
   'getComments',
   'getTimeline',
+  'getStoryDays',
   'getFeed',
 ];
 

@@ -795,8 +795,11 @@ export interface TimelinePageResponse {
 
 export interface StoryDayResponse {
   happenedOn: string;
-  /** "Day 14"; counted from the journey's start date */
-  dayNumber: number;
+  /**
+     * "Day 14", for a journey that counts its days; null for one told in parts
+     * @nullable
+     */
+  label: string | null;
   /**
      * Where the day's first entry with a place was
      * @nullable
@@ -6745,12 +6748,91 @@ export const getStoryDays = async (journeyId: string,
 
 
 
+export const getGetStoryDaysInfiniteQueryKey = (journeyId: string,
+    params?: GetStoryDaysParams,) => {
+    return [
+    'infinite', `/v1/journeys/${journeyId}/days`, ...(params ? [params] : [])
+    ] as const;
+    }
+
 export const getGetStoryDaysQueryKey = (journeyId: string,
     params?: GetStoryDaysParams,) => {
     return [
     `/v1/journeys/${journeyId}/days`, ...(params ? [params] : [])
     ] as const;
     }
+
+
+export const getGetStoryDaysInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getStoryDays>>, GetStoryDaysParams['cursor']>, TError = unknown>(journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStoryDaysInfiniteQueryKey(journeyId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStoryDays>>, QueryKey, GetStoryDaysParams['cursor']> = ({ signal, pageParam }) => getStoryDays(journeyId,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStoryDaysInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getStoryDays>>>
+export type GetStoryDaysInfiniteQueryError = unknown
+
+
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDaysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getStoryDays>>, GetStoryDaysParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params: undefined |  GetStoryDaysParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStoryDays>>,
+          TError,
+          Awaited<ReturnType<typeof getStoryDays>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDaysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getStoryDays>>, GetStoryDaysParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStoryDays>>,
+          TError,
+          Awaited<ReturnType<typeof getStoryDays>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDaysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getStoryDays>>, GetStoryDaysParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The days of a journey's story that have entries, newest first, for "Jump to" */
+export function useGetStoryDaysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getStoryDays>>, GetStoryDaysParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetStoryDaysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getStoryDays>>, TError, TData, QueryKey, GetStoryDaysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStoryDaysInfiniteQueryOptions(journeyId,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
 
 
 export const getGetStoryDaysQueryOptions = <TData = Awaited<ReturnType<typeof getStoryDays>>, TError = unknown>(journeyId: string,

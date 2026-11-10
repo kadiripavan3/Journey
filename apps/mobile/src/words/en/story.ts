@@ -26,9 +26,12 @@ export const story = {
     resume: 'Continue where you left off',
     start: 'Start from the beginning',
     newest: 'Newest entry',
-    milestones: 'Milestones',
+    highlights: 'Highlights',
+    /** What a screen reader says for a highlight: its day and its title. */
+    highlightSpoken: (label: string, title: string) => (title ? `${label}. ${title}` : label),
     days: 'Days',
-    daysAround: 'Days around here',
+    /** Under a long list of days: loads the days before the ones shown. */
+    earlier: 'Earlier days',
     entries: (count: number) => plural(count, 'entry', 'entries'),
     daySpoken: (label: string, place: string | null | undefined, entries: number) => `${label}${place ? `, ${place}` : ''}. ${plural(entries, 'entry', 'entries')}`,
   },

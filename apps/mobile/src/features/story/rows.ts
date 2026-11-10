@@ -52,8 +52,3 @@ export function rowOf(rows: readonly StoryRow[], entryId: string): number {
   while (index > 0 && (rows[index - 1]?.kind === 'day' || rows[index - 1]?.kind === 'new')) index -= 1;
   return index;
 }
-
-/** The days that are loaded, newest first, for "Jump to": each with its first entry. */
-export function loadedDays(rows: readonly StoryRow[]): Extract<StoryRow, { kind: 'day' }>[] {
-  return rows.filter((row): row is Extract<StoryRow, { kind: 'day' }> => row.kind === 'day').reverse();
-}

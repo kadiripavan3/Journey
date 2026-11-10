@@ -3481,10 +3481,9 @@
             "type" : "string",
             "format" : "date"
           },
-          "dayNumber" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "\"Day 14\"; counted from the journey's start date"
+          "label" : {
+            "type" : [ "string", "null" ],
+            "description" : "\"Day 14\", for a journey that counts its days; null for one told in parts"
           },
           "place" : {
             "type" : [ "string", "null" ],
@@ -3500,7 +3499,7 @@
             "format" : "uuid"
           }
         },
-        "required" : [ "dayNumber", "entryCount", "firstEntryId", "happenedOn", "place" ]
+        "required" : [ "entryCount", "firstEntryId", "happenedOn", "label", "place" ]
       },
       "RecapResponse" : {
         "type" : "object",

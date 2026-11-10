@@ -62,12 +62,12 @@ class WaysInTest extends ApiTest {
                         get("/v1/journeys/" + journey + "/days?limit=2").header("Authorization", reader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(2)))
-                .andExpect(jsonPath("$.items[0].dayNumber").value(10))
+                .andExpect(jsonPath("$.items[0].label").value("Day 10"))
                 .andExpect(jsonPath("$.items[0].firstEntryId").value(bromo))
                 .andExpect(jsonPath("$.items[0].place").value("Mount Bromo, Indonesia"))
                 .andExpect(jsonPath("$.items[0].entryCount").value(1))
                 // Two entries that day: the day opens at the first of them and is named after the first place.
-                .andExpect(jsonPath("$.items[1].dayNumber").value(5))
+                .andExpect(jsonPath("$.items[1].label").value("Day 5"))
                 .andExpect(jsonPath("$.items[1].firstEntryId").value(noPlace))
                 .andExpect(jsonPath("$.items[1].place").value("Hoi An, Vietnam"))
                 .andExpect(jsonPath("$.items[1].entryCount").value(2))
@@ -79,7 +79,7 @@ class WaysInTest extends ApiTest {
                         .header("Authorization", reader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(1)))
-                .andExpect(jsonPath("$.items[0].dayNumber").value(1))
+                .andExpect(jsonPath("$.items[0].label").value("Day 1"))
                 .andExpect(jsonPath("$.items[0].firstEntryId").value(hanoi))
                 .andExpect(jsonPath("$.nextCursor").value(nullValue()));
         mvc.perform(get("/v1/journeys/" + journey + "/days?cursor=nonsense").header("Authorization", reader))

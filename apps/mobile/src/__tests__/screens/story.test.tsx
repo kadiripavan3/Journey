@@ -30,6 +30,8 @@ jest.mock('@/api/generated/journey', () => ({
   useGetMembers: () => ({ data: undefined }),
   useMarkJourneyRead: () => ({ mutate: jest.fn() }),
   useGetTimelineInfinite: (_id: string, params?: { around?: string }) => mockTimeline(params),
+  // "Jump to" asks for the story's days only once it is opened.
+  useGetStoryDaysInfinite: () => ({ data: undefined, hasNextPage: false, fetchNextPage: jest.fn() }),
 }));
 
 const day12 = entry({ id: 'a', number: 12, label: 'Day 12', position: 1, title: 'Roads that look like rivers', createdAt: '2026-04-01T10:00:00Z' });

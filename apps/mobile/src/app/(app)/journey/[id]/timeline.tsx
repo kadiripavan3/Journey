@@ -160,10 +160,9 @@ export default function Timeline() {
         <JumpSheet
           visible={jumping}
           onClose={() => setJumping(false)}
+          journeyId={id}
           summary={s}
           fresh={story.opened}
-          days={story.days}
-          everyDay={story.everyDay}
           onJump={(entryId) => {
             setJumping(false);
             story.jumpTo(entryId);

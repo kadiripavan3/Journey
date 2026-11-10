@@ -801,7 +801,10 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Unblock' }).click();
     await T("You haven't blocked anyone.").waitFor({ timeout: 20000 });
     await R('button', { name: 'Back' }).click();
+    await page.waitForURL((url) => url.pathname === '/settings/privacy');
     await R('button', { name: 'Back' }).click();
+    // Going back is not instant: wait until it has landed, or it lands on top of whatever the next step opens.
+    await page.waitForURL((url) => url.pathname === '/settings');
   });
 
   // [foundations] A link that opens the app cold, an address the app doesn't know, and a cold start without a

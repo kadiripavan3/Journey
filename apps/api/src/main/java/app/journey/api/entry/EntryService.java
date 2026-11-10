@@ -175,8 +175,10 @@ public class EntryService {
     public record StoryDayResponse(
             LocalDate happenedOn,
 
-            @Schema(description = "\"Day 14\"; counted from the journey's start date")
-            int dayNumber,
+            @Schema(
+                    nullable = true,
+                    description = "\"Day 14\", for a journey that counts its days; null for one told in parts")
+            String label,
 
             @Schema(nullable = true, description = "Where the day's first entry with a place was")
             String place,
@@ -331,11 +333,15 @@ public class EntryService {
 
     /** The days of a journey's story that have entries, newest first: every way into a long story, for "Jump to". */
     public Page<StoryDayResponse> days(UUID journeyId, UUID viewer, Keyset page) {
-        journeys.require(journeyId, viewer);
+        boolean day = journeys.require(journeyId, viewer).labelStyle() == LabelStyle.DAY;
         return entries.storyDays(journeyId, viewer, page)
                 .map(rows -> rows.stream()
                         .map(row -> new StoryDayResponse(
-                                row.happenedOn(), row.dayNumber(), row.place(), row.entries(), row.firstId()))
+                                row.happenedOn(),
+                                day ? "Day " + row.dayNumber() : null,
+                                row.place(),
+                                row.entries(),
+                                row.firstId()))
                         .toList());
     }
 

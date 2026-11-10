@@ -1,6 +1,6 @@
 import { entry } from '@/test/samples';
 
-import { loadedDays, rowOf, storyRows } from '../rows';
+import { rowOf, storyRows } from '../rows';
 
 const story = [
   entry({ id: 'a', number: 12, label: 'Day 12', position: 1 }),
@@ -33,9 +33,5 @@ describe('the rows of a story', () => {
     expect(rows[rowOf(rows, 'd')]).toMatchObject({ kind: 'day' });
     expect(rows[rowOf(rows, 'b')]).toMatchObject({ kind: 'entry' });
     expect(rowOf(rows, 'gone')).toBe(-1);
-  });
-
-  it('lists the loaded days newest first, for Jump to', () => {
-    expect(loadedDays(storyRows(story, { byDay: true })).map((day) => day.entry.label)).toEqual(['Day 16', 'Day 15', 'Day 12']);
   });
 });
