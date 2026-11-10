@@ -72,7 +72,7 @@ export default function Recap() {
               </View>
             ) : null}
             {r.journey.closingNote ? (
-              <Txt variant="bodyLarge" weight={600} style={{ color: ON, marginVertical: 4 }}>
+              <Txt variant="bodyLarge" italic style={{ color: ON, marginVertical: 4 }}>
                 “{r.journey.closingNote}”
               </Txt>
             ) : null}

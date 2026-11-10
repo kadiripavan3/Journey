@@ -51,7 +51,7 @@ export default function Timeline() {
       return (
         <View style={{ paddingHorizontal: layout.barGutter }}>
           {line()}
-          <Txt variant="footnote" color="muted" weight={600} style={{ marginLeft: 34, marginBottom: 12 }}>
+          <Txt variant="footnote" color="muted" italic style={{ marginLeft: 34, marginBottom: 12 }}>
             {plural(item.days, 'quiet day')}
           </Txt>
         </View>

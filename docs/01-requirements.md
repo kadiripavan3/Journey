@@ -122,7 +122,7 @@ There are two roles, and everyone can be both:
 
 - **I1** iOS and Android phones from one codebase; portrait; light and dark mode; dynamic text sizes; screen-reader labels; 44 pt touch targets; AA colour contrast.
 - **I2** A smooth 60 fps timeline. Photos and video stills load progressively with placeholders. Photos and clips are compressed on the phone before upload.
-- **I3** Works on bad networks: retries, offline drafts, and recently viewed journeys readable offline.
+- **I3** Works on bad networks: retries, offline drafts, and what was read in the last week readable offline.
 - **I4** Analytics and crash reporting from day one.
 - **I5** English at launch, with all text ready for translation.
 

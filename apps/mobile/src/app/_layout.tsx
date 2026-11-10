@@ -2,6 +2,7 @@ import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_600SemiBold_Italic,
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
   useFonts,
@@ -67,6 +68,7 @@ function App() {
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_600SemiBold_Italic,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });

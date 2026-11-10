@@ -9,6 +9,8 @@ type Props = TextProps & {
   color?: keyof Colors | (string & {});
   /** A different weight than the variant's own. */
   weight?: FontWeight;
+  /** Slanted, for a quiet aside or someone's own words. There is one slanted face, semi-bold, so `weight` is ignored. */
+  italic?: boolean;
   center?: boolean;
 };
 
@@ -19,7 +21,7 @@ type Props = TextProps & {
 export const MAX_TEXT_SCALE = 1.6;
 
 /** All text in the app goes through here, so every size, weight and colour comes from the tokens. */
-export function Txt({ variant = 'body', color = 'text', weight, center, style, ...rest }: Props) {
+export function Txt({ variant = 'body', color = 'text', weight, italic, center, style, ...rest }: Props) {
   const theme = useTheme();
   const resolved = color in theme.colors ? theme.colors[color as keyof Colors] : color;
   return (
@@ -27,7 +29,7 @@ export function Txt({ variant = 'body', color = 'text', weight, center, style, .
       maxFontSizeMultiplier={MAX_TEXT_SCALE}
       {...rest}
       style={[
-        textStyle(variant, weight),
+        textStyle(variant, weight, { italic }),
         {
           color: resolved,
           textTransform: 'uppercase' in theme.type[variant] ? 'uppercase' : undefined,

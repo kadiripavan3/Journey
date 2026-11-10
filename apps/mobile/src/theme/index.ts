@@ -22,6 +22,12 @@ export const fontFor = {
 } as const;
 export type FontWeight = keyof typeof fontFor;
 
+/**
+ * The one slanted face (loaded in the root layout). The design slants two things, both at this weight: the
+ * "3 quiet days" line in a story and the closing words on a recap.
+ */
+export const italicFont = 'PlusJakartaSans_600SemiBold_Italic';
+
 export type Theme = {
   scheme: Scheme;
   colors: Colors;
@@ -51,10 +57,10 @@ export const darkTheme = themeFor('dark');
  * A text style from the tokens, for the few things that can't be a `Txt`: a box you type in, mostly.
  * Say `oneLine` for a one-line box: the phone centres the text itself there, so the line height is left out.
  */
-export function textStyle(variant: TypeVariant, weight?: FontWeight, options: { oneLine?: boolean } = {}): TextStyle {
+export function textStyle(variant: TypeVariant, weight?: FontWeight, options: { oneLine?: boolean; italic?: boolean } = {}): TextStyle {
   const t = type[variant];
   return {
-    fontFamily: fontFor[weight ?? t.weight],
+    fontFamily: options.italic ? italicFont : fontFor[weight ?? t.weight],
     fontSize: t.fontSize,
     letterSpacing: t.letterSpacing,
     ...(options.oneLine ? null : { lineHeight: t.lineHeight }),

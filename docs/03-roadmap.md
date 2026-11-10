@@ -58,7 +58,7 @@ Progress:
 - Recruit **30–50 creators**, about half with a trip during the beta and half starting a 30-day challenge: friends, micro-influencers, and travel, fitness and learning communities. Give them a **starter kit** with templates, tips and their "Follow my journey" link. Their followers become the first readers.
 - Measure the two groups separately, then double down on the one that keeps posting and following.
 - Choose the store name, domain and social handles before the beta ends.
-- Ship updates weekly over the air, and interview 10 users.
+- Ship updates weekly (over the air, once Expo Update is switched on: [step 4 of connecting the services](08-connect-services.md#4-the-app-on-your-iphone-for-real)), and interview 10 users.
 - Add two growth pieces while the beta runs: journey pages that search engines can find, and hand-picked featured journeys in Discover.
 - Count invitations to shared journeys: how many are sent and how many accepted.
 - **Suggested exit criteria:** at least 40% of beta creators post 5+ entries; at least 30% of new-entry notifications are opened; at least 99.5% of sessions are crash-free; D30 retention is heading toward 20%.

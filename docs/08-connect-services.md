@@ -28,7 +28,8 @@ Never put a key in a file in the repository, in a chat, or in an app build setti
    `jdbc:postgresql://db.<project-ref>.supabase.co:5432/postgres?sslmode=require`
 
 4. In the project's Authentication settings:
-   - Email: switch on sign-in by email, and set the email template to send a **6-digit code** (the template's `{{ .Token }}`), not a link.
+   - Email: switch on sign-in by email, and make the emails carry a **6-digit code**, not a link: put `{{ .Token }}` into **both** templates Supabase uses for this, "Confirm signup" (the first time someone signs in) and "Magic Link" (every time after).
+   - Email sending: Supabase's built-in sender writes only to the addresses of your own Supabase team, a couple an hour. Before anyone else signs in, give Supabase a sender of its own: Authentication, Emails, SMTP settings, with Resend's SMTP details (step 8 creates the Resend account and verifies the domain).
    - Leave anonymous sign-ins off.
    - Apple and Google are added in step 5.
 5. Copy three values from the project's API settings: the **project URL**, the **publishable (anon) key** and the **secret (service role) key**.
@@ -47,7 +48,7 @@ The API reads one of Supabase's own tables: `auth.users`, to find the email addr
 
 The API checks every sign-in token against the project's public keys, which it fetches from the project by itself. An older project that still signs tokens with a shared secret also works: set `SUPABASE_JWT_SECRET` in Fly secrets.
 
-**Check:** after step 3, sign in with your email in a `preview` build of the app. A code arrives by email; the app opens on "Create your profile".
+**Check:** after step 4, sign in with your email in a `preview` build of the app. A code arrives by email; the app opens on "Create your profile". With Supabase's built-in sender this works for your own address only.
 
 ## 2. Cloudflare R2: photos
 
@@ -101,9 +102,10 @@ When it starts, the API checks that everything that is switched on has what it n
 1. Create an Expo account and, in `apps/mobile`, run `eas init` once. It writes the project's id into `app.json`.
 2. Set the app's build settings (the table in step 1, and `EXPO_PUBLIC_API_URL` = the API's address from step 3) for the `preview` and `production` profiles.
 3. Change `app.journey.dev` in `app.json` (`ios.bundleIdentifier`, `android.package`) to an identifier of your own before the first store build. It can't be changed afterwards.
-4. Build: `eas build --profile preview --platform ios` for a build you install from a link. `eas.json` has three profiles: `development` (your own phone, with the test sign-in), `preview` (testers, real sign-in) and `production` (the stores).
+4. Build: `eas build --profile preview --platform ios` for a build you install from a link. `eas.json` has three profiles: `development` (your own phone: a build that loads the app from your Mac like Expo Go does, with the test sign-in, and can run what Expo Go can't), `preview` (testers, real sign-in) and `production` (the stores). A build without a sign-in setting uses real sign-in; it never falls back to the test code.
+5. Fixes sent straight to phones, without a new store build, are not set up yet. When you want them: `npx expo install expo-updates` and `eas update:configure` in `apps/mobile` (it needs the project id from step 1), then a new build. Until then every change to the app is a new build.
 
-Expo Go keeps working for everything that doesn't need a real build. Short clips shrunk on the phone, push notifications and Google sign-in need a real build.
+Expo Go keeps working for everything that doesn't need a real build. Short clips shrunk on the phone, push notifications, and Apple and Google sign-in need a real build.
 
 ## 5. Apple and Google sign-in
 
@@ -131,7 +133,7 @@ The app shows "Continue with Apple" on iPhones. It is already in `app.json`. Wit
 **Google** (needs a Google Cloud project):
 
 1. Create two OAuth client ids: one of type **Web** and one of type **iOS** (with the app's identifier). For Android add one of type Android later.
-2. In Supabase, switch on Google and enter the Web client id (and its secret); add the iOS client id to the list of allowed client ids.
+2. In Supabase, switch on Google and enter the Web client id (and its secret); add the iOS client id to the list of allowed client ids. If signing in with Google on an iPhone is refused with a message about a nonce, switch on "Skip nonce checks" for Google in Supabase: Google's iPhone sign-in puts a nonce of its own into the token, which the app can't see.
 3. In `apps/mobile`: `npx expo install @react-native-google-signin/google-signin`, and add its plugin to `app.json` with the iOS URL scheme Google shows for the iOS client id:
 
    `["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.<your-ios-client-id>" }]`
@@ -168,7 +170,7 @@ Push needs a real build of the app (step 4): Expo Go can't receive them.
 
 1. `eas init` (step 4) has given the app its project id. The app uses it to ask Expo for the phone's push address; nothing to copy.
 2. **iPhone:** run `eas credentials`, choose iOS, and let it create a push key in your Apple Developer account (or say yes when the first `eas build` offers to). Expo keeps the key.
-3. **Android:** in the Firebase console, create a project, add an Android app with your package name, download `google-services.json` into `apps/mobile` and point to it in `app.json` (`android.googleServicesFile`). Then create a service account key (Project settings, Service accounts) and upload it with `eas credentials` (Android, Google Service Account, "Push Notifications: FCM V1").
+3. **Android:** in the Firebase console, create a project, add an Android app with your package name, download `google-services.json` and give it to the build as a file: in the Expo project's environment variables, add a variable of type **File** named `GOOGLE_SERVICES_JSON` and upload it there. Don't put the file in the repository. Then create a service account key (Project settings, Service accounts) and upload it with `eas credentials` (Android, Google Service Account, "Push Notifications: FCM V1").
 
 Nothing is needed on Fly unless you switch on "enhanced security for push notifications" in the Expo project's settings. Then create an access token on expo.dev and set it as the Fly secret `EXPO_ACCESS_TOKEN`.
 
@@ -256,12 +258,18 @@ Both are off until their key is in the build. Neither is ever sent a name, an em
 | PostHog project key | App build settings (safe to be public) | `EXPO_PUBLIC_POSTHOG_KEY` |
 | PostHog address, if your project is not on the US cloud (the EU cloud is `https://eu.i.posthog.com`) | App build settings | `EXPO_PUBLIC_POSTHOG_HOST` |
 | Sentry DSN | App build settings (safe to be public) | `EXPO_PUBLIC_SENTRY_DSN` |
+| Sentry organisation and project (their short names) | App build settings | `SENTRY_ORG`, `SENTRY_PROJECT` |
+| A Sentry auth token (Settings, Auth Tokens) | App build settings, as a **secret** | `SENTRY_AUTH_TOKEN` |
 
-**Check:** use the app for a minute. PostHog's activity page shows events such as `entry_posted`. In Sentry, nothing: it only hears about crashes.
+The last three let the build send Sentry what it needs to show a crash in the app's own code instead of in scrambled code. All three, or none: without them crash reports still arrive, only harder to read.
+
+Two switches to set once, so that neither service keeps where a phone connected from: in PostHog, Project settings, **Discard client IP data**; in Sentry, Security & Privacy, **Prevent storing of IP addresses**. The store's privacy answers ([the store listing page](09-store-listing.md#privacy-answers)) count on both.
+
+**Check:** use the app for a minute. PostHog's activity page shows events such as `app_opened` and `entry_posted`, none with a name or an address in it. In Sentry, nothing: it only hears about crashes, and a crash report names no person.
 
 ## 13. Android: the map
 
-The map of a journey uses Apple Maps on iPhones (nothing to set up) and Google Maps on Android, which needs a key: create one in the Google Cloud project from step 5 (Maps SDK for Android, restricted to your package name and signing fingerprint) and put it in `app.json` under `android.config.googleMaps.apiKey`. This key is safe to be in the app.
+The map of a journey uses Apple Maps on iPhones (nothing to set up) and Google Maps on Android, which needs a key: create one in the Google Cloud project from step 5 (Maps SDK for Android, restricted to your package name and signing fingerprint) and set it as the app build setting `GOOGLE_MAPS_ANDROID_KEY`. This key is safe to be in the app. Without it, Android shows a journey's stops as a list instead of a map.
 
 ## Letting Claude test against the real services
 
@@ -295,14 +303,17 @@ When an account exists and you want me to check it from a session like this one,
 | `JOURNEY_CONTACT_EMAIL` | 10 | no |
 | `JOURNEY_IOS_APP_ID`, `JOURNEY_ANDROID_PACKAGE`, `JOURNEY_ANDROID_FINGERPRINTS` | 11 | no |
 
-**The app (build settings; all of these end up inside the app, so none may be a secret)**
+**The app (build settings: environment variables of the Expo project. All but one end up inside the app, so they may not be secrets)**
 
 | Name | Step |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | 4 |
 | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` | 1 |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | 5 |
+| `GOOGLE_SERVICES_JSON` (a file; Android notifications) | 7 |
 | `EXPO_PUBLIC_LINK_HOST` | 11 |
 | `EXPO_PUBLIC_POSTHOG_KEY`, `EXPO_PUBLIC_POSTHOG_HOST`, `EXPO_PUBLIC_SENTRY_DSN` | 12 |
+| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (the token is the one secret here: it is used while building and never ends up in the app) | 12 |
+| `GOOGLE_MAPS_ANDROID_KEY` | 13 |
 
 **GitHub secrets:** `FLY_API_TOKEN` (step 3).

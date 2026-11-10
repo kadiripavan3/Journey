@@ -17,7 +17,7 @@
 | Push notifications | **Expo Push Service** | Free; one service reaches both Apple and Google |
 | Email | **Resend** | Sign-in codes and the weekly digest. 3,000 emails a month free. |
 | Hosting the API | **Fly.io** | About US$7 a month for an always-on server, next to the database |
-| App builds and updates | **Expo Build, Submit and Update** (formerly EAS) | Store builds in the cloud, and fixes sent straight to phones |
+| App builds and updates | **Expo Build, Submit and Update** (formerly EAS) | Store builds in the cloud. Fixes sent straight to phones (Update) are switched on when the Expo project exists: [step 4 of connecting the services](08-connect-services.md#4-the-app-on-your-iphone-for-real). |
 | Web pages for shared links | Served by the Journey API, behind Cloudflare | No second codebase and no extra host |
 | Analytics and crashes | **PostHog** and **Sentry** | Free tiers cover an MVP |
 | Photo moderation | **AWS Rekognition** (confirmed at the safety milestone) | About US$1 per 1,000 photos |
@@ -53,10 +53,10 @@ You asked whether the backend can be Java. It can, and for this project it is th
 | Framework | **Expo SDK 58**: React Native 0.88, React 19, TypeScript (strict), New Architecture | The current stable release. Flutter was the main alternative; it would add a second language (Dart) next to TypeScript. |
 | Navigation and deep links | **Expo Router** | File-based routes; links to a journey open the right screen |
 | Talking to the API | A typed client **generated from the API's own description** (OpenAPI, with Orval) | The app and the API can't drift apart: a changed endpoint fails the build instead of failing on a phone |
-| Server data | **TanStack Query** | Caching, instant likes, retry and offline reads |
+| Server data | **TanStack Query** | Caching, instant likes and retry. What was read is kept on the phone for a week (per account, removed at sign-out), so the app opens and shows it without a connection. |
 | Local state | React's own state and context | The session, the sign-up answers and the outbox are small; no library is needed |
 | Offline drafts and upload queue | **expo-sqlite** | A real database on the phone; works in Expo Go. MMKV and op-sqlite need a custom build. |
-| Uploads | **expo-file-system** upload tasks | Uploads continue when the app goes to the background on iOS |
+| Uploads | **expo-file-system** upload tasks | A clip keeps uploading when the app goes to the background on an iPhone. Photos are small and go up while the app is open, and an entry that waited without a connection is posted the next time the app is open with one. |
 | UI | Our own small component kit, styled with plain **StyleSheet** and a typed theme generated from `design/tokens.json` | No styling library to depend on. NativeWind 5 is still a release candidate, and Unistyles needs a custom build. |
 | Glass and blur | **expo-blur** on iPhone; a dense tint on Android | Blur on Android needs wiring on every screen that could not be checked without a device, so Android gets the tint for now |
 | Animation and gestures | **Reanimated 4**, **Gesture Handler** | The standard pair, included with Expo |
@@ -160,7 +160,7 @@ Discover's "Trending now" lists public journeys with at least 3 entries by this 
 | `EmailSender` | `journey.email.mode` (`JOURNEY_EMAIL_MODE`) | Writes each email to the log | `resend`: one call to Resend's API per email, with a key that makes sending twice harmless | `RESEND_API_KEY`, and `JOURNEY_EMAIL_FROM` with an address on a domain verified at Resend. Without the key the API doesn't start; `JOURNEY_EMAIL_MODE=off` runs it without email until there is one. |
 | `EmailAddresses` | follows `journey.auth.mode` | The local sign-in table | Supabase's `auth.users` | The API keeps no email addresses of its own |
 
-The stand-ins are the default with the `local` profile and refused without it, like the other stand-ins. In the app, PostHog and Sentry are switched on by `EXPO_PUBLIC_POSTHOG_KEY` (and `EXPO_PUBLIC_POSTHOG_HOST` for the EU) and `EXPO_PUBLIC_SENTRY_DSN`. Without a key nothing is loaded. What is counted is listed in `features/analytics/events.ts`: kinds and counts, never a name, an email address or anything a person wrote.
+The stand-ins are the default with the `local` profile and refused without it, like the other stand-ins. In the app, PostHog and Sentry are switched on by `EXPO_PUBLIC_POSTHOG_KEY` (and `EXPO_PUBLIC_POSTHOG_HOST` for the EU) and `EXPO_PUBLIC_SENTRY_DSN`. Without a key nothing is loaded. What is counted is listed in `features/analytics/events.ts`, by the API call that makes it happen, and counted in one place (the app's fetcher), so no screen can forget or add to it: kinds and counts, never a name, an email address, the address of a page or anything a person wrote. Crash reports carry no account id.
 
 ### Managed services
 
@@ -183,7 +183,7 @@ The stand-ins are the default with the `local` profile and refused without it, l
 
 ### Delivery
 
-GitHub Actions run the app's checks (lint, types, tests) and the API's tests (against PostgreSQL) on every pull request. Merging deploys the API to Fly.io. The app goes through Expo Build (store builds), Expo Submit (upload to App Store Connect and the Play Console) and Expo Update (fixes over the air).
+GitHub Actions run the app's checks (lint, types, tests) and the API's tests (against PostgreSQL) on every pull request. Merging deploys the API to Fly.io. The app goes through Expo Build (store builds) and Expo Submit (upload to App Store Connect and the Play Console); Expo Update (fixes over the air) is added when the Expo project exists.
 
 ## Architecture
 

@@ -27,7 +27,7 @@ Drafts for the App Store and Google Play pages, and the answers to their privacy
 >
 > **Share a journey with friends.** Invite up to three friends to write in the same story.
 >
-> **Works without a signal.** Write on the road; entries upload when you're back online.
+> **Works without a signal.** Write on the road; your entries wait on your phone and post when you're back online and open the app. What you read last is still there to read.
 >
 > **You choose who sees it.** Public, by link only, or private. Places are shown at city level unless you choose the exact spot. Report and block are one tap away, and you can delete your account in the app.
 
@@ -61,8 +61,8 @@ What Journey collects, why, and whether it is tied to the person. Nothing is use
 | Other content: entries, comments, likes, follows | Yes | The app's purpose | Yes |
 | Location | Only the place a person adds to an entry: city level by default, the exact spot only if they choose it. Location data inside a photo is removed on the phone, and the API keeps only a fresh copy of the picture with nothing else from the file. A clip is sent to the video service as the phone recorded it; people who watch get the converted clip, not that file. No live location, nothing in the background. | Showing where an entry happened; the map | Yes |
 | Device push token | Yes, if notifications are allowed | Sending notifications | Yes |
-| Usage data (which screens and actions) | Only when analytics is switched on in the build | Understanding what works. No names, emails or content are sent. | By an id, not by name |
-| Crash reports | Only when crash reporting is switched on in the build | Fixing crashes | No |
+| Usage data (which actions: an entry posted, a journey followed, the app opened) | Only when analytics is switched on in the build | Understanding what works. Kinds and counts only: no names, emails, titles, addresses of pages or anything a person wrote. The service is set not to keep the phone's IP address. | By an id, not by name |
+| Crash reports | Only when crash reporting is switched on in the build | Fixing crashes. A report carries the crash itself and the phone's model and app version: no account id, no log lines, no trail of screens. | No |
 | Contacts, health, finances, browsing history, advertising id | No | | |
 
 **App Store privacy label:** "Data Linked to You": Contact Info (email, name), User Content (photos or videos, other user content), Location (coarse; precise only if the person chooses an exact pin), Identifiers (user id, device id for notifications), Usage Data (product interaction, if analytics is on). "Data Not Linked to You": Diagnostics (crash data, if crash reporting is on). "Data Used to Track You": none.
