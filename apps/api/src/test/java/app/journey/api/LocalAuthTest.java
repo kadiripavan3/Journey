@@ -60,6 +60,7 @@ class LocalAuthTest extends ApiTest {
   @Test
   void addressesTheApiDoesNotKnowAreClosed() throws Exception {
     mvc.perform(get("/internal/anything").header("Authorization", signIn("nora@example.com")))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isNotFound())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value("not_found"));
   }
 }

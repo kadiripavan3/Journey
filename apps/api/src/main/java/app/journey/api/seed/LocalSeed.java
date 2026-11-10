@@ -3,10 +3,12 @@ package app.journey.api.seed;
 import app.journey.api.entry.EntryAdded;
 import app.journey.api.entry.EntryStore;
 import app.journey.api.journey.FriendInvited;
+import app.journey.api.journey.JourneyStore;
 import app.journey.api.media.LocalDiskStorage;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Local mode only: fills an empty database with a handful of made-up creators and journeys, so that
@@ -121,12 +124,17 @@ public class LocalSeed implements ApplicationRunner {
   private final JdbcClient jdbc;
   private final LocalDiskStorage storage;
   private final EntryStore entries;
+  private final JourneyStore journeys;
+  private final TransactionTemplate transaction;
   private final boolean enabled;
 
-  LocalSeed(JdbcClient jdbc, LocalDiskStorage storage, EntryStore entries, @Value("${journey.seed.enabled:false}") boolean enabled) {
+  LocalSeed(JdbcClient jdbc, LocalDiskStorage storage, EntryStore entries, JourneyStore journeys, TransactionTemplate transaction,
+      @Value("${journey.seed.enabled:false}") boolean enabled) {
     this.jdbc = jdbc;
     this.storage = storage;
     this.entries = entries;
+    this.journeys = journeys;
+    this.transaction = transaction;
     this.enabled = enabled;
   }
 
@@ -135,6 +143,7 @@ public class LocalSeed implements ApplicationRunner {
     if (!enabled) {
       return;
     }
+    // Each step is all or nothing: if it fails half way, the next start finds an empty database and tries again.
     try {
       if (seedIfEmpty()) {
         log.info("Added the sample creators and journeys ({} journeys).", TRIPS.size());
@@ -142,14 +151,17 @@ public class LocalSeed implements ApplicationRunner {
       if (addReactionsIfMissing()) {
         log.info("Added sample likes and comments.");
       }
-    } catch (RuntimeException | IOException e) {
+    } catch (RuntimeException e) {
       log.warn("Could not add the sample journeys: {}", e.toString());
     }
   }
 
   /** Adds the sample data when there are no journeys yet. Returns whether it did. */
-  @Transactional
-  public boolean seedIfEmpty() throws IOException {
+  public boolean seedIfEmpty() {
+    return Boolean.TRUE.equals(transaction.execute(status -> addPeopleAndJourneys()));
+  }
+
+  private boolean addPeopleAndJourneys() {
     if (jdbc.sql("select count(*) from journeys").query(Integer.class).single() > 0) {
       return false;
     }
@@ -192,6 +204,7 @@ public class LocalSeed implements ApplicationRunner {
           .param("note", trip.completed() ? "Three flights, three sunrises. Thank you for coming along." : null)
           .param("createdAt", Timestamp.from(start.atStartOfDay().toInstant(ZoneOffset.UTC)))
           .query(UUID.class).single();
+      journeys.setAuthor(owner, journey);
       int hour = 7;
       for (Story story : trip.stories()) {
         LocalDate on = start.plusDays(story.day() - 1L);
@@ -213,7 +226,6 @@ public class LocalSeed implements ApplicationRunner {
             .query(UUID.class).single();
         entries.replaceMedia(entry, List.of(photo(story.photo(), owner, photoIds)));
       }
-      entries.refreshJourneyCounters(journey, false);
     }
     return true;
   }
@@ -224,8 +236,11 @@ public class LocalSeed implements ApplicationRunner {
   private static final List<String> ANSWERS = List.of("Thank you! More soon.", "Longer than planned, as always.", "Come along next time!");
 
   /** The sample creators like and comment on each other's entries, so counts and comment threads have something to show. */
-  @Transactional
   public boolean addReactionsIfMissing() {
+    return Boolean.TRUE.equals(transaction.execute(status -> addLikesAndComments()));
+  }
+
+  private boolean addLikesAndComments() {
     List<UUID> sample = samplePeople();
     if (sample.size() < 3 || jdbc.sql("select count(*) from comments").query(Integer.class).single() > 0) {
       return false;
@@ -256,8 +271,6 @@ public class LocalSeed implements ApplicationRunner {
       }
       turn++;
     }
-    jdbc.sql("update entries e set like_count = (select count(*) from entry_likes l where l.entry_id = e.id), comment_count = (select count(*) from comments c where c.entry_id = e.id)")
-        .update();
     return true;
   }
 
@@ -283,12 +296,9 @@ public class LocalSeed implements ApplicationRunner {
     entries.like(added.entryId(), second);
     jdbc.sql("insert into comments (entry_id, author_id, body) values (:entry, :author, :body)")
         .param("entry", added.entryId()).param("author", second).param("body", REMARKS.get(pick % REMARKS.size())).update();
-    entries.refreshCommentCount(added.entryId());
     boolean followed = jdbc.sql("insert into journey_follows (user_id, journey_id) values (:user, :journey) on conflict do nothing")
         .param("user", first).param("journey", added.journeyId()).update() > 0;
     if (followed) {
-      jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
-          .param("id", added.journeyId()).update();
       jdbc.sql("insert into profile_follows (follower_id, followee_id) values (:follower, :followee) on conflict do nothing")
           .param("follower", first).param("followee", added.authorId()).update();
     }
@@ -303,8 +313,7 @@ public class LocalSeed implements ApplicationRunner {
     }
     jdbc.sql("update journey_members set status = 'joined', joined_at = now() where journey_id = :journey and user_id = :friend")
         .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
-    jdbc.sql("insert into journey_follows (user_id, journey_id, auto) values (:friend, :journey, true) on conflict do nothing")
-        .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
+    journeys.setAuthor(invited.friendId(), invited.journeyId());
     jdbc.sql(
             """
             insert into entries (journey_id, author_id, happened_at, happened_on, title, body)
@@ -313,9 +322,7 @@ public class LocalSeed implements ApplicationRunner {
             from journeys j where j.id = :journey
             """)
         .param("journey", invited.journeyId()).param("friend", invited.friendId()).update();
-    entries.refreshJourneyCounters(invited.journeyId(), true);
-    jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
-        .param("id", invited.journeyId()).update();
+    entries.wakeJourney(invited.journeyId());
   }
 
   private List<UUID> samplePeople() {
@@ -324,7 +331,7 @@ public class LocalSeed implements ApplicationRunner {
   }
 
   /** Copies one of the bundled photos into storage (once) and returns its media id. */
-  private UUID photo(String name, UUID owner, Map<String, UUID> done) throws IOException {
+  private UUID photo(String name, UUID owner, Map<String, UUID> done) {
     UUID existing = done.get(name);
     if (existing != null) {
       return existing;
@@ -332,12 +339,16 @@ public class LocalSeed implements ApplicationRunner {
     ClassPathResource resource = new ClassPathResource("seed/img/" + name + ".jpg");
     String key = "seed/img/" + name + ".jpg";
     long bytes;
-    try (InputStream in = resource.getInputStream()) {
-      bytes = storage.store(key, in, Long.MAX_VALUE);
-    }
     BufferedImage image;
-    try (InputStream in = resource.getInputStream()) {
-      image = ImageIO.read(in);
+    try {
+      try (InputStream in = resource.getInputStream()) {
+        bytes = storage.store(key, in, Long.MAX_VALUE);
+      }
+      try (InputStream in = resource.getInputStream()) {
+        image = ImageIO.read(in);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("Could not read the sample photo " + name, e);
     }
     UUID id = jdbc.sql(
             """

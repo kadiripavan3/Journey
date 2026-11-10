@@ -60,10 +60,9 @@ public class JourneyService {
     this.media = media;
   }
 
-  /** The journey, if this person may see it. A private journey looks exactly like one that doesn't exist, except to its authors. */
+  /** The journey, if this person may see it (see Rules). A private journey looks exactly like one that doesn't exist, except to its authors. */
   public JourneyRow require(UUID id, UUID viewer) {
     return journeys.find(id, viewer)
-        .filter(j -> !"private".equals(j.visibility()) || j.ownerId().equals(viewer) || j.member())
         .orElseThrow(() -> new ApiProblem(HttpStatus.NOT_FOUND, "journey_not_found", "This journey isn't available."));
   }
 
@@ -134,6 +133,9 @@ public class JourneyService {
     if ("public".equals(visibility) && !"public".equals(current.visibility())) {
       journeys.followForFollowersOf(current.ownerId(), id); // it just became public
     }
+    if ("private".equals(visibility) && !"private".equals(current.visibility())) {
+      journeys.dropFollowers(id); // nobody but its authors can see it any more
+    }
     return view(require(id, viewer), viewer);
   }
 
@@ -159,16 +161,16 @@ public class JourneyService {
   @Transactional
   public JourneyResponse follow(UUID id, UUID viewer) {
     JourneyRow journey = require(id, viewer);
-    if (journey.ownerId().equals(viewer)) {
-      throw ApiProblem.badRequest("own_journey", "This is your own journey. You already see everything in it.");
+    if (journey.ownerId().equals(viewer) || journey.member()) {
+      throw ApiProblem.badRequest("own_journey", "You write in this journey. You already see everything in it.");
     }
     journeys.follow(viewer, id);
     return view(require(id, viewer), viewer);
   }
 
-  @Transactional
+  /** Always takes the follow away, also when the journey can no longer be seen: then the answer is "not found", and the follow is still gone. */
+  @Transactional(noRollbackFor = ApiProblem.class)
   public JourneyResponse unfollow(UUID id, UUID viewer) {
-    require(id, viewer);
     journeys.unfollow(viewer, id);
     return view(require(id, viewer), viewer);
   }
@@ -192,7 +194,7 @@ public class JourneyService {
   public List<JourneyResponse> following(UUID viewer) {
     return views(
         journeys.list(
-            "exists (select 1 from journey_follows mf where mf.journey_id = j.id and mf.user_id = :me) and (j.visibility <> 'private' or j.owner_id = :me)",
+            "exists (select 1 from journey_follows mf where mf.journey_id = j.id and mf.user_id = :me and not mf.author)",
             Map.of("me", viewer), "coalesce(j.last_entry_at, j.created_at) desc", 100, viewer),
         viewer);
   }

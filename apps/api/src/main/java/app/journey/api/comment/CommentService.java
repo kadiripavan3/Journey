@@ -1,9 +1,9 @@
 package app.journey.api.comment;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.entry.EntryService;
-import app.journey.api.entry.EntryStore;
 import app.journey.api.entry.EntryStore.EntryRow;
 import app.journey.api.media.MediaService;
 import app.journey.api.profile.PersonResponse;
@@ -53,20 +53,18 @@ public class CommentService {
 
   private final JdbcClient jdbc;
   private final EntryService entries;
-  private final EntryStore entryStore;
   private final MediaService media;
 
-  CommentService(JdbcClient jdbc, EntryService entries, EntryStore entryStore, MediaService media) {
+  CommentService(JdbcClient jdbc, EntryService entries, MediaService media) {
     this.jdbc = jdbc;
     this.entries = entries;
-    this.entryStore = entryStore;
     this.media = media;
   }
 
   /** An entry's comments, oldest first. The app groups replies under the comment they answer. */
   public List<CommentResponse> list(UUID entryId, UUID viewer) {
     EntryRow entry = entries.require(entryId, viewer);
-    return jdbc.sql(SELECT + " where c.entry_id = :entry and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = c.author_id) or (b.blocker_id = c.author_id and b.blocked_id = :viewer)) order by c.created_at limit :limit")
+    return jdbc.sql(SELECT + " where c.entry_id = :entry and " + Rules.notBlocked("c.author_id", ":viewer") + " order by c.created_at limit :limit")
         .param("entry", entryId).param("viewer", viewer).param("limit", LIST_LIMIT).query(ROW).list().stream()
         .map(row -> view(row, entry, viewer)).toList();
   }
@@ -91,7 +89,6 @@ public class CommentService {
     UUID id = jdbc.sql("insert into comments (entry_id, author_id, parent_id, body) values (:entry, :author, :parent, :body) returning id")
         .param("entry", entryId).param("author", author).param("parent", parent).param("body", text)
         .query(UUID.class).single();
-    entryStore.refreshCommentCount(entryId);
     return view(find(id).orElseThrow(), entry, author);
   }
 
@@ -109,7 +106,6 @@ public class CommentService {
       throw new ApiProblem(HttpStatus.FORBIDDEN, "not_yours", "Only the person who wrote a comment, or the journey's creator, can delete it.");
     }
     jdbc.sql("delete from comments where id = :id").param("id", id).update();
-    entryStore.refreshCommentCount(comment.entryId());
   }
 
   private Optional<CommentRow> find(UUID id) {

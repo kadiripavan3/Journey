@@ -113,17 +113,12 @@ public class AccountService {
             where j.id = m.journey_id and ((m.user_id = :them and j.owner_id = :me) or (m.user_id = :me and j.owner_id = :them))
             """)
         .param("me", me).param("them", them).update();
-    List<UUID> unfollowed = jdbc.sql(
+    jdbc.sql(
             """
             delete from journey_follows f using journeys j
             where j.id = f.journey_id and ((f.user_id = :me and j.owner_id = :them) or (f.user_id = :them and j.owner_id = :me))
-            returning f.journey_id
             """)
-        .param("me", me).param("them", them).query(UUID.class).list();
-    if (!unfollowed.isEmpty()) {
-      jdbc.sql("update journeys j set follower_count = (select count(*) from journey_follows f where f.journey_id = j.id) where j.id in (:ids)")
-          .param("ids", unfollowed).update();
-    }
+        .param("me", me).param("them", them).update();
   }
 
   @Transactional
@@ -149,13 +144,11 @@ public class AccountService {
 
   /**
    * Deletes the account for good: the profile, journeys, entries, comments, likes and follows (the database
-   * removes what hangs off the profile), the person's photos and clips, and their sign-in.
+   * removes what hangs off the profile and corrects every count), the person's photos and clips, and their sign-in.
    */
   @Transactional
   public void delete(UUID me) {
     List<String> files = jdbc.sql("delete from media where owner_id = :me returning storage_key").param("me", me).query(String.class).list();
-    jdbc.sql("update journeys j set follower_count = greatest(j.follower_count - 1, 0) where j.id in (select journey_id from journey_follows where user_id = :me)")
-        .param("me", me).update();
     jdbc.sql("delete from profiles where id = :me").param("me", me).update();
     signIns.forEach(signIn -> signIn.remove(me));
     files.forEach(storage::delete);

@@ -103,8 +103,9 @@ class EntryController {
   FeedResponse feed(@AuthenticationPrincipal Jwt jwt) {
     UUID me = me(jwt);
     List<FeedGroupResponse> groups = journeyStore.journeysWithNewEntries(me, 30).stream()
-        .map(found -> new FeedGroupResponse(
-            journeys.view(journeys.require(found.journeyId(), me), me), found.newCount(), entries.latestByOthers(found.journeyId(), me, Math.min(found.newCount(), 3))))
+        .flatMap(found -> journeyStore.find(found.journeyId(), me).stream()
+            .map(journey -> new FeedGroupResponse(
+                journeys.view(journey, me), found.newCount(), entries.latestByOthers(found.journeyId(), me, Math.min(found.newCount(), 3)))))
         .toList();
     return new FeedResponse(groups, journeyStore.followingCount(me));
   }

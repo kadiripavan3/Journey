@@ -54,7 +54,7 @@ class SharedJourneyTest extends ApiTest {
         .andExpect(jsonPath("$.authors", hasSize(2)))
         .andExpect(jsonPath("$.authors[1].username").value("alex"))
         .andExpect(jsonPath("$.viewer.isMember").value(true))
-        .andExpect(jsonPath("$.viewer.isFollowing").value(true))
+        .andExpect(jsonPath("$.viewer.isFollowing").value(false)) // an author, which is more than a follower
         .andExpect(jsonPath("$.viewer.canAddEntry").value(true));
     mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", alex)).andExpect(status().isNotFound());
     mvc.perform(get("/v1/me/invitations").header("Authorization", alex)).andExpect(jsonPath("$", hasSize(0)));

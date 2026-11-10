@@ -70,7 +70,7 @@ public class EntryService {
     Content content = check(journey, author, title, body, happenedAt, happenedOn, placeName, mediaIds);
     UUID id = entries.insert(journeyId, author, content.happenedAt, content.happenedOn, content.title, content.body, content.placeName, milestone);
     entries.replaceMedia(id, content.mediaIds);
-    entries.refreshJourneyCounters(journeyId, true);
+    entries.wakeJourney(journeyId);
     events.publishEvent(new EntryAdded(id, journeyId, author));
     return get(id, author);
   }
@@ -96,7 +96,6 @@ public class EntryService {
       throw new ApiProblem(HttpStatus.FORBIDDEN, "not_yours", "Only the author or the journey's owner can delete an entry.");
     }
     entries.delete(id);
-    entries.refreshJourneyCounters(entry.journeyId(), false);
   }
 
   /** The newest entries by other people in a journey, for the Home feed. */

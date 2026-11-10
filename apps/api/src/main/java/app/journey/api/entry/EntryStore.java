@@ -1,5 +1,6 @@
 package app.journey.api.entry;
 
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,19 +53,22 @@ public class EntryStore {
     this.jdbc = jdbc;
   }
 
+  /** Entries by someone the viewer has blocked, or who has blocked them, are left out of every read. */
+  private static final String NOT_BLOCKED = " and " + Rules.notBlocked("e.author_id", ":viewer");
+
   public Optional<EntryRow> find(UUID id, UUID viewer) {
-    return jdbc.sql(SELECT + " where e.id = :id").param("id", id).param("viewer", viewer).query(ROW).optional();
+    return jdbc.sql(SELECT + " where e.id = :id" + NOT_BLOCKED).param("id", id).param("viewer", viewer).query(ROW).optional();
   }
 
   /** A journey's entries in the order things happened. */
   public List<EntryRow> timeline(UUID journeyId, UUID viewer, int limit) {
-    return jdbc.sql(SELECT + " where e.journey_id = :journey order by e.happened_at, e.created_at limit :limit")
+    return jdbc.sql(SELECT + " where e.journey_id = :journey" + NOT_BLOCKED + " order by e.happened_at, e.created_at limit :limit")
         .param("journey", journeyId).param("viewer", viewer).param("limit", limit).query(ROW).list();
   }
 
   /** The newest entries in a journey by people other than the reader, most recently posted first. */
   public List<EntryRow> latestByOthers(UUID journeyId, UUID reader, int limit) {
-    return jdbc.sql(SELECT + " where e.journey_id = :journey and e.author_id <> :reader order by e.created_at desc limit :limit")
+    return jdbc.sql(SELECT + " where e.journey_id = :journey and e.author_id <> :reader" + NOT_BLOCKED + " order by e.created_at desc limit :limit")
         .param("journey", journeyId).param("reader", reader).param("viewer", reader).param("limit", limit).query(ROW).list();
   }
 
@@ -123,40 +127,19 @@ public class EntryStore {
     jdbc.sql("delete from entries where id = :id").param("id", id).update();
   }
 
-  /** True when the like is new. */
+  /** True when the like is new. The database keeps the entry's like count. */
   public boolean like(UUID entryId, UUID userId) {
-    int added = jdbc.sql("insert into entry_likes (entry_id, user_id) values (:entry, :user) on conflict do nothing")
-        .param("entry", entryId).param("user", userId).update();
-    refreshLikeCount(entryId);
-    return added > 0;
+    return jdbc.sql("insert into entry_likes (entry_id, user_id) values (:entry, :user) on conflict do nothing")
+        .param("entry", entryId).param("user", userId).update() > 0;
   }
 
   public void unlike(UUID entryId, UUID userId) {
     jdbc.sql("delete from entry_likes where entry_id = :entry and user_id = :user").param("entry", entryId).param("user", userId).update();
-    refreshLikeCount(entryId);
   }
 
-  private void refreshLikeCount(UUID entryId) {
-    jdbc.sql("update entries set like_count = (select count(*) from entry_likes l where l.entry_id = :entry) where id = :entry")
-        .param("entry", entryId).update();
-  }
-
-  public void refreshCommentCount(UUID entryId) {
-    jdbc.sql("update entries set comment_count = (select count(*) from comments c where c.entry_id = :entry) where id = :entry")
-        .param("entry", entryId).update();
-  }
-
-  /** Keeps the journey's counters right after entries are added or removed. A new entry also wakes a paused journey. */
-  public void refreshJourneyCounters(UUID journeyId, boolean entryAdded) {
-    jdbc.sql(
-            """
-            update journeys j set
-              entry_count = (select count(*) from entries e where e.journey_id = j.id),
-              last_entry_at = (select max(e.created_at) from entries e where e.journey_id = j.id),
-              status = case when :added and j.status = 'paused' then 'active' else j.status end,
-              updated_at = now()
-            where j.id = :journey
-            """)
-        .param("added", entryAdded).param("journey", journeyId).update();
+  /** A new entry wakes a paused journey. (The entry count and "last entry" are kept by the database.) */
+  public void wakeJourney(UUID journeyId) {
+    jdbc.sql("update journeys set status = case when status = 'paused' then 'active' else status end, updated_at = now() where id = :journey")
+        .param("journey", journeyId).update();
   }
 }

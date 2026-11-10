@@ -1,5 +1,6 @@
 package app.journey.api.activity;
 
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.media.MediaService;
 import app.journey.api.people.PeopleService;
@@ -32,6 +33,7 @@ public class ActivityService {
   static final int PER_KIND = 30;
   static final int TOTAL = 60;
   private static final String RECENT = "now() - interval '30 days'";
+  private static final String VISIBLE = Rules.visibleJourney("j", ":me");
 
   public record ActivityItemResponse(
       @Schema(description = "Stable for the same line, so the app can keep its place in a list") String id,
@@ -113,10 +115,10 @@ public class ActivityService {
             from entries e
             join journey_follows f on f.journey_id = e.journey_id and f.user_id = :me
             join journeys j on j.id = e.journey_id
-            where e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = e.author_id) or (b.blocker_id = e.author_id and b.blocked_id = :me))
+            where %s and e.author_id <> :me and e.created_at > f.created_at and e.created_at > %s and %s
             group by e.journey_id, j.title, day
             order by at desc limit :limit
-            """.formatted(RECENT))
+            """.formatted(VISIBLE, RECENT, Rules.notBlocked("e.author_id", ":me")))
         .param("me", me).param("limit", PER_KIND)
         .query((rs, n) -> new Line(
             "entries:" + rs.getString("journey_id") + ":" + rs.getString("day"), "new_entries", Sql.instant(rs, "at"),
@@ -131,9 +133,9 @@ public class ActivityService {
             """
             select j.id, j.title, j.owner_id, j.completed_at
             from journeys j join journey_follows f on f.journey_id = j.id and f.user_id = :me
-            where j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = j.owner_id) or (b.blocker_id = j.owner_id and b.blocked_id = :me))
+            where %s and j.status = 'completed' and j.owner_id <> :me and j.completed_at > f.created_at and j.completed_at > %s
             order by j.completed_at desc limit :limit
-            """.formatted(RECENT))
+            """.formatted(VISIBLE, RECENT))
         .param("me", me).param("limit", PER_KIND)
         .query((rs, n) -> new Line(
             "completed:" + rs.getString("id"), "journey_completed", Sql.instant(rs, "completed_at"), List.of(rs.getObject("owner_id", UUID.class)), 1, 0,
@@ -147,11 +149,11 @@ public class ActivityService {
             """
             select l.entry_id, e.journey_id, coalesce(nullif(e.title, ''), left(e.body, 80)) as entry_title, count(*) as n, max(l.created_at) as at,
                    (array_agg(l.user_id order by l.created_at desc))[1\\:2] as actors
-            from entry_likes l join entries e on e.id = l.entry_id
-            where e.author_id = :me and l.user_id <> :me and l.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = l.user_id) or (b.blocker_id = l.user_id and b.blocked_id = :me))
+            from entry_likes l join entries e on e.id = l.entry_id join journeys j on j.id = e.journey_id
+            where %s and e.author_id = :me and l.user_id <> :me and l.created_at > %s and %s
             group by l.entry_id, e.journey_id, e.title, e.body
             order by at desc limit :limit
-            """.formatted(RECENT))
+            """.formatted(VISIBLE, RECENT, Rules.notBlocked("l.user_id", ":me")))
         .param("me", me).param("limit", PER_KIND)
         .query((rs, n) -> new Line(
             "likes:" + rs.getString("entry_id"), "likes", Sql.instant(rs, "at"), uuids(rs, "actors"), rs.getInt("n"), 0,
@@ -169,9 +171,9 @@ public class ActivityService {
             join entries e on e.id = c.entry_id
             join journeys j on j.id = e.journey_id
             left join comments pc on pc.id = c.parent_id
-            where c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = c.author_id) or (b.blocker_id = c.author_id and b.blocked_id = :me))
+            where %s and c.author_id <> :me and (e.author_id = :me or j.owner_id = :me or pc.author_id = :me) and c.created_at > %s and %s
             order by c.created_at desc limit :limit
-            """.formatted(RECENT))
+            """.formatted(VISIBLE, RECENT, Rules.notBlocked("c.author_id", ":me")))
         .param("me", me).param("limit", PER_KIND)
         .query((rs, n) -> new Line(
             "comment:" + rs.getString("id"), rs.getBoolean("reply_to_me") ? "reply" : "comment", Sql.instant(rs, "created_at"),
@@ -186,7 +188,7 @@ public class ActivityService {
             """
             select f.journey_id, j.title, f.user_id, f.created_at
             from journey_follows f join journeys j on j.id = f.journey_id
-            where j.owner_id = :me and f.user_id <> :me and not f.auto and f.created_at > %s
+            where j.owner_id = :me and f.user_id <> :me and not f.auto and not f.author and f.created_at > %s
             order by f.created_at desc limit :limit
             """.formatted(RECENT))
         .param("me", me).param("limit", PER_KIND)

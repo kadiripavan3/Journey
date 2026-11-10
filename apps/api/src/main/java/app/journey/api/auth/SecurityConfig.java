@@ -1,6 +1,9 @@
 package app.journey.api.auth;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -10,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,6 +27,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -44,6 +51,8 @@ class SecurityConfig {
         .authorizeHttpRequests(
             requests ->
                 requests
+                    .dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll() // so a failure outside a controller is reported as what it is, not as "forbidden"
                     .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
                     .requestMatchers("/j/**", "/share/**")
@@ -54,8 +63,31 @@ class SecurityConfig {
                     .authenticated()
                     .anyRequest()
                     .denyAll())
-        .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()));
+        .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()).authenticationEntryPoint(signedOut()))
+        .exceptionHandling(failures -> failures
+            .authenticationEntryPoint(signedOut())
+            .accessDeniedHandler((request, response, denied) ->
+                write(response, HttpStatus.NOT_FOUND, "not_found", "We couldn't find that.")));
     return http.build();
+  }
+
+  /** A missing, expired or damaged token: the usual 401 and header, plus a body in the API's own shape. */
+  private static AuthenticationEntryPoint signedOut() {
+    BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
+    return (request, response, failure) -> {
+      bearer.commence(request, response, failure);
+      write(response, HttpStatus.UNAUTHORIZED, "signed_out", "Please sign in again.");
+    };
+  }
+
+  /** Writes a problem by hand: this runs before Spring MVC, so ProblemHandler is not in reach. The texts are fixed, never input. */
+  private static void write(HttpServletResponse response, HttpStatus status, String code, String message) throws IOException {
+    response.setStatus(status.value());
+    response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+    response.setCharacterEncoding("UTF-8");
+    response.getWriter().write(
+        "{\"type\":\"about:blank\",\"title\":\"%s\",\"status\":%d,\"detail\":\"%s\",\"code\":\"%s\"}"
+            .formatted(status.getReasonPhrase(), status.value(), message, code));
   }
 
   /** Browsers (the web preview) need CORS. Phones don't, so the list is empty outside local mode. */

@@ -1,5 +1,6 @@
 package app.journey.api.journey;
 
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -33,7 +34,7 @@ public class JourneyStore {
                where e.journey_id = j.id and m.kind = 'photo'
                order by e.happened_at, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
-             vf.user_id is not null as following, vf.last_read_at,
+             (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
              exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
              (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count
       from journeys j
@@ -80,23 +81,29 @@ public class JourneyStore {
         .list().stream().collect(java.util.stream.Collectors.groupingBy(AuthorRow::journeyId));
   }
 
-  /** Blocking hides journeys both ways: from the person blocked, and their own from the person who blocked them. */
-  private static final String NOT_BLOCKED =
-      " and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = j.owner_id) or (b.blocker_id = j.owner_id and b.blocked_id = :viewer))";
+  /** Every read below shows only journeys the viewer may see. The rule itself lives in {@link Rules}. */
+  private static final String VISIBLE = " and " + Rules.visibleJourney("j", ":viewer");
 
   public Optional<JourneyRow> find(UUID id, UUID viewer) {
-    return jdbc.sql(SELECT + " where j.id = :id" + NOT_BLOCKED).param("viewer", viewer).param("id", id).query(ROW).optional();
+    return jdbc.sql(SELECT + " where j.id = :id" + VISIBLE).param("viewer", viewer).param("id", id).query(ROW).optional();
+  }
+
+  /** For someone invited to a journey: they may look at it before joining, even when it is private. */
+  public Optional<JourneyRow> findForInvited(UUID id, UUID viewer) {
+    return jdbc.sql(SELECT + " where j.id = :id and " + Rules.notBlocked("j.owner_id", ":viewer")
+            + " and exists (select 1 from journey_members im where im.journey_id = j.id and im.user_id = :viewer)")
+        .param("viewer", viewer).param("id", id).query(ROW).optional();
   }
 
   /** Journeys matching a condition, written against the aliases j (journey) and p (owner). */
   public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-    return jdbc.sql(SELECT + " where (" + where + ")" + NOT_BLOCKED + " order by " + orderBy + " limit :limit")
+    return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy + " limit :limit")
         .params(params).param("viewer", viewer).param("limit", limit).query(ROW).list();
   }
 
   public UUID insert(UUID ownerId, String title, String description, String category, String template, String labelStyle, String visibility,
       List<String> tags, UUID coverMediaId, LocalDate startDate, Integer targetDays) {
-    return jdbc.sql(
+    UUID id = jdbc.sql(
             """
             insert into journeys (owner_id, title, description, category, template, label_style, visibility, tags, cover_media_id, start_date, target_days)
             values (:owner, :title, :description, :category, :template, :labelStyle, :visibility, cast(:tags as text[]), cast(:cover as uuid), :startDate, cast(:targetDays as int))
@@ -107,6 +114,8 @@ public class JourneyStore {
         .param("cover", coverMediaId == null ? null : coverMediaId.toString()).param("startDate", startDate)
         .param("targetDays", targetDays == null ? null : targetDays.toString())
         .query(UUID.class).single();
+    setAuthor(ownerId, id); // the owner follows their own journey as an author
+    return id;
   }
 
   public void update(UUID id, String title, String description, String category, String labelStyle, String visibility, List<String> tags,
@@ -154,10 +163,33 @@ public class JourneyStore {
             on conflict do nothing
             """)
         .param("user", userId).param("journey", journeyId).update();
-    if (added > 0) {
-      jdbc.sql("update journeys set follower_count = follower_count + 1 where id = :id").param("id", journeyId).update();
-    }
     return added > 0;
+  }
+
+  /**
+   * Marks someone as an author of the journey (its owner, or a friend who joined). Authors get "new since your
+   * last visit" like followers do, without being counted as followers.
+   */
+  public void setAuthor(UUID userId, UUID journeyId) {
+    jdbc.sql(
+            """
+            insert into journey_follows (user_id, journey_id, author, auto) values (:user, :journey, true, true)
+            on conflict (user_id, journey_id) do update set author = true
+            """)
+        .param("user", userId).param("journey", journeyId).update();
+  }
+
+  /** A friend who left or was removed: an ordinary follower from now on, or nothing at all if the journey is private. */
+  public void unsetAuthor(UUID userId, UUID journeyId) {
+    jdbc.sql("delete from journey_follows f using journeys j where j.id = f.journey_id and f.user_id = :user and f.journey_id = :journey and j.visibility = 'private'")
+        .param("user", userId).param("journey", journeyId).update();
+    jdbc.sql("update journey_follows set author = false where user_id = :user and journey_id = :journey")
+        .param("user", userId).param("journey", journeyId).update();
+  }
+
+  /** When a journey becomes private, the people who followed it stop following: they can no longer see it. */
+  public void dropFollowers(UUID journeyId) {
+    jdbc.sql("delete from journey_follows where journey_id = :journey and not author").param("journey", journeyId).update();
   }
 
   /** Everyone who follows the owner starts following this journey too, with nothing marked as new yet. */
@@ -169,8 +201,6 @@ public class JourneyStore {
             on conflict do nothing
             """)
         .param("owner", ownerId).param("journey", journeyId).update();
-    jdbc.sql("update journeys set follower_count = (select count(*) from journey_follows f where f.journey_id = :id) where id = :id")
-        .param("id", journeyId).update();
   }
 
   /** What a finished (or unfinished) journey adds up to. */
@@ -206,11 +236,8 @@ public class JourneyStore {
   }
 
   public void unfollow(UUID userId, UUID journeyId) {
-    int removed = jdbc.sql("delete from journey_follows where user_id = :user and journey_id = :journey")
+    jdbc.sql("delete from journey_follows where user_id = :user and journey_id = :journey and not author")
         .param("user", userId).param("journey", journeyId).update();
-    if (removed > 0) {
-      jdbc.sql("update journeys set follower_count = greatest(follower_count - 1, 0) where id = :id").param("id", journeyId).update();
-    }
   }
 
   public void markRead(UUID userId, UUID journeyId) {
@@ -219,23 +246,24 @@ public class JourneyStore {
   }
 
   public int followingCount(UUID userId) {
-    return jdbc.sql("select count(*) from journey_follows where user_id = :user").param("user", userId).query(Integer.class).single();
+    return jdbc.sql("select count(*) from journey_follows where user_id = :user and not author").param("user", userId).query(Integer.class).single();
   }
 
   public record NewInJourney(UUID journeyId, int newCount) {}
 
-  /** Followed journeys with entries posted by others since the reader's last visit, most recent first. */
+  /** Journeys the reader follows or writes in, with entries posted by others since their last visit, most recent first. */
   public List<NewInJourney> journeysWithNewEntries(UUID userId, int limit) {
     return jdbc.sql(
             """
             select f.journey_id, count(*) as new_count, max(e.created_at) as latest
             from journey_follows f
+            join journeys j on j.id = f.journey_id
             join entries e on e.journey_id = f.journey_id and e.created_at > f.last_read_at and e.author_id <> :user
-            where f.user_id = :user
+            where f.user_id = :user and %s and %s
             group by f.journey_id
             order by latest desc
             limit :limit
-            """)
+            """.formatted(Rules.visibleJourney("j", ":user"), Rules.notBlocked("e.author_id", ":user")))
         .param("user", userId).param("limit", limit)
         .query((rs, n) -> new NewInJourney(rs.getObject("journey_id", UUID.class), rs.getInt("new_count")))
         .list();

@@ -1,6 +1,7 @@
 package app.journey.api.journey;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import app.journey.api.journey.JourneyService.JourneyResponse;
 import app.journey.api.journey.JourneyStore.JourneyRow;
@@ -90,9 +91,9 @@ public class MemberService {
             from profile_follows f join profiles p on p.id = f.follower_id left join media a on a.id = p.avatar_media_id
             where f.followee_id = :me
               and not exists (select 1 from journey_members m where m.journey_id = :journey and m.user_id = p.id)
-              and not exists (select 1 from blocks b where (b.blocker_id = :me and b.blocked_id = p.id) or (b.blocker_id = p.id and b.blocked_id = :me))
+              and %s
             order by f.created_at desc limit 100
-            """)
+            """.formatted(Rules.notBlocked("p.id", ":me")))
         .param("me", viewer).param("journey", journeyId)
         .query((rs, n) -> new PersonResponse(rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), media.urlFor(rs.getString("avatar_key"))))
         .list();
@@ -135,6 +136,7 @@ public class MemberService {
       throw new ApiProblem(HttpStatus.FORBIDDEN, "not_yours", "Only the owner can remove people from this journey.");
     }
     jdbc.sql("delete from journey_members where journey_id = :journey and user_id = :person").param("journey", journeyId).param("person", person).update();
+    journeyStore.unsetAuthor(person, journeyId);
   }
 
   /** Invitations waiting for an answer, newest first. */
@@ -148,7 +150,7 @@ public class MemberService {
     List<InvitationResponse> invitations = new ArrayList<>();
     for (Waiting w : waiting) {
       // Found directly: someone invited to a private journey may see it before they have joined.
-      journeyStore.find(w.journeyId(), me).ifPresent(journey -> invitations.add(new InvitationResponse(journeys.view(journey, me), inviters.get(w.invitedBy()), w.at())));
+      journeyStore.findForInvited(w.journeyId(), me).ifPresent(journey -> invitations.add(new InvitationResponse(journeys.view(journey, me), inviters.get(w.invitedBy()), w.at())));
     }
     return invitations;
   }
@@ -161,7 +163,7 @@ public class MemberService {
     if (joined == 0) {
       throw new ApiProblem(HttpStatus.NOT_FOUND, "no_invitation", "This invitation isn't there any more.");
     }
-    journeyStore.follow(me, journeyId);
+    journeyStore.setAuthor(me, journeyId);
     return journeys.view(journeys.require(journeyId, me), me);
   }
 
@@ -190,7 +192,7 @@ public class MemberService {
     boolean invited = jdbc.sql("select exists (select 1 from journey_members where journey_id = :journey and user_id = :viewer)")
         .param("journey", journeyId).param("viewer", viewer).query(Boolean.class).single();
     return invited
-        ? journeyStore.find(journeyId, viewer).orElseThrow(() -> new ApiProblem(HttpStatus.NOT_FOUND, "journey_not_found", "This journey isn't available."))
+        ? journeyStore.findForInvited(journeyId, viewer).orElseThrow(() -> new ApiProblem(HttpStatus.NOT_FOUND, "journey_not_found", "This journey isn't available."))
         : journeys.require(journeyId, viewer);
   }
 }

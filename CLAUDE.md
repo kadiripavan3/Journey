@@ -71,7 +71,11 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
   ```
 
   The walk-through signs up a new person and uses every built screen; it stops at the first thing that fails and leaves a screenshot of it. Add to it when you add a screen. Screens underneath the current one stay in the page on the web, so it always takes the last match.
-- **Messages people read** come from the API in plain English (`ApiProblem`); the app shows them as they are.
+- **Messages people read** come from the API in plain English (`ApiProblem`); the app shows them as they are. Every failure has a `code` and a sentence, also the ones nobody planned for (`ProblemHandler`).
+- **Who may see what** is written once, in `apps/api/.../common/Rules.java`: which journeys a person may see, and what blocking hides. Every query that reads journeys, entries or people for someone uses it. Don't write the rule again inside a query.
+- **Counts** (followers, entries, likes, comments) are kept by the database (triggers in `V6__rules_and_counters.sql`). Java never writes them.
+- **Authors follow their own journeys:** the owner and friends who joined have a `journey_follows` row marked `author`. It gives them "new since your last visit"; they are not counted as followers.
+- **A rule that once went wrong gets a test** in `RulesTest`.
 
 ## Working rules
 

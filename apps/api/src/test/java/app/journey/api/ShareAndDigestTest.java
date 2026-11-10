@@ -39,8 +39,10 @@ class ShareAndDigestTest extends ApiTest {
         .andExpect(content().string(containsString("Southeast Asia &lt;by&gt; motorbike")))
         .andExpect(content().string(containsString("og:title")))
         .andExpect(content().string(containsString("Floating market at sunrise")))
-        .andExpect(content().string(containsString("journey://journey/" + open)));
-    mvc.perform(get("/j/" + link)).andExpect(status().isOk());
+        .andExpect(content().string(containsString("journey://journey/" + open)))
+        .andExpect(content().string(not(containsString("noindex"))));
+    // A journey shared only by link opens too, and asks search engines to leave it alone.
+    mvc.perform(get("/j/" + link)).andExpect(status().isOk()).andExpect(content().string(containsString("noindex")));
     mvc.perform(get("/j/" + secret)).andExpect(status().isNotFound()).andExpect(content().string(not(containsString("Diary"))));
     mvc.perform(get("/j/not-a-journey")).andExpect(status().isNotFound());
     mvc.perform(get("/share/page.css")).andExpect(status().isOk());

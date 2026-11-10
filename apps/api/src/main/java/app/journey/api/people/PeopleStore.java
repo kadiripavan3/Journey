@@ -1,5 +1,6 @@
 package app.journey.api.people;
 
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
 import java.util.Collection;
@@ -82,10 +83,10 @@ public class PeopleStore {
             from profile_follows f
             join profiles p on p.id = %s
             left join media a on a.id = p.avatar_media_id
-            where %s = :person and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = p.id) or (b.blocker_id = p.id and b.blocked_id = :viewer))
+            where %s = :person and %s
             order by f.created_at desc
             limit :limit
-            """.formatted(other, self))
+            """.formatted(other, self, Rules.notBlocked("p.id", ":viewer")))
         .param("person", personId).param("viewer", viewer).param("limit", limit)
         .query((rs, n) -> new ListedRow(
             rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("avatar_key"),
@@ -101,10 +102,10 @@ public class PeopleStore {
                    (select j.title from journeys j where j.owner_id = p.id and j.visibility = 'public' order by j.created_at desc limit 1) as latest_journey,
                    exists (select 1 from profile_follows v where v.follower_id = :viewer and v.followee_id = p.id) as following
             from profiles p left join media a on a.id = p.avatar_media_id
-            where (p.username ilike :q or p.display_name ilike :q) and not exists (select 1 from blocks b where (b.blocker_id = :viewer and b.blocked_id = p.id) or (b.blocker_id = p.id and b.blocked_id = :viewer))
+            where (p.username ilike :q or p.display_name ilike :q) and %s
             order by (select count(*) from profile_follows f where f.followee_id = p.id) desc, p.username
             limit :limit
-            """)
+            """.formatted(Rules.notBlocked("p.id", ":viewer")))
         .param("q", pattern).param("viewer", viewer).param("limit", limit)
         .query((rs, n) -> new ListedRow(
             rs.getObject("id", UUID.class), rs.getString("username"), rs.getString("display_name"), rs.getString("avatar_key"),

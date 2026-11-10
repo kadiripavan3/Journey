@@ -1,6 +1,7 @@
 package app.journey.api.digest;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Rules;
 import app.journey.api.entry.EntryService;
 import app.journey.api.entry.EntryService.EntryResponse;
 import app.journey.api.journey.JourneyService;
@@ -111,12 +112,11 @@ public class DigestService {
             select f.user_id, coalesce(s.digest_email, false) as by_email, count(*) as entries, count(distinct e.journey_id) as journeys
             from journey_follows f
             join entries e on e.journey_id = f.journey_id and e.author_id <> f.user_id and e.created_at > now() - interval '7 days'
-            join journeys j on j.id = f.journey_id and (j.visibility <> 'private' or j.owner_id = f.user_id
-              or exists (select 1 from journey_members m where m.journey_id = j.id and m.user_id = f.user_id and m.status = 'joined'))
+            join journeys j on j.id = f.journey_id and %s
             left join settings s on s.user_id = f.user_id
             where coalesce(s.weekly_digest, true)
             group by f.user_id, s.digest_email
-            """)
+            """.formatted(Rules.visibleJourney("j", "f.user_id")))
         .query((rs, n) -> new Due(rs.getObject("user_id", UUID.class), null, rs.getInt("entries"), rs.getInt("journeys"), rs.getBoolean("by_email")))
         .list();
     due.forEach(d -> sender.send(d.userId(), d.entries(), d.journeysMoved(), d.byEmail()));

@@ -40,7 +40,8 @@ export default function Timeline() {
   const markRead = useMarkJourneyRead({ mutation: { onSuccess: () => refresh() } });
   const marked = useRef(false);
   const entries = timeline.data;
-  const following = journey.data?.viewer.isFollowing;
+  // Followers and authors both keep a "read up to here" mark; anyone else has none to move.
+  const following = journey.data ? journey.data.viewer.lastReadAt != null : false;
   useEffect(() => {
     if (!marked.current && following && entries) {
       marked.current = true;
