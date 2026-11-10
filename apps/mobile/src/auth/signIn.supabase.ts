@@ -3,7 +3,8 @@ import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import { AppState, Platform } from 'react-native';
 
-import { ApiError, apiFetch, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
+import { ApiError, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
+import { rememberAppleSignIn } from '@/api/generated/journey';
 
 import { keep } from '@/lib/keep';
 
@@ -116,10 +117,8 @@ export function supabaseSignIn(): SignInService {
     if (name) await client().updateUser({ data: { full_name: name } }).catch(() => undefined);
     // The code Apple returns with the sign-in goes to the API, once: with it the API can end the person's
     // link to the app at Apple when they delete their account, as Apple asks.
-    // TO DO for the integrator: the generated client has this call once it is made again from the API's
-    // description (`PUT /v1/me/apple-sign-in`); until then it is called by its address.
     if (code) {
-      void apiFetch('/v1/me/apple-sign-in', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ authorizationCode: code }) }).catch(() => undefined);
+      void rememberAppleSignIn({ authorizationCode: code }).catch(() => undefined);
     }
   };
 

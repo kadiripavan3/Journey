@@ -20,8 +20,7 @@ export default function Account() {
   const me = useGetMe().data;
   // The session names the way in ("apple", "google", "email") once it knows it; until then the screen says
   // only who is signed in, and never claims a way that may not be theirs.
-  const provider = (session as { provider?: unknown }).provider;
-  const how = typeof provider === 'string' ? WAYS[provider] : undefined;
+  const how = session.provider ? WAYS[session.provider] : undefined;
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Account" trailing={<View style={{ width: 40 }} />} />

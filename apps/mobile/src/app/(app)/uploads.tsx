@@ -5,10 +5,11 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOutbox, useProgress } from '@/features/drafts/outbox';
-import { ProgressBar } from '@/features/drafts/PostingBanner';
+import { STARTED } from '@/features/drafts/PostingBanner';
 import type { Draft } from '@/features/drafts/types';
 import { draftSaved, draftTitle, draftWhere, progressLine } from '@/features/drafts/words';
 import { layout, radius, useTheme } from '@/theme';
+import { ProgressBar } from '@/ui/ProgressBar';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
@@ -124,7 +125,7 @@ function Going({ draft, online, onOpen }: { draft: Draft; online: boolean; onOpe
     <Item draft={draft} sub={draftWhere(draft)} onPress={waiting ? onOpen : undefined} label={`${draftTitle(draft)}. ${progressLine(progress, online)}`}>
       {waiting ? null : (
         <View style={{ marginTop: 4, marginBottom: 2 }}>
-          <ProgressBar fraction={progress?.fraction ?? 0} />
+          <ProgressBar fraction={Math.max(progress?.fraction ?? 0, STARTED)} />
         </View>
       )}
       <Txt variant="footnote" color="muted" numberOfLines={1}>

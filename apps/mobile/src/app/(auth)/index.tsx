@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { openPage } from '@/api/config';
 import { darkTheme, withAlpha } from '@/theme';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { BrandMark } from '@/ui/Brand';
 import { Button } from '@/ui/Button';
 import { Txt } from '@/ui/Txt';
@@ -17,7 +17,7 @@ export default function Welcome() {
 
   return (
     <View style={{ flex: 1, backgroundColor: darkTheme.colors.stage }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       <Image source={require('@/assets/photos/welcome.jpg')} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
       <LinearGradient
         colors={[withAlpha(darkTheme.colors.stage, 0.45), withAlpha(darkTheme.colors.stage, 0), withAlpha(darkTheme.colors.stage, 0), withAlpha(darkTheme.colors.stage, 0.8), withAlpha(darkTheme.colors.stage, 0.95)]}

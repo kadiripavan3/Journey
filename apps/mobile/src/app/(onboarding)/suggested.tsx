@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useFollowJourney, useGetSuggestedJourneys, useUnfollowJourney } from '@/api/generated/journey';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
-import { compact } from '@/lib/plural';
+import { followingLabel } from '@/lib/following';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Heading, Lead } from '@/ui/Heading';
@@ -82,7 +82,7 @@ export default function Suggested() {
                 key={journey.id}
                 coverUrl={journey.coverThumbUrl}
                 title={journey.title}
-                detail={`${journey.owner.displayName} · ${journey.progressLabel}${followers > 0 ? `\n${compact(followers)} following` : ''}`}
+                detail={`${journey.owner.displayName} · ${journey.progressLabel}${followers > 0 ? `\n${followingLabel(followers)}` : ''}`}
                 trailing={
                   on ? (
                     <Button label="Following" inline size="sm" variant="soft" icon={(c) => <Check size={16} color={c} strokeWidth={2.6} />} onPress={() => toggle(journey.id)} />

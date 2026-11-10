@@ -7,6 +7,11 @@ export function followingLabel(count: number): string {
   return `${compact(count)} following`;
 }
 
+/** The same, or an invitation when nobody follows yet. */
+export function followersLabel(count: number): string {
+  return count === 0 ? 'Be the first to follow' : followingLabel(count);
+}
+
 /**
  * The same for a journey, in the words that fit it: people following a trip, people cheering on a challenge
  * (a journey with a number of days to reach).

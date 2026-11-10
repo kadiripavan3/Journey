@@ -2,6 +2,7 @@ import type { FlashListRef } from '@shopify/flash-list';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { useCache } from '@/api/cache';
+import { rows as unique } from '@/api/pages';
 import { type EntryResponse, useGetJourney, useGetJourneySummary, useGetMe, useGetMembers, useGetTimelineInfinite, useMarkJourneyRead } from '@/api/generated/journey';
 import { isGone, loadState } from '@/lib/loading';
 import { firstName } from '@/lib/names';
@@ -49,8 +50,7 @@ export function useStory(id: string, list: RefObject<FlashListRef<StoryRow> | nu
   if (anchor && timeline.isError && !timeline.data && isGone(timeline.error)) setAnchor(null);
 
   // Each entry once: pages can overlap when entries arrive while the story is being read.
-  const seen = new Set<string>();
-  const entries = timeline.data?.pages.flatMap((page) => page.items).filter((entry) => (seen.has(entry.id) ? false : !!seen.add(entry.id)));
+  const entries = unique(timeline.data);
   const total = timeline.data?.pages[0]?.total ?? 0;
   const j = journey.data;
   const rows = entries && j ? storyRows(entries, { byDay: j.labelStyle === 'day', firstNew: who ? null : opened?.firstNew, newCount: opened?.newCount }) : undefined;

@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useCache } from '@/api/cache';
 import { type ActivityItemResponse, useGetActivity, useGetDigest, useMarkActivitySeen } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { ActivityLine } from '@/features/activity/ActivityLine';
@@ -26,6 +27,7 @@ export default function Activity() {
   const { mutate: seen } = useMarkActivitySeen();
   const week = useGetDigest().data;
   const router = useRouter();
+  const cache = useCache();
   const { refetch } = activity;
   useRefetchOnFocus(refetch);
   const [filter, setFilter] = useState<ActivityGroup>('all');
@@ -41,8 +43,8 @@ export default function Activity() {
     useCallback(() => {
       if (!newIds) return;
       setFresh((now) => new Set([...now, ...newIds.split(',')]));
-      seen(undefined, { onSuccess: () => void refetch() });
-    }, [newIds, seen, refetch]),
+      seen(undefined, { onSuccess: () => void cache.activitySeen() });
+    }, [newIds, seen, cache]),
   );
   // Leaving the tab forgets them: next time only what is new then is marked.
   useFocusEffect(useCallback(() => () => setFresh(new Set()), []));

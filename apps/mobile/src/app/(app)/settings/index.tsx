@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGetMe, useGetSettings } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
-import { openPage } from '@/lib/pages';
+import { openPage } from '@/api/config';
 import { layout, useTheme } from '@/theme';
 import { useAppearance } from '@/theme/appearance';
 import { AppBar } from '@/ui/AppBar';

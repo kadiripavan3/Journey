@@ -5,21 +5,14 @@ import { View } from 'react-native';
 import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
+import { ProgressBar } from '@/ui/ProgressBar';
 import { Txt } from '@/ui/Txt';
 
 import { useOutbox, useProgress } from './outbox';
 import { draftTitle, progressLine } from './words';
 
-/** How much of something has gone up: a thin bar that fills from the left. */
-export function ProgressBar({ fraction }: { fraction: number }) {
-  const { colors } = useTheme();
-  const shown = Math.round(Math.min(Math.max(fraction, 0), 1) * 100);
-  return (
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: shown }} style={{ height: 4, borderRadius: radius.pill, overflow: 'hidden', backgroundColor: colors.fill2 }}>
-      <View style={{ width: `${Math.max(shown, 4)}%`, height: 4, borderRadius: radius.pill, backgroundColor: colors.accent }} />
-    </View>
-  );
-}
+/** An upload that has only just begun still shows a sliver of the bar. */
+export const STARTED = 0.04;
 
 /**
  * On a journey's story: the entries of this journey that are on their way, in one calm line. It says what is
@@ -58,7 +51,7 @@ export function PostingBanner({ journeyId }: { journeyId: string }) {
         </Txt>
         {!failed && !offline ? (
           <View style={{ marginTop: 4 }}>
-            <ProgressBar fraction={progress?.fraction ?? 0} />
+            <ProgressBar fraction={Math.max(progress?.fraction ?? 0, STARTED)} />
           </View>
         ) : null}
       </View>

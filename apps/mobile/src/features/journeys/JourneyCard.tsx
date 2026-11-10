@@ -2,7 +2,7 @@ import { Users } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
-import { followersLabel } from '@/lib/plural';
+import { followersLabel } from '@/lib/following';
 import { Emoji } from '@/ui/Emoji';
 import { Tap } from '@/ui/Motion';
 import { Photo } from '@/ui/Photo';

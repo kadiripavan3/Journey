@@ -14,6 +14,8 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (effect: () => void | (() => void)) => jest.requireActual('react').useEffect(effect, [effect]),
 }));
 jest.mock('@/api/refetchOnFocus', () => ({ useRefetchOnFocus: jest.fn() }));
+const mockCache = { activitySeen: jest.fn() };
+jest.mock('@/api/cache', () => ({ useCache: () => mockCache }));
 jest.mock('@/features/people/PersonFollowButton', () => ({ PersonFollowButton: () => null }));
 jest.mock('@/api/generated/journey', () => ({
   ...jest.requireActual('@/api/generated/journey'),
@@ -53,6 +55,9 @@ describe('Activity', () => {
     expect(screen.getByText(/commented: “What a beach.”/)).toBeOnTheScreen();
     expect(screen.getByText(/started following you/)).toBeOnTheScreen();
     expect(mockSeen).toHaveBeenCalledTimes(1);
+    // Once the API has heard, the lists that show "new" are read again through the cache, not by hand.
+    mockSeen.mock.calls[0][1].onSuccess();
+    expect(mockCache.activitySeen).toHaveBeenCalledTimes(1);
   });
 
   it('shows one kind of line under its tab', async () => {

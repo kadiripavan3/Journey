@@ -1,4 +1,5 @@
 import { type Query, type QueryClient, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import {
   type EntryResponse,
@@ -24,7 +25,9 @@ import {
  * Each function below is one thing that can happen. A screen calls the one that happened.
  */
 export function useCache() {
-  return cacheFor(useQueryClient());
+  const client = useQueryClient();
+  // The same object from one draw to the next, so it can be named in an effect's list without running it again.
+  return useMemo(() => cacheFor(client), [client]);
 }
 
 type Bag = Record<string, unknown>;

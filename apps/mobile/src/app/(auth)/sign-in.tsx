@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Mail, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -11,6 +10,7 @@ import { ApiError, messageFor } from '@/api/fetcher';
 import { authMode } from '@/auth/mode';
 import { signInService } from '@/auth/signIn';
 import { layout, radius, useTheme } from '@/theme';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { AppleLogo, BrandMark, GoogleLogo } from '@/ui/Brand';
 import { Button } from '@/ui/Button';
 import { RoundButton } from '@/ui/RoundButton';
@@ -41,7 +41,7 @@ export default function SignIn() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       <ScrollView bounces={false} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View style={{ height: 250 }}>
           <Image source={require('@/assets/photos/sea-cave.jpg')} style={{ flex: 1 }} contentFit="cover" contentPosition={{ top: '70%' }} accessible={false} />

@@ -2,6 +2,7 @@ import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 import type { FlatList, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 import { type EntryResponse, useGetEntry, useGetTimelineInfinite } from '@/api/generated/journey';
+import { rows } from '@/api/pages';
 import { loadState } from '@/lib/loading';
 
 /**
@@ -23,8 +24,7 @@ export function useEntryPager(id: string, step: number, list: RefObject<FlatList
   const pages = timeline.data?.pages;
   // Each entry once (pages can overlap when entries arrive while reading). When the story around the entry
   // can't be had, the entry itself is still shown: one card is better than a page that didn't load.
-  const seen = new Set<string>();
-  const entries = pages ? pages.flatMap((page) => page.items).filter((entry) => (seen.has(entry.id) ? false : !!seen.add(entry.id))) : opened.data ? [opened.data] : [];
+  const entries = rows(timeline.data) ?? (opened.data ? [opened.data] : []);
   // How many entries the story has. Unknown when only the entry itself could be had.
   const total = pages?.[0]?.total;
   const start = Math.max(0, entries.findIndex((entry) => entry.id === id));

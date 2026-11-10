@@ -9,8 +9,3 @@ export function compact(count: number): string {
   const thousands = count / 1000;
   return `${thousands >= 10 ? Math.round(thousands) : Math.round(thousands * 10) / 10}k`;
 }
-
-/** "1.2k following", or an invitation when nobody follows yet. */
-export function followersLabel(count: number): string {
-  return count === 0 ? 'Be the first to follow' : `${compact(count)} following`;
-}

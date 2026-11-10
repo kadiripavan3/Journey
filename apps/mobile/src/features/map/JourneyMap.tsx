@@ -4,13 +4,17 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
 import type { MapPinResponse } from '@/api/generated/journey';
+import { mapsAvailable } from '@/lib/build';
 import { radius, useTheme } from '@/theme';
 import { Txt } from '@/ui/Txt';
 
 import { regionOf, type Stop, stopLabel } from './stops';
 
-/** The phone draws a real map. (The web preview shows the same stops as a list.) */
-export const hasMap = true;
+/**
+ * The phone draws a real map where the build can: always on an iPhone, on Android only with Google's key in
+ * the build. Elsewhere (and in the web preview) the same stops are shown as a list.
+ */
+export const hasMap = mapsAvailable;
 
 type Props = {
   /** Every pin, in story order: the line joins them. */
