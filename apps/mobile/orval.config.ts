@@ -1,5 +1,20 @@
 import { defineConfig } from 'orval';
 
+// The lists that come in pages (items + nextCursor). Each gets a hook that loads page after page.
+const PAGED = [
+  'getMyJourneys',
+  'getFollowedJourneys',
+  'getJourneysByUsername',
+  'getFollowers',
+  'getFollowing',
+  'getBlocked',
+  'getInvitable',
+  'getInvitations',
+  'getComments',
+  'getTimeline',
+  'getFeed',
+];
+
 // Generates the app's typed API client from the API's own description.
 // Run `npm run api:generate` after apps/api/openapi.json changes.
 export default defineConfig({
@@ -14,6 +29,9 @@ export default defineConfig({
       override: {
         mutator: { path: 'src/api/fetcher.ts', name: 'apiFetch' },
         fetch: { includeHttpResponseReturnType: false },
+        operations: Object.fromEntries(
+          PAGED.map((operation) => [operation, { query: { useQuery: true, useInfinite: true, useInfiniteQueryParam: 'cursor' } }]),
+        ),
       },
     },
   },

@@ -1717,12 +1717,15 @@
             "description" : "Gentle reminders to add an entry, at most one a day"
           },
           "defaultVisibility" : {
-            "type" : "string",
-            "description" : "What new journeys start as",
-            "enum" : [ "public", "unlisted", "private" ]
+            "$ref" : "#/components/schemas/Visibility",
+            "description" : "What new journeys start as"
           }
         },
         "required" : [ "defaultVisibility", "digestEmail", "notifyComments", "notifyCompleted", "notifyFollowers", "notifyLikes", "notifyNewEntries", "reminders", "weeklyDigest" ]
+      },
+      "Visibility" : {
+        "type" : "string",
+        "enum" : [ "public", "unlisted", "private" ]
       },
       "SaveProfileRequest" : {
         "type" : "object",
@@ -1820,16 +1823,13 @@
             "type" : "string"
           },
           "labelStyle" : {
-            "type" : "string",
-            "enum" : [ "day", "part" ]
+            "$ref" : "#/components/schemas/LabelStyle"
           },
           "visibility" : {
-            "type" : "string",
-            "enum" : [ "public", "unlisted", "private" ]
+            "$ref" : "#/components/schemas/Visibility"
           },
           "status" : {
-            "type" : "string",
-            "enum" : [ "active", "paused", "completed" ]
+            "$ref" : "#/components/schemas/JourneyStatus"
           },
           "tags" : {
             "type" : "array",
@@ -1900,6 +1900,10 @@
         },
         "required" : [ "authors", "category", "closingNote", "completedAt", "coverThumbUrl", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "shareUrl", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
       },
+      "JourneyStatus" : {
+        "type" : "string",
+        "enum" : [ "active", "paused", "completed" ]
+      },
       "JourneyViewerResponse" : {
         "type" : "object",
         "properties" : {
@@ -1923,6 +1927,10 @@
           }
         },
         "required" : [ "canAddEntry", "isFollowing", "isMember", "isOwner", "lastReadAt" ]
+      },
+      "LabelStyle" : {
+        "type" : "string",
+        "enum" : [ "day", "part" ]
       },
       "PersonResponse" : {
         "type" : "object",
@@ -2080,6 +2088,10 @@
         },
         "required" : [ "canDelete", "canEdit", "hasLiked" ]
       },
+      "MediaKind" : {
+        "type" : "string",
+        "enum" : [ "photo", "video" ]
+      },
       "MediaResponse" : {
         "type" : "object",
         "properties" : {
@@ -2088,8 +2100,7 @@
             "format" : "uuid"
           },
           "kind" : {
-            "type" : "string",
-            "enum" : [ "photo", "video" ]
+            "$ref" : "#/components/schemas/MediaKind"
           },
           "url" : {
             "type" : "string"
@@ -2113,20 +2124,22 @@
         },
         "required" : [ "durationSeconds", "height", "id", "kind", "thumbUrl", "url", "width" ]
       },
+      "ReportReason" : {
+        "type" : "string",
+        "enum" : [ "spam", "harassment", "nudity", "violence", "impersonation", "other" ]
+      },
       "ReportRequest" : {
         "type" : "object",
         "properties" : {
           "targetType" : {
-            "type" : "string",
-            "enum" : [ "journey", "entry", "comment", "profile" ]
+            "$ref" : "#/components/schemas/ReportTarget"
           },
           "targetId" : {
             "type" : "string",
             "format" : "uuid"
           },
           "reason" : {
-            "type" : "string",
-            "enum" : [ "spam", "harassment", "nudity", "violence", "impersonation", "other" ]
+            "$ref" : "#/components/schemas/ReportReason"
           },
           "note" : {
             "type" : "string",
@@ -2135,6 +2148,10 @@
           }
         },
         "required" : [ "reason", "targetId", "targetType" ]
+      },
+      "ReportTarget" : {
+        "type" : "string",
+        "enum" : [ "journey", "entry", "comment", "profile" ]
       },
       "ReportResponse" : {
         "type" : "object",
@@ -2150,8 +2167,7 @@
         "type" : "object",
         "properties" : {
           "kind" : {
-            "type" : "string",
-            "enum" : [ "photo", "video" ]
+            "$ref" : "#/components/schemas/MediaKind"
           },
           "contentType" : {
             "type" : "string",
@@ -2209,12 +2225,10 @@
             "format" : "date"
           },
           "visibility" : {
-            "type" : "string",
-            "enum" : [ "public", "unlisted", "private" ]
+            "$ref" : "#/components/schemas/Visibility"
           },
           "labelStyle" : {
-            "type" : "string",
-            "enum" : [ "day", "part" ]
+            "$ref" : "#/components/schemas/LabelStyle"
           },
           "tags" : {
             "type" : "array",
@@ -2251,13 +2265,12 @@
             "$ref" : "#/components/schemas/PersonResponse"
           },
           "role" : {
-            "type" : "string",
+            "$ref" : "#/components/schemas/ViewerRole",
             "description" : "owner or friend",
             "enum" : [ "owner", "friend" ]
           },
           "status" : {
-            "type" : "string",
-            "enum" : [ "invited", "joined" ]
+            "$ref" : "#/components/schemas/MemberStatus"
           },
           "entryCount" : {
             "type" : "integer",
@@ -2270,6 +2283,10 @@
           }
         },
         "required" : [ "entryCount", "person", "role", "since", "status" ]
+      },
+      "MemberStatus" : {
+        "type" : "string",
+        "enum" : [ "invited", "joined" ]
       },
       "MembersResponse" : {
         "type" : "object",
@@ -2286,11 +2303,14 @@
             "description" : "How many more friends can be invited"
           },
           "viewerRole" : {
-            "type" : "string",
-            "enum" : [ "owner", "friend", "invited", "none" ]
+            "$ref" : "#/components/schemas/ViewerRole"
           }
         },
         "required" : [ "members", "spotsLeft", "viewerRole" ]
+      },
+      "ViewerRole" : {
+        "type" : "string",
+        "enum" : [ "owner", "friend", "invited", "none" ]
       },
       "CompleteJourneyRequest" : {
         "type" : "object",
@@ -2437,12 +2457,10 @@
             "format" : "date"
           },
           "visibility" : {
-            "type" : "string",
-            "enum" : [ "public", "unlisted", "private" ]
+            "$ref" : "#/components/schemas/Visibility"
           },
           "labelStyle" : {
-            "type" : "string",
-            "enum" : [ "day", "part" ]
+            "$ref" : "#/components/schemas/LabelStyle"
           },
           "tags" : {
             "type" : "array",
@@ -2459,9 +2477,8 @@
             "description" : "True to go back to using the first photo as the cover"
           },
           "status" : {
-            "type" : "string",
-            "description" : "active or paused. Completing a journey has its own step.",
-            "enum" : [ "active", "paused", "completed" ]
+            "$ref" : "#/components/schemas/JourneyStatus",
+            "description" : "active or paused. Completing a journey has its own step."
           }
         }
       },
@@ -3066,8 +3083,7 @@
             "description" : "Stable for the same line, so the app can keep its place in a list"
           },
           "kind" : {
-            "type" : "string",
-            "enum" : [ "new_entries", "journey_completed", "likes", "comment", "reply", "journey_follow", "profile_follow", "invitation", "friend_joined" ]
+            "$ref" : "#/components/schemas/ActivityKind"
           },
           "at" : {
             "type" : "string",
@@ -3122,6 +3138,10 @@
           }
         },
         "required" : [ "actorCount", "actors", "at", "count", "entryId", "entryTitle", "followsActor", "id", "isNew", "journeyId", "journeyTitle", "kind", "text", "thumbUrl" ]
+      },
+      "ActivityKind" : {
+        "type" : "string",
+        "enum" : [ "new_entries", "journey_completed", "likes", "comment", "reply", "journey_follow", "profile_follow", "invitation", "friend_joined" ]
       },
       "ActivityResponse" : {
         "type" : "object",

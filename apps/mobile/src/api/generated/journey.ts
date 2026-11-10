@@ -6,18 +6,23 @@
  * OpenAPI spec version: v1
  */
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -51,6 +56,15 @@ export interface PublicProfileResponse {
   viewer: PublicProfileViewerResponse;
 }
 
+export type Visibility = typeof Visibility[keyof typeof Visibility];
+
+
+export const Visibility = {
+  public: 'public',
+  unlisted: 'unlisted',
+  private: 'private',
+} as const;
+
 export interface SettingsResponse {
   /** New entries in journeys you follow, grouped per journey */
   notifyNewEntries: boolean;
@@ -65,8 +79,8 @@ export interface SettingsResponse {
   digestEmail: boolean;
   /** Gentle reminders to add an entry, at most one a day */
   reminders: boolean;
-  /** What new journeys start as: public, unlisted or private */
-  defaultVisibility: string;
+  /** What new journeys start as */
+  defaultVisibility: Visibility;
 }
 
 export interface SaveProfileRequest {
@@ -115,27 +129,18 @@ export interface ProfileResponse {
   interests: string[];
 }
 
-export type JourneyResponseLabelStyle = typeof JourneyResponseLabelStyle[keyof typeof JourneyResponseLabelStyle];
+export type LabelStyle = typeof LabelStyle[keyof typeof LabelStyle];
 
 
-export const JourneyResponseLabelStyle = {
+export const LabelStyle = {
   day: 'day',
   part: 'part',
 } as const;
 
-export type JourneyResponseVisibility = typeof JourneyResponseVisibility[keyof typeof JourneyResponseVisibility];
+export type JourneyStatus = typeof JourneyStatus[keyof typeof JourneyStatus];
 
 
-export const JourneyResponseVisibility = {
-  public: 'public',
-  unlisted: 'unlisted',
-  private: 'private',
-} as const;
-
-export type JourneyResponseStatus = typeof JourneyResponseStatus[keyof typeof JourneyResponseStatus];
-
-
-export const JourneyResponseStatus = {
+export const JourneyStatus = {
   active: 'active',
   paused: 'paused',
   completed: 'completed',
@@ -168,12 +173,17 @@ export interface JourneyResponse {
   description: string;
   category: string;
   template: string;
-  labelStyle: JourneyResponseLabelStyle;
-  visibility: JourneyResponseVisibility;
-  status: JourneyResponseStatus;
+  labelStyle: LabelStyle;
+  visibility: Visibility;
+  status: JourneyStatus;
   tags: string[];
   /** @nullable */
   coverUrl: string | null;
+  /**
+     * A smaller version of the cover, for cards and lists
+     * @nullable
+     */
+  coverThumbUrl: string | null;
   startDate: string;
   /** @nullable */
   targetDays: number | null;
@@ -224,20 +234,27 @@ export interface SaveEntryRequest {
      * @maxItems 13
      */
   mediaIds?: string[];
+  /** An id the app makes up for this draft. Sending the same draft again gives back the entry it made the first time. */
+  clientId?: string;
 }
 
-export type MediaResponseKind = typeof MediaResponseKind[keyof typeof MediaResponseKind];
+export type MediaKind = typeof MediaKind[keyof typeof MediaKind];
 
 
-export const MediaResponseKind = {
+export const MediaKind = {
   photo: 'photo',
   video: 'video',
 } as const;
 
 export interface MediaResponse {
   id: string;
-  kind: MediaResponseKind;
+  kind: MediaKind;
   url: string;
+  /**
+     * A smaller version of a photo, for lists and grids. Null for clips.
+     * @nullable
+     */
+  thumbUrl: string | null;
   /** @nullable */
   width: number | null;
   /** @nullable */
@@ -262,6 +279,8 @@ export interface EntryResponse {
   /** Ready to show: "Day 14" or "Part 3" */
   label: string;
   number: number;
+  /** Its place in the story, counting from 1 */
+  position: number;
   title: string;
   body: string;
   /** @nullable */
@@ -275,18 +294,32 @@ export interface EntryResponse {
   viewer: EntryViewerResponse;
 }
 
+export type ReportReason = typeof ReportReason[keyof typeof ReportReason];
+
+
+export const ReportReason = {
+  spam: 'spam',
+  harassment: 'harassment',
+  nudity: 'nudity',
+  violence: 'violence',
+  impersonation: 'impersonation',
+  other: 'other',
+} as const;
+
+export type ReportTarget = typeof ReportTarget[keyof typeof ReportTarget];
+
+
+export const ReportTarget = {
+  journey: 'journey',
+  entry: 'entry',
+  comment: 'comment',
+  profile: 'profile',
+} as const;
+
 export interface ReportRequest {
-  /**
-     * journey, entry, comment or profile
-     * @minLength 1
-     */
-  targetType: string;
+  targetType: ReportTarget;
   targetId: string;
-  /**
-     * spam, harassment, nudity, violence, impersonation or other
-     * @minLength 1
-     */
-  reason: string;
+  reason: ReportReason;
   /**
      * @minLength 0
      * @maxLength 500
@@ -298,24 +331,8 @@ export interface ReportResponse {
   id: string;
 }
 
-/**
- * @minLength 1
- * @pattern photo|video
- */
-export type StartUploadRequestKind = typeof StartUploadRequestKind[keyof typeof StartUploadRequestKind];
-
-
-export const StartUploadRequestKind = {
-  photo: 'photo',
-  video: 'video',
-} as const;
-
 export interface StartUploadRequest {
-  /**
-     * @minLength 1
-     * @pattern photo|video
-     */
-  kind: StartUploadRequestKind;
+  kind: MediaKind;
   /** @minLength 1 */
   contentType: string;
 }
@@ -330,30 +347,6 @@ export interface UploadResponse {
   method: string;
   headers: UploadResponseHeaders;
 }
-
-/**
- * @minLength 1
- * @pattern public|unlisted|private
- */
-export type CreateJourneyRequestVisibility = typeof CreateJourneyRequestVisibility[keyof typeof CreateJourneyRequestVisibility];
-
-
-export const CreateJourneyRequestVisibility = {
-  public: 'public',
-  unlisted: 'unlisted',
-  private: 'private',
-} as const;
-
-/**
- * @pattern day|part
- */
-export type CreateJourneyRequestLabelStyle = typeof CreateJourneyRequestLabelStyle[keyof typeof CreateJourneyRequestLabelStyle];
-
-
-export const CreateJourneyRequestLabelStyle = {
-  day: 'day',
-  part: 'part',
-} as const;
 
 export interface CreateJourneyRequest {
   /**
@@ -370,15 +363,12 @@ export interface CreateJourneyRequest {
   template: string;
   category?: string;
   startDate: string;
-  /**
-     * @minLength 1
-     * @pattern public|unlisted|private
-     */
-  visibility: CreateJourneyRequestVisibility;
-  /** @pattern day|part */
-  labelStyle?: CreateJourneyRequestLabelStyle;
+  visibility: Visibility;
+  labelStyle?: LabelStyle;
   tags?: string[];
   coverMediaId?: string;
+  /** An id the app makes up for this draft. Sending the same draft again gives back the journey it made the first time. */
+  clientId?: string;
 }
 
 export interface InviteRequest {
@@ -386,12 +376,29 @@ export interface InviteRequest {
   username: string;
 }
 
+export type ViewerRole = typeof ViewerRole[keyof typeof ViewerRole];
+
+
+export const ViewerRole = {
+  owner: 'owner',
+  friend: 'friend',
+  invited: 'invited',
+  none: 'none',
+} as const;
+
+export type MemberStatus = typeof MemberStatus[keyof typeof MemberStatus];
+
+
+export const MemberStatus = {
+  invited: 'invited',
+  joined: 'joined',
+} as const;
+
 export interface MemberResponse {
   person: PersonResponse;
   /** owner or friend */
-  role: string;
-  /** joined or invited */
-  status: string;
+  role: ViewerRole;
+  status: MemberStatus;
   entryCount: number;
   /** When they were invited or, once joined, when they joined */
   since: string;
@@ -401,8 +408,7 @@ export interface MembersResponse {
   members: MemberResponse[];
   /** How many more friends can be invited */
   spotsLeft: number;
-  /** owner, friend, invited or none */
-  viewerRole: string;
+  viewerRole: ViewerRole;
 }
 
 export interface CompleteJourneyRequest {
@@ -421,6 +427,8 @@ export interface AddCommentRequest {
   body: string;
   /** The comment being replied to, if any */
   parentId?: string;
+  /** An id the app makes up for this comment. Sending it again gives back the comment it made the first time. */
+  clientId?: string;
 }
 
 export interface CommentViewerResponse {
@@ -468,40 +476,6 @@ export interface CodeRequest {
   email: string;
 }
 
-/**
- * @pattern public|unlisted|private
- */
-export type UpdateJourneyRequestVisibility = typeof UpdateJourneyRequestVisibility[keyof typeof UpdateJourneyRequestVisibility];
-
-
-export const UpdateJourneyRequestVisibility = {
-  public: 'public',
-  unlisted: 'unlisted',
-  private: 'private',
-} as const;
-
-/**
- * @pattern day|part
- */
-export type UpdateJourneyRequestLabelStyle = typeof UpdateJourneyRequestLabelStyle[keyof typeof UpdateJourneyRequestLabelStyle];
-
-
-export const UpdateJourneyRequestLabelStyle = {
-  day: 'day',
-  part: 'part',
-} as const;
-
-/**
- * @pattern active|paused
- */
-export type UpdateJourneyRequestStatus = typeof UpdateJourneyRequestStatus[keyof typeof UpdateJourneyRequestStatus];
-
-
-export const UpdateJourneyRequestStatus = {
-  active: 'active',
-  paused: 'paused',
-} as const;
-
 export interface UpdateJourneyRequest {
   /**
      * @minLength 1
@@ -515,16 +489,14 @@ export interface UpdateJourneyRequest {
   description?: string;
   category?: string;
   startDate?: string;
-  /** @pattern public|unlisted|private */
-  visibility?: UpdateJourneyRequestVisibility;
-  /** @pattern day|part */
-  labelStyle?: UpdateJourneyRequestLabelStyle;
+  visibility?: Visibility;
+  labelStyle?: LabelStyle;
   tags?: string[];
   coverMediaId?: string;
   /** True to go back to using the first photo as the cover */
   clearCover?: boolean;
-  /** @pattern active|paused */
-  status?: UpdateJourneyRequestStatus;
+  /** active or paused. Completing a journey has its own step. */
+  status?: JourneyStatus;
 }
 
 export interface UsernameCheckResponse {
@@ -555,8 +527,28 @@ export interface ListedPersonResponse {
 
 export interface SearchResponse {
   query: string;
+  /** The best matches, most followed first; at most 30 */
   journeys: JourneyResponse[];
+  /** The best matches, most followed first; at most 30 */
   people: ListedPersonResponse[];
+}
+
+export interface PageJourneyResponse {
+  items: JourneyResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
+export interface PageListedPersonResponse {
+  items: ListedPersonResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
 }
 
 export interface MeResponse {
@@ -572,6 +564,15 @@ export interface InvitationResponse {
   invitedAt: string;
 }
 
+export interface PageInvitationResponse {
+  items: InvitationResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
 export interface BlockedPersonResponse {
   id: string;
   username: string;
@@ -579,6 +580,59 @@ export interface BlockedPersonResponse {
   /** @nullable */
   avatarUrl: string | null;
   blockedAt: string;
+}
+
+export interface PageBlockedPersonResponse {
+  items: BlockedPersonResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
+export interface MilestoneResponse {
+  entryId: string;
+  title: string;
+  /** "Day 14" or "Part 3" */
+  label: string;
+  happenedOn: string;
+}
+
+export interface JourneySummaryResponse {
+  /** The first entry of the story */
+  first: EntryResponse | null;
+  /** The newest three entries, newest first */
+  latest: EntryResponse[];
+  /** The story's first photos */
+  photos: MediaResponse[];
+  photoCount: number;
+  /** The day numbers that have an entry, for a challenge's row of ticks */
+  days: number[];
+  milestones: MilestoneResponse[];
+  /** Entries by others since the viewer last read the journey; 0 when they don't follow it */
+  newCount: number;
+  /**
+     * Where to start reading: the first of the new entries
+     * @nullable
+     */
+  firstNewEntryId: string | null;
+}
+
+export interface TimelinePageResponse {
+  items: EntryResponse[];
+  /**
+     * Send as `cursor` for the entries after these. Null at the end of the story.
+     * @nullable
+     */
+  nextCursor: string | null;
+  /**
+     * Send as `cursor` for the entries before these. Null at the start of the story.
+     * @nullable
+     */
+  prevCursor: string | null;
+  /** How many entries the story has */
+  total: number;
 }
 
 export interface RecapResponse {
@@ -597,15 +651,41 @@ export interface RecapResponse {
   momentUrls: string[];
 }
 
+export interface PagePersonResponse {
+  items: PersonResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
 export interface FeedGroupResponse {
   journey: JourneyResponse;
+  /** How many entries are new to the reader */
   newCount: number;
+  /** The newest of them, newest first; at most three */
   entries: EntryResponse[];
 }
 
 export interface FeedResponse {
   groups: FeedGroupResponse[];
+  /** How many journeys the reader follows, for the empty state */
   followingCount: number;
+  /**
+     * Send as `cursor` for more journeys with news. Null when there are no more.
+     * @nullable
+     */
+  nextCursor: string | null;
+}
+
+export interface PageCommentResponse {
+  items: CommentResponse[];
+  /**
+     * Send this back as `cursor` to get the next page. Null on the last page.
+     * @nullable
+     */
+  nextCursor: string | null;
 }
 
 export interface DiscoverResponse {
@@ -664,11 +744,25 @@ export interface CatalogResponse {
   templates: TemplateResponse[];
 }
 
+export type ActivityKind = typeof ActivityKind[keyof typeof ActivityKind];
+
+
+export const ActivityKind = {
+  new_entries: 'new_entries',
+  journey_completed: 'journey_completed',
+  likes: 'likes',
+  comment: 'comment',
+  reply: 'reply',
+  journey_follow: 'journey_follow',
+  profile_follow: 'profile_follow',
+  invitation: 'invitation',
+  friend_joined: 'friend_joined',
+} as const;
+
 export interface ActivityItemResponse {
   /** Stable for the same line, so the app can keep its place in a list */
   id: string;
-  /** new_entries, journey_completed, likes, comment, reply, journey_follow, profile_follow, invitation or friend_joined */
-  kind: string;
+  kind: ActivityKind;
   at: string;
   /** True when it happened after the person last opened Activity */
   isNew: boolean;
@@ -706,11 +800,68 @@ export interface ActivityResponse {
   newCount: number;
 }
 
+export type GetTimelineParams = {
+  cursor?: string;
+  limit?: number;
+  /** An entry id: start with the page that holds it */
+  around?: string;
+};
+
+export type GetCommentsParams = {
+  cursor?: string;
+  limit?: number;
+};
+
 export type SearchParams = {
   q: string;
 };
 
+export type GetJourneysByUsernameParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetFollowingParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetFollowersParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetMyJourneysParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetInvitationsParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetFollowedJourneysParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetBlockedParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type GetInvitableParams = {
+  cursor?: string;
+  limit?: number;
+};
+
 export type GetSuggestedJourneysParams = {
+  limit?: number;
+};
+
+export type GetFeedParams = {
+  cursor?: string;
   limit?: number;
 };
 
@@ -2104,20 +2255,29 @@ export const useCreateJourney = <TError = unknown,
       return useMutation(getCreateJourneyMutationOptions(options), queryClient);
     }
 
-export const getGetTimelineUrl = (journeyId: string,) => {
+export const getGetTimelineUrl = (journeyId: string,
+    params?: GetTimelineParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/journeys/${journeyId}/entries`
+  return stringifiedParams.length > 0 ? `/v1/journeys/${journeyId}/entries?${stringifiedParams}` : `/v1/journeys/${journeyId}/entries`
 }
 
 /**
- * @summary A journey's entries, in the order things happened
+ * @summary A page of a journey's story, in the order things happened
  */
-export const getTimeline = async (journeyId: string, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse[]> => {
+export const getTimeline = async (journeyId: string,
+    params?: GetTimelineParams, options?: Parameters<typeof apiFetch>[1]): Promise<TimelinePageResponse> => {
 
-  return apiFetch<EntryResponse[]>(getGetTimelineUrl(journeyId),
+  return apiFetch<TimelinePageResponse>(getGetTimelineUrl(journeyId,params),
   {
     ...options,
     method: 'GET'
@@ -2130,23 +2290,104 @@ export const getTimeline = async (journeyId: string, options?: Parameters<typeof
 
 
 
-export const getGetTimelineQueryKey = (journeyId: string,) => {
+export const getGetTimelineInfiniteQueryKey = (journeyId: string,
+    params?: GetTimelineParams,) => {
     return [
-    `/v1/journeys/${journeyId}/entries`
+    'infinite', `/v1/journeys/${journeyId}/entries`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetTimelineQueryKey = (journeyId: string,
+    params?: GetTimelineParams,) => {
+    return [
+    `/v1/journeys/${journeyId}/entries`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetTimelineQueryOptions = <TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetTimelineInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getTimeline>>, GetTimelineParams['cursor']>, TError = unknown>(journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetTimelineQueryKey(journeyId);
+  const queryKey =  queryOptions?.queryKey ?? getGetTimelineInfiniteQueryKey(journeyId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimeline>>> = ({ signal }) => getTimeline(journeyId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimeline>>, QueryKey, GetTimelineParams['cursor']> = ({ signal, pageParam }) => getTimeline(journeyId,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTimelineInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getTimeline>>>
+export type GetTimelineInfiniteQueryError = unknown
+
+
+/** @summary A page of a journey's story, in the order things happened */
+export function useGetTimelineInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getTimeline>>, GetTimelineParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params: undefined |  GetTimelineParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimeline>>,
+          TError,
+          Awaited<ReturnType<typeof getTimeline>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A page of a journey's story, in the order things happened */
+export function useGetTimelineInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getTimeline>>, GetTimelineParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimeline>>,
+          TError,
+          Awaited<ReturnType<typeof getTimeline>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A page of a journey's story, in the order things happened */
+export function useGetTimelineInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getTimeline>>, GetTimelineParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A page of a journey's story, in the order things happened */
+export function useGetTimelineInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getTimeline>>, GetTimelineParams['cursor']>, TError = unknown>(
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData, QueryKey, GetTimelineParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTimelineInfiniteQueryOptions(journeyId,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetTimelineQueryOptions = <TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTimelineQueryKey(journeyId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimeline>>> = ({ signal }) => getTimeline(journeyId,params, { signal, ...requestOptions });
 
 
 
@@ -2159,9 +2400,10 @@ export type GetTimelineQueryResult = NonNullable<Awaited<ReturnType<typeof getTi
 export type GetTimelineQueryError = unknown
 
 
-/** @summary A journey's entries, in the order things happened */
+/** @summary A page of a journey's story, in the order things happened */
 export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
- journeyId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
+ journeyId: string,
+    params: undefined |  GetTimelineParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getTimeline>>,
           TError,
@@ -2170,9 +2412,10 @@ export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, 
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary A journey's entries, in the order things happened */
+/** @summary A page of a journey's story, in the order things happened */
 export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
- journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getTimeline>>,
           TError,
@@ -2181,18 +2424,20 @@ export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, 
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary A journey's entries, in the order things happened */
+/** @summary A page of a journey's story, in the order things happened */
 export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
- journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary A journey's entries, in the order things happened */
+/** @summary A page of a journey's story, in the order things happened */
 export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
- journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ journeyId: string,
+    params?: GetTimelineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetTimelineQueryOptions(journeyId,options)
+  const queryOptions = getGetTimelineQueryOptions(journeyId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -2711,20 +2956,29 @@ export const useCompleteJourney = <TError = unknown,
       return useMutation(getCompleteJourneyMutationOptions(options), queryClient);
     }
 
-export const getGetCommentsUrl = (entryId: string,) => {
+export const getGetCommentsUrl = (entryId: string,
+    params?: GetCommentsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/entries/${entryId}/comments`
+  return stringifiedParams.length > 0 ? `/v1/entries/${entryId}/comments?${stringifiedParams}` : `/v1/entries/${entryId}/comments`
 }
 
 /**
  * @summary An entry's comments, oldest first
  */
-export const getComments = async (entryId: string, options?: Parameters<typeof apiFetch>[1]): Promise<CommentResponse[]> => {
+export const getComments = async (entryId: string,
+    params?: GetCommentsParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageCommentResponse> => {
 
-  return apiFetch<CommentResponse[]>(getGetCommentsUrl(entryId),
+  return apiFetch<PageCommentResponse>(getGetCommentsUrl(entryId,params),
   {
     ...options,
     method: 'GET'
@@ -2737,23 +2991,104 @@ export const getComments = async (entryId: string, options?: Parameters<typeof a
 
 
 
-export const getGetCommentsQueryKey = (entryId: string,) => {
+export const getGetCommentsInfiniteQueryKey = (entryId: string,
+    params?: GetCommentsParams,) => {
     return [
-    `/v1/entries/${entryId}/comments`
+    'infinite', `/v1/entries/${entryId}/comments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetCommentsQueryKey = (entryId: string,
+    params?: GetCommentsParams,) => {
+    return [
+    `/v1/entries/${entryId}/comments`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetCommentsQueryOptions = <TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetCommentsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getComments>>, GetCommentsParams['cursor']>, TError = unknown>(entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetCommentsQueryKey(entryId);
+  const queryKey =  queryOptions?.queryKey ?? getGetCommentsInfiniteQueryKey(entryId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComments>>> = ({ signal }) => getComments(entryId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComments>>, QueryKey, GetCommentsParams['cursor']> = ({ signal, pageParam }) => getComments(entryId,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: entryId !== null && entryId !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCommentsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getComments>>>
+export type GetCommentsInfiniteQueryError = unknown
+
+
+/** @summary An entry's comments, oldest first */
+export function useGetCommentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getComments>>, GetCommentsParams['cursor']>, TError = unknown>(
+ entryId: string,
+    params: undefined |  GetCommentsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComments>>,
+          TError,
+          Awaited<ReturnType<typeof getComments>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetCommentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getComments>>, GetCommentsParams['cursor']>, TError = unknown>(
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getComments>>,
+          TError,
+          Awaited<ReturnType<typeof getComments>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetCommentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getComments>>, GetCommentsParams['cursor']>, TError = unknown>(
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary An entry's comments, oldest first */
+export function useGetCommentsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getComments>>, GetCommentsParams['cursor']>, TError = unknown>(
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData, QueryKey, GetCommentsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCommentsInfiniteQueryOptions(entryId,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetCommentsQueryOptions = <TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCommentsQueryKey(entryId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getComments>>> = ({ signal }) => getComments(entryId,params, { signal, ...requestOptions });
 
 
 
@@ -2768,7 +3103,8 @@ export type GetCommentsQueryError = unknown
 
 /** @summary An entry's comments, oldest first */
 export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
- entryId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
+ entryId: string,
+    params: undefined |  GetCommentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getComments>>,
           TError,
@@ -2779,7 +3115,8 @@ export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, 
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary An entry's comments, oldest first */
 export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
- entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getComments>>,
           TError,
@@ -2790,16 +3127,18 @@ export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, 
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary An entry's comments, oldest first */
 export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
- entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary An entry's comments, oldest first */
 export function useGetComments<TData = Awaited<ReturnType<typeof getComments>>, TError = unknown>(
- entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ entryId: string,
+    params?: GetCommentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getComments>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetCommentsQueryOptions(entryId,options)
+  const queryOptions = getGetCommentsQueryOptions(entryId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -3713,20 +4052,29 @@ export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TE
 
 
 
-export const getGetJourneysByUsernameUrl = (username: string,) => {
+export const getGetJourneysByUsernameUrl = (username: string,
+    params?: GetJourneysByUsernameParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/profiles/${username}/journeys`
+  return stringifiedParams.length > 0 ? `/v1/profiles/${username}/journeys?${stringifiedParams}` : `/v1/profiles/${username}/journeys`
 }
 
 /**
  * @summary Someone's public journeys
  */
-export const getJourneysByUsername = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+export const getJourneysByUsername = async (username: string,
+    params?: GetJourneysByUsernameParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageJourneyResponse> => {
 
-  return apiFetch<JourneyResponse[]>(getGetJourneysByUsernameUrl(username),
+  return apiFetch<PageJourneyResponse>(getGetJourneysByUsernameUrl(username,params),
   {
     ...options,
     method: 'GET'
@@ -3739,23 +4087,104 @@ export const getJourneysByUsername = async (username: string, options?: Paramete
 
 
 
-export const getGetJourneysByUsernameQueryKey = (username: string,) => {
+export const getGetJourneysByUsernameInfiniteQueryKey = (username: string,
+    params?: GetJourneysByUsernameParams,) => {
     return [
-    `/v1/profiles/${username}/journeys`
+    'infinite', `/v1/profiles/${username}/journeys`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetJourneysByUsernameQueryKey = (username: string,
+    params?: GetJourneysByUsernameParams,) => {
+    return [
+    `/v1/profiles/${username}/journeys`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetJourneysByUsernameQueryOptions = <TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetJourneysByUsernameInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getJourneysByUsername>>, GetJourneysByUsernameParams['cursor']>, TError = unknown>(username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetJourneysByUsernameQueryKey(username);
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneysByUsernameInfiniteQueryKey(username,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneysByUsername>>> = ({ signal }) => getJourneysByUsername(username, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneysByUsername>>, QueryKey, GetJourneysByUsernameParams['cursor']> = ({ signal, pageParam }) => getJourneysByUsername(username,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJourneysByUsernameInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneysByUsername>>>
+export type GetJourneysByUsernameInfiniteQueryError = unknown
+
+
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsernameInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getJourneysByUsername>>, GetJourneysByUsernameParams['cursor']>, TError = unknown>(
+ username: string,
+    params: undefined |  GetJourneysByUsernameParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneysByUsername>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneysByUsername>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsernameInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getJourneysByUsername>>, GetJourneysByUsernameParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneysByUsername>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneysByUsername>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsernameInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getJourneysByUsername>>, GetJourneysByUsernameParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsernameInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getJourneysByUsername>>, GetJourneysByUsernameParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData, QueryKey, GetJourneysByUsernameParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJourneysByUsernameInfiniteQueryOptions(username,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetJourneysByUsernameQueryOptions = <TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneysByUsernameQueryKey(username,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneysByUsername>>> = ({ signal }) => getJourneysByUsername(username,params, { signal, ...requestOptions });
 
 
 
@@ -3770,7 +4199,8 @@ export type GetJourneysByUsernameQueryError = unknown
 
 /** @summary Someone's public journeys */
 export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
- username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
+ username: string,
+    params: undefined |  GetJourneysByUsernameParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getJourneysByUsername>>,
           TError,
@@ -3781,7 +4211,8 @@ export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJo
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Someone's public journeys */
 export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getJourneysByUsername>>,
           TError,
@@ -3792,16 +4223,18 @@ export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJo
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Someone's public journeys */
 export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Someone's public journeys */
 export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetJourneysByUsernameParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetJourneysByUsernameQueryOptions(username,options)
+  const queryOptions = getGetJourneysByUsernameQueryOptions(username,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -3814,20 +4247,29 @@ export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJo
 
 
 
-export const getGetFollowingUrl = (username: string,) => {
+export const getGetFollowingUrl = (username: string,
+    params?: GetFollowingParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/profiles/${username}/following`
+  return stringifiedParams.length > 0 ? `/v1/profiles/${username}/following?${stringifiedParams}` : `/v1/profiles/${username}/following`
 }
 
 /**
  * @summary The people someone follows, newest first
  */
-export const getFollowing = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<ListedPersonResponse[]> => {
+export const getFollowing = async (username: string,
+    params?: GetFollowingParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageListedPersonResponse> => {
 
-  return apiFetch<ListedPersonResponse[]>(getGetFollowingUrl(username),
+  return apiFetch<PageListedPersonResponse>(getGetFollowingUrl(username,params),
   {
     ...options,
     method: 'GET'
@@ -3840,23 +4282,104 @@ export const getFollowing = async (username: string, options?: Parameters<typeof
 
 
 
-export const getGetFollowingQueryKey = (username: string,) => {
+export const getGetFollowingInfiniteQueryKey = (username: string,
+    params?: GetFollowingParams,) => {
     return [
-    `/v1/profiles/${username}/following`
+    'infinite', `/v1/profiles/${username}/following`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetFollowingQueryKey = (username: string,
+    params?: GetFollowingParams,) => {
+    return [
+    `/v1/profiles/${username}/following`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetFollowingQueryOptions = <TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetFollowingInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getFollowing>>, GetFollowingParams['cursor']>, TError = unknown>(username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetFollowingQueryKey(username);
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowingInfiniteQueryKey(username,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowing>>> = ({ signal }) => getFollowing(username, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowing>>, QueryKey, GetFollowingParams['cursor']> = ({ signal, pageParam }) => getFollowing(username,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowingInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowing>>>
+export type GetFollowingInfiniteQueryError = unknown
+
+
+/** @summary The people someone follows, newest first */
+export function useGetFollowingInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowing>>, GetFollowingParams['cursor']>, TError = unknown>(
+ username: string,
+    params: undefined |  GetFollowingParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowing>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowing>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowingInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowing>>, GetFollowingParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowing>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowing>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowingInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowing>>, GetFollowingParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people someone follows, newest first */
+export function useGetFollowingInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowing>>, GetFollowingParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData, QueryKey, GetFollowingParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowingInfiniteQueryOptions(username,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetFollowingQueryOptions = <TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowingQueryKey(username,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowing>>> = ({ signal }) => getFollowing(username,params, { signal, ...requestOptions });
 
 
 
@@ -3871,7 +4394,8 @@ export type GetFollowingQueryError = unknown
 
 /** @summary The people someone follows, newest first */
 export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
- username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
+ username: string,
+    params: undefined |  GetFollowingParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowing>>,
           TError,
@@ -3882,7 +4406,8 @@ export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people someone follows, newest first */
 export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowing>>,
           TError,
@@ -3893,16 +4418,18 @@ export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people someone follows, newest first */
 export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people someone follows, newest first */
 export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetFollowingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowing>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetFollowingQueryOptions(username,options)
+  const queryOptions = getGetFollowingQueryOptions(username,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -3915,20 +4442,29 @@ export function useGetFollowing<TData = Awaited<ReturnType<typeof getFollowing>>
 
 
 
-export const getGetFollowersUrl = (username: string,) => {
+export const getGetFollowersUrl = (username: string,
+    params?: GetFollowersParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/profiles/${username}/followers`
+  return stringifiedParams.length > 0 ? `/v1/profiles/${username}/followers?${stringifiedParams}` : `/v1/profiles/${username}/followers`
 }
 
 /**
  * @summary The people who follow someone, newest first
  */
-export const getFollowers = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<ListedPersonResponse[]> => {
+export const getFollowers = async (username: string,
+    params?: GetFollowersParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageListedPersonResponse> => {
 
-  return apiFetch<ListedPersonResponse[]>(getGetFollowersUrl(username),
+  return apiFetch<PageListedPersonResponse>(getGetFollowersUrl(username,params),
   {
     ...options,
     method: 'GET'
@@ -3941,23 +4477,104 @@ export const getFollowers = async (username: string, options?: Parameters<typeof
 
 
 
-export const getGetFollowersQueryKey = (username: string,) => {
+export const getGetFollowersInfiniteQueryKey = (username: string,
+    params?: GetFollowersParams,) => {
     return [
-    `/v1/profiles/${username}/followers`
+    'infinite', `/v1/profiles/${username}/followers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetFollowersQueryKey = (username: string,
+    params?: GetFollowersParams,) => {
+    return [
+    `/v1/profiles/${username}/followers`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetFollowersQueryOptions = <TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetFollowersInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getFollowers>>, GetFollowersParams['cursor']>, TError = unknown>(username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetFollowersQueryKey(username);
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowersInfiniteQueryKey(username,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowers>>> = ({ signal }) => getFollowers(username, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowers>>, QueryKey, GetFollowersParams['cursor']> = ({ signal, pageParam }) => getFollowers(username,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowersInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowers>>>
+export type GetFollowersInfiniteQueryError = unknown
+
+
+/** @summary The people who follow someone, newest first */
+export function useGetFollowersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowers>>, GetFollowersParams['cursor']>, TError = unknown>(
+ username: string,
+    params: undefined |  GetFollowersParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowers>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowers>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowers>>, GetFollowersParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowers>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowers>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowers>>, GetFollowersParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people who follow someone, newest first */
+export function useGetFollowersInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowers>>, GetFollowersParams['cursor']>, TError = unknown>(
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData, QueryKey, GetFollowersParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowersInfiniteQueryOptions(username,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetFollowersQueryOptions = <TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowersQueryKey(username,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowers>>> = ({ signal }) => getFollowers(username,params, { signal, ...requestOptions });
 
 
 
@@ -3972,7 +4589,8 @@ export type GetFollowersQueryError = unknown
 
 /** @summary The people who follow someone, newest first */
 export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
- username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
+ username: string,
+    params: undefined |  GetFollowersParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowers>>,
           TError,
@@ -3983,7 +4601,8 @@ export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people who follow someone, newest first */
 export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowers>>,
           TError,
@@ -3994,16 +4613,18 @@ export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people who follow someone, newest first */
 export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people who follow someone, newest first */
 export function useGetFollowers<TData = Awaited<ReturnType<typeof getFollowers>>, TError = unknown>(
- username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ username: string,
+    params?: GetFollowersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetFollowersQueryOptions(username,options)
+  const queryOptions = getGetFollowersQueryOptions(username,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4189,20 +4810,27 @@ export const useDeleteAccount = <TError = unknown,
       return useMutation(getDeleteAccountMutationOptions(options), queryClient);
     }
 
-export const getGetMyJourneysUrl = () => {
+export const getGetMyJourneysUrl = (params?: GetMyJourneysParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/me/journeys`
+  return stringifiedParams.length > 0 ? `/v1/me/journeys?${stringifiedParams}` : `/v1/me/journeys`
 }
 
 /**
  * @summary Your own journeys, of every visibility
  */
-export const getMyJourneys = async ( options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+export const getMyJourneys = async (params?: GetMyJourneysParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageJourneyResponse> => {
 
-  return apiFetch<JourneyResponse[]>(getGetMyJourneysUrl(),
+  return apiFetch<PageJourneyResponse>(getGetMyJourneysUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4215,23 +4843,96 @@ export const getMyJourneys = async ( options?: Parameters<typeof apiFetch>[1]): 
 
 
 
-export const getGetMyJourneysQueryKey = () => {
+export const getGetMyJourneysInfiniteQueryKey = (params?: GetMyJourneysParams,) => {
     return [
-    `/v1/me/journeys`
+    'infinite', `/v1/me/journeys`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetMyJourneysQueryKey = (params?: GetMyJourneysParams,) => {
+    return [
+    `/v1/me/journeys`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetMyJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetMyJourneysInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getMyJourneys>>, GetMyJourneysParams['cursor']>, TError = unknown>(params?: GetMyJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMyJourneysQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetMyJourneysInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyJourneys>>> = ({ signal }) => getMyJourneys({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyJourneys>>, QueryKey, GetMyJourneysParams['cursor']> = ({ signal, pageParam }) => getMyJourneys({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyJourneysInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getMyJourneys>>>
+export type GetMyJourneysInfiniteQueryError = unknown
+
+
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMyJourneys>>, GetMyJourneysParams['cursor']>, TError = unknown>(
+ params: undefined |  GetMyJourneysParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getMyJourneys>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMyJourneys>>, GetMyJourneysParams['cursor']>, TError = unknown>(
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getMyJourneys>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMyJourneys>>, GetMyJourneysParams['cursor']>, TError = unknown>(
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getMyJourneys>>, GetMyJourneysParams['cursor']>, TError = unknown>(
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData, QueryKey, GetMyJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyJourneysInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetMyJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(params?: GetMyJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyJourneysQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyJourneys>>> = ({ signal }) => getMyJourneys(params, { signal, ...requestOptions });
 
 
 
@@ -4246,7 +4947,7 @@ export type GetMyJourneysQueryError = unknown
 
 /** @summary Your own journeys, of every visibility */
 export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
+ params: undefined |  GetMyJourneysParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyJourneys>>,
           TError,
@@ -4257,7 +4958,7 @@ export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Your own journeys, of every visibility */
 export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getMyJourneys>>,
           TError,
@@ -4268,16 +4969,16 @@ export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Your own journeys, of every visibility */
 export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Your own journeys, of every visibility */
 export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetMyJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetMyJourneysQueryOptions(options)
+  const queryOptions = getGetMyJourneysQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4290,20 +4991,27 @@ export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys
 
 
 
-export const getGetInvitationsUrl = () => {
+export const getGetInvitationsUrl = (params?: GetInvitationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/me/invitations`
+  return stringifiedParams.length > 0 ? `/v1/me/invitations?${stringifiedParams}` : `/v1/me/invitations`
 }
 
 /**
  * @summary Invitations to shared journeys that are waiting for your answer
  */
-export const getInvitations = async ( options?: Parameters<typeof apiFetch>[1]): Promise<InvitationResponse[]> => {
+export const getInvitations = async (params?: GetInvitationsParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageInvitationResponse> => {
 
-  return apiFetch<InvitationResponse[]>(getGetInvitationsUrl(),
+  return apiFetch<PageInvitationResponse>(getGetInvitationsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4316,23 +5024,96 @@ export const getInvitations = async ( options?: Parameters<typeof apiFetch>[1]):
 
 
 
-export const getGetInvitationsQueryKey = () => {
+export const getGetInvitationsInfiniteQueryKey = (params?: GetInvitationsParams,) => {
     return [
-    `/v1/me/invitations`
+    'infinite', `/v1/me/invitations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetInvitationsQueryKey = (params?: GetInvitationsParams,) => {
+    return [
+    `/v1/me/invitations`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetInvitationsInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getInvitations>>, GetInvitationsParams['cursor']>, TError = unknown>(params?: GetInvitationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetInvitationsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitationsInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitations>>> = ({ signal }) => getInvitations({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitations>>, QueryKey, GetInvitationsParams['cursor']> = ({ signal, pageParam }) => getInvitations({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitationsInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitations>>>
+export type GetInvitationsInfiniteQueryError = unknown
+
+
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitations>>, GetInvitationsParams['cursor']>, TError = unknown>(
+ params: undefined |  GetInvitationsParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitations>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitations>>, GetInvitationsParams['cursor']>, TError = unknown>(
+ params?: GetInvitationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitations>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitations>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitations>>, GetInvitationsParams['cursor']>, TError = unknown>(
+ params?: GetInvitationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Invitations to shared journeys that are waiting for your answer */
+export function useGetInvitationsInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitations>>, GetInvitationsParams['cursor']>, TError = unknown>(
+ params?: GetInvitationsParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData, QueryKey, GetInvitationsParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitationsInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetInvitationsQueryOptions = <TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(params?: GetInvitationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitations>>> = ({ signal }) => getInvitations(params, { signal, ...requestOptions });
 
 
 
@@ -4347,7 +5128,7 @@ export type GetInvitationsQueryError = unknown
 
 /** @summary Invitations to shared journeys that are waiting for your answer */
 export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
+ params: undefined |  GetInvitationsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitations>>,
           TError,
@@ -4358,7 +5139,7 @@ export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitatio
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Invitations to shared journeys that are waiting for your answer */
 export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
+ params?: GetInvitationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitations>>,
           TError,
@@ -4369,16 +5150,16 @@ export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitatio
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Invitations to shared journeys that are waiting for your answer */
 export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetInvitationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary Invitations to shared journeys that are waiting for your answer */
 export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitations>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetInvitationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitations>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetInvitationsQueryOptions(options)
+  const queryOptions = getGetInvitationsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4391,20 +5172,27 @@ export function useGetInvitations<TData = Awaited<ReturnType<typeof getInvitatio
 
 
 
-export const getGetFollowedJourneysUrl = () => {
+export const getGetFollowedJourneysUrl = (params?: GetFollowedJourneysParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/me/following`
+  return stringifiedParams.length > 0 ? `/v1/me/following?${stringifiedParams}` : `/v1/me/following`
 }
 
 /**
  * @summary The journeys you follow
  */
-export const getFollowedJourneys = async ( options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+export const getFollowedJourneys = async (params?: GetFollowedJourneysParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageJourneyResponse> => {
 
-  return apiFetch<JourneyResponse[]>(getGetFollowedJourneysUrl(),
+  return apiFetch<PageJourneyResponse>(getGetFollowedJourneysUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4417,23 +5205,96 @@ export const getFollowedJourneys = async ( options?: Parameters<typeof apiFetch>
 
 
 
-export const getGetFollowedJourneysQueryKey = () => {
+export const getGetFollowedJourneysInfiniteQueryKey = (params?: GetFollowedJourneysParams,) => {
     return [
-    `/v1/me/following`
+    'infinite', `/v1/me/following`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetFollowedJourneysQueryKey = (params?: GetFollowedJourneysParams,) => {
+    return [
+    `/v1/me/following`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetFollowedJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetFollowedJourneysInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getFollowedJourneys>>, GetFollowedJourneysParams['cursor']>, TError = unknown>(params?: GetFollowedJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetFollowedJourneysQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowedJourneysInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowedJourneys>>> = ({ signal }) => getFollowedJourneys({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowedJourneys>>, QueryKey, GetFollowedJourneysParams['cursor']> = ({ signal, pageParam }) => getFollowedJourneys({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowedJourneysInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowedJourneys>>>
+export type GetFollowedJourneysInfiniteQueryError = unknown
+
+
+/** @summary The journeys you follow */
+export function useGetFollowedJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowedJourneys>>, GetFollowedJourneysParams['cursor']>, TError = unknown>(
+ params: undefined |  GetFollowedJourneysParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowedJourneys>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowedJourneys>>, GetFollowedJourneysParams['cursor']>, TError = unknown>(
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowedJourneys>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowedJourneys>>, GetFollowedJourneysParams['cursor']>, TError = unknown>(
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneysInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFollowedJourneys>>, GetFollowedJourneysParams['cursor']>, TError = unknown>(
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData, QueryKey, GetFollowedJourneysParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowedJourneysInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetFollowedJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(params?: GetFollowedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowedJourneysQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowedJourneys>>> = ({ signal }) => getFollowedJourneys(params, { signal, ...requestOptions });
 
 
 
@@ -4448,7 +5309,7 @@ export type GetFollowedJourneysQueryError = unknown
 
 /** @summary The journeys you follow */
 export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
+ params: undefined |  GetFollowedJourneysParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowedJourneys>>,
           TError,
@@ -4459,7 +5320,7 @@ export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFoll
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The journeys you follow */
 export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFollowedJourneys>>,
           TError,
@@ -4470,16 +5331,16 @@ export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFoll
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The journeys you follow */
 export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The journeys you follow */
 export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetFollowedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetFollowedJourneysQueryOptions(options)
+  const queryOptions = getGetFollowedJourneysQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4492,20 +5353,27 @@ export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFoll
 
 
 
-export const getGetBlockedUrl = () => {
+export const getGetBlockedUrl = (params?: GetBlockedParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/me/blocks`
+  return stringifiedParams.length > 0 ? `/v1/me/blocks?${stringifiedParams}` : `/v1/me/blocks`
 }
 
 /**
  * @summary The people you have blocked, most recent first
  */
-export const getBlocked = async ( options?: Parameters<typeof apiFetch>[1]): Promise<BlockedPersonResponse[]> => {
+export const getBlocked = async (params?: GetBlockedParams, options?: Parameters<typeof apiFetch>[1]): Promise<PageBlockedPersonResponse> => {
 
-  return apiFetch<BlockedPersonResponse[]>(getGetBlockedUrl(),
+  return apiFetch<PageBlockedPersonResponse>(getGetBlockedUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4518,23 +5386,96 @@ export const getBlocked = async ( options?: Parameters<typeof apiFetch>[1]): Pro
 
 
 
-export const getGetBlockedQueryKey = () => {
+export const getGetBlockedInfiniteQueryKey = (params?: GetBlockedParams,) => {
     return [
-    `/v1/me/blocks`
+    'infinite', `/v1/me/blocks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetBlockedQueryKey = (params?: GetBlockedParams,) => {
+    return [
+    `/v1/me/blocks`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetBlockedQueryOptions = <TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetBlockedInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getBlocked>>, GetBlockedParams['cursor']>, TError = unknown>(params?: GetBlockedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetBlockedQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetBlockedInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBlocked>>> = ({ signal }) => getBlocked({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBlocked>>, QueryKey, GetBlockedParams['cursor']> = ({ signal, pageParam }) => getBlocked({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetBlockedInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getBlocked>>>
+export type GetBlockedInfiniteQueryError = unknown
+
+
+/** @summary The people you have blocked, most recent first */
+export function useGetBlockedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getBlocked>>, GetBlockedParams['cursor']>, TError = unknown>(
+ params: undefined |  GetBlockedParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBlocked>>,
+          TError,
+          Awaited<ReturnType<typeof getBlocked>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlockedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getBlocked>>, GetBlockedParams['cursor']>, TError = unknown>(
+ params?: GetBlockedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBlocked>>,
+          TError,
+          Awaited<ReturnType<typeof getBlocked>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlockedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getBlocked>>, GetBlockedParams['cursor']>, TError = unknown>(
+ params?: GetBlockedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The people you have blocked, most recent first */
+export function useGetBlockedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getBlocked>>, GetBlockedParams['cursor']>, TError = unknown>(
+ params?: GetBlockedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData, QueryKey, GetBlockedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetBlockedInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetBlockedQueryOptions = <TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(params?: GetBlockedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBlockedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBlocked>>> = ({ signal }) => getBlocked(params, { signal, ...requestOptions });
 
 
 
@@ -4549,7 +5490,7 @@ export type GetBlockedQueryError = unknown
 
 /** @summary The people you have blocked, most recent first */
 export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
+ params: undefined |  GetBlockedParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getBlocked>>,
           TError,
@@ -4560,7 +5501,7 @@ export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TE
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people you have blocked, most recent first */
 export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
+ params?: GetBlockedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getBlocked>>,
           TError,
@@ -4571,16 +5512,117 @@ export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TE
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people you have blocked, most recent first */
 export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetBlockedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The people you have blocked, most recent first */
 export function useGetBlocked<TData = Awaited<ReturnType<typeof getBlocked>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetBlockedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getBlocked>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetBlockedQueryOptions(options)
+  const queryOptions = getGetBlockedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetJourneySummaryUrl = (journeyId: string,) => {
+
+
+
+
+  return `/v1/journeys/${journeyId}/summary`
+}
+
+/**
+ * @summary What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments
+ */
+export const getJourneySummary = async (journeyId: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneySummaryResponse> => {
+
+  return apiFetch<JourneySummaryResponse>(getGetJourneySummaryUrl(journeyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneySummaryQueryKey = (journeyId: string,) => {
+    return [
+    `/v1/journeys/${journeyId}/summary`
+    ] as const;
+    }
+
+
+export const getGetJourneySummaryQueryOptions = <TData = Awaited<ReturnType<typeof getJourneySummary>>, TError = unknown>(journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneySummaryQueryKey(journeyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneySummary>>> = ({ signal }) => getJourneySummary(journeyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJourneySummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneySummary>>>
+export type GetJourneySummaryQueryError = unknown
+
+
+/** @summary What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments */
+export function useGetJourneySummary<TData = Awaited<ReturnType<typeof getJourneySummary>>, TError = unknown>(
+ journeyId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneySummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments */
+export function useGetJourneySummary<TData = Awaited<ReturnType<typeof getJourneySummary>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneySummary>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments */
+export function useGetJourneySummary<TData = Awaited<ReturnType<typeof getJourneySummary>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What a journey's page shows of its story: the newest entries, first photos, ticked days and big moments */
+export function useGetJourneySummary<TData = Awaited<ReturnType<typeof getJourneySummary>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneySummary>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJourneySummaryQueryOptions(journeyId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4694,20 +5736,29 @@ export function useGetRecap<TData = Awaited<ReturnType<typeof getRecap>>, TError
 
 
 
-export const getGetInvitableUrl = (id: string,) => {
+export const getGetInvitableUrl = (id: string,
+    params?: GetInvitableParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/journeys/${id}/invitable`
+  return stringifiedParams.length > 0 ? `/v1/journeys/${id}/invitable?${stringifiedParams}` : `/v1/journeys/${id}/invitable`
 }
 
 /**
  * @summary The owner's followers who can still be invited
  */
-export const getInvitable = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<PersonResponse[]> => {
+export const getInvitable = async (id: string,
+    params?: GetInvitableParams, options?: Parameters<typeof apiFetch>[1]): Promise<PagePersonResponse> => {
 
-  return apiFetch<PersonResponse[]>(getGetInvitableUrl(id),
+  return apiFetch<PagePersonResponse>(getGetInvitableUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -4720,23 +5771,104 @@ export const getInvitable = async (id: string, options?: Parameters<typeof apiFe
 
 
 
-export const getGetInvitableQueryKey = (id: string,) => {
+export const getGetInvitableInfiniteQueryKey = (id: string,
+    params?: GetInvitableParams,) => {
     return [
-    `/v1/journeys/${id}/invitable`
+    'infinite', `/v1/journeys/${id}/invitable`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetInvitableQueryKey = (id: string,
+    params?: GetInvitableParams,) => {
+    return [
+    `/v1/journeys/${id}/invitable`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetInvitableQueryOptions = <TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetInvitableInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getInvitable>>, GetInvitableParams['cursor']>, TError = unknown>(id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetInvitableQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitableInfiniteQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitable>>> = ({ signal }) => getInvitable(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitable>>, QueryKey, GetInvitableParams['cursor']> = ({ signal, pageParam }) => getInvitable(id,{...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInvitableInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getInvitable>>>
+export type GetInvitableInfiniteQueryError = unknown
+
+
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitableInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitable>>, GetInvitableParams['cursor']>, TError = unknown>(
+ id: string,
+    params: undefined |  GetInvitableParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitable>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitable>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitableInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitable>>, GetInvitableParams['cursor']>, TError = unknown>(
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInvitable>>,
+          TError,
+          Awaited<ReturnType<typeof getInvitable>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitableInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitable>>, GetInvitableParams['cursor']>, TError = unknown>(
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The owner's followers who can still be invited */
+export function useGetInvitableInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getInvitable>>, GetInvitableParams['cursor']>, TError = unknown>(
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData, QueryKey, GetInvitableParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetInvitableInfiniteQueryOptions(id,params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetInvitableQueryOptions = <TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvitableQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvitable>>> = ({ signal }) => getInvitable(id,params, { signal, ...requestOptions });
 
 
 
@@ -4751,7 +5883,8 @@ export type GetInvitableQueryError = unknown
 
 /** @summary The owner's followers who can still be invited */
 export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
- id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
+ id: string,
+    params: undefined |  GetInvitableParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitable>>,
           TError,
@@ -4762,7 +5895,8 @@ export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The owner's followers who can still be invited */
 export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getInvitable>>,
           TError,
@@ -4773,16 +5907,18 @@ export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The owner's followers who can still be invited */
 export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /** @summary The owner's followers who can still be invited */
 export function useGetInvitable<TData = Awaited<ReturnType<typeof getInvitable>>, TError = unknown>(
- id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ id: string,
+    params?: GetInvitableParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvitable>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetInvitableQueryOptions(id,options)
+  const queryOptions = getGetInvitableQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4903,20 +6039,27 @@ export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSug
 
 
 
-export const getGetFeedUrl = () => {
+export const getGetFeedUrl = (params?: GetFeedParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/feed`
+  return stringifiedParams.length > 0 ? `/v1/feed?${stringifiedParams}` : `/v1/feed`
 }
 
 /**
- * @summary Home: what's new in the journeys you follow, grouped per journey, newest first
+ * @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first
  */
-export const getFeed = async ( options?: Parameters<typeof apiFetch>[1]): Promise<FeedResponse> => {
+export const getFeed = async (params?: GetFeedParams, options?: Parameters<typeof apiFetch>[1]): Promise<FeedResponse> => {
 
-  return apiFetch<FeedResponse>(getGetFeedUrl(),
+  return apiFetch<FeedResponse>(getGetFeedUrl(params),
   {
     ...options,
     method: 'GET'
@@ -4929,23 +6072,96 @@ export const getFeed = async ( options?: Parameters<typeof apiFetch>[1]): Promis
 
 
 
-export const getGetFeedQueryKey = () => {
+export const getGetFeedInfiniteQueryKey = (params?: GetFeedParams,) => {
     return [
-    `/v1/feed`
+    'infinite', `/v1/feed`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetFeedQueryKey = (params?: GetFeedParams,) => {
+    return [
+    `/v1/feed`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetFeedQueryOptions = <TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+export const getGetFeedInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getFeed>>, GetFeedParams['cursor']>, TError = unknown>(params?: GetFeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetFeedQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetFeedInfiniteQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeed>>> = ({ signal }) => getFeed({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeed>>, QueryKey, GetFeedParams['cursor']> = ({ signal, pageParam }) => getFeed({...params, 'cursor': pageParam ?? params?.['cursor']}, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeedInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getFeed>>>
+export type GetFeedInfiniteQueryError = unknown
+
+
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
+export function useGetFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFeed>>, GetFeedParams['cursor']>, TError = unknown>(
+ params: undefined |  GetFeedParams, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getFeed>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
+export function useGetFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFeed>>, GetFeedParams['cursor']>, TError = unknown>(
+ params?: GetFeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getFeed>>, QueryKey
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
+export function useGetFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFeed>>, GetFeedParams['cursor']>, TError = unknown>(
+ params?: GetFeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
+export function useGetFeedInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getFeed>>, GetFeedParams['cursor']>, TError = unknown>(
+ params?: GetFeedParams, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData, QueryKey, GetFeedParams['cursor']>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeedInfiniteQueryOptions(params,options)
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetFeedQueryOptions = <TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(params?: GetFeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeedQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeed>>> = ({ signal }) => getFeed(params, { signal, ...requestOptions });
 
 
 
@@ -4958,9 +6174,9 @@ export type GetFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getFeed>>
 export type GetFeedQueryError = unknown
 
 
-/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
 export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
+ params: undefined |  GetFeedParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFeed>>,
           TError,
@@ -4969,9 +6185,9 @@ export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError =
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
 export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
+ params?: GetFeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getFeed>>,
           TError,
@@ -4980,18 +6196,18 @@ export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError =
       >, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
 export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetFeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+/** @summary Home: what's new in the journeys you follow or write in, grouped per journey, newest first */
 export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ params?: GetFeedParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetFeedQueryOptions(options)
+  const queryOptions = getGetFeedQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -22,6 +22,8 @@ class OpenApiConfig {
     static {
         // The signed-in person comes from the token, not from the caller, so it is not part of the description.
         SpringDocUtils.getConfig().addAnnotationsToIgnore(Me.class);
+        // Each fixed set of words is described once, under its own name, so the app gets one type per set.
+        io.swagger.v3.core.jackson.ModelResolver.enumsAsRef = true;
     }
 
     @Bean
