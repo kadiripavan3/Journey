@@ -415,11 +415,19 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T(/^Read all 5 entries/).click();
     // A day's label stays at the top of the story while that day's entries scroll underneath it.
     await T('Sunrise over Mount Bromo').waitFor();
-    await page.mouse.move(195, 500);
-    await page.mouse.wheel(0, 600);
+    const days = page.getByRole('heading', { name: /^(Day|Part) \d+/ });
+    // The label that sits just under the bar, if any.
+    const atTop = () => days.evaluateAll((labels) => labels.map((label) => ({ says: label.getAttribute('aria-label'), top: label.getBoundingClientRect().top })).find((label) => label.top >= 40 && label.top <= 140)?.says ?? null);
+    const first = await atTop();
+    await days.first().evaluate((label) => {
+      let list = label.parentElement;
+      while (list && !['auto', 'scroll'].includes(getComputedStyle(list).overflowY)) list = list.parentElement;
+      list.scrollTop = 600;
+    });
     await page.waitForTimeout(700);
-    const stuck = await page.getByRole('heading', { name: /^(Day|Part) \d+/ }).evaluateAll((labels) => labels.map((label) => Math.round(label.getBoundingClientRect().top)));
-    if (!stuck.some((top) => top >= 40 && top <= 140)) throw new Error('no day label is held at the top of the story: ' + stuck.join(', '));
+    const held = await atTop();
+    if (!held) throw new Error('no day label is held at the top of the story after scrolling');
+    if (held === first) throw new Error('the story did not scroll: the same day label is still at the top');
     await shot('timeline-sticky-day');
     await R('button', { name: 'Jump to' }).click();
     await T('Start from the beginning').waitFor();
