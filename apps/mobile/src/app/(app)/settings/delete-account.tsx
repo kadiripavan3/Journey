@@ -1,11 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { useDeleteAccount, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
+import { useLeave } from '@/features/navigation/useLeave';
 import { compact, plural } from '@/lib/plural';
 import { radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -16,7 +16,7 @@ import { Txt } from '@/ui/Txt';
 
 /** 10.6 Delete account: clear and final. No maze and no guilt trip. */
 export default function DeleteAccount() {
-  const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const session = useSession();
   const queryClient = useQueryClient();
@@ -50,7 +50,7 @@ export default function DeleteAccount() {
             </Txt>
           ) : null}
           <Button label="Delete my account" variant="danger" size="lg" block loading={remove.isPending} onPress={() => remove.mutate()} />
-          <Button label="Keep my account" variant="line" size="lg" block onPress={() => router.back()} />
+          <Button label="Keep my account" variant="line" size="lg" block onPress={leave} />
         </>
       }>
       <View style={{ width: 72, height: 72, borderRadius: radius.cardLarge, marginTop: 14, marginBottom: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>

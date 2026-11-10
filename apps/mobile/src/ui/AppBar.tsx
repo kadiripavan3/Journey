@@ -24,13 +24,16 @@ type Props = {
 /** The bar at the top of a screen: a way back, an optional title, and an optional action. */
 export function AppBar({ title, subtitle, leading = 'back', left, trailing, center }: Props) {
   const router = useRouter();
+  // The same rule as `useLeave` (features/navigation), which the design system can't import: go back, or Home
+  // when the app was opened straight onto this screen and there is nowhere to go back to.
+  const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
   return (
-    <View style={{ height: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <View style={{ minHeight: 56, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ minWidth: 40, alignItems: 'flex-start' }}>
         {left ?? (leading === 'none' ? null : (
           <RoundButton
             label={leading === 'back' ? 'Back' : 'Close'}
-            onPress={() => router.back()}
+            onPress={leave}
             icon={(c) => (leading === 'back' ? <ArrowLeft size={20} color={c} /> : <X size={20} color={c} />)}
           />
         ))}

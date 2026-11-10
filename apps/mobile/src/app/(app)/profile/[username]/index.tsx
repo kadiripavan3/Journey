@@ -1,6 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Ban, Ellipsis, Flag, Link as LinkIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -14,11 +13,13 @@ import { FollowButton } from '@/features/journeys/FollowButton';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { BlockSheet, ReportSheet } from '@/features/safety/SafetySheets';
+import { useLeave } from '@/features/navigation/useLeave';
 import { firstName } from '@/lib/names';
 import { compact, followersLabel } from '@/lib/plural';
 import { layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Photo } from '@/ui/Photo';
 import { Problem } from '@/ui/Problem';
@@ -32,6 +33,7 @@ import { WordTabs } from '@/ui/WordTabs';
 export default function CreatorProfile() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const router = useRouter();
+  const leave = useLeave();
   const insets = useSafeAreaInsets();
   const { colors, shadow } = useTheme();
   const profile = useGetProfile(username);
@@ -49,7 +51,7 @@ export default function CreatorProfile() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
-          <RoundButton label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+          <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         </View>
         {profile.isPending ? <Loading /> : <Problem message={messageFor(profile.error)} onRetry={() => void profile.refetch()} retrying={profile.isRefetching} />}
       </View>
@@ -67,7 +69,7 @@ export default function CreatorProfile() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <Photo uri={cover} radius="none" style={{ height: 230, backgroundColor: colors.fill2 }}>
           <LinearGradient colors={[withAlpha(colors.black, 0.38), withAlpha(colors.black, 0)]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130 }} />
@@ -163,7 +165,7 @@ export default function CreatorProfile() {
       </ScrollView>
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <RoundButton tone="photo" label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        <RoundButton tone="photo" label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         {p.viewer.isMe ? null : <RoundButton tone="photo" label="More options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} />}
       </View>
 
@@ -189,7 +191,7 @@ export default function CreatorProfile() {
           }}
         />
       </Sheet>
-      <BlockSheet person={blocking ? p : null} onClose={() => setBlocking(false)} onBlocked={() => router.back()} />
+      <BlockSheet person={blocking ? p : null} onClose={() => setBlocking(false)} onBlocked={leave} />
       <ReportSheet target={reporting ? { type: 'profile', id: p.id, word: 'person' } : null} onClose={() => setReporting(false)} />
     </View>
   );

@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Link as LinkIcon, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -8,8 +8,10 @@ import { messageFor } from '@/api/fetcher';
 import { type InviteLinkResponse, type MemberResponse, useCreateInviteLink, useGetInvitableInfinite, useGetJourney, useGetMe, useGetMembers, useInviteMember, useRemoveMember } from '@/api/generated/journey';
 import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
+import { useLeave } from '@/features/navigation/useLeave';
 import { MoreButton } from '@/ui/MoreButton';
-import { timeAgo } from '@/lib/dates';
+import { formatDay, timeAgo } from '@/lib/dates';
+import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
 import { shareLink } from '@/lib/share';
 import { layout, radius, useTheme } from '@/theme';
@@ -17,6 +19,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { ConfirmSheet } from '@/ui/ConfirmSheet';
 import { GroupLabel } from '@/ui/Heading';
 import { LinkBox } from '@/ui/LinkBox';
 import { Loading } from '@/ui/Loading';
@@ -32,7 +35,7 @@ const RULES = [
 /** 8.1 and 8.6 People on a journey: who can add entries, who is still deciding, and (for the owner) who to invite. */
 export default function JourneyPeople() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const cache = useCache();
   const myId = useGetMe().data?.id;
@@ -42,16 +45,19 @@ export default function JourneyPeople() {
   const invitable = useGetInvitableInfinite(id, undefined, { query: { ...paged, enabled: isOwner } });
   const candidates = rows(invitable.data) ?? [];
   const invite = useInviteMember({ mutation: { onSuccess: () => cache.membersChanged(id) } });
+  // Removing a friend, or leaving, takes away the right to write here: it asks first.
+  const [going, setGoing] = useState<MemberResponse | null>(null);
   const remove = useRemoveMember({
     mutation: {
       onSuccess: async (_, { username }) => {
         const left = members.data?.members.find((m) => m.person.username === username)?.person.id === myId;
+        setGoing(null);
         await cache.membersChanged(id);
-        if (left) router.back();
+        if (left) leave();
       },
     },
   });
-  const failed = invite.error ?? remove.error;
+  const failed = invite.error ?? (going ? null : remove.error);
   const data = members.data;
   const joined = (data?.members ?? []).filter((m) => m.status === 'joined');
   const waiting = (data?.members ?? []).filter((m) => m.status === 'invited');
@@ -70,9 +76,13 @@ export default function JourneyPeople() {
           Owner
         </Txt>
       ) : isOwner ? (
-        <Button label={member.status === 'invited' ? 'Cancel' : 'Remove'} inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
+        member.status === 'invited' ? (
+          <Button label="Cancel" inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
+        ) : (
+          <Button label="Remove" inline size="sm" variant="line" onPress={() => setGoing(member)} />
+        )
       ) : me ? (
-        <Button label="Leave" inline size="sm" variant="line" onPress={() => remove.mutate({ id, username: member.person.username })} />
+        <Button label="Leave" inline size="sm" variant="line" onPress={() => setGoing(member)} />
       ) : null;
     return (
       <View key={member.person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
@@ -115,7 +125,7 @@ export default function JourneyPeople() {
               <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginBottom: 6 }}>
                 {data.spotsLeft > 0
                   ? `You can invite ${plural(data.spotsLeft, 'more person', 'more people')}. They add their own entries, and you stay in charge of the journey.`
-                  : 'A journey has up to 4 authors. Remove someone to invite another person.'}
+                  : `A journey has up to ${plural(data.members.length, 'author')}. Remove someone to invite another person.`}
               </Txt>
               {data.spotsLeft === 0 ? null : invitable.isPending ? (
                 <View style={{ height: 80 }}>
@@ -173,6 +183,17 @@ export default function JourneyPeople() {
           </Txt>
         </ScrollView>
       )}
+      <ConfirmSheet
+        visible={!!going}
+        onClose={() => setGoing(null)}
+        title={going?.person.id === myId ? 'Leave this journey?' : `Remove ${firstName(going?.person.displayName ?? '')} from this journey?`}
+        body={going?.person.id === myId ? "You won't be able to add entries any more. The ones you wrote stay unless you delete them." : "They won't be able to add entries any more. The ones they wrote stay unless they delete them."}
+        confirm={going?.person.id === myId ? 'Leave journey' : 'Remove'}
+        cancel={going?.person.id === myId ? 'Stay' : 'Keep them'}
+        busy={remove.isPending}
+        problem={remove.isError ? messageFor(remove.error) : null}
+        onConfirm={() => going && remove.mutate({ id, username: going.person.username })}
+      />
     </SafeAreaView>
   );
 }
@@ -188,10 +209,10 @@ function InviteLink({ journeyId, title }: { journeyId: string; title: string }) 
         <>
           <LinkBox url={link.url} icon={(c) => <LinkIcon size={18} color={c} />} style={{ marginHorizontal: layout.barGutter }} />
           <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
-            The link works once, for one person, for 7 days. Copy or send it now: it isn&apos;t shown again.
+            The link works once, for one person, until {formatDay(link.expiresAt.slice(0, 10))}. Copy or send it now: it isn&apos;t shown again.
           </Txt>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, marginHorizontal: layout.barGutter }}>
-            <Button label="Send the link" size="sm" variant="soft" icon={(c) => <Share2 size={15} color={c} />} onPress={() => void shareLink(`Add to ${title} with me`, link.url)} />
+            <Button label="Send the link" size="sm" variant="soft" icon={(c) => <Share2 size={15} color={c} />} onPress={() => void shareLink(`Add to ${title} with me on Journey`, link.url)} />
             <Button label="Make a new link" size="sm" variant="quiet" loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} />
           </View>
         </>
@@ -202,7 +223,7 @@ function InviteLink({ journeyId, title }: { journeyId: string; title: string }) 
           </Txt>
           <Button label="Make an invite link" variant="soft" icon={(c) => <LinkIcon size={18} color={c} />} loading={make.isPending} onPress={() => make.mutate({ id: journeyId })} style={{ marginHorizontal: layout.barGutter }} />
           <Txt variant="small" color="muted" style={{ marginTop: 12, marginHorizontal: 28 }}>
-            The link works once, for one person, for 7 days.
+            The link works once, for one person, and for a few days only.
           </Txt>
         </>
       )}

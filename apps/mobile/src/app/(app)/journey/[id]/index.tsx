@@ -1,6 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, BookOpen, CircleCheck, Ellipsis, Flag, Pause, Pencil, Play, Plus, Share2, Sparkles, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -16,6 +15,8 @@ import { FollowButton } from '@/features/journeys/FollowButton';
 import { PausedNote } from '@/features/journeys/PausedNote';
 import { STATUS } from '@/features/journeys/status';
 import { ReportSheet } from '@/features/safety/SafetySheets';
+import { useGoHome } from '@/features/states/PageProblem';
+import { useLeave } from '@/features/navigation/useLeave';
 import { firstName } from '@/lib/names';
 import { compact, plural } from '@/lib/plural';
 import { shareLink } from '@/lib/share';
@@ -23,6 +24,7 @@ import { layout, radius, useTheme, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { GlassBar } from '@/ui/GlassBar';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
@@ -36,6 +38,7 @@ import { Txt } from '@/ui/Txt';
 export default function JourneyPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const leave = useLeave();
   const insets = useSafeAreaInsets();
   const { colors, shadow } = useTheme();
   const catalog = useCatalog();
@@ -57,7 +60,7 @@ export default function JourneyPage() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: layout.barGutter, paddingTop: 8 }}>
-          <RoundButton label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+          <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         </View>
         <Problem message={messageFor(journey.error)} onRetry={() => void journey.refetch()} retrying={journey.isRefetching} />
       </View>
@@ -79,7 +82,7 @@ export default function JourneyPage() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 130 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <Photo uri={j.coverUrl} radius="none" style={{ height: 338, backgroundColor: colors.fill2 }} label={`Cover photo of ${j.title}`}>
           <LinearGradient colors={[withAlpha(colors.black, 0.38), withAlpha(colors.black, 0)]} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130 }} />
@@ -184,7 +187,7 @@ export default function JourneyPage() {
       </ScrollView>
 
       <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <RoundButton tone="photo" label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        <RoundButton tone="photo" label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {j.shareUrl ? (
             <RoundButton
@@ -194,7 +197,7 @@ export default function JourneyPage() {
               onPress={() => {
                 const url = j.shareUrl;
                 if (!url) return;
-                void shareLink(j.title, url).then((result) => {
+                void shareLink(`${j.title} on Journey`, url).then((result) => {
                   if (result !== 'copied') return;
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2500);
@@ -280,6 +283,7 @@ export default function JourneyPage() {
 /** What the owner can do with a journey: pause it, start it again, or delete it (after confirming). */
 function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; visible: boolean; onClose: () => void }) {
   const router = useRouter();
+  const goHome = useGoHome();
   const cache = useCache();
   const [confirming, setConfirming] = useState(false);
   const update = useUpdateJourney({ mutation: { onSuccess: async (changed) => { await cache.journeyChanged(changed); close(); } } });
@@ -287,7 +291,8 @@ function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; vi
     mutation: {
       onSuccess: async () => {
         close();
-        router.dismissAll();
+        // The journey is gone, so there is no "back" to it: Home.
+        goHome();
         await cache.journeyDeleted(journey.id);
       },
     },

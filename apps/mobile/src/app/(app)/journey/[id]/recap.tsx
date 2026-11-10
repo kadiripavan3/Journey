@@ -1,17 +1,18 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { BookOpen, X } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { useGetRecap } from '@/api/generated/journey';
+import { useLeave } from '@/features/navigation/useLeave';
 import { formatDay } from '@/lib/dates';
 import { darkTheme, layout, radius, withAlpha } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Emoji } from '@/ui/Emoji';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Photo } from '@/ui/Photo';
 import { Pill } from '@/ui/Pill';
@@ -29,11 +30,11 @@ export default function Recap() {
   const router = useRouter();
   const recap = useGetRecap(id);
   const r = recap.data;
-  const leave = () => (router.canGoBack() ? router.back() : router.replace(`/journey/${id}`));
+  const leave = useLeave(`/journey/${id}`);
 
   return (
     <View style={{ flex: 1, backgroundColor: STAGE }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       {r?.journey.coverUrl ? <Image source={{ uri: r.journey.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} /> : null}
       <LinearGradient colors={[withAlpha(STAGE, 0.5), withAlpha(STAGE, 0.1), withAlpha(STAGE, 0.75), withAlpha(STAGE, 0.96)]} locations={[0, 0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: layout.rowGutter }}>

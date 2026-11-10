@@ -4,6 +4,7 @@ import { useCache } from '@/api/cache';
 import { ApiError } from '@/api/fetcher';
 import { useAcceptInviteLink, useGetLinkInvitation } from '@/api/generated/journey';
 import { InvitationView } from '@/features/journeys/InvitationView';
+import { useLeave } from '@/features/navigation/useLeave';
 
 /**
  * 8.2 Invitation, reached by an invite link: a friend who wasn't on Journey yet got a one-time link,
@@ -15,7 +16,7 @@ export default function LinkInvitation() {
   const cache = useCache();
   // The link works once: after joining, asking for it again would say it is gone, so it is asked for once.
   const invitation = useGetLinkInvitation(token, { query: { staleTime: Infinity, refetchOnWindowFocus: false } });
-  const leave = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const leave = useLeave();
   const accept = useAcceptInviteLink({
     mutation: {
       onSuccess: async (journey) => {

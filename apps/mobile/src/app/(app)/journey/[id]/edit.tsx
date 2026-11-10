@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { CalendarDays, Camera, Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -12,6 +12,7 @@ import { useCatalog } from '@/features/journeys/catalog';
 import { parseTags } from '@/features/journeys/draft';
 import { VISIBILITY } from '@/features/journeys/visibility';
 import { pickPhotos } from '@/features/media/pick';
+import { useLeave } from '@/features/navigation/useLeave';
 import { addDays, formatDayLong, today } from '@/lib/dates';
 import { radius, useTheme } from '@/theme';
 import { AppBar, BarLink } from '@/ui/AppBar';
@@ -28,7 +29,7 @@ import { Txt } from '@/ui/Txt';
 /** Change a journey's details after it has started: the same fields as when it was made. */
 export default function EditJourney() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const catalog = useCatalog();
   const cache = useCache();
@@ -64,7 +65,7 @@ export default function EditJourney() {
       const coverMediaId = cover ? await uploadPhoto(cover) : undefined;
       const saved = await updateJourney(id, { title: title.trim(), description: description.trim(), tags: parseTags(tags), startDate, category, visibility, coverMediaId });
       await cache.journeyChanged(saved);
-      router.back();
+      leave();
     } catch (error) {
       setFailure(error);
     } finally {
@@ -89,7 +90,7 @@ export default function EditJourney() {
       header={
         <AppBar
           title="Edit journey"
-          left={<BarLink label="Cancel" quiet onPress={() => router.back()} />}
+          left={<BarLink label="Cancel" quiet onPress={leave} />}
           trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!filled || saving || title.trim().length === 0} onPress={() => void save()} />}
         />
       }>

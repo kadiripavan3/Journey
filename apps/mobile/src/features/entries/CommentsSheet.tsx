@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Send, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { useCache } from '@/api/cache';
@@ -15,16 +15,30 @@ import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
+import { ConfirmSheet } from '@/ui/ConfirmSheet';
 import { Loading } from '@/ui/Loading';
 import { MoreButton } from '@/ui/MoreButton';
+import { Tap } from '@/ui/Motion';
 import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
 import { webNoOutline } from '@/ui/web';
 
-/** 6.4 Comments: a sheet over the entry. One level of replies keeps threads readable, and the creator's words are marked. */
-export function CommentsSheet({ entry, visible, onClose }: { entry: EntryResponse; visible: boolean; onClose: () => void }) {
+type Props = { entry: EntryResponse; visible: boolean; onClose: () => void };
+
+/** How far around a small word the finger may land: with the word's own height that makes a 44 pt target. */
+const WORD_SLOP = { top: 14, bottom: 14, left: 8, right: 8 } as const;
+
+/**
+ * 6.4 Comments: a sheet over the entry. One level of replies keeps threads readable, and the creator's words are marked.
+ * The sheet belongs to its entry: what was typed, and who was being replied to, never carry over to another one.
+ */
+export function CommentsSheet(props: Props) {
+  return <Comments key={props.entry.id} {...props} />;
+}
+
+function Comments({ entry, visible, onClose }: Props) {
   const { colors } = useTheme();
   const router = useRouter();
   const cache = useCache();
@@ -35,9 +49,14 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentResponse | null>(null);
   const [reporting, setReporting] = useState<CommentResponse | null>(null);
+  const [deleting, setDeleting] = useState<CommentResponse | null>(null);
+  // Comments sent from here. A long thread is loaded a page at a time, so a new comment may lie beyond what
+  // is loaded: it is shown anyway, at the end, until its page arrives.
+  const [sent, setSent] = useState<CommentResponse[]>([]);
   const add = useAddComment({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (comment) => {
+        setSent((now) => [...now, comment]);
         setText('');
         setReplyTo(null);
         setDraftId(newClientId());
@@ -45,15 +64,25 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
       },
     },
   });
-  const remove = useDeleteComment({ mutation: { onSuccess: () => cache.commented(entry.id) } });
+  const remove = useDeleteComment({
+    mutation: {
+      onSuccess: (_, { id }) => {
+        setSent((now) => now.filter((comment) => comment.id !== id));
+        setDeleting(null);
+        return cache.commented(entry.id);
+      },
+    },
+  });
 
-  const all = rows(comments.data) ?? [];
+  // Each comment once: pages can overlap when comments arrive while reading, and a sent one may be loaded too.
+  const known = new Set<string>();
+  const all = [...(rows(comments.data) ?? []), ...sent].filter((comment) => (known.has(comment.id) ? false : !!known.add(comment.id)));
   // The entry knows how many comments it has; only some of them may be loaded yet.
   const total = Math.max(entry.commentCount, all.length);
   const threads = all.filter((c) => !c.parentId);
   const repliesTo = (id: string) => all.filter((c) => c.parentId === id);
   const first = firstName(entry.author.displayName);
-  const failed = add.error ?? remove.error;
+  const failed = add.error;
   const openProfile = (username: string) => {
     onClose();
     router.push(`/profile/${username}`);
@@ -64,9 +93,9 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
 
   const row = (comment: CommentResponse, reply: boolean) => (
     <View key={comment.id} style={{ flexDirection: 'row', gap: 10, marginTop: reply ? 12 : 16, marginLeft: reply ? 44 : 0 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${comment.author.displayName}'s profile`} onPress={() => openProfile(comment.author.username)}>
+      <Tap accessibilityRole="button" accessibilityLabel={`${comment.author.displayName}'s profile`} hitSlop={reply ? 8 : 5} scaleTo={0.94} onPress={() => openProfile(comment.author.username)} style={{ alignSelf: 'flex-start' }}>
         <Avatar uri={comment.author.avatarUrl} name={comment.author.displayName} size={reply ? 28 : 34} />
-      </Pressable>
+      </Tap>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Txt variant="note" numberOfLines={1} weight={800} style={{ flexShrink: 1 }}>
@@ -85,27 +114,27 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
         </View>
         <Txt variant="callout" style={{ marginTop: 2 }}>{comment.body}</Txt>
         {comment.held ? <HeldCommentNote /> : null}
-        <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', gap: 22, marginTop: 6 }}>
           {comment.held ? null : (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Reply to ${comment.author.displayName}`} hitSlop={8} onPress={() => setReplyTo(comment)}>
+            <Tap accessibilityRole="button" accessibilityLabel={`Reply to ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setReplyTo(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
                 Reply
               </Txt>
-            </Pressable>
+            </Tap>
           )}
           {comment.viewer.canDelete ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Delete the comment by ${comment.author.displayName}`} hitSlop={8} disabled={remove.isPending} onPress={() => remove.mutate({ id: comment.id })}>
+            <Tap accessibilityRole="button" accessibilityLabel={`Delete the comment by ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setDeleting(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
                 Delete
               </Txt>
-            </Pressable>
+            </Tap>
           ) : null}
           {comment.author.id !== me?.id ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`Report the comment by ${comment.author.displayName}`} hitSlop={8} onPress={() => setReporting(comment)}>
+            <Tap accessibilityRole="button" accessibilityLabel={`Report the comment by ${comment.author.displayName}`} hitSlop={WORD_SLOP} onPress={() => setReporting(comment)}>
               <Txt variant="footnote" color="muted" weight={700}>
                 Report
               </Txt>
-            </Pressable>
+            </Tap>
           ) : null}
         </View>
       </View>
@@ -131,9 +160,9 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
               <Txt variant="footnote" numberOfLines={1} color="muted" style={{ flex: 1 }}>
                 Replying to {replyTo.author.displayName}
               </Txt>
-              <Pressable accessibilityRole="button" accessibilityLabel="Stop replying" hitSlop={10} onPress={() => setReplyTo(null)}>
+              <Tap accessibilityRole="button" accessibilityLabel="Stop replying" hitSlop={14} scaleTo={0.9} onPress={() => setReplyTo(null)}>
                 <X size={16} color={colors.muted} />
-              </Pressable>
+              </Tap>
             </View>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: layout.barGutter, paddingTop: 12, paddingBottom: 4 }}>
@@ -148,27 +177,39 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
               maxLength={500}
               returnKeyType="send"
               onSubmitEditing={send}
-              style={[webNoOutline, textStyle('callout', 500, { oneLine: true }), { flex: 1, height: 42, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.fill, color: colors.text }]}
+              style={[webNoOutline, textStyle('callout', 500, { oneLine: true }), { flex: 1, minHeight: 44, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.fill, color: colors.text }]}
             />
-            <Pressable
+            <Tap
               accessibilityRole="button"
               accessibilityLabel="Send comment"
               accessibilityState={{ disabled: !text.trim() || add.isPending }}
               disabled={!text.trim() || add.isPending}
+              hitSlop={4}
+              scaleTo={0.9}
               onPress={send}
               style={{ width: 40, height: 40, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent, opacity: text.trim() ? 1 : 0.38 }}>
               <Send size={18} color={colors.onAccent} />
-            </Pressable>
+            </Tap>
           </View>
         </View>
       }>
       <ReportSheet target={reporting ? { type: 'comment', id: reporting.id, word: 'comment' } : null} onClose={() => setReporting(null)} />
+      <ConfirmSheet
+        visible={!!deleting}
+        onClose={() => setDeleting(null)}
+        title="Delete this comment?"
+        body={deleting && all.some((comment) => comment.parentId === deleting.id) ? 'It will be gone for good, and so will the replies to it.' : 'It will be gone for good.'}
+        confirm="Delete comment"
+        busy={remove.isPending}
+        problem={remove.isError ? messageFor(remove.error) : null}
+        onConfirm={() => deleting && remove.mutate({ id: deleting.id })}
+      />
       <View style={{ paddingHorizontal: layout.rowGutter, paddingBottom: 20 }}>
         {comments.isPending ? (
           <View style={{ height: 160 }}>
-            <Loading />
+            <Loading offline={comments.isPaused} />
           </View>
-        ) : comments.isError ? (
+        ) : comments.isError && !comments.data ? (
           <View style={{ height: 240 }}>
             <Problem message={messageFor(comments.error)} onRetry={() => void comments.refetch()} retrying={comments.isRefetching} />
           </View>

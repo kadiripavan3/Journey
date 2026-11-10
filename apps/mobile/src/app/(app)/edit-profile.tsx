@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Camera, Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -10,6 +9,7 @@ import { useCache } from '@/api/cache';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { pickSquarePhoto } from '@/features/media/pick';
+import { useLeave } from '@/features/navigation/useLeave';
 import { useDebounced } from '@/lib/useDebounced';
 import { normalizeUsername, usernameProblem } from '@/lib/username';
 import { radius, useTheme } from '@/theme';
@@ -24,7 +24,7 @@ import { Txt } from '@/ui/Txt';
 
 /** 9.3 Edit profile: photo, name, username, a short bio and one link, plus the interests that shape Discover. */
 export default function EditProfile() {
-  const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const catalog = useCatalog();
   const cache = useCache();
@@ -70,7 +70,7 @@ export default function EditProfile() {
       const avatarMediaId = photo ? await uploadPhoto(photo) : undefined;
       const saved = await saveProfile({ displayName: displayName.trim(), username, bio: bio.trim(), link: link.trim(), interests, avatarMediaId, removeAvatar: removePhoto && !photo });
       await cache.profileSaved(saved);
-      router.back();
+      leave();
     } catch (error) {
       setFailure(error);
     } finally {
@@ -83,7 +83,7 @@ export default function EditProfile() {
       header={
         <AppBar
           title="Edit profile"
-          left={<BarLink label="Cancel" quiet onPress={() => router.back()} />}
+          left={<BarLink label="Cancel" quiet onPress={leave} />}
           trailing={<BarLink label={saving ? 'Saving…' : 'Save'} disabled={!canSave || saving} onPress={() => void save()} />}
         />
       }>

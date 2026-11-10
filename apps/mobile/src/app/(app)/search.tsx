@@ -10,6 +10,7 @@ import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { STATUS } from '@/features/journeys/status';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { useRecentSearches } from '@/features/search/recent';
+import { useLeave } from '@/features/navigation/useLeave';
 import { compact } from '@/lib/plural';
 import { useDebounced } from '@/lib/useDebounced';
 import { layout, radius, textStyle, useTheme } from '@/theme';
@@ -25,6 +26,7 @@ import { WordTabs } from '@/ui/WordTabs';
 /** 4.2 and 4.3 Search: popular tags before you type, then journeys and people in two tabs. */
 export default function Search() {
   const router = useRouter();
+  const leave = useLeave();
   const { colors } = useTheme();
   const { recent, remember } = useRecentSearches();
   const [text, setText] = useState('');
@@ -70,7 +72,7 @@ export default function Search() {
             </Pressable>
           ) : null}
         </View>
-        <BarLink label="Cancel" quiet onPress={() => router.back()} />
+        <BarLink label="Cancel" quiet onPress={leave} />
       </View>
 
       {!searching ? (

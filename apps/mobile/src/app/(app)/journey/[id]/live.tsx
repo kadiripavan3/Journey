@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Camera, Share2, X } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +11,7 @@ import { visibility } from '@/features/journeys/visibility';
 import { shareLink } from '@/lib/share';
 import { darkTheme, layout, withAlpha } from '@/theme';
 import { Button } from '@/ui/Button';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Pill } from '@/ui/Pill';
 import { Problem } from '@/ui/Problem';
@@ -35,7 +35,7 @@ export default function JourneyLive() {
 
   return (
     <View style={{ flex: 1, backgroundColor: STAGE }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       {j?.coverUrl ? <Image source={{ uri: j.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} /> : null}
       <LinearGradient
         colors={j?.coverUrl ? [withAlpha(STAGE, 0.45), withAlpha(STAGE, 0), withAlpha(STAGE, 0), withAlpha(STAGE, 0.82), withAlpha(STAGE, 0.95)] : [darkTheme.colors.accentSoft, STAGE, STAGE, STAGE, STAGE]}
@@ -59,7 +59,7 @@ export default function JourneyLive() {
             <Txt variant="lead" style={{ color: darkTheme.colors.onPhoto, opacity: 0.84, marginBottom: 8 }}>{WHO[j.visibility].note}</Txt>
             <Button label="Add your first entry" size="lg" block icon={(c) => <Camera size={19} color={c} strokeWidth={2.4} />} onPress={() => router.replace(`/journey/${id}/add`)} />
             {j.shareUrl ? (
-              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => j.shareUrl && void shareLink(j.title, j.shareUrl)} />
+              <Button label="Share the link" size="lg" variant="glass" block icon={(c) => <Share2 size={18} color={c} />} onPress={() => j.shareUrl && void shareLink(`${j.title} on Journey`, j.shareUrl)} />
             ) : (
               <Button label="Maybe later" size="lg" variant="glass" block onPress={leave} />
             )}

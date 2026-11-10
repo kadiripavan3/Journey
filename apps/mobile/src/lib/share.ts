@@ -2,15 +2,16 @@ import * as Clipboard from 'expo-clipboard';
 import { Platform, Share } from 'react-native';
 
 /**
- * Opens the phone's share sheet for a journey's link. In a browser that has no share sheet, the link
- * is copied instead. Returns what happened, so the screen can say "Link copied".
+ * Opens the phone's share sheet for a link. `text` is the whole line that goes with it ("Follow Nora Lind on
+ * Journey"), sent as it is. In a browser that has no share sheet, the link is copied instead. Returns what
+ * happened, so the screen can say "Link copied".
  */
-export async function shareLink(title: string, url: string): Promise<'shared' | 'copied' | 'cancelled'> {
+export async function shareLink(text: string, url: string): Promise<'shared' | 'copied' | 'cancelled'> {
   if (Platform.OS === 'web') {
     const nav = globalThis.navigator as (Navigator & { share?: (data: { title: string; url: string }) => Promise<void> }) | undefined;
     try {
       if (nav?.share) {
-        await nav.share({ title, url });
+        await nav.share({ title: text, url });
         return 'shared';
       }
       await nav?.clipboard?.writeText(url);
@@ -21,7 +22,7 @@ export async function shareLink(title: string, url: string): Promise<'shared' | 
   }
   try {
     // iOS shows the link as a rich preview when it is passed as the url; Android wants it in the message.
-    const result = await Share.share(Platform.OS === 'ios' ? { message: `${title} on Journey`, url } : { message: `${title} on Journey\n${url}` });
+    const result = await Share.share(Platform.OS === 'ios' ? { message: text, url } : { message: `${text}\n${url}` });
     return result.action === Share.sharedAction ? 'shared' : 'cancelled';
   } catch {
     return 'cancelled';

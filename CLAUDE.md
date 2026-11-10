@@ -126,6 +126,10 @@ Also true, by habit rather than by the linter:
 - Routes are typed. `npm run typecheck` generates the route types first (`npm run routes`), so `router.push('/journey/' + id)` must be a real route. Type a route kept in a variable as `Href`. No `as never`.
 - Labels on photos that repeat down a list are tinted (`Pill` does this by default); pass `frost="blur"` only for the one label on a full-photo screen.
 - One of each: `WordTabs` for word tabs, `Stat` for a number over a word, `VISIBILITY` (`features/journeys/visibility`) for what Public, Unlisted and Private are called, `firstName()` (`lib/names`) for what to call someone.
+- **Back and Close** call `useLeave()` (`features/navigation/useLeave`): back, or Home when the app was opened straight onto the screen. `AppBar` does it by itself. After deleting what the screen showed, go Home with `useGoHome()` (`features/states/PageProblem`).
+- **Before something that can't be taken back** (deleting a comment, removing a friend, leaving a journey, throwing away changes) ask with `ConfirmSheet` (`src/ui`).
+- **A screen that can lose what was typed** guards itself with Expo Router's `usePreventRemove`, so Android's back button asks the same question as the X. The composer's rules are in `features/composer/useComposer`.
+- **Saving an entry again to change one thing** starts from `saveRequest(entry, changes)` (`features/entries/saveRequest`): the API replaces the whole entry, so a request that leaves fields out wipes them (the place's spot on the map, most of all).
 
 How screens get and keep their data:
 
@@ -137,7 +141,7 @@ How screens get and keep their data:
 
 To add a screen: build it in `src/app` from its design, with components from `src/ui` and `src/features`. A piece used by one screen stays in that screen's file; the second screen that needs it moves it to `features/<name>/` (or to `ui/` if it knows nothing about the domain). Add the screen to the walk-through.
 
-Component tests use React Native Testing Library (`render` and presses are awaited). `npm run check` runs them. In this cloud environment run it as `EXPO_OFFLINE=1 npm run check`.
+Component tests use React Native Testing Library (`render` and presses are awaited). `npm run check` runs them. In this cloud environment run it as `EXPO_OFFLINE=1 npm run check`. A screen's test goes in `src/__tests__/screens/` (a file under `src/app` would become a route); made-up journeys, entries and query results for tests are in `src/test/samples.ts`.
 
 The walk-through reads `API_URL` and `WEB_URL` when the API and the web build are not on 8080 and 8081; build the web app with `EXPO_PUBLIC_API_URL` set to the same API address.
 

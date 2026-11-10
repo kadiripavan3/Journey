@@ -8,6 +8,7 @@ import { messageFor } from '@/api/fetcher';
 import { type MapPinResponse, useGetJourney, useGetJourneyMap } from '@/api/generated/journey';
 import { hasMap, JourneyMap } from '@/features/map/JourneyMap';
 import { pinEyebrow, stopsOf } from '@/features/map/stops';
+import { useLeave } from '@/features/navigation/useLeave';
 import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -32,6 +33,7 @@ import { Txt } from '@/ui/Txt';
 export default function JourneyMapScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const leave = useLeave();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { colors, shadow } = useTheme();
@@ -88,7 +90,7 @@ export default function JourneyMapScreen() {
       <JourneyMap pins={pins} stops={stops} selected={selected} onSelect={setSelected} inset={{ top: insets.top + 96, bottom: 220 + insets.bottom }} />
 
       <GlassBar radius="sheet" style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16 }} contentStyle={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 6 }}>
-        <RoundButton label="Back" onPress={() => router.back()} icon={(c) => <ArrowLeft size={20} color={c} />} />
+        <RoundButton label="Back" onPress={leave} icon={(c) => <ArrowLeft size={20} color={c} />} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Txt variant="control" weight={800} numberOfLines={1} accessibilityRole="header">
             {j.title}

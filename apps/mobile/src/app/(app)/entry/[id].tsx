@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Ellipsis, Flag, Pencil, Send, Share2, Trash2, X } from 'lucide-react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -18,6 +17,7 @@ import { PhotoViewer } from '@/features/media/PhotoViewer';
 import { HeldNote, HeldVeil } from '@/features/safety/Held';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { EntryShareSheet } from '@/features/sharing/ShareSheet';
+import { useLeave } from '@/features/navigation/useLeave';
 import { formatDay } from '@/lib/dates';
 import { firstName } from '@/lib/names';
 import { darkTheme, layout, radius, useTheme, withAlpha } from '@/theme';
@@ -25,6 +25,7 @@ import { Avatar } from '@/ui/Avatar';
 import { Button } from '@/ui/Button';
 import { Eyebrow } from '@/ui/Eyebrow';
 import { Frost } from '@/ui/Frost';
+import { LightStatusBar } from '@/ui/LightStatusBar';
 import { Loading } from '@/ui/Loading';
 import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
@@ -42,7 +43,7 @@ const REPLY_BAR = 66;
  */
 export default function EntryView() {
   const { id, comments: openComments } = useLocalSearchParams<{ id: string; comments?: string }>();
-  const router = useRouter();
+  const leave = useLeave();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   // Coming from Activity, a comment's line opens the entry with its comments showing.
@@ -100,7 +101,7 @@ export default function EntryView() {
 
   return (
     <View style={{ flex: 1, backgroundColor: STAGE }}>
-      <StatusBar style="light" />
+      <LightStatusBar />
       {backdrop ? <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={40} accessible={false} /> : null}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(darkTheme.colors.black, 0.52) }]} />
 
@@ -113,7 +114,7 @@ export default function EntryView() {
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {current ? <RoundButton tone="photo" label="Entry options" onPress={() => setMenu(true)} icon={(c) => <Ellipsis size={20} color={c} />} /> : null}
-          <RoundButton tone="photo" label="Close" onPress={() => router.back()} icon={(c) => <X size={20} color={c} />} />
+          <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
         </View>
       </View>
 
@@ -247,6 +248,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
 /** What you can do with an entry: share it, and change or delete your own (after confirming). */
 function EntryMenu({ entry, visible, onClose, onShare }: { entry: EntryResponse; visible: boolean; onClose: () => void; onShare: () => void }) {
   const router = useRouter();
+  const leave = useLeave();
   const cache = useCache();
   const [confirming, setConfirming] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -269,7 +271,7 @@ function EntryMenu({ entry, visible, onClose, onShare }: { entry: EntryResponse;
     mutation: {
       onSuccess: async () => {
         close();
-        router.back();
+        leave();
         await cache.entrySaved(entry.journeyId, entry.id);
       },
     },

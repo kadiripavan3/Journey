@@ -272,6 +272,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Edit entry').click();
     await T('Edit entry').first().waitFor();
     await L('Title, optional').fill('Skógafoss at sunrise');
+    // Leaving with a change asks first: nothing is thrown away by a slip of the thumb.
+    await R('button', { name: 'Close' }).click();
+    await T('Discard your changes?').waitFor();
+    await shot('edit-discard');
+    await R('button', { name: 'Keep editing' }).click();
     await R('button', { name: 'Save' }).click();
     await T('Skógafoss at sunrise').first().waitFor({ timeout: 20000 });
     await R('button', { name: 'Close' }).click();
@@ -456,6 +461,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await shot('drafts');
     await R('button', { name: /^Notes from the hot spring/ }).click();
     await T('Draft', { exact: true }).waitFor();
+    // Opened and closed without a change: no question, and it is still there.
+    await R('button', { name: 'Close' }).click();
+    await T(/^Text only · saved/).waitFor();
+    await R('button', { name: /^Notes from the hot spring/ }).click();
+    await T('Draft', { exact: true }).waitFor();
     await L('What happened').fill('Forty degrees in the water, four outside.');
     // Without a connection the entry is kept on the phone. It goes up by itself, once, when the connection is back.
     await page.context().setOffline(true);
@@ -571,6 +581,10 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: 'Remove photo 2' }).waitFor();
     await L('Title, optional').fill('Black sand and big waves');
     await L('What happened').fill('Stood far back from the water, as the signs say. The waves still made it to my boots.');
+    await R('button', { name: 'Add a place' }).click();
+    await L('Search for a place').fill('skoga');
+    await R('button', { name: /^Skógafoss, Iceland/ }).click();
+    await R('button', { name: /^Place: Skógafoss, Iceland/ }).waitFor();
     await R('button', { name: 'Post' }).click();
     // The story also says "Posting …" in a banner while the photos go up, so ask for the entry's own row.
     const posted = page.getByRole('button', { name: /^Black sand and big waves$/ }).last();
@@ -605,6 +619,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Entry 1 of 1').waitFor({ timeout: 20000 });
     await T('One photo is being reviewed').waitFor({ state: 'detached' });
     await shot('entry-photo-removed');
+    // Only the photo went: the entry still has its place, with the spot on the map.
+    const me = (await api(null, 'POST', '/local-auth/token', { email: `nora.${tag}@example.com`, code: '123456' })).accessToken;
+    const kept = await api(me, 'GET', `/v1/entries/${entryId}`);
+    if (kept.placeName !== 'Skógafoss, Iceland' || kept.lat == null || kept.lng == null) throw new Error('removing the held photo took the place with it');
+    if (kept.media.length !== 1) throw new Error('the held photo is still on the entry');
     // The photo is off the entry but still waiting; the reviewer clears it away.
     await review(async (queue) => {
       await queue.locator('section.item.photo', { hasText: `@nora.${tag} ` }).getByRole('button', { name: 'Remove the photo' }).click();
@@ -634,7 +653,7 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
   await step('settings', async () => {
     await R('tab', { name: 'You' }).click();
     await R('button', { name: 'Settings' }).click();
-    await R('button', { name: /^Notifications\. 7 of 8 on/ }).waitFor();
+    await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
     await shot('settings');
     await opened(() => R('button', { name: 'Help and contact' }).click(), 'Contact', 'contact-page');
     await opened(() => R('button', { name: 'Community guidelines' }).click(), 'Community guidelines', 'guidelines-page');
@@ -653,7 +672,7 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await R('button', { name: '8:00 pm', exact: true }).click();
     await R('button', { name: /^Challenge check-in time\. 8:00 pm/ }).waitFor();
     await R('button', { name: 'Back' }).click();
-    await R('button', { name: /^Notifications\. 6 of 8 on/ }).waitFor();
+    await R('button', { name: /^Notifications\. 5 of 8 on/ }).waitFor();
     await R('button', { name: /^Privacy and safety/ }).click();
     await R('button', { name: /^Start them as/ }).click();
     await T('Only you.').click();

@@ -4,11 +4,13 @@ import { useAcceptInvitation, useGetInvitationsInfinite, useGetMe, useRemoveMemb
 import { useCache } from '@/api/cache';
 import { paged, rows } from '@/api/pages';
 import { InvitationView } from '@/features/journeys/InvitationView';
+import { useLeave } from '@/features/navigation/useLeave';
 
 /** 8.2 Invitation: what the friend sees when someone asked them in the app. */
 export default function Invitation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const leave = useLeave();
   const cache = useCache();
   const me = useGetMe().data?.profile;
   const invitations = useGetInvitationsInfinite({ limit: 100 }, { query: paged });
@@ -24,7 +26,7 @@ export default function Invitation() {
   const decline = useRemoveMember({
     mutation: {
       onSuccess: async () => {
-        router.back();
+        leave();
         await cache.membersChanged(id);
       },
     },
@@ -43,7 +45,7 @@ export default function Invitation() {
       joining={accept.isPending}
       onDecline={() => me && decline.mutate({ id, username: me.username })}
       declining={decline.isPending}
-      onClose={() => router.back()}
+      onClose={leave}
     />
   );
 }

@@ -13,7 +13,8 @@ export function Avatar({ uri, name, size = 40, ring }: Props) {
   const { colors } = useTheme();
   const frame = { width: size, height: size, borderRadius: radius.pill, borderWidth: ring ? Math.max(2, size / 19) : 0, borderColor: ring };
   if (uri) {
-    return <Image source={{ uri }} style={[frame, { backgroundColor: colors.fill2 }]} contentFit="cover" accessibilityLabel={name} />;
+    // `recyclingKey`: a reused list row never shows the person who was there before.
+    return <Image source={{ uri }} recyclingKey={uri} style={[frame, { backgroundColor: colors.fill2 }]} contentFit="cover" accessibilityLabel={name} />;
   }
   return (
     <View accessible accessibilityLabel={name} style={[frame, { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill2 }]}>
