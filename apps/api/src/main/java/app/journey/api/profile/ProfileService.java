@@ -1,6 +1,7 @@
 package app.journey.api.profile;
 
 import app.journey.api.common.ApiProblem;
+import app.journey.api.media.MediaService;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,9 +15,20 @@ public class ProfileService {
   static final int MAX_INTERESTS = 20;
 
   private final ProfileRepository profiles;
+  private final MediaService media;
 
-  ProfileService(ProfileRepository profiles) {
+  ProfileService(ProfileRepository profiles, MediaService media) {
     this.profiles = profiles;
+    this.media = media;
+  }
+
+  /** The address of a profile's picture, or null when it has none. */
+  public String avatarUrl(Profile profile) {
+    if (profile.getAvatarMediaId() == null) {
+      return null;
+    }
+    MediaService.MediaRow row = media.find(profile.getAvatarMediaId());
+    return row == null ? null : media.urlFor(row.storageKey());
   }
 
   @Transactional(readOnly = true)
@@ -40,7 +52,7 @@ public class ProfileService {
 
   /** Creates the profile the first time, and updates it after that. */
   @Transactional
-  public Profile save(UUID userId, String rawUsername, String displayName, String bio, String link, List<String> interests) {
+  public Profile save(UUID userId, String rawUsername, String displayName, String bio, String link, List<String> interests, UUID avatarMediaId, boolean removeAvatar) {
     String username = Usernames.normalize(rawUsername);
     Usernames.problemWith(username).ifPresent(reason -> {
       throw ApiProblem.badRequest("invalid_username", reason);
@@ -54,7 +66,13 @@ public class ProfileService {
             : interests.stream().map(String::trim).filter(i -> !i.isEmpty()).distinct().limit(MAX_INTERESTS).toArray(String[]::new);
 
     Profile profile = profiles.findById(userId).orElseGet(() -> new Profile(userId));
-    profile.update(username, displayName.trim(), bio == null ? "" : bio.trim(), blankToNull(link), cleanInterests);
+    // Fields the request leaves out stay as they are, so a screen can save just what it shows.
+    String[] nextInterests = interests == null ? profile.getInterests() : cleanInterests;
+    UUID avatar = removeAvatar ? null : avatarMediaId != null ? avatarMediaId : profile.getAvatarMediaId();
+    if (avatarMediaId != null) {
+      media.requireOwn(List.of(avatarMediaId), userId, "photo");
+    }
+    profile.update(username, displayName.trim(), bio == null ? "" : bio.trim(), blankToNull(link), nextInterests, avatar);
     try {
       return profiles.saveAndFlush(profile);
     } catch (DataIntegrityViolationException e) {

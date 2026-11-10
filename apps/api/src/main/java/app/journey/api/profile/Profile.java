@@ -27,7 +27,7 @@ public class Profile {
 
   private String link;
 
-  private String avatarPath;
+  private UUID avatarMediaId;
 
   @JdbcTypeCode(SqlTypes.ARRAY)
   @Column(nullable = false, columnDefinition = "text[]")
@@ -45,12 +45,13 @@ public class Profile {
     this.id = id;
   }
 
-  public void update(String username, String displayName, String bio, String link, String[] interests) {
+  public void update(String username, String displayName, String bio, String link, String[] interests, UUID avatarMediaId) {
     this.username = username;
     this.displayName = displayName;
     this.bio = bio;
     this.link = link;
     this.interests = interests;
+    this.avatarMediaId = avatarMediaId;
     this.updatedAt = Instant.now();
   }
 
@@ -74,8 +75,8 @@ public class Profile {
     return link;
   }
 
-  public String getAvatarPath() {
-    return avatarPath;
+  public UUID getAvatarMediaId() {
+    return avatarMediaId;
   }
 
   public String[] getInterests() {

@@ -46,8 +46,8 @@ class SecurityConfig {
                 requests
                     .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
-                    .requestMatchers("/local-auth/**")
-                    .permitAll() // the controller only exists in local mode
+                    .requestMatchers("/local-auth/**", "/local-media/**", "/media/**")
+                    .permitAll() // these controllers only exist in local mode; uploads carry their own token
                     .requestMatchers("/v1/**")
                     .authenticated()
                     .anyRequest()
@@ -67,7 +67,7 @@ class SecurityConfig {
       CorsConfiguration cors = new CorsConfiguration();
       cors.setAllowedOriginPatterns(patterns);
       cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-      cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+      cors.setAllowedHeaders(List.of("*"));
       cors.setMaxAge(3600L);
       source.registerCorsConfiguration("/**", cors);
     }

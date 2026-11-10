@@ -53,6 +53,10 @@ export interface SaveProfileRequest {
      * @items.maxLength 30
      */
   interests?: string[];
+  /** A photo uploaded through /v1/media/uploads */
+  avatarMediaId?: string;
+  /** True to go back to no picture */
+  removeAvatar?: boolean;
 }
 
 export interface ProfileResponse {
@@ -65,6 +69,242 @@ export interface ProfileResponse {
   /** @nullable */
   avatarUrl: string | null;
   interests: string[];
+}
+
+export type JourneyResponseLabelStyle = typeof JourneyResponseLabelStyle[keyof typeof JourneyResponseLabelStyle];
+
+
+export const JourneyResponseLabelStyle = {
+  day: 'day',
+  part: 'part',
+} as const;
+
+export type JourneyResponseVisibility = typeof JourneyResponseVisibility[keyof typeof JourneyResponseVisibility];
+
+
+export const JourneyResponseVisibility = {
+  public: 'public',
+  unlisted: 'unlisted',
+  private: 'private',
+} as const;
+
+export type JourneyResponseStatus = typeof JourneyResponseStatus[keyof typeof JourneyResponseStatus];
+
+
+export const JourneyResponseStatus = {
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export interface PersonResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  /** @nullable */
+  avatarUrl: string | null;
+}
+
+export interface JourneyViewerResponse {
+  isOwner: boolean;
+  isFollowing: boolean;
+  canAddEntry: boolean;
+}
+
+export interface JourneyResponse {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  template: string;
+  labelStyle: JourneyResponseLabelStyle;
+  visibility: JourneyResponseVisibility;
+  status: JourneyResponseStatus;
+  tags: string[];
+  /** @nullable */
+  coverUrl: string | null;
+  startDate: string;
+  /** @nullable */
+  targetDays: number | null;
+  /** Day or part number of the latest entry; 0 before the first one */
+  latestNumber: number;
+  /** Ready to show: "Day 14", "Day 12 of 30", "Part 5" or "Not started" */
+  progressLabel: string;
+  entryCount: number;
+  followerCount: number;
+  /** @nullable */
+  lastEntryAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  closingNote: string | null;
+  owner: PersonResponse;
+  viewer: JourneyViewerResponse;
+}
+
+export interface SaveEntryRequest {
+  /**
+     * @minLength 0
+     * @maxLength 80
+     */
+  title?: string;
+  /**
+     * @minLength 0
+     * @maxLength 2000
+     */
+  body?: string;
+  happenedAt?: string;
+  happenedOn?: string;
+  /**
+     * @minLength 0
+     * @maxLength 80
+     */
+  placeName?: string;
+  isMilestone?: boolean;
+  /**
+     * @minItems 0
+     * @maxItems 13
+     */
+  mediaIds?: string[];
+}
+
+export type MediaResponseKind = typeof MediaResponseKind[keyof typeof MediaResponseKind];
+
+
+export const MediaResponseKind = {
+  photo: 'photo',
+  video: 'video',
+} as const;
+
+export interface MediaResponse {
+  id: string;
+  kind: MediaResponseKind;
+  url: string;
+  /** @nullable */
+  width: number | null;
+  /** @nullable */
+  height: number | null;
+  /** @nullable */
+  durationSeconds: number | null;
+}
+
+export interface EntryViewerResponse {
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+export interface EntryResponse {
+  id: string;
+  journeyId: string;
+  journeyTitle: string;
+  author: PersonResponse;
+  happenedAt: string;
+  happenedOn: string;
+  /** Ready to show: "Day 14" or "Part 3" */
+  label: string;
+  number: number;
+  title: string;
+  body: string;
+  /** @nullable */
+  placeName: string | null;
+  isMilestone: boolean;
+  media: MediaResponse[];
+  likeCount: number;
+  commentCount: number;
+  createdAt: string;
+  edited: boolean;
+  viewer: EntryViewerResponse;
+}
+
+/**
+ * @minLength 1
+ * @pattern photo|video
+ */
+export type StartUploadRequestKind = typeof StartUploadRequestKind[keyof typeof StartUploadRequestKind];
+
+
+export const StartUploadRequestKind = {
+  photo: 'photo',
+  video: 'video',
+} as const;
+
+export interface StartUploadRequest {
+  /**
+     * @minLength 1
+     * @pattern photo|video
+     */
+  kind: StartUploadRequestKind;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export type UploadResponseHeaders = {[key: string]: string};
+
+export interface UploadResponse {
+  /** Use this id when saving the entry, journey or profile */
+  mediaId: string;
+  /** Send the file's bytes here */
+  uploadUrl: string;
+  method: string;
+  headers: UploadResponseHeaders;
+}
+
+/**
+ * @minLength 1
+ * @pattern public|unlisted|private
+ */
+export type CreateJourneyRequestVisibility = typeof CreateJourneyRequestVisibility[keyof typeof CreateJourneyRequestVisibility];
+
+
+export const CreateJourneyRequestVisibility = {
+  public: 'public',
+  unlisted: 'unlisted',
+  private: 'private',
+} as const;
+
+/**
+ * @pattern day|part
+ */
+export type CreateJourneyRequestLabelStyle = typeof CreateJourneyRequestLabelStyle[keyof typeof CreateJourneyRequestLabelStyle];
+
+
+export const CreateJourneyRequestLabelStyle = {
+  day: 'day',
+  part: 'part',
+} as const;
+
+export interface CreateJourneyRequest {
+  /**
+     * @minLength 0
+     * @maxLength 80
+     */
+  title: string;
+  /**
+     * @minLength 0
+     * @maxLength 300
+     */
+  description?: string;
+  /** @minLength 1 */
+  template: string;
+  category?: string;
+  startDate: string;
+  /**
+     * @minLength 1
+     * @pattern public|unlisted|private
+     */
+  visibility: CreateJourneyRequestVisibility;
+  /** @pattern day|part */
+  labelStyle?: CreateJourneyRequestLabelStyle;
+  tags?: string[];
+  coverMediaId?: string;
+}
+
+export interface CompleteJourneyRequest {
+  /**
+     * @minLength 0
+     * @maxLength 500
+     */
+  closingNote?: string;
 }
 
 export interface TokenRequest {
@@ -92,6 +332,65 @@ export interface CodeRequest {
   email: string;
 }
 
+/**
+ * @pattern public|unlisted|private
+ */
+export type UpdateJourneyRequestVisibility = typeof UpdateJourneyRequestVisibility[keyof typeof UpdateJourneyRequestVisibility];
+
+
+export const UpdateJourneyRequestVisibility = {
+  public: 'public',
+  unlisted: 'unlisted',
+  private: 'private',
+} as const;
+
+/**
+ * @pattern day|part
+ */
+export type UpdateJourneyRequestLabelStyle = typeof UpdateJourneyRequestLabelStyle[keyof typeof UpdateJourneyRequestLabelStyle];
+
+
+export const UpdateJourneyRequestLabelStyle = {
+  day: 'day',
+  part: 'part',
+} as const;
+
+/**
+ * @pattern active|paused
+ */
+export type UpdateJourneyRequestStatus = typeof UpdateJourneyRequestStatus[keyof typeof UpdateJourneyRequestStatus];
+
+
+export const UpdateJourneyRequestStatus = {
+  active: 'active',
+  paused: 'paused',
+} as const;
+
+export interface UpdateJourneyRequest {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  title?: string;
+  /**
+     * @minLength 0
+     * @maxLength 300
+     */
+  description?: string;
+  category?: string;
+  startDate?: string;
+  /** @pattern public|unlisted|private */
+  visibility?: UpdateJourneyRequestVisibility;
+  /** @pattern day|part */
+  labelStyle?: UpdateJourneyRequestLabelStyle;
+  tags?: string[];
+  coverMediaId?: string;
+  /** True to go back to using the first photo as the cover */
+  clearCover?: boolean;
+  /** @pattern active|paused */
+  status?: UpdateJourneyRequestStatus;
+}
+
 export interface UsernameCheckResponse {
   username: string;
   available: boolean;
@@ -105,6 +404,62 @@ export interface MeResponse {
   /** Null until the person has created their profile */
   profile: ProfileResponse | null;
 }
+
+export interface FeedGroupResponse {
+  journey: JourneyResponse;
+  newCount: number;
+  entries: EntryResponse[];
+}
+
+export interface FeedResponse {
+  groups: FeedGroupResponse[];
+  followingCount: number;
+}
+
+export interface DiscoverResponse {
+  trending: JourneyResponse[];
+  fresh: JourneyResponse[];
+  completed: JourneyResponse[];
+}
+
+export interface CategoryResponse {
+  id: string;
+  label: string;
+  emoji: string;
+}
+
+export interface InterestResponse {
+  id: string;
+  label: string;
+  emoji: string;
+  category: string;
+}
+
+export interface TemplateResponse {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  defaultCategory: string;
+  labelStyle: string;
+  /** @nullable */
+  targetDays: number | null;
+  prompts: string[];
+}
+
+export interface CatalogResponse {
+  categories: CategoryResponse[];
+  interests: InterestResponse[];
+  templates: TemplateResponse[];
+}
+
+export type GetSuggestedJourneysParams = {
+  limit?: number;
+};
+
+export type GetDiscoverParams = {
+  category?: string;
+};
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
@@ -209,6 +564,929 @@ export const useSaveProfile = <TError = unknown,
         TContext
       > => {
       return useMutation(getSaveProfileMutationOptions(options), queryClient);
+    }
+
+export const getFollowJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/follow`
+}
+
+/**
+ * @summary Follow a journey
+ */
+export const followJourney = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+  return apiFetch<JourneyResponse>(getFollowJourneyUrl(id),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+);}
+
+
+
+
+
+export const getFollowJourneyMutationKey = () => ['followJourney'] as const;
+
+export const getFollowJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof followJourney>>, TError,FollowJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof followJourney>>, TError,FollowJourneyMutationVariables, TContext> => {
+
+const mutationKey = getFollowJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof followJourney>>, FollowJourneyMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  followJourney(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FollowJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof followJourney>>>
+
+    export type FollowJourneyMutationError = unknown
+    export type FollowJourneyMutationVariables = {id: string}
+
+    /** @summary Follow a journey */
+export const useFollowJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof followJourney>>, TError,FollowJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof followJourney>>,
+        TError,
+        FollowJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getFollowJourneyMutationOptions(options), queryClient);
+    }
+
+export const getUnfollowJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/follow`
+}
+
+/**
+ * @summary Stop following a journey
+ */
+export const unfollowJourney = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+  return apiFetch<JourneyResponse>(getUnfollowJourneyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnfollowJourneyMutationKey = () => ['unfollowJourney'] as const;
+
+export const getUnfollowJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfollowJourney>>, TError,UnfollowJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unfollowJourney>>, TError,UnfollowJourneyMutationVariables, TContext> => {
+
+const mutationKey = getUnfollowJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unfollowJourney>>, UnfollowJourneyMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  unfollowJourney(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnfollowJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof unfollowJourney>>>
+
+    export type UnfollowJourneyMutationError = unknown
+    export type UnfollowJourneyMutationVariables = {id: string}
+
+    /** @summary Stop following a journey */
+export const useUnfollowJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unfollowJourney>>, TError,UnfollowJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unfollowJourney>>,
+        TError,
+        UnfollowJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUnfollowJourneyMutationOptions(options), queryClient);
+    }
+
+export const getGetEntryUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}`
+}
+
+/**
+ * @summary One entry
+ */
+export const getEntry = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse> => {
+
+  return apiFetch<EntryResponse>(getGetEntryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEntryQueryKey = (id: string,) => {
+    return [
+    `/v1/entries/${id}`
+    ] as const;
+    }
+
+
+export const getGetEntryQueryOptions = <TData = Awaited<ReturnType<typeof getEntry>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEntryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEntry>>> = ({ signal }) => getEntry(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEntryQueryResult = NonNullable<Awaited<ReturnType<typeof getEntry>>>
+export type GetEntryQueryError = unknown
+
+
+/** @summary One entry */
+export function useGetEntry<TData = Awaited<ReturnType<typeof getEntry>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEntry>>,
+          TError,
+          Awaited<ReturnType<typeof getEntry>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One entry */
+export function useGetEntry<TData = Awaited<ReturnType<typeof getEntry>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEntry>>,
+          TError,
+          Awaited<ReturnType<typeof getEntry>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One entry */
+export function useGetEntry<TData = Awaited<ReturnType<typeof getEntry>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One entry */
+export function useGetEntry<TData = Awaited<ReturnType<typeof getEntry>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntry>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEntryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getChangeEntryUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}`
+}
+
+/**
+ * @summary Change an entry. It is marked as edited.
+ */
+export const changeEntry = async (id: string,
+    saveEntryRequest: SaveEntryRequest, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<EntryResponse>(getChangeEntryUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(saveEntryRequest)
+  }
+);}
+
+
+
+
+
+export const getChangeEntryMutationKey = () => ['changeEntry'] as const;
+
+export const getChangeEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeEntry>>, TError,ChangeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changeEntry>>, TError,ChangeEntryMutationVariables, TContext> => {
+
+const mutationKey = getChangeEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changeEntry>>, ChangeEntryMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  changeEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangeEntryMutationResult = NonNullable<Awaited<ReturnType<typeof changeEntry>>>
+    export type ChangeEntryMutationBody = SaveEntryRequest
+    export type ChangeEntryMutationError = unknown
+    export type ChangeEntryMutationVariables = {id: string;data: SaveEntryRequest}
+
+    /** @summary Change an entry. It is marked as edited. */
+export const useChangeEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changeEntry>>, TError,ChangeEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof changeEntry>>,
+        TError,
+        ChangeEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getChangeEntryMutationOptions(options), queryClient);
+    }
+
+export const getDeleteEntryUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}`
+}
+
+/**
+ * @summary Delete an entry
+ */
+export const deleteEntry = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteEntryMutationKey = () => ['deleteEntry'] as const;
+
+export const getDeleteEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEntry>>, TError,DeleteEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEntry>>, TError,DeleteEntryMutationVariables, TContext> => {
+
+const mutationKey = getDeleteEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEntry>>, DeleteEntryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEntry>>>
+
+    export type DeleteEntryMutationError = unknown
+    export type DeleteEntryMutationVariables = {id: string}
+
+    /** @summary Delete an entry */
+export const useDeleteEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEntry>>, TError,DeleteEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEntry>>,
+        TError,
+        DeleteEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteEntryMutationOptions(options), queryClient);
+    }
+
+export const getStartUploadUrl = () => {
+
+
+
+
+  return `/v1/media/uploads`
+}
+
+/**
+ * @summary Get a place to upload one photo or clip
+ */
+export const startUpload = async (startUploadRequest: StartUploadRequest, options?: Parameters<typeof apiFetch>[1]): Promise<UploadResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<UploadResponse>(getStartUploadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(startUploadRequest)
+  }
+);}
+
+
+
+
+
+export const getStartUploadMutationKey = () => ['startUpload'] as const;
+
+export const getStartUploadMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startUpload>>, TError,StartUploadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startUpload>>, TError,StartUploadMutationVariables, TContext> => {
+
+const mutationKey = getStartUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startUpload>>, StartUploadMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startUpload(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartUploadMutationResult = NonNullable<Awaited<ReturnType<typeof startUpload>>>
+    export type StartUploadMutationBody = StartUploadRequest
+    export type StartUploadMutationError = unknown
+    export type StartUploadMutationVariables = {data: StartUploadRequest}
+
+    /** @summary Get a place to upload one photo or clip */
+export const useStartUpload = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startUpload>>, TError,StartUploadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startUpload>>,
+        TError,
+        StartUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartUploadMutationOptions(options), queryClient);
+    }
+
+export const getCreateJourneyUrl = () => {
+
+
+
+
+  return `/v1/journeys`
+}
+
+/**
+ * @summary Start a journey
+ */
+export const createJourney = async (createJourneyRequest: CreateJourneyRequest, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<JourneyResponse>(getCreateJourneyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createJourneyRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateJourneyMutationKey = () => ['createJourney'] as const;
+
+export const getCreateJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJourney>>, TError,CreateJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createJourney>>, TError,CreateJourneyMutationVariables, TContext> => {
+
+const mutationKey = getCreateJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createJourney>>, CreateJourneyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createJourney(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof createJourney>>>
+    export type CreateJourneyMutationBody = CreateJourneyRequest
+    export type CreateJourneyMutationError = unknown
+    export type CreateJourneyMutationVariables = {data: CreateJourneyRequest}
+
+    /** @summary Start a journey */
+export const useCreateJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createJourney>>, TError,CreateJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createJourney>>,
+        TError,
+        CreateJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateJourneyMutationOptions(options), queryClient);
+    }
+
+export const getGetTimelineUrl = (journeyId: string,) => {
+
+
+
+
+  return `/v1/journeys/${journeyId}/entries`
+}
+
+/**
+ * @summary A journey's entries, in the order things happened
+ */
+export const getTimeline = async (journeyId: string, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse[]> => {
+
+  return apiFetch<EntryResponse[]>(getGetTimelineUrl(journeyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTimelineQueryKey = (journeyId: string,) => {
+    return [
+    `/v1/journeys/${journeyId}/entries`
+    ] as const;
+    }
+
+
+export const getGetTimelineQueryOptions = <TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTimelineQueryKey(journeyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTimeline>>> = ({ signal }) => getTimeline(journeyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: journeyId !== null && journeyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTimelineQueryResult = NonNullable<Awaited<ReturnType<typeof getTimeline>>>
+export type GetTimelineQueryError = unknown
+
+
+/** @summary A journey's entries, in the order things happened */
+export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
+ journeyId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimeline>>,
+          TError,
+          Awaited<ReturnType<typeof getTimeline>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A journey's entries, in the order things happened */
+export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTimeline>>,
+          TError,
+          Awaited<ReturnType<typeof getTimeline>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A journey's entries, in the order things happened */
+export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A journey's entries, in the order things happened */
+export function useGetTimeline<TData = Awaited<ReturnType<typeof getTimeline>>, TError = unknown>(
+ journeyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTimeline>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTimelineQueryOptions(journeyId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddEntryUrl = (journeyId: string,) => {
+
+
+
+
+  return `/v1/journeys/${journeyId}/entries`
+}
+
+/**
+ * @summary Add an entry to a journey
+ */
+export const addEntry = async (journeyId: string,
+    saveEntryRequest: SaveEntryRequest, options?: Parameters<typeof apiFetch>[1]): Promise<EntryResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<EntryResponse>(getAddEntryUrl(journeyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(saveEntryRequest)
+  }
+);}
+
+
+
+
+
+export const getAddEntryMutationKey = () => ['addEntry'] as const;
+
+export const getAddEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEntry>>, TError,AddEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addEntry>>, TError,AddEntryMutationVariables, TContext> => {
+
+const mutationKey = getAddEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addEntry>>, AddEntryMutationVariables> = (props) => {
+          const {journeyId,data} = props ?? {};
+
+          return  addEntry(journeyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddEntryMutationResult = NonNullable<Awaited<ReturnType<typeof addEntry>>>
+    export type AddEntryMutationBody = SaveEntryRequest
+    export type AddEntryMutationError = unknown
+    export type AddEntryMutationVariables = {journeyId: string;data: SaveEntryRequest}
+
+    /** @summary Add an entry to a journey */
+export const useAddEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEntry>>, TError,AddEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addEntry>>,
+        TError,
+        AddEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddEntryMutationOptions(options), queryClient);
+    }
+
+export const getMarkJourneyReadUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/read`
+}
+
+/**
+ * @summary The reader has caught up with this journey
+ */
+export const markJourneyRead = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getMarkJourneyReadUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkJourneyReadMutationKey = () => ['markJourneyRead'] as const;
+
+export const getMarkJourneyReadMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markJourneyRead>>, TError,MarkJourneyReadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markJourneyRead>>, TError,MarkJourneyReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkJourneyReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markJourneyRead>>, MarkJourneyReadMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  markJourneyRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkJourneyReadMutationResult = NonNullable<Awaited<ReturnType<typeof markJourneyRead>>>
+
+    export type MarkJourneyReadMutationError = unknown
+    export type MarkJourneyReadMutationVariables = {id: string}
+
+    /** @summary The reader has caught up with this journey */
+export const useMarkJourneyRead = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markJourneyRead>>, TError,MarkJourneyReadMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markJourneyRead>>,
+        TError,
+        MarkJourneyReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkJourneyReadMutationOptions(options), queryClient);
+    }
+
+export const getCompleteJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/complete`
+}
+
+/**
+ * @summary Close a journey with a last note
+ */
+export const completeJourney = async (id: string,
+    completeJourneyRequest: CompleteJourneyRequest, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<JourneyResponse>(getCompleteJourneyUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(completeJourneyRequest)
+  }
+);}
+
+
+
+
+
+export const getCompleteJourneyMutationKey = () => ['completeJourney'] as const;
+
+export const getCompleteJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeJourney>>, TError,CompleteJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeJourney>>, TError,CompleteJourneyMutationVariables, TContext> => {
+
+const mutationKey = getCompleteJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeJourney>>, CompleteJourneyMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  completeJourney(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof completeJourney>>>
+    export type CompleteJourneyMutationBody = CompleteJourneyRequest
+    export type CompleteJourneyMutationError = unknown
+    export type CompleteJourneyMutationVariables = {id: string;data: CompleteJourneyRequest}
+
+    /** @summary Close a journey with a last note */
+export const useCompleteJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeJourney>>, TError,CompleteJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof completeJourney>>,
+        TError,
+        CompleteJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteJourneyMutationOptions(options), queryClient);
     }
 
 export const getCreateLocalTokenUrl = () => {
@@ -383,6 +1661,266 @@ export const useRequestLocalCode = <TError = unknown,
       return useMutation(getRequestLocalCodeMutationOptions(options), queryClient);
     }
 
+export const getGetJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}`
+}
+
+/**
+ * @summary One journey, if you may see it
+ */
+export const getJourney = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+  return apiFetch<JourneyResponse>(getGetJourneyUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneyQueryKey = (id: string,) => {
+    return [
+    `/v1/journeys/${id}`
+    ] as const;
+    }
+
+
+export const getGetJourneyQueryOptions = <TData = Awaited<ReturnType<typeof getJourney>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneyQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourney>>> = ({ signal }) => getJourney(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJourneyQueryResult = NonNullable<Awaited<ReturnType<typeof getJourney>>>
+export type GetJourneyQueryError = unknown
+
+
+/** @summary One journey, if you may see it */
+export function useGetJourney<TData = Awaited<ReturnType<typeof getJourney>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourney>>,
+          TError,
+          Awaited<ReturnType<typeof getJourney>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One journey, if you may see it */
+export function useGetJourney<TData = Awaited<ReturnType<typeof getJourney>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourney>>,
+          TError,
+          Awaited<ReturnType<typeof getJourney>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One journey, if you may see it */
+export function useGetJourney<TData = Awaited<ReturnType<typeof getJourney>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary One journey, if you may see it */
+export function useGetJourney<TData = Awaited<ReturnType<typeof getJourney>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourney>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJourneyQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}`
+}
+
+/**
+ * @summary Delete a journey and everything in it
+ */
+export const deleteJourney = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteJourneyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteJourneyMutationKey = () => ['deleteJourney'] as const;
+
+export const getDeleteJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJourney>>, TError,DeleteJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteJourney>>, TError,DeleteJourneyMutationVariables, TContext> => {
+
+const mutationKey = getDeleteJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteJourney>>, DeleteJourneyMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteJourney(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteJourney>>>
+
+    export type DeleteJourneyMutationError = unknown
+    export type DeleteJourneyMutationVariables = {id: string}
+
+    /** @summary Delete a journey and everything in it */
+export const useDeleteJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteJourney>>, TError,DeleteJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteJourney>>,
+        TError,
+        DeleteJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteJourneyMutationOptions(options), queryClient);
+    }
+
+export const getUpdateJourneyUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}`
+}
+
+/**
+ * @summary Change a journey. Only the fields you send are changed.
+ */
+export const updateJourney = async (id: string,
+    updateJourneyRequest: UpdateJourneyRequest, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<JourneyResponse>(getUpdateJourneyUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateJourneyRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateJourneyMutationKey = () => ['updateJourney'] as const;
+
+export const getUpdateJourneyMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJourney>>, TError,UpdateJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJourney>>, TError,UpdateJourneyMutationVariables, TContext> => {
+
+const mutationKey = getUpdateJourneyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJourney>>, UpdateJourneyMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateJourney(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJourneyMutationResult = NonNullable<Awaited<ReturnType<typeof updateJourney>>>
+    export type UpdateJourneyMutationBody = UpdateJourneyRequest
+    export type UpdateJourneyMutationError = unknown
+    export type UpdateJourneyMutationVariables = {id: string;data: UpdateJourneyRequest}
+
+    /** @summary Change a journey. Only the fields you send are changed. */
+export const useUpdateJourney = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJourney>>, TError,UpdateJourneyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateJourney>>,
+        TError,
+        UpdateJourneyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateJourneyMutationOptions(options), queryClient);
+    }
+
 export const getCheckUsernameUrl = (username: string,) => {
 
 
@@ -484,6 +2022,107 @@ export function useCheckUsername<TData = Awaited<ReturnType<typeof checkUsername
 
 
 
+export const getGetJourneysByUsernameUrl = (username: string,) => {
+
+
+
+
+  return `/v1/profiles/${username}/journeys`
+}
+
+/**
+ * @summary Someone's public journeys
+ */
+export const getJourneysByUsername = async (username: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+
+  return apiFetch<JourneyResponse[]>(getGetJourneysByUsernameUrl(username),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJourneysByUsernameQueryKey = (username: string,) => {
+    return [
+    `/v1/profiles/${username}/journeys`
+    ] as const;
+    }
+
+
+export const getGetJourneysByUsernameQueryOptions = <TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJourneysByUsernameQueryKey(username);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJourneysByUsername>>> = ({ signal }) => getJourneysByUsername(username, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetJourneysByUsernameQueryResult = NonNullable<Awaited<ReturnType<typeof getJourneysByUsername>>>
+export type GetJourneysByUsernameQueryError = unknown
+
+
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
+ username: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneysByUsername>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneysByUsername>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getJourneysByUsername>>,
+          TError,
+          Awaited<ReturnType<typeof getJourneysByUsername>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Someone's public journeys */
+export function useGetJourneysByUsername<TData = Awaited<ReturnType<typeof getJourneysByUsername>>, TError = unknown>(
+ username: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getJourneysByUsername>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetJourneysByUsernameQueryOptions(username,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetMeUrl = () => {
 
 
@@ -573,6 +2212,626 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = unk
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetMeQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyJourneysUrl = () => {
+
+
+
+
+  return `/v1/me/journeys`
+}
+
+/**
+ * @summary Your own journeys, of every visibility
+ */
+export const getMyJourneys = async ( options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+
+  return apiFetch<JourneyResponse[]>(getGetMyJourneysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyJourneysQueryKey = () => {
+    return [
+    `/v1/me/journeys`
+    ] as const;
+    }
+
+
+export const getGetMyJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyJourneysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyJourneys>>> = ({ signal }) => getMyJourneys({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyJourneysQueryResult = NonNullable<Awaited<ReturnType<typeof getMyJourneys>>>
+export type GetMyJourneysQueryError = unknown
+
+
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getMyJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getMyJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your own journeys, of every visibility */
+export function useGetMyJourneys<TData = Awaited<ReturnType<typeof getMyJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyJourneysQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFollowedJourneysUrl = () => {
+
+
+
+
+  return `/v1/me/following`
+}
+
+/**
+ * @summary The journeys you follow
+ */
+export const getFollowedJourneys = async ( options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+
+  return apiFetch<JourneyResponse[]>(getGetFollowedJourneysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFollowedJourneysQueryKey = () => {
+    return [
+    `/v1/me/following`
+    ] as const;
+    }
+
+
+export const getGetFollowedJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFollowedJourneysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFollowedJourneys>>> = ({ signal }) => getFollowedJourneys({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFollowedJourneysQueryResult = NonNullable<Awaited<ReturnType<typeof getFollowedJourneys>>>
+export type GetFollowedJourneysQueryError = unknown
+
+
+/** @summary The journeys you follow */
+export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowedJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFollowedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getFollowedJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The journeys you follow */
+export function useGetFollowedJourneys<TData = Awaited<ReturnType<typeof getFollowedJourneys>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFollowedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFollowedJourneysQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSuggestedJourneysUrl = (params?: GetSuggestedJourneysParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/journeys/suggested?${stringifiedParams}` : `/v1/journeys/suggested`
+}
+
+/**
+ * @summary A few journeys to follow, matched to your interests
+ */
+export const getSuggestedJourneys = async (params?: GetSuggestedJourneysParams, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse[]> => {
+
+  return apiFetch<JourneyResponse[]>(getGetSuggestedJourneysUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSuggestedJourneysQueryKey = (params?: GetSuggestedJourneysParams,) => {
+    return [
+    `/v1/journeys/suggested`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSuggestedJourneysQueryOptions = <TData = Awaited<ReturnType<typeof getSuggestedJourneys>>, TError = unknown>(params?: GetSuggestedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSuggestedJourneysQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSuggestedJourneys>>> = ({ signal }) => getSuggestedJourneys(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSuggestedJourneysQueryResult = NonNullable<Awaited<ReturnType<typeof getSuggestedJourneys>>>
+export type GetSuggestedJourneysQueryError = unknown
+
+
+/** @summary A few journeys to follow, matched to your interests */
+export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSuggestedJourneys>>, TError = unknown>(
+ params: undefined |  GetSuggestedJourneysParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSuggestedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getSuggestedJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A few journeys to follow, matched to your interests */
+export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSuggestedJourneys>>, TError = unknown>(
+ params?: GetSuggestedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSuggestedJourneys>>,
+          TError,
+          Awaited<ReturnType<typeof getSuggestedJourneys>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A few journeys to follow, matched to your interests */
+export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSuggestedJourneys>>, TError = unknown>(
+ params?: GetSuggestedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary A few journeys to follow, matched to your interests */
+export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSuggestedJourneys>>, TError = unknown>(
+ params?: GetSuggestedJourneysParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSuggestedJourneys>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSuggestedJourneysQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFeedUrl = () => {
+
+
+
+
+  return `/v1/feed`
+}
+
+/**
+ * @summary Home: what's new in the journeys you follow, grouped per journey, newest first
+ */
+export const getFeed = async ( options?: Parameters<typeof apiFetch>[1]): Promise<FeedResponse> => {
+
+  return apiFetch<FeedResponse>(getGetFeedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFeedQueryKey = () => {
+    return [
+    `/v1/feed`
+    ] as const;
+    }
+
+
+export const getGetFeedQueryOptions = <TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFeedQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFeed>>> = ({ signal }) => getFeed({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getFeed>>>
+export type GetFeedQueryError = unknown
+
+
+/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getFeed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getFeed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Home: what's new in the journeys you follow, grouped per journey, newest first */
+export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFeed>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFeedQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDiscoverUrl = (params?: GetDiscoverParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/discover?${stringifiedParams}` : `/v1/discover`
+}
+
+/**
+ * @summary Trending, new and recently completed journeys
+ */
+export const getDiscover = async (params?: GetDiscoverParams, options?: Parameters<typeof apiFetch>[1]): Promise<DiscoverResponse> => {
+
+  return apiFetch<DiscoverResponse>(getGetDiscoverUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDiscoverQueryKey = (params?: GetDiscoverParams,) => {
+    return [
+    `/v1/discover`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDiscoverQueryOptions = <TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDiscoverQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDiscover>>> = ({ signal }) => getDiscover(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDiscoverQueryResult = NonNullable<Awaited<ReturnType<typeof getDiscover>>>
+export type GetDiscoverQueryError = unknown
+
+
+/** @summary Trending, new and recently completed journeys */
+export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
+ params: undefined |  GetDiscoverParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDiscover>>,
+          TError,
+          Awaited<ReturnType<typeof getDiscover>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Trending, new and recently completed journeys */
+export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
+ params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDiscover>>,
+          TError,
+          Awaited<ReturnType<typeof getDiscover>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Trending, new and recently completed journeys */
+export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
+ params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Trending, new and recently completed journeys */
+export function useGetDiscover<TData = Awaited<ReturnType<typeof getDiscover>>, TError = unknown>(
+ params?: GetDiscoverParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDiscover>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDiscoverQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCatalogUrl = () => {
+
+
+
+
+  return `/v1/catalog`
+}
+
+/**
+ * @summary Interests, categories and journey templates
+ */
+export const getCatalog = async ( options?: Parameters<typeof apiFetch>[1]): Promise<CatalogResponse> => {
+
+  return apiFetch<CatalogResponse>(getGetCatalogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogQueryKey = () => {
+    return [
+    `/v1/catalog`
+    ] as const;
+    }
+
+
+export const getGetCatalogQueryOptions = <TData = Awaited<ReturnType<typeof getCatalog>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalog>>> = ({ signal }) => getCatalog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCatalogQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalog>>>
+export type GetCatalogQueryError = unknown
+
+
+/** @summary Interests, categories and journey templates */
+export function useGetCatalog<TData = Awaited<ReturnType<typeof getCatalog>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalog>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalog>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Interests, categories and journey templates */
+export function useGetCatalog<TData = Awaited<ReturnType<typeof getCatalog>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCatalog>>,
+          TError,
+          Awaited<ReturnType<typeof getCatalog>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Interests, categories and journey templates */
+export function useGetCatalog<TData = Awaited<ReturnType<typeof getCatalog>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Interests, categories and journey templates */
+export function useGetCatalog<TData = Awaited<ReturnType<typeof getCatalog>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCatalog>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCatalogQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

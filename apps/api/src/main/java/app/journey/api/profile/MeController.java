@@ -39,14 +39,14 @@ class MeController {
       @Schema(nullable = true) String avatarUrl,
       List<String> interests) {
 
-    static ProfileResponse of(Profile profile) {
+    static ProfileResponse of(Profile profile, String avatarUrl) {
       return new ProfileResponse(
           profile.getId(),
           profile.getUsername(),
           profile.getDisplayName(),
           profile.getBio(),
           profile.getLink(),
-          null, // photos arrive with the Create milestone
+          avatarUrl,
           List.of(profile.getInterests()));
     }
   }
@@ -61,7 +61,9 @@ class MeController {
       @NotBlank(message = "Choose a username.") @Size(max = 21, message = "Use 20 characters or fewer.") String username,
       @Size(max = 150, message = "Use 150 characters or fewer.") String bio,
       @Size(max = 200, message = "That link is too long.") String link,
-      @Size(max = 20, message = "Pick 20 interests at most.") List<@Size(max = 30) String> interests) {}
+      @Size(max = 20, message = "Pick 20 interests at most.") List<@Size(max = 30) String> interests,
+      @Schema(description = "A photo uploaded through /v1/media/uploads") UUID avatarMediaId,
+      @Schema(description = "True to go back to no picture") Boolean removeAvatar) {}
 
   record UsernameCheckResponse(String username, boolean available, @Schema(nullable = true) String reason) {}
 
@@ -69,15 +71,20 @@ class MeController {
   @Operation(operationId = "getMe", summary = "Who is signed in, with their profile if they have one")
   MeResponse me(@AuthenticationPrincipal Jwt jwt) {
     CurrentUser user = CurrentUser.from(jwt);
-    return new MeResponse(user.id(), user.email(), profiles.find(user.id()).map(ProfileResponse::of).orElse(null));
+    return new MeResponse(user.id(), user.email(), profiles.find(user.id()).map(this::view).orElse(null));
   }
 
   @PutMapping("/me/profile")
   @Operation(operationId = "saveProfile", summary = "Create the profile, or change it")
   ProfileResponse saveProfile(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody SaveProfileRequest request) {
     CurrentUser user = CurrentUser.from(jwt);
-    return ProfileResponse.of(
-        profiles.save(user.id(), request.username(), request.displayName(), request.bio(), request.link(), request.interests()));
+    return view(
+        profiles.save(user.id(), request.username(), request.displayName(), request.bio(), request.link(), request.interests(),
+            request.avatarMediaId(), Boolean.TRUE.equals(request.removeAvatar())));
+  }
+
+  private ProfileResponse view(Profile profile) {
+    return ProfileResponse.of(profile, profiles.avatarUrl(profile));
   }
 
   @GetMapping("/usernames/{username}")

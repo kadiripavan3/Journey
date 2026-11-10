@@ -47,6 +47,9 @@ class ProfileTest extends ApiTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.displayName").value("Nora L."))
         .andExpect(jsonPath("$.bio").value(""))
+        // Interests weren't sent, so they stay; an empty list clears them.
+        .andExpect(jsonPath("$.interests.length()").value(2));
+    saveProfile(token, "{\"displayName\":\"Nora L.\",\"username\":\"nora.lind\",\"interests\":[]}")
         .andExpect(jsonPath("$.interests.length()").value(0));
   }
 

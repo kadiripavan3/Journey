@@ -13,11 +13,23 @@
     "bearer" : [ ]
   } ],
   "tags" : [ {
+    "name" : "entries",
+    "description" : "Entries, the story line and the Home feed"
+  }, {
     "name" : "me",
     "description" : "The signed-in person and their profile"
   }, {
     "name" : "local-auth",
     "description" : "Test sign-in. Exists only in local mode."
+  }, {
+    "name" : "media",
+    "description" : "Uploading photos and clips"
+  }, {
+    "name" : "journeys",
+    "description" : "Journeys, following and discovery"
+  }, {
+    "name" : "catalog",
+    "description" : "The fixed lists the app offers"
   } ],
   "paths" : {
     "/v1/me/profile" : {
@@ -42,6 +54,327 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/follow" : {
+      "put" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Follow a journey",
+        "operationId" : "followJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Stop following a journey",
+        "operationId" : "unfollowJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entries/{id}" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "One entry",
+        "operationId" : "getEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "entries" ],
+        "summary" : "Change an entry. It is marked as edited.",
+        "operationId" : "changeEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveEntryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "entries" ],
+        "summary" : "Delete an entry",
+        "operationId" : "deleteEntry",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/v1/media/uploads" : {
+      "post" : {
+        "tags" : [ "media" ],
+        "summary" : "Get a place to upload one photo or clip",
+        "operationId" : "startUpload",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartUploadRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys" : {
+      "post" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Start a journey",
+        "operationId" : "createJourney",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateJourneyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{journeyId}/entries" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "A journey's entries, in the order things happened",
+        "operationId" : "getTimeline",
+        "parameters" : [ {
+          "name" : "journeyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EntryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "entries" ],
+        "summary" : "Add an entry to a journey",
+        "operationId" : "addEntry",
+        "parameters" : [ {
+          "name" : "journeyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveEntryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/read" : {
+      "post" : {
+        "tags" : [ "journeys" ],
+        "summary" : "The reader has caught up with this journey",
+        "operationId" : "markJourneyRead",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/complete" : {
+      "post" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Close a journey with a last note",
+        "operationId" : "completeJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CompleteJourneyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
                 }
               }
             }
@@ -102,6 +435,89 @@
         "security" : [ ]
       }
     },
+    "/v1/journeys/{id}" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "One journey, if you may see it",
+        "operationId" : "getJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Delete a journey and everything in it",
+        "operationId" : "deleteJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Change a journey. Only the fields you send are changed.",
+        "operationId" : "updateJourney",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateJourneyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JourneyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/usernames/{username}" : {
       "get" : {
         "tags" : [ "me" ],
@@ -129,6 +545,36 @@
         }
       }
     },
+    "/v1/profiles/{username}/journeys" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Someone's public journeys",
+        "operationId" : "getJourneysByUsername",
+        "parameters" : [ {
+          "name" : "username",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JourneyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me" : {
       "get" : {
         "tags" : [ "me" ],
@@ -141,6 +587,147 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/journeys" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Your own journeys, of every visibility",
+        "operationId" : "getMyJourneys",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JourneyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/following" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "The journeys you follow",
+        "operationId" : "getFollowedJourneys",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JourneyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/suggested" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "A few journeys to follow, matched to your interests",
+        "operationId" : "getSuggestedJourneys",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 6
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/JourneyResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/feed" : {
+      "get" : {
+        "tags" : [ "entries" ],
+        "summary" : "Home: what's new in the journeys you follow, grouped per journey, newest first",
+        "operationId" : "getFeed",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/discover" : {
+      "get" : {
+        "tags" : [ "journeys" ],
+        "summary" : "Trending, new and recently completed journeys",
+        "operationId" : "getDiscover",
+        "parameters" : [ {
+          "name" : "category",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DiscoverResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/catalog" : {
+      "get" : {
+        "tags" : [ "catalog" ],
+        "summary" : "Interests, categories and journey templates",
+        "operationId" : "getCatalog",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogResponse"
                 }
               }
             }
@@ -183,6 +770,15 @@
             },
             "maxItems" : 20,
             "minItems" : 0
+          },
+          "avatarMediaId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A photo uploaded through /v1/media/uploads"
+          },
+          "removeAvatar" : {
+            "type" : "boolean",
+            "description" : "True to go back to no picture"
           }
         },
         "required" : [ "displayName", "username" ]
@@ -217,6 +813,376 @@
           }
         },
         "required" : [ "avatarUrl", "bio", "displayName", "id", "interests", "link", "username" ]
+      },
+      "JourneyResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "template" : {
+            "type" : "string"
+          },
+          "labelStyle" : {
+            "type" : "string",
+            "enum" : [ "day", "part" ]
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "public", "unlisted", "private" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "active", "paused", "completed" ]
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "coverUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "targetDays" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "latestNumber" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Day or part number of the latest entry; 0 before the first one"
+          },
+          "progressLabel" : {
+            "type" : "string",
+            "description" : "Ready to show: \"Day 14\", \"Day 12 of 30\", \"Part 5\" or \"Not started\""
+          },
+          "entryCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "followerCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastEntryAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "completedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "closingNote" : {
+            "type" : [ "string", "null" ]
+          },
+          "owner" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "viewer" : {
+            "$ref" : "#/components/schemas/JourneyViewerResponse"
+          }
+        },
+        "required" : [ "category", "closingNote", "completedAt", "coverUrl", "description", "entryCount", "followerCount", "id", "labelStyle", "lastEntryAt", "latestNumber", "owner", "progressLabel", "startDate", "status", "tags", "targetDays", "template", "title", "viewer", "visibility" ]
+      },
+      "JourneyViewerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "isOwner" : {
+            "type" : "boolean"
+          },
+          "isFollowing" : {
+            "type" : "boolean"
+          },
+          "canAddEntry" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "canAddEntry", "isFollowing", "isOwner" ]
+      },
+      "PersonResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "avatarUrl" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "avatarUrl", "displayName", "id", "username" ]
+      },
+      "SaveEntryRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "body" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 0
+          },
+          "happenedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "happenedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "placeName" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "isMilestone" : {
+            "type" : "boolean"
+          },
+          "mediaIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid"
+            },
+            "maxItems" : 13,
+            "minItems" : 0
+          }
+        }
+      },
+      "EntryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "journeyId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "journeyTitle" : {
+            "type" : "string"
+          },
+          "author" : {
+            "$ref" : "#/components/schemas/PersonResponse"
+          },
+          "happenedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "happenedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "label" : {
+            "type" : "string",
+            "description" : "Ready to show: \"Day 14\" or \"Part 3\""
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "body" : {
+            "type" : "string"
+          },
+          "placeName" : {
+            "type" : [ "string", "null" ]
+          },
+          "isMilestone" : {
+            "type" : "boolean"
+          },
+          "media" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MediaResponse"
+            }
+          },
+          "likeCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "commentCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "edited" : {
+            "type" : "boolean"
+          },
+          "viewer" : {
+            "$ref" : "#/components/schemas/EntryViewerResponse"
+          }
+        },
+        "required" : [ "author", "body", "commentCount", "createdAt", "edited", "happenedAt", "happenedOn", "id", "isMilestone", "journeyId", "journeyTitle", "label", "likeCount", "media", "number", "placeName", "title", "viewer" ]
+      },
+      "EntryViewerResponse" : {
+        "type" : "object",
+        "properties" : {
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "canDelete" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "canDelete", "canEdit" ]
+      },
+      "MediaResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "photo", "video" ]
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "width" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "height" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "durationSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        },
+        "required" : [ "durationSeconds", "height", "id", "kind", "url", "width" ]
+      },
+      "StartUploadRequest" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "enum" : [ "photo", "video" ],
+            "minLength" : 1,
+            "pattern" : "photo|video"
+          },
+          "contentType" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "contentType", "kind" ]
+      },
+      "UploadResponse" : {
+        "type" : "object",
+        "properties" : {
+          "mediaId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "Use this id when saving the entry, journey or profile"
+          },
+          "uploadUrl" : {
+            "type" : "string",
+            "description" : "Send the file's bytes here"
+          },
+          "method" : {
+            "type" : "string"
+          },
+          "headers" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "headers", "mediaId", "method", "uploadUrl" ]
+      },
+      "CreateJourneyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "description" : {
+            "type" : "string",
+            "maxLength" : 300,
+            "minLength" : 0
+          },
+          "template" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "public", "unlisted", "private" ],
+            "minLength" : 1,
+            "pattern" : "public|unlisted|private"
+          },
+          "labelStyle" : {
+            "type" : "string",
+            "enum" : [ "day", "part" ],
+            "pattern" : "day|part"
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "coverMediaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "startDate", "template", "title", "visibility" ]
+      },
+      "CompleteJourneyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "closingNote" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        }
       },
       "TokenRequest" : {
         "type" : "object",
@@ -266,6 +1232,57 @@
         },
         "required" : [ "email" ]
       },
+      "UpdateJourneyRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 1
+          },
+          "description" : {
+            "type" : "string",
+            "maxLength" : 300,
+            "minLength" : 0
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "visibility" : {
+            "type" : "string",
+            "enum" : [ "public", "unlisted", "private" ],
+            "pattern" : "public|unlisted|private"
+          },
+          "labelStyle" : {
+            "type" : "string",
+            "enum" : [ "day", "part" ],
+            "pattern" : "day|part"
+          },
+          "tags" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "coverMediaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "clearCover" : {
+            "type" : "boolean",
+            "description" : "True to go back to using the first photo as the cover"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "active", "paused" ],
+            "pattern" : "active|paused"
+          }
+        }
+      },
       "UsernameCheckResponse" : {
         "type" : "object",
         "properties" : {
@@ -301,6 +1318,156 @@
           }
         },
         "required" : [ "email", "id", "profile" ]
+      },
+      "FeedGroupResponse" : {
+        "type" : "object",
+        "properties" : {
+          "journey" : {
+            "$ref" : "#/components/schemas/JourneyResponse"
+          },
+          "newCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EntryResponse"
+            }
+          }
+        },
+        "required" : [ "entries", "journey", "newCount" ]
+      },
+      "FeedResponse" : {
+        "type" : "object",
+        "properties" : {
+          "groups" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FeedGroupResponse"
+            }
+          },
+          "followingCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "followingCount", "groups" ]
+      },
+      "DiscoverResponse" : {
+        "type" : "object",
+        "properties" : {
+          "trending" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          },
+          "fresh" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          },
+          "completed" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/JourneyResponse"
+            }
+          }
+        },
+        "required" : [ "completed", "fresh", "trending" ]
+      },
+      "CatalogResponse" : {
+        "type" : "object",
+        "properties" : {
+          "categories" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CategoryResponse"
+            }
+          },
+          "interests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/InterestResponse"
+            }
+          },
+          "templates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TemplateResponse"
+            }
+          }
+        },
+        "required" : [ "categories", "interests", "templates" ]
+      },
+      "CategoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "emoji" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "emoji", "id", "label" ]
+      },
+      "InterestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "emoji" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "category", "emoji", "id", "label" ]
+      },
+      "TemplateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "emoji" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "defaultCategory" : {
+            "type" : "string"
+          },
+          "labelStyle" : {
+            "type" : "string"
+          },
+          "targetDays" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "prompts" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [ "defaultCategory", "description", "emoji", "id", "labelStyle", "name", "prompts", "targetDays" ]
       }
     },
     "securitySchemes" : {
