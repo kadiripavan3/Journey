@@ -22,7 +22,7 @@ export default function Privacy() {
   const router = useRouter();
   const { colors } = useTheme();
   const { settings, change } = useSettingsEditor();
-  const blocked = useGetBlocked();
+  const blocked = useGetBlocked({ limit: 100 });
   const [choosing, setChoosing] = useState(false);
   const s = settings.data;
   const current = visibility(s?.defaultVisibility ?? 'public');
@@ -46,7 +46,7 @@ export default function Privacy() {
           </RowGroup>
           <GroupLabel style={{ marginHorizontal: layout.gutter }}>People</GroupLabel>
           <RowGroup>
-            <Row first icon={(c) => <Ban size={18} color={c} />} label="Blocked accounts" value={blocked.data ? String(blocked.data.length) : undefined} onPress={() => router.push('/settings/blocked')} />
+            <Row first icon={(c) => <Ban size={18} color={c} />} label="Blocked accounts" value={blocked.data ? `${blocked.data.items.length}${blocked.data.nextCursor ? '+' : ''}` : undefined} onPress={() => router.push('/settings/blocked')} />
           </RowGroup>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 18, marginHorizontal: 16, padding: 14, borderRadius: radius.photo, backgroundColor: colors.fill }}>
             <ImageOff size={20} color={colors.text} />

@@ -6,7 +6,7 @@ import { Pressable, View } from 'react-native';
 
 import { ApiError, messageFor } from '@/api/fetcher';
 import { saveProfile, useCheckUsername, useGetMe } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { pickSquarePhoto } from '@/features/media/pick';
@@ -27,7 +27,7 @@ export default function EditProfile() {
   const router = useRouter();
   const { colors } = useTheme();
   const catalog = useCatalog();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const profile = useGetMe().data?.profile;
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
@@ -68,8 +68,8 @@ export default function EditProfile() {
     setFailure(null);
     try {
       const avatarMediaId = photo ? await uploadPhoto(photo) : undefined;
-      await saveProfile({ displayName: displayName.trim(), username, bio: bio.trim(), link: link.trim(), interests, avatarMediaId, removeAvatar: removePhoto && !photo });
-      await refresh();
+      const saved = await saveProfile({ displayName: displayName.trim(), username, bio: bio.trim(), link: link.trim(), interests, avatarMediaId, removeAvatar: removePhoto && !photo });
+      await cache.profileSaved(saved);
       router.back();
     } catch (error) {
       setFailure(error);

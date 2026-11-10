@@ -1,7 +1,7 @@
 import { render, screen, userEvent } from '@testing-library/react-native';
 import { Pressable, Text } from 'react-native';
 
-import type { EntryResponse, JourneyResponse } from '@/api/generated/journey';
+import type { JourneyResponse } from '@/api/generated/journey';
 import { addDays, today } from '@/lib/dates';
 import { firstName } from '@/lib/names';
 
@@ -26,18 +26,17 @@ describe('ErrorBoundary', () => {
 describe('ChallengeCard', () => {
   const start = addDays(today(), -9); // today is day 10
   const journey = { id: 'j', title: '30 days of guitar', startDate: start, targetDays: 30, status: 'active', labelStyle: 'part' } as JourneyResponse;
-  const entry = (number: number, daysIn: number) => ({ id: `e${number}`, number, happenedOn: addDays(start, daysIn - 1) }) as EntryResponse;
 
   it('counts days by their date, so a journey labelled in parts is right too', async () => {
-    // Three parts, two of them on the same day: that is two days checked in, on days 3 and 10.
-    await render(<ChallengeCard journey={journey} entries={[entry(1, 3), entry(2, 10), entry(3, 10)]} />);
+    // The API sends the days that have an entry (here days 3 and 10), whatever the entries are labelled.
+    await render(<ChallengeCard journey={journey} days={[3, 10]} />);
     expect(screen.getByText('2 of 30 days')).toBeOnTheScreen();
     expect(screen.getByLabelText('Checked in on 2 of 30 days')).toBeOnTheScreen();
     expect(screen.getByText(/20 days to go/)).toBeOnTheScreen();
   });
 
   it('is not shown for a journey without a number of days to reach', async () => {
-    await render(<ChallengeCard journey={{ ...journey, targetDays: null } as unknown as JourneyResponse} entries={[]} />);
+    await render(<ChallengeCard journey={{ ...journey, targetDays: null } as unknown as JourneyResponse} days={[]} />);
     expect(screen.queryByText(/days/)).not.toBeOnTheScreen();
   });
 });

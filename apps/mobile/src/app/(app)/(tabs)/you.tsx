@@ -5,8 +5,9 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type JourneyResponse, useGetMe, useGetMyJourneys, useGetProfile } from '@/api/generated/journey';
+import { type JourneyResponse, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { JourneyCard } from '@/features/journeys/JourneyCard';
+import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { visibility } from '@/features/journeys/visibility';
 import { compact } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
@@ -27,7 +28,7 @@ export default function You() {
   const router = useRouter();
   const { colors, shadow } = useTheme();
   const me = useGetMe();
-  const mine = useGetMyJourneys();
+  const mine = useMyJourneys();
   const [shelf, setShelf] = useState<Shelf>('active');
   const [pulling, setPulling] = useState(false);
   const reload = async () => {
@@ -40,7 +41,7 @@ export default function You() {
   const counts = useGetProfile(profile?.username ?? '', { query: { enabled: !!profile } });
   if (!profile) return null;
 
-  const journeys = mine.data ?? [];
+  const journeys = mine.journeys;
   const shelves: Record<Shelf, JourneyResponse[]> = {
     active: journeys.filter((j) => j.visibility !== 'private' && j.status !== 'completed'),
     completed: journeys.filter((j) => j.visibility !== 'private' && j.status === 'completed'),

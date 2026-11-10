@@ -7,8 +7,9 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { useAcceptInvitation, useGetInvitations, useGetMe, useRemoveMember } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useAcceptInvitation, useGetInvitationsInfinite, useGetMe, useRemoveMember } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
+import { paged, rows } from '@/api/pages';
 import { plural } from '@/lib/plural';
 import { darkTheme, layout, withAlpha } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
@@ -26,14 +27,14 @@ const WHO = { public: "It's public", unlisted: 'Only people with the link see it
 export default function Invitation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const me = useGetMe().data?.profile;
-  const invitations = useGetInvitations();
-  const invitation = invitations.data?.find((i) => i.journey.id === id);
+  const invitations = useGetInvitationsInfinite({ limit: 100 }, { query: paged });
+  const invitation = rows(invitations.data)?.find((i) => i.journey.id === id);
   const accept = useAcceptInvitation({
     mutation: {
       onSuccess: async () => {
-        await refresh();
+        await cache.membersChanged(id);
         router.replace(`/journey/${id}`);
       },
     },
@@ -42,7 +43,7 @@ export default function Invitation() {
     mutation: {
       onSuccess: async () => {
         router.back();
-        await refresh();
+        await cache.membersChanged(id);
       },
     },
   });

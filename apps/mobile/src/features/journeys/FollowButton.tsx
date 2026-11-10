@@ -2,16 +2,16 @@ import { Check, Plus } from 'lucide-react-native';
 
 import { useFollowJourney, useUnfollowJourney } from '@/api/generated/journey';
 import type { JourneyResponse } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { Button } from '@/ui/Button';
 
 type Props = { journey: JourneyResponse; size?: 'sm' | 'md'; onChanged?: (following: boolean) => void };
 
 /** Follow or stop following one journey. Shows the new state straight away. */
 export function FollowButton({ journey, size = 'sm', onChanged }: Props) {
-  const refresh = useRefreshAll();
-  const follow = useFollowJourney({ mutation: { onSuccess: () => { onChanged?.(true); return refresh(); } } });
-  const unfollow = useUnfollowJourney({ mutation: { onSuccess: () => { onChanged?.(false); return refresh(); } } });
+  const cache = useCache();
+  const follow = useFollowJourney({ mutation: { onSuccess: (followed) => { onChanged?.(true); return cache.journeyFollowed(followed); } } });
+  const unfollow = useUnfollowJourney({ mutation: { onSuccess: (unfollowed) => { onChanged?.(false); return cache.journeyFollowed(unfollowed); } } });
   const busy = follow.isPending || unfollow.isPending;
   // While a request is on its way, show where it is heading.
   const following = follow.isPending ? true : unfollow.isPending ? false : journey.viewer.isFollowing;

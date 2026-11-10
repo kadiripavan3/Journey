@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { createJourney } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { parseTags, useNewJourney } from '@/features/journeys/draft';
@@ -21,7 +21,7 @@ export default function Visibility() {
   const router = useRouter();
   const { colors, shadow } = useTheme();
   const catalog = useCatalog();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const { draft, change } = useNewJourney();
   const [progress, setProgress] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -39,6 +39,7 @@ export default function Visibility() {
       }
       setProgress('Creating your journey');
       const journey = await createJourney({
+        clientId: draft.clientId,
         title: draft.title.trim(),
         description: draft.description.trim(),
         template: draft.template,
@@ -49,7 +50,7 @@ export default function Visibility() {
         tags: parseTags(draft.tags),
         coverMediaId,
       });
-      await refresh();
+      await cache.journeyStarted();
       router.dismissAll();
       router.push(`/journey/${journey.id}/live`);
     } catch (error) {

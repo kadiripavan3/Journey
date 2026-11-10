@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { useGetFollowedJourneys, useGetMe } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { useOnboarding } from '@/auth/onboarding';
 import { TemplateCard } from '@/features/journeys/TemplateCard';
 import { firstName } from '@/lib/names';
@@ -19,14 +19,14 @@ import { Txt } from '@/ui/Txt';
 export default function Ready() {
   const { colors } = useTheme();
   const onboarding = useOnboarding();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const me = useGetMe();
-  const followed = useGetFollowedJourneys();
+  const followed = useGetFollowedJourneys({ limit: 100 });
   const first = firstName(me.data?.profile?.displayName);
-  const count = followed.data?.length ?? 0;
+  const count = followed.data?.items.length ?? 0;
 
   const leave = (then?: Href) => {
-    void refresh();
+    void cache.everything();
     onboarding.finish(then);
   };
 

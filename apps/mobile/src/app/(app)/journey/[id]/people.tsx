@@ -3,8 +3,10 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type MemberResponse, useGetInvitable, useGetJourney, useGetMe, useGetMembers, useInviteMember, useRemoveMember } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { type MemberResponse, useGetInvitableInfinite, useGetJourney, useGetMe, useGetMembers, useInviteMember, useRemoveMember } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
+import { paged, rows } from '@/api/pages';
+import { MoreButton } from '@/ui/MoreButton';
 import { timeAgo } from '@/lib/dates';
 import { plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
@@ -28,18 +30,19 @@ export default function JourneyPeople() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { colors } = useTheme();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const myId = useGetMe().data?.id;
   const journey = useGetJourney(id);
   const members = useGetMembers(id);
   const isOwner = members.data?.viewerRole === 'owner';
-  const invitable = useGetInvitable(id, { query: { enabled: isOwner } });
-  const invite = useInviteMember({ mutation: { onSuccess: () => refresh() } });
+  const invitable = useGetInvitableInfinite(id, undefined, { query: { ...paged, enabled: isOwner } });
+  const candidates = rows(invitable.data) ?? [];
+  const invite = useInviteMember({ mutation: { onSuccess: () => cache.membersChanged(id) } });
   const remove = useRemoveMember({
     mutation: {
       onSuccess: async (_, { username }) => {
         const left = members.data?.members.find((m) => m.person.username === username)?.person.id === myId;
-        await refresh();
+        await cache.membersChanged(id);
         if (left) router.back();
       },
     },
@@ -114,12 +117,13 @@ export default function JourneyPeople() {
                 <View style={{ height: 80 }}>
                   <Loading />
                 </View>
-              ) : (invitable.data ?? []).length === 0 ? (
+              ) : candidates.length === 0 ? (
                 <Txt variant="callout" color="muted" style={{ marginHorizontal: layout.rowGutter, marginTop: 6 }}>
                   You can invite people who follow you. When someone follows you, they show up here.
                 </Txt>
               ) : (
-                (invitable.data ?? []).map((person) => (
+                <>
+                  {candidates.map((person) => (
                   <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
                     <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
                     <View style={{ flex: 1 }}>
@@ -132,7 +136,9 @@ export default function JourneyPeople() {
                     </View>
                     <Button label="Invite" inline size="sm" onPress={() => invite.mutate({ id, data: { username: person.username } })} />
                   </View>
-                ))
+                  ))}
+                  <MoreButton pages={invitable} />
+                </>
               )}
             </>
           ) : null}

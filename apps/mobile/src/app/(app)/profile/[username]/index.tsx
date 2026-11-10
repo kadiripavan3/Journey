@@ -7,8 +7,9 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { useGetJourneysByUsername, useGetProfile, useUnblockProfile } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useGetJourneysByUsernameInfinite, useGetProfile, useUnblockProfile } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
+import { paged, rows, useEveryPage } from '@/api/pages';
 import { FollowButton } from '@/features/journeys/FollowButton';
 import { JourneyRow } from '@/features/journeys/JourneyRow';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
@@ -34,13 +35,15 @@ export default function CreatorProfile() {
   const insets = useSafeAreaInsets();
   const { colors, shadow } = useTheme();
   const profile = useGetProfile(username);
-  const journeys = useGetJourneysByUsername(username);
+  // A profile sorts its journeys into shelves, so it reads all of them; the list is short by nature.
+  const journeys = useGetJourneysByUsernameInfinite(username, { limit: 100 }, { query: paged });
+  useEveryPage(journeys);
   const [shelf, setShelf] = useState<'active' | 'completed'>('active');
   const [menu, setMenu] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
-  const refresh = useRefreshAll();
-  const unblock = useUnblockProfile({ mutation: { onSuccess: () => refresh() } });
+  const cache = useCache();
+  const unblock = useUnblockProfile({ mutation: { onSuccess: () => cache.blockChanged() } });
 
   if (profile.isPending || profile.isError) {
     return (
@@ -54,7 +57,7 @@ export default function CreatorProfile() {
   }
 
   const p = profile.data;
-  const all = journeys.data ?? [];
+  const all = rows(journeys.data) ?? [];
   const active = all.filter((j) => j.status !== 'completed');
   const completed = all.filter((j) => j.status === 'completed');
   const shown = shelf === 'active' ? active : completed;
@@ -147,7 +150,7 @@ export default function CreatorProfile() {
               shown.map((journey) => (
                 <JourneyRow
                   key={journey.id}
-                  coverUrl={journey.coverUrl}
+                  coverUrl={journey.coverThumbUrl}
                   title={journey.title}
                   detail={`${journey.status === 'paused' ? 'Paused · ' : ''}${journey.progressLabel} · ${followersLabel(journey.followerCount)}`}
                   onPress={() => router.push(`/journey/${journey.id}`)}

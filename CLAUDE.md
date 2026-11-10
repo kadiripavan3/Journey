@@ -108,6 +108,14 @@ Also true, by habit rather than by the linter:
 - Labels on photos that repeat down a list are tinted (`Pill` does this by default); pass `frost="blur"` only for the one label on a full-photo screen.
 - One of each: `WordTabs` for word tabs, `Stat` for a number over a word, `VISIBILITY` (`features/journeys/visibility`) for what Public, Unlisted and Private are called, `firstName()` (`lib/names`) for what to call someone.
 
+How screens get and keep their data:
+
+- **A list that can grow long** is drawn with `List` (`src/ui/List.tsx`, FlashList underneath) and read with the generated `use…Infinite` hook: `useGetFollowersInfinite(username, undefined, { query: paged })`, then `rows(query.data)` and `{...more(query)}` (all from `src/api/pages.ts`). A list that is short by nature and sorted or counted as a whole (a person's own journeys) loads every page with `useEveryPage`; `useMyJourneys()` does that for you.
+- **A story** is read with `useGetTimelineInfinite(id, { around: entryId })`, which can load in both directions. A journey's page uses `useGetJourneySummary` and never loads the story.
+- **After a change, say what happened** with `useCache()` (`src/api/cache.ts`): `cache.entrySaved(journeyId)`, `cache.journeyFollowed(journey)`, `cache.commented(entryId)` and so on. When the API sends the changed journey or entry back, it is written into every list that holds it; only lists whose membership changed are fetched again. There is no "refresh everything" except after a block. A new kind of change gets a new function there, not an `invalidateQueries` in a screen.
+- **Creating something** sends a `clientId` (`newClientId()` from `src/lib/ids.ts`), made once per draft, so a second tap or a retry doesn't make a second one.
+- **Photos in lists, rows and cards** use `thumbUrl` / `coverThumbUrl`; the full `url` is for the entry viewer, the photo viewer and full-screen covers.
+
 To add a screen: build it in `src/app` from its design, with components from `src/ui` and `src/features`. A piece used by one screen stays in that screen's file; the second screen that needs it moves it to `features/<name>/` (or to `ui/` if it knows nothing about the domain). Add the screen to the walk-through.
 
 Component tests use React Native Testing Library (`render` and presses are awaited). `npm run check` runs them. In this cloud environment run it as `EXPO_OFFLINE=1 npm run check`.

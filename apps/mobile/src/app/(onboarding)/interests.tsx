@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { useGetCatalog, useGetMe, useSaveProfile } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
@@ -19,15 +19,15 @@ const MINIMUM = 3;
 /** 2.2 Interests: step 2 of 3. They shape Discover and the journeys suggested next. */
 export default function Interests() {
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const me = useGetMe();
   const catalog = useGetCatalog();
   const profile = me.data?.profile;
   const [picked, setPicked] = useState<string[]>(() => profile?.interests ?? []);
   const save = useSaveProfile({
     mutation: {
-      onSuccess: async () => {
-        await refresh();
+      onSuccess: async (saved) => {
+        await cache.profileSaved(saved);
         router.push('/suggested');
       },
     },

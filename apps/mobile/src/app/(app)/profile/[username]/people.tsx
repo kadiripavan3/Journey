@@ -1,10 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type ListedPersonResponse, useGetFollowers, useGetFollowing, useGetProfile } from '@/api/generated/journey';
+import { more, paged, rows } from '@/api/pages';
+import { List } from '@/ui/List';
+import { type ListedPersonResponse, useGetFollowersInfinite, useGetFollowingInfinite, useGetProfile } from '@/api/generated/journey';
 import { PersonFollowButton } from '@/features/people/PersonFollowButton';
 import { compact } from '@/lib/plural';
 import { layout, useTheme } from '@/theme';
@@ -24,9 +26,10 @@ export default function People() {
   const { colors } = useTheme();
   const [tab, setTab] = useState<Tab>(params.tab === 'following' ? 'following' : 'followers');
   const profile = useGetProfile(username);
-  const followers = useGetFollowers(username);
-  const following = useGetFollowing(username);
+  const followers = useGetFollowersInfinite(username, undefined, { query: paged });
+  const following = useGetFollowingInfinite(username, undefined, { query: paged });
   const list = tab === 'followers' ? followers : following;
+  const people = rows(list.data) ?? [];
   const isMe = profile.data?.viewer.isMe;
   // In your own Followers list, everyone here follows you: the button offers to follow back.
   const followsYou = (person: ListedPersonResponse) => !!isMe && tab === 'followers' && !person.viewer.isFollowing;
@@ -46,16 +49,19 @@ export default function People() {
         <Loading />
       ) : list.isError ? (
         <Problem message={messageFor(list.error)} onRetry={() => void list.refetch()} retrying={list.isRefetching} />
-      ) : list.data.length === 0 ? (
+      ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
           {tab === 'followers' ? (isMe ? 'Nobody follows you yet. Share a journey and they will.' : 'No followers yet.') : isMe ? "You don't follow anyone yet." : 'Not following anyone yet.'}
         </Txt>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {list.data.map((person) => (
-            <PersonRow key={person.id} person={person} followsYou={followsYou(person)} />
-          ))}
-        </ScrollView>
+        <List
+          data={people}
+          keyOf={(person) => person.id}
+          row={(person) => <PersonRow person={person} followsYou={followsYou(person)} />}
+          top={8}
+          loadingMore={list.isFetchingNextPage}
+          {...more(list)}
+        />
       )}
     </SafeAreaView>
   );

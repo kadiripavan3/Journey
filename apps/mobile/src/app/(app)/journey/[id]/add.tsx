@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
 import { addEntry, changeEntry, type SaveEntryRequest, useGetEntry, useGetJourney } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { pickPhotos } from '@/features/media/pick';
+import { newClientId } from '@/lib/ids';
 import { daysBetween, formatDayLong, momentFor, today } from '@/lib/dates';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
@@ -36,7 +37,9 @@ export default function Composer() {
   const router = useRouter();
   const { colors } = useTheme();
   const catalog = useCatalog();
-  const refresh = useRefreshAll();
+  const cache = useCache();
+  // One id for this draft: tapping Post twice, or sending again after a lost answer, still makes one entry.
+  const [clientId] = useState(newClientId);
   const journey = useGetJourney(id);
   const editing = useGetEntry(entryId ?? '', { query: { enabled: !!entryId } });
 
@@ -148,8 +151,8 @@ export default function Composer() {
         mediaIds,
       };
       if (entryId) await changeEntry(entryId, data);
-      else await addEntry(id, data);
-      await refresh();
+      else await addEntry(id, { ...data, clientId });
+      await cache.entrySaved(id, entryId);
       if (entryId) router.back();
       else router.dismissTo(`/journey/${id}/timeline`);
     } catch (error) {
@@ -172,7 +175,7 @@ export default function Composer() {
 
         <ScrollView contentContainerStyle={{ gap: 16, paddingTop: 8, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, marginHorizontal: 16, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: radius.cardLarge, backgroundColor: colors.fill }}>
-            <Photo uri={j.coverUrl} radius="thumb" style={{ width: 28, height: 28, backgroundColor: colors.fill2 }} />
+            <Photo uri={j.coverThumbUrl} radius="thumb" style={{ width: 28, height: 28, backgroundColor: colors.fill2 }} />
             <Txt variant="caption" weight={500} numberOfLines={1} color="muted" style={{ maxWidth: 270 }}>
               {entryId ? 'In ' : 'Posting to '}
               <Txt variant="caption" weight={700}>

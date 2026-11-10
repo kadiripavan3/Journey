@@ -140,7 +140,7 @@ export default function Search() {
 
 function JourneyResult({ journey, onPress }: { journey: JourneyResponse; onPress: () => void }) {
   const followers = journey.followerCount > 0 ? ` · ${compact(journey.followerCount)} following` : '';
-  return <JourneyRow coverUrl={journey.coverUrl} title={journey.title} detail={`${STATUS[journey.status]} · ${journey.progressLabel} · ${journey.owner.displayName}${followers}`} onPress={onPress} />;
+  return <JourneyRow coverUrl={journey.coverThumbUrl} title={journey.title} detail={`${STATUS[journey.status]} · ${journey.progressLabel} · ${journey.owner.displayName}${followers}`} onPress={onPress} />;
 }
 
 function PersonResult({ person, onPress }: { person: ListedPersonResponse; onPress: () => void }) {

@@ -57,7 +57,7 @@ export default function Digest() {
               {d.journeys.map(({ journey, newCount, latest }) => (
                 <JourneyRow
                   key={journey.id}
-                  coverUrl={journey.coverUrl}
+                  coverUrl={journey.coverThumbUrl}
                   title={journey.title}
                   detail={entryEyebrow(latest)}
                   onPress={() => router.push(`/journey/${journey.id}/timeline`)}
@@ -79,7 +79,7 @@ export default function Digest() {
               {d.finished.map((journey) => (
                 <JourneyRow
                   key={journey.id}
-                  coverUrl={journey.coverUrl}
+                  coverUrl={journey.coverThumbUrl}
                   title={journey.title}
                   detail={`${journey.owner.displayName} · see the recap`}
                   onPress={() => router.push(`/journey/${journey.id}/recap`)}

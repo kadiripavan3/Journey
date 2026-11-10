@@ -4,15 +4,18 @@ import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { type CommentResponse, type EntryResponse, useAddComment, useDeleteComment, useGetComments, useGetMe } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
+import { type CommentResponse, type EntryResponse, useAddComment, useDeleteComment, useGetCommentsInfinite, useGetMe } from '@/api/generated/journey';
+import { paged, rows } from '@/api/pages';
 import { ReportSheet } from '@/features/safety/SafetySheets';
 import { timeAgo } from '@/lib/dates';
+import { newClientId } from '@/lib/ids';
 import { firstName } from '@/lib/names';
 import { plural } from '@/lib/plural';
 import { layout, radius, textStyle, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Loading } from '@/ui/Loading';
+import { MoreButton } from '@/ui/MoreButton';
 import { Problem } from '@/ui/Problem';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet } from '@/ui/Sheet';
@@ -23,9 +26,11 @@ import { webNoOutline } from '@/ui/web';
 export function CommentsSheet({ entry, visible, onClose }: { entry: EntryResponse; visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const me = useGetMe().data?.profile;
-  const comments = useGetComments(entry.id, { query: { enabled: visible } });
+  const comments = useGetCommentsInfinite(entry.id, undefined, { query: { ...paged, enabled: visible } });
+  // One id per comment being written: sending it again after a lost answer still makes one comment.
+  const [draftId, setDraftId] = useState(newClientId);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<CommentResponse | null>(null);
   const [reporting, setReporting] = useState<CommentResponse | null>(null);
@@ -34,13 +39,16 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
       onSuccess: () => {
         setText('');
         setReplyTo(null);
-        return refresh();
+        setDraftId(newClientId());
+        return cache.commented(entry.id);
       },
     },
   });
-  const remove = useDeleteComment({ mutation: { onSuccess: () => refresh() } });
+  const remove = useDeleteComment({ mutation: { onSuccess: () => cache.commented(entry.id) } });
 
-  const all = comments.data ?? [];
+  const all = rows(comments.data) ?? [];
+  // The entry knows how many comments it has; only some of them may be loaded yet.
+  const total = Math.max(entry.commentCount, all.length);
   const threads = all.filter((c) => !c.parentId);
   const repliesTo = (id: string) => all.filter((c) => c.parentId === id);
   const first = firstName(entry.author.displayName);
@@ -50,7 +58,7 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
     router.push(`/profile/${username}`);
   };
   const send = () => {
-    if (text.trim() && !add.isPending) add.mutate({ entryId: entry.id, data: { body: text.trim(), parentId: replyTo?.id } });
+    if (text.trim() && !add.isPending) add.mutate({ entryId: entry.id, data: { body: text.trim(), parentId: replyTo?.id, clientId: draftId } });
   };
 
   const row = (comment: CommentResponse, reply: boolean) => (
@@ -105,7 +113,7 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
       visible={visible}
       onClose={onClose}
       tall
-      title={all.length === 0 ? 'Comments' : plural(all.length, 'comment')}
+      title={total === 0 ? 'Comments' : plural(total, 'comment')}
       action={<RoundButton label="Close comments" onPress={onClose} icon={(c) => <X size={18} color={c} />} />}
       footer={
         <View>
@@ -165,12 +173,15 @@ export function CommentsSheet({ entry, visible, onClose }: { entry: EntryRespons
             No comments yet. Say something nice to {first}.
           </Txt>
         ) : (
-          threads.map((comment) => (
-            <View key={comment.id}>
-              {row(comment, false)}
-              {repliesTo(comment.id).map((reply) => row(reply, true))}
-            </View>
-          ))
+          <>
+            {threads.map((comment) => (
+              <View key={comment.id}>
+                {row(comment, false)}
+                {repliesTo(comment.id).map((reply) => row(reply, true))}
+              </View>
+            ))}
+            <MoreButton pages={comments} label="Show more comments" />
+          </>
         )}
       </View>
     </Sheet>

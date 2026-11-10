@@ -15,7 +15,7 @@ export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryRespon
   return (
     <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} scaleTo={0.985}>
       {cover ? (
-        <Photo uri={cover.url} style={{ height, marginBottom: 12 }}>
+        <Photo uri={cover.thumbUrl ?? cover.url} style={{ height, marginBottom: 12 }}>
           {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
           {entry.media.length > 1 ? <Pill label={`1 / ${entry.media.length}`} style={{ position: 'absolute', top: 12, right: 12 }} /> : null}
         </Photo>

@@ -6,7 +6,7 @@ import { View } from 'react-native';
 
 import { ApiError, messageFor } from '@/api/fetcher';
 import { updateJourney, useGetJourney } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { type LocalPhoto, uploadPhoto } from '@/api/upload';
 import { useCatalog } from '@/features/journeys/catalog';
 import { parseTags } from '@/features/journeys/draft';
@@ -31,7 +31,7 @@ export default function EditJourney() {
   const router = useRouter();
   const { colors } = useTheme();
   const catalog = useCatalog();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const journey = useGetJourney(id);
   const j = journey.data;
 
@@ -62,8 +62,8 @@ export default function EditJourney() {
     setFailure(null);
     try {
       const coverMediaId = cover ? await uploadPhoto(cover) : undefined;
-      await updateJourney(id, { title: title.trim(), description: description.trim(), tags: parseTags(tags), startDate, category, visibility, coverMediaId });
-      await refresh();
+      const saved = await updateJourney(id, { title: title.trim(), description: description.trim(), tags: parseTags(tags), startDate, category, visibility, coverMediaId });
+      await cache.journeyChanged(saved);
       router.back();
     } catch (error) {
       setFailure(error);

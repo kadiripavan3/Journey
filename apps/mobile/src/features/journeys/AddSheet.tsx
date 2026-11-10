@@ -3,7 +3,7 @@ import { ChevronRight, Plus, Route } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { useGetMyJourneys } from '@/api/generated/journey';
+import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
@@ -17,8 +17,8 @@ import { Txt } from '@/ui/Txt';
 export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
   const { colors } = useTheme();
-  const mine = useGetMyJourneys({ query: { enabled: visible } });
-  const open = (mine.data ?? []).filter((journey) => journey.viewer.canAddEntry);
+  const mine = useMyJourneys(visible);
+  const open = mine.journeys.filter((journey) => journey.viewer.canAddEntry);
 
   const go = (href: Href) => {
     onClose();
@@ -46,7 +46,7 @@ export function AddSheet({ visible, onClose }: { visible: boolean; onClose: () =
             <View
               key={journey.id}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 4, marginBottom: 8, padding: 10, borderRadius: radius.card, backgroundColor: colors.fill }}>
-              <Photo uri={journey.coverUrl} radius="thumb" style={{ width: 56, height: 56, backgroundColor: colors.fill2 }} />
+              <Photo uri={journey.coverThumbUrl} radius="thumb" style={{ width: 56, height: 56, backgroundColor: colors.fill2 }} />
               <View style={{ flex: 1 }}>
                 <Txt variant="item" numberOfLines={1} weight={800}>
                   {journey.title}

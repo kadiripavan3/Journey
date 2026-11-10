@@ -13,7 +13,7 @@ export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse;
   const cover = entry.media[0];
   return (
     <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-      {cover ? <Photo uri={cover.url} radius="field" style={{ width: photo, height: photo }} /> : null}
+      {cover ? <Photo uri={cover.thumbUrl ?? cover.url} radius="field" style={{ width: photo, height: photo }} /> : null}
       <View style={{ flex: 1 }}>
         <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
         <Txt variant="headline" numberOfLines={2} style={{ marginTop: 2 }}>

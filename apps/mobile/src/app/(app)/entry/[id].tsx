@@ -2,13 +2,13 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ellipsis, Flag, Pencil, Send, Trash2, X } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type EntryResponse, useDeleteEntry, useGetEntry, useGetTimeline } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
+import { type EntryResponse, useDeleteEntry, useGetEntry, useGetTimelineInfinite } from '@/api/generated/journey';
 import { CommentsSheet } from '@/features/entries/CommentsSheet';
 import { entryEyebrow } from '@/features/entries/labels';
 import { MilestonePill } from '@/features/entries/MilestonePill';
@@ -33,7 +33,10 @@ const SIDE = 22;
 const STAGE = darkTheme.colors.stage;
 const REPLY_BAR = 66;
 
-/** 6.1 Entry: each entry is a card you swipe through like a story, with the next one peeking in. Milestones get a badge. */
+/**
+ * 6.1 Entry: each entry is a card you swipe through like a story, with the next one peeking in. Milestones get a badge.
+ * The story is loaded a page at a time around the entry that was opened; swiping towards either end brings the next page.
+ */
 export default function EntryView() {
   const { id, comments: openComments } = useLocalSearchParams<{ id: string; comments?: string }>();
   const router = useRouter();
@@ -43,26 +46,53 @@ export default function EntryView() {
   const [commenting, setCommenting] = useState(openComments === '1');
   const opened = useGetEntry(id);
   const journeyId = opened.data?.journeyId ?? '';
-  const timeline = useGetTimeline(journeyId, { query: { enabled: !!journeyId } });
-  const entries = timeline.data ?? (opened.data ? [opened.data] : []);
+  const timeline = useGetTimelineInfinite(journeyId, { around: id }, {
+    query: {
+      enabled: !!journeyId,
+      initialPageParam: undefined,
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
+      getPreviousPageParam: (first) => first.prevCursor ?? undefined,
+    },
+  });
+  const pages = timeline.data?.pages;
+  const entries = pages ? pages.flatMap((page) => page.items) : opened.data ? [opened.data] : [];
+  const total = pages?.[0]?.total ?? entries.length;
   const start = Math.max(0, entries.findIndex((entry) => entry.id === id));
-  const [position, setPosition] = useState<number | null>(null);
-  const index = Math.min(position ?? start, Math.max(entries.length - 1, 0));
+  // The card in view is remembered by its entry, not its place in the list: the list grows at both ends.
+  const [currentId, setCurrentId] = useState(id);
+  const found = entries.findIndex((entry) => entry.id === currentId);
+  const index = found >= 0 ? found : start;
   const current = entries[index];
   const [menu, setMenu] = useState(false);
   const list = useRef<FlatList<EntryResponse>>(null);
 
   const cardWidth = Math.min(width - SIDE * 2 - 20, 460);
   const step = cardWidth + GAP;
+  const { hasNextPage, hasPreviousPage, isFetchingNextPage, isFetchingPreviousPage, fetchNextPage, fetchPreviousPage } = timeline;
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(event.nativeEvent.contentOffset.x / step);
-    if (next !== index && next >= 0 && next < entries.length) setPosition(next);
+    const at = Math.round(event.nativeEvent.contentOffset.x / step);
+    const next = entries[at];
+    if (!next) return;
+    if (next.id !== currentId) setCurrentId(next.id);
+    if (at <= 1 && hasPreviousPage && !isFetchingPreviousPage) void fetchPreviousPage();
+    if (at >= entries.length - 2 && hasNextPage && !isFetchingNextPage) void fetchNextPage();
   };
+
+  // Earlier entries arriving at the front push every card to the right; move the view by as much, so the
+  // card being read stays where it is.
+  const firstId = entries[0]?.id;
+  const knownFirst = useRef(firstId);
+  useLayoutEffect(() => {
+    if (knownFirst.current && firstId && knownFirst.current !== firstId) {
+      list.current?.scrollToOffset({ offset: index * step, animated: false });
+    }
+    knownFirst.current = firstId;
+  }, [firstId, index, step]);
 
   // What is left for a card under the top bar and above the bottom edge.
   const room = height - insets.top - 8 - 42 - 14 - Math.max(insets.bottom, 12) - 14 - REPLY_BAR;
   const failed = opened.error ?? timeline.error;
-  const backdrop = current?.media[0]?.url;
+  const backdrop = current?.media[0]?.thumbUrl ?? current?.media[0]?.url;
 
   return (
     <View style={{ flex: 1, backgroundColor: STAGE }}>
@@ -74,7 +104,7 @@ export default function EntryView() {
         <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: radius.photo, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
           <Frost tone="dark" />
           <Txt variant="caption" accessibilityLiveRegion="polite" weight={700} style={{ color: darkTheme.colors.onPhoto }}>
-            {current ? `Entry ${index + 1} of ${entries.length}` : ' '}
+            {current ? `Entry ${current.position} of ${total}` : ' '}
           </Txt>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -208,7 +238,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
 /** What you can do with your own entry: change it or delete it (after confirming). */
 function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible: boolean; onClose: () => void }) {
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const [confirming, setConfirming] = useState(false);
   const [reporting, setReporting] = useState(false);
   const close = () => {
@@ -220,7 +250,7 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
       onSuccess: async () => {
         close();
         router.back();
-        await refresh();
+        await cache.entrySaved(entry.journeyId, entry.id);
       },
     },
   });

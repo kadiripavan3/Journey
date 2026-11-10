@@ -33,7 +33,7 @@ export function JourneyCard({ journey, onPress, size = 'lg', pill, pillEmoji, de
       accessibilityLabel={`${journey.title}. ${line}.${label ? ` ${label}.` : ''}`}
       onPress={onPress}
       style={{ width: side, flex: side ? undefined : 1, gap: 2 }}>
-      <Photo uri={journey.coverUrl} style={{ height: side ?? 172, marginBottom: 8 }}>
+      <Photo uri={journey.coverThumbUrl} style={{ height: side ?? 172, marginBottom: 8 }}>
         {label ? <Pill label={label} icon={pill && pillEmoji ? () => <Emoji char={pillEmoji} size={14} /> : undefined} style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
       </Photo>
       <Txt variant={size === 'lg' ? 'item' : 'control'} numberOfLines={2}>

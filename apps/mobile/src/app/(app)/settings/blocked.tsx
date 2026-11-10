@@ -2,8 +2,10 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { useGetBlocked, useUnblockProfile } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useGetBlockedInfinite, useUnblockProfile } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
+import { paged, rows } from '@/api/pages';
+import { MoreButton } from '@/ui/MoreButton';
 import { timeAgo } from '@/lib/dates';
 import { layout, useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -16,9 +18,10 @@ import { Txt } from '@/ui/Txt';
 /** 10.7 Blocked accounts: who you've blocked, and a way to undo it. */
 export default function Blocked() {
   const { colors } = useTheme();
-  const refresh = useRefreshAll();
-  const blocked = useGetBlocked();
-  const unblock = useUnblockProfile({ mutation: { onSuccess: () => refresh() } });
+  const cache = useCache();
+  const blocked = useGetBlockedInfinite(undefined, { query: paged });
+  const people = rows(blocked.data) ?? [];
+  const unblock = useUnblockProfile({ mutation: { onSuccess: () => cache.blockChanged() } });
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -35,13 +38,13 @@ export default function Blocked() {
         <Loading />
       ) : blocked.isError ? (
         <Problem message={messageFor(blocked.error)} onRetry={() => void blocked.refetch()} retrying={blocked.isRefetching} />
-      ) : blocked.data.length === 0 ? (
+      ) : people.length === 0 ? (
         <Txt variant="bodySmall" color="muted" center style={{ marginTop: 60, marginHorizontal: 40 }}>
           You haven&apos;t blocked anyone.
         </Txt>
       ) : (
         <ScrollView contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {blocked.data.map((person) => (
+          {people.map((person) => (
             <View key={person.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9, paddingHorizontal: layout.rowGutter }}>
               <Avatar uri={person.avatarUrl} name={person.displayName} size={48} />
               <View style={{ flex: 1 }}>
@@ -55,6 +58,7 @@ export default function Blocked() {
               <Button label="Unblock" inline size="sm" variant="line" onPress={() => unblock.mutate({ username: person.username })} />
             </View>
           ))}
+          <MoreButton pages={blocked} />
         </ScrollView>
       )}
     </SafeAreaView>

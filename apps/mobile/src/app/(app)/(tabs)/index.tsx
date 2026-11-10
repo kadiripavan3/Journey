@@ -5,11 +5,12 @@ import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { useGetDiscover, useGetFeed, useGetMyJourneys } from '@/api/generated/journey';
+import { useGetDiscover, useGetFeed } from '@/api/generated/journey';
 import { useRefetchOnFocus } from '@/api/refetchOnFocus';
 import { useCatalog } from '@/features/journeys/catalog';
 import { CategoryTabs } from '@/features/journeys/CategoryTabs';
 import { JourneyCard } from '@/features/journeys/JourneyCard';
+import { useMyJourneys } from '@/features/journeys/useMyJourneys';
 import { timeAgo } from '@/lib/dates';
 import { followersLabel, plural } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
@@ -34,7 +35,7 @@ export default function Home() {
   const category = tab === FOR_YOU ? undefined : tab;
 
   const feed = useGetFeed();
-  const mine = useGetMyJourneys();
+  const mine = useMyJourneys();
   const discover = useGetDiscover(category ? { category } : undefined);
   useRefetchOnFocus(feed.refetch, mine.refetch);
   const [pulling, setPulling] = useState(false);
@@ -45,7 +46,7 @@ export default function Home() {
   };
 
   const tabs = [{ id: FOR_YOU, label: 'For you', emoji: '🧭' }, ...catalog.categories.slice(0, 4)];
-  const current = (mine.data ?? []).find((journey) => journey.status === 'active');
+  const current = mine.journeys.find((journey) => journey.status === 'active');
   const groups = (feed.data?.groups ?? []).filter((group) => !category || group.journey.category === category);
   const following = feed.data?.followingCount ?? 0;
   const trending = (discover.data?.trending ?? []).filter((journey) => !journey.viewer.isOwner);

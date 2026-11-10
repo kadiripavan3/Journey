@@ -175,7 +175,7 @@ public class EntryService {
                                 media.view(m.mediaId(), m.kind(), m.storageKey(), m.width(), m.height(), m.durationS()))
                         .toList(),
                 entries.photoCount(journeyId, viewer),
-                day && journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
+                journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
                 entries.milestones(journeyId, viewer, SUMMARY_MILESTONES).stream()
                         .map(m -> new MilestoneResponse(
                                 m.id(),

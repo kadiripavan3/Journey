@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { Check, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type FeedGroupResponse, useGetFeed, useGetFollowedJourneys } from '@/api/generated/journey';
+import { type FeedGroupResponse, type JourneyResponse, useGetFeedInfinite, useGetFollowedJourneysInfinite } from '@/api/generated/journey';
+import { more, paged, rows } from '@/api/pages';
 import { EntryPost } from '@/features/entries/EntryPost';
 import { EntryRow } from '@/features/entries/EntryRow';
 import { useCatalog } from '@/features/journeys/catalog';
@@ -20,6 +21,7 @@ import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { GroupLabel } from '@/ui/Heading';
+import { List } from '@/ui/List';
 import { Rise } from '@/ui/Motion';
 import { Problem } from '@/ui/Problem';
 import { CardSkeleton } from '@/ui/Skeleton';
@@ -30,8 +32,8 @@ export default function Following() {
   const router = useRouter();
   const { colors } = useTheme();
   const catalog = useCatalog();
-  const feed = useGetFeed();
-  const followed = useGetFollowedJourneys();
+  const feed = useGetFeedInfinite(undefined, { query: paged });
+  const followed = useGetFollowedJourneysInfinite(undefined, { query: paged });
   const [category, setCategory] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
   const reload = async () => {
@@ -40,12 +42,20 @@ export default function Following() {
     setPulling(false);
   };
 
-  const all = feed.data?.groups ?? [];
+  const all = feed.data?.pages.flatMap((page) => page.groups) ?? [];
   const present = catalog.categories.filter((c) => all.some((group) => group.journey.category === c.id));
   const groups = all.filter((group) => !category || group.journey.category === category);
-  const count = feed.data?.followingCount ?? 0;
+  const count = feed.data?.pages[0]?.followingCount ?? 0;
   const newIds = new Set(all.map((group) => group.journey.id));
-  const seen = (followed.data ?? []).filter((journey) => !newIds.has(journey.id));
+  const seen = category ? [] : (rows(followed.data) ?? []).filter((journey) => !newIds.has(journey.id));
+
+  // One list of different kinds of rows: journeys with news, then "all caught up", then the quiet ones.
+  const listed: Listed[] = [
+    ...groups.map((group, index): Listed => ({ kind: 'group', group, lead: index === 0 })),
+    ...(feed.hasNextPage ? [] : [{ kind: 'caughtUp' } as const]),
+    ...(seen.length > 0 && !feed.hasNextPage ? [{ kind: 'label' } as const, ...seen.map((journey): Listed => ({ kind: 'journey', journey }))] : []),
+  ];
+  const pages = feed.hasNextPage ? feed : followed;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -64,58 +74,68 @@ export default function Following() {
           />
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 60 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
-          {present.length > 1 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingBottom: 16 }}>
-              <Chip tone="filter" label="All" selected={category === null} onPress={() => setCategory(null)} />
-              {present.map((c) => (
-                <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id)} />
-              ))}
-            </ScrollView>
-          ) : null}
-
-          {groups.map((group, index) => (
-            <Rise key={group.journey.id} index={index}>
-              <FeedGroup group={group} lead={index === 0} />
-            </Rise>
-          ))}
-
-          <View style={{ alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 18, marginHorizontal: 30 }}>
-            <View style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
-              <Check size={26} color={colors.ok} strokeWidth={2.6} />
-            </View>
-            <Txt variant="subtitle" accessibilityRole="header" center style={{ marginTop: 4 }}>
-              You&apos;re all caught up
-            </Txt>
-            <Txt variant="callout" color="muted" center>
-              That&apos;s every new entry from the {plural(count, 'journey')} you follow.
-            </Txt>
-            <Button label="Find more in Discover" variant="line" onPress={() => router.navigate('/discover')} style={{ alignSelf: 'center', marginTop: 8 }} />
-          </View>
-
-          {seen.length > 0 && !category ? (
-            <>
-              <GroupLabel style={{ marginHorizontal: layout.rowGutter, marginTop: 8 }}>Nothing new in</GroupLabel>
-              {seen.map((journey) => (
-                <JourneyRow
-                  key={journey.id}
-                  faded
-                  coverUrl={journey.coverUrl}
-                  title={journey.title}
-                  detail={`${journey.owner.displayName} · ${journey.progressLabel}`}
-                  onPress={() => router.push(`/journey/${journey.id}`)}
-                />
-              ))}
-            </>
-          ) : null}
-        </ScrollView>
+        <List
+          data={listed}
+          keyOf={(item) => (item.kind === 'group' ? item.group.journey.id : item.kind === 'journey' ? item.journey.id : item.kind)}
+          typeOf={(item) => item.kind}
+          bottom={60}
+          refreshing={pulling}
+          onRefresh={() => void reload()}
+          loadingMore={pages.isFetchingNextPage}
+          {...more(pages)}
+          header={
+            present.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: layout.barGutter, paddingBottom: 16 }}>
+                <Chip tone="filter" label="All" selected={category === null} onPress={() => setCategory(null)} />
+                {present.map((c) => (
+                  <Chip key={c.id} tone="filter" label={c.label} emoji={c.emoji} selected={c.id === category} onPress={() => setCategory(c.id)} />
+                ))}
+              </ScrollView>
+            ) : null
+          }
+          row={(item, index) => {
+            if (item.kind === 'group') {
+              const group = <FeedGroup group={item.group} lead={item.lead} />;
+              return index < 6 ? <Rise index={index}>{group}</Rise> : group;
+            }
+            if (item.kind === 'caughtUp') {
+              return (
+                <View style={{ alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 18, marginHorizontal: 30 }}>
+                  <View style={{ width: 54, height: 54, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill }}>
+                    <Check size={26} color={colors.ok} strokeWidth={2.6} />
+                  </View>
+                  <Txt variant="subtitle" accessibilityRole="header" center style={{ marginTop: 4 }}>
+                    You&apos;re all caught up
+                  </Txt>
+                  <Txt variant="callout" color="muted" center>
+                    That&apos;s every new entry from the {plural(count, 'journey')} you follow.
+                  </Txt>
+                  <Button label="Find more in Discover" variant="line" onPress={() => router.navigate('/discover')} style={{ alignSelf: 'center', marginTop: 8 }} />
+                </View>
+              );
+            }
+            if (item.kind === 'label') return <GroupLabel style={{ marginHorizontal: layout.rowGutter, marginTop: 8 }}>Nothing new in</GroupLabel>;
+            return (
+              <JourneyRow
+                faded
+                coverUrl={item.journey.coverThumbUrl}
+                title={item.journey.title}
+                detail={`${item.journey.owner.displayName} · ${item.journey.progressLabel}`}
+                onPress={() => router.push(`/journey/${item.journey.id}`)}
+              />
+            );
+          }}
+        />
       )}
     </SafeAreaView>
   );
 }
+
+type Listed =
+  | { kind: 'group'; group: FeedGroupResponse; lead: boolean }
+  | { kind: 'caughtUp' }
+  | { kind: 'label' }
+  | { kind: 'journey'; journey: JourneyResponse };
 
 /** One journey's new entries: who and what, the newest entry, and a way to the rest. */
 function FeedGroup({ group, lead }: { group: FeedGroupResponse; lead: boolean }) {

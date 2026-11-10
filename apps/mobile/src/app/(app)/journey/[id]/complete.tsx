@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
 import { useCompleteJourney, useGetRecap } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { plural } from '@/lib/plural';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -21,13 +21,13 @@ import { Txt } from '@/ui/Txt';
 export default function CompleteJourney() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const recap = useGetRecap(id);
   const [note, setNote] = useState('');
   const complete = useCompleteJourney({
     mutation: {
-      onSuccess: async () => {
-        await refresh();
+      onSuccess: async (completed) => {
+        await cache.journeyChanged(completed);
         router.replace(`/journey/${id}/recap`);
       },
     },
@@ -58,7 +58,7 @@ export default function CompleteJourney() {
       ) : (
         <>
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, marginTop: 6, marginHorizontal: -4 }}>
-            <Photo uri={r.journey.coverUrl} radius="thumb" style={{ width: 64, height: 64 }} />
+            <Photo uri={r.journey.coverThumbUrl} radius="thumb" style={{ width: 64, height: 64 }} />
             <View style={{ flex: 1 }}>
               <Txt variant="headline" numberOfLines={1} weight={800}>
                 {r.journey.title}

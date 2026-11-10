@@ -80,7 +80,7 @@ export default function Suggested() {
             return (
               <JourneyRow
                 key={journey.id}
-                coverUrl={journey.coverUrl}
+                coverUrl={journey.coverThumbUrl}
                 title={journey.title}
                 detail={`${journey.owner.displayName} · ${journey.progressLabel}${followers > 0 ? `\n${compact(followers)} following` : ''}`}
                 trailing={

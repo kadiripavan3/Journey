@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react-native';
 
 import { useFollowProfile, useUnfollowProfile } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { Button } from '@/ui/Button';
 
 type Props = {
@@ -18,9 +18,9 @@ type Props = {
 
 /** Follow or stop following a person. Shows the new state straight away. */
 export function PersonFollowButton({ username, isFollowing, followsYou, size = 'sm', block, name }: Props) {
-  const refresh = useRefreshAll();
-  const follow = useFollowProfile({ mutation: { onSuccess: () => refresh() } });
-  const unfollow = useUnfollowProfile({ mutation: { onSuccess: () => refresh() } });
+  const cache = useCache();
+  const follow = useFollowProfile({ mutation: { onSuccess: (profile) => cache.personFollowed(profile) } });
+  const unfollow = useUnfollowProfile({ mutation: { onSuccess: (profile) => cache.personFollowed(profile) } });
   const busy = follow.isPending || unfollow.isPending;
   const following = follow.isPending ? true : unfollow.isPending ? false : isFollowing;
 

@@ -7,8 +7,8 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { messageFor } from '@/api/fetcher';
-import { type JourneyResponse, useDeleteJourney, useGetJourney, useGetTimeline, useUpdateJourney } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { type JourneyResponse, useDeleteJourney, useGetJourney, useGetJourneySummary, useUpdateJourney } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
 import { EntryRow } from '@/features/entries/EntryRow';
 import { useCatalog } from '@/features/journeys/catalog';
 import { ChallengeCard } from '@/features/journeys/ChallengeCard';
@@ -39,7 +39,8 @@ export default function JourneyPage() {
   const { colors, shadow } = useTheme();
   const catalog = useCatalog();
   const journey = useGetJourney(id);
-  const timeline = useGetTimeline(id);
+  // What this page shows of the story (the newest entries, the first photos, the ticked days) comes ready from the API.
+  const summary = useGetJourneySummary(id);
   const [menu, setMenu] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -63,9 +64,9 @@ export default function JourneyPage() {
   }
 
   const j = journey.data;
-  const entries = timeline.data ?? [];
-  const photos = entries.flatMap((entry) => entry.media.filter((m) => m.kind === 'photo').map((m) => m.url));
-  const latest = [...entries].reverse().slice(0, 3);
+  const photos = (summary.data?.photos ?? []).map((photo) => photo.thumbUrl ?? photo.url);
+  const photoCount = summary.data?.photoCount ?? 0;
+  const latest = summary.data?.latest ?? [];
   const first = firstName(j.owner.displayName);
   const category = catalog.category(j.category);
   const openStory = () => router.push(`/journey/${j.id}/timeline`);
@@ -136,22 +137,22 @@ export default function JourneyPage() {
             </View>
           ) : null}
 
-          {j.targetDays ? <ChallengeCard journey={j} entries={entries} /> : null}
+          {j.targetDays ? <ChallengeCard journey={j} days={summary.data?.days ?? []} /> : null}
 
           {j.status === 'completed' ? (
             <Button label="See the recap" variant="soft" block icon={(c) => <Sparkles size={18} color={c} />} onPress={() => router.push(`/journey/${j.id}/recap`)} style={{ marginTop: 18 }} />
           ) : null}
 
           {photos.length >= 3 ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={`${plural(photos.length, 'photo')}. Open the story.`} onPress={openStory} style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 6, height: 206, marginTop: 18, borderRadius: radius.card, overflow: 'hidden' }}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${plural(photoCount, 'photo')}. Open the story.`} onPress={openStory} style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 6, height: 206, marginTop: 18, borderRadius: radius.card, overflow: 'hidden' }}>
               <Photo uri={photos[0]} radius="none" style={{ flex: 1.25 }} />
               <View style={{ flex: 1, gap: 6 }}>
                 <Photo uri={photos[1]} radius="none" style={{ flex: 1 }} />
                 <Photo uri={photos[2]} radius="none" style={{ flex: 1 }}>
-                  {photos.length > 3 ? (
+                  {photoCount > 3 ? (
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.scrim }}>
                       <Txt variant="subtitle" style={{ color: colors.onPhoto }}>
-                        +{photos.length - 3}
+                        +{photoCount - 3}
                       </Txt>
                     </View>
                   ) : null}
@@ -161,15 +162,15 @@ export default function JourneyPage() {
           ) : null}
 
           <View style={{ alignSelf: 'stretch', gap: 18, marginTop: 18 }}>
-            {timeline.isPending ? (
+            {summary.isPending ? (
               <View style={{ height: 120 }}>
                 <Loading />
               </View>
-            ) : timeline.isError ? (
+            ) : summary.isError ? (
               <Txt color="muted" center>
-                {messageFor(timeline.error)}
+                {messageFor(summary.error)}
               </Txt>
-            ) : entries.length === 0 ? (
+            ) : latest.length === 0 ? (
               <Txt variant="bodySmall" color="muted" center style={{ marginVertical: 20 }}>
                 {j.viewer.isOwner ? 'Your story starts with the first entry.' : j.viewer.isMember ? 'The story starts with the first entry. It could be yours.' : `${first} hasn't added an entry yet. Follow to hear about the first one.`}
               </Txt>
@@ -178,7 +179,7 @@ export default function JourneyPage() {
                 {latest.map((entry) => (
                   <EntryRow key={entry.id} entry={entry} onPress={() => router.push(`/entry/${entry.id}`)} />
                 ))}
-                <Button label={entries.length > 3 ? `Read all ${entries.length} entries` : 'Read the story'} variant="line" block icon={(c) => <BookOpen size={18} color={c} />} onPress={openStory} />
+                <Button label={j.entryCount > 3 ? `Read all ${j.entryCount} entries` : 'Read the story'} variant="line" block icon={(c) => <BookOpen size={18} color={c} />} onPress={openStory} />
               </>
             )}
           </View>
@@ -290,15 +291,15 @@ export default function JourneyPage() {
 /** What the owner can do with a journey: pause it, start it again, or delete it (after confirming). */
 function OwnerMenu({ journey, visible, onClose }: { journey: JourneyResponse; visible: boolean; onClose: () => void }) {
   const router = useRouter();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const [confirming, setConfirming] = useState(false);
-  const update = useUpdateJourney({ mutation: { onSuccess: async () => { await refresh(); close(); } } });
+  const update = useUpdateJourney({ mutation: { onSuccess: async (changed) => { await cache.journeyChanged(changed); close(); } } });
   const remove = useDeleteJourney({
     mutation: {
       onSuccess: async () => {
         close();
         router.dismissAll();
-        await refresh();
+        await cache.journeyDeleted(journey.id);
       },
     },
   });

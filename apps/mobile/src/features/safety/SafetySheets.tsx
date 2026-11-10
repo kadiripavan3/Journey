@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { messageFor } from '@/api/fetcher';
-import { useBlockProfile, useReport } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { type ReportReason, useBlockProfile, useReport } from '@/api/generated/journey';
+import { useCache } from '@/api/cache';
 import { layout, radius, useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
 import { Sheet } from '@/ui/Sheet';
@@ -24,7 +24,7 @@ export type ReportTarget = { type: 'journey' | 'entry' | 'comment' | 'profile'; 
 /** 11.1 Report: pick a reason, send. Reports are private, and a person reviews each one. */
 export function ReportSheet({ target, onClose }: { target: ReportTarget | null; onClose: () => void }) {
   const { colors } = useTheme();
-  const [reason, setReason] = useState<string | null>(null);
+  const [reason, setReason] = useState<ReportReason | null>(null);
   const [sent, setSent] = useState(false);
   const report = useReport({ mutation: { onSuccess: () => setSent(true) } });
   const close = () => {
@@ -89,13 +89,13 @@ export function ReportSheet({ target, onClose }: { target: ReportTarget | null; 
 /** 11.2 Block: says what will happen before it happens. It's quiet: the other person isn't told. */
 export function BlockSheet({ person, onClose, onBlocked }: { person: { username: string; displayName: string } | null; onClose: () => void; onBlocked: () => void }) {
   const { colors } = useTheme();
-  const refresh = useRefreshAll();
+  const cache = useCache();
   const block = useBlockProfile({
     mutation: {
       onSuccess: async () => {
         onClose();
         onBlocked();
-        await refresh();
+        await cache.blockChanged();
       },
     },
   });

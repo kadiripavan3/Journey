@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 
 import { type EntryResponse, useLikeEntry, useUnlikeEntry } from '@/api/generated/journey';
-import { useRefreshAll } from '@/api/refresh';
+import { useCache } from '@/api/cache';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { SPRING } from '@/ui/Motion';
@@ -12,9 +12,9 @@ import { Txt } from '@/ui/Txt';
 /** The heart and the comment count under an entry. The heart fills straight away when tapped. */
 export function Reactions({ entry, onComments }: { entry: EntryResponse; onComments: () => void }) {
   const { colors } = useTheme();
-  const refresh = useRefreshAll();
-  const like = useLikeEntry({ mutation: { onSuccess: () => refresh() } });
-  const unlike = useUnlikeEntry({ mutation: { onSuccess: () => refresh() } });
+  const cache = useCache();
+  const like = useLikeEntry({ mutation: { onSuccess: (liked) => cache.entryReacted(liked) } });
+  const unlike = useUnlikeEntry({ mutation: { onSuccess: (unliked) => cache.entryReacted(unliked) } });
   const busy = like.isPending || unlike.isPending;
   // While a request is on its way, show where it is heading.
   const liked = like.isPending ? true : unlike.isPending ? false : entry.viewer.hasLiked;

@@ -2,9 +2,12 @@ import { createContext, type ReactNode, use, useMemo, useState } from 'react';
 
 import type { LocalPhoto } from '@/api/upload';
 import { today } from '@/lib/dates';
+import { newClientId } from '@/lib/ids';
 
 /** What the three "new journey" steps collect before the journey is created. */
 export type NewJourneyDraft = {
+  /** Made up when the draft starts, and sent with it: creating the same draft twice makes one journey. */
+  clientId: string;
   template: string;
   title: string;
   description: string;
@@ -20,6 +23,7 @@ export type NewJourneyDraft = {
 };
 
 const empty = (): NewJourneyDraft => ({
+  clientId: newClientId(),
   template: 'trip',
   title: '',
   description: '',

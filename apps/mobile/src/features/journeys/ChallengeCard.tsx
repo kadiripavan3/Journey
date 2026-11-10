@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import type { EntryResponse, JourneyResponse } from '@/api/generated/journey';
+import type { JourneyResponse } from '@/api/generated/journey';
 import { daysBetween, today } from '@/lib/dates';
 import { radius, useTheme } from '@/theme';
 import { Card } from '@/ui/Card';
@@ -8,14 +8,13 @@ import { Ring } from '@/ui/Ring';
 import { Txt } from '@/ui/Txt';
 
 /** 5.5 Challenge: a progress ring and a grid of days show the arc. A missed day is just a gap, never a lost streak. */
-export function ChallengeCard({ journey, entries }: { journey: JourneyResponse; entries: EntryResponse[] }) {
+export function ChallengeCard({ journey, days }: { journey: JourneyResponse; days: number[] }) {
   const { colors } = useTheme();
   const target = journey.targetDays ?? 0;
   if (target <= 0) return null;
-  // Day 1 is the start date. An entry's day comes from its date, not its label: a journey that counts in parts
-  // has "Part 3" on a day that may be the tenth.
-  const dayOf = (entry: EntryResponse) => daysBetween(journey.startDate, entry.happenedOn) + 1;
-  const done = new Set(entries.map(dayOf).filter((n) => n >= 1 && n <= target));
+  // `days` are the day numbers that have an entry, counted from the start date (day 1) by the API. They come
+  // from each entry's date, not its label: a journey that counts in parts has "Part 3" on what may be day ten.
+  const done = new Set(days.filter((n) => n >= 1 && n <= target));
   const todayNumber = journey.status === 'completed' ? target + 1 : daysBetween(journey.startDate, today()) + 1;
   const percent = Math.round((done.size / target) * 100);
   // Today counts as done once it has a check-in.
