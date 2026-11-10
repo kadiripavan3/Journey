@@ -118,6 +118,20 @@ export default function JourneyPage() {
             <Stat value={compact(j.followerCount)} label="following" divider />
           </View>
 
+          {j.status === 'paused' ? (
+            <View style={{ alignSelf: 'stretch', flexDirection: 'row', gap: 12, marginTop: 18, padding: 14, borderRadius: 18, backgroundColor: colors.fill }}>
+              <Pause size={20} color={colors.warn} />
+              <View style={{ flex: 1 }}>
+                <Txt weight={800} style={{ fontSize: 14.5, lineHeight: 20 }}>
+                  This journey is paused
+                </Txt>
+                <Txt style={{ fontSize: 13.5, lineHeight: 19.5 }}>
+                  {writes ? "Followers can still read it. Add an entry whenever you're ready and it picks up again." : `You can still read it. You'll hear when ${firstName} picks it up again.`}
+                </Txt>
+              </View>
+            </View>
+          ) : null}
+
           {j.targetDays ? <ChallengeCard journey={j} entries={entries} /> : null}
 
           {j.status === 'completed' ? (

@@ -10,12 +10,13 @@ import { useCatalog } from '@/journey/catalog';
 import { timeAgo } from '@/lib/dates';
 import { followersLabel, plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
-import { Card, Loading, Problem, Rail, SectionHeader } from '@/ui/Bits';
+import { Card, Problem, Rail, SectionHeader } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { CategoryTabs } from '@/ui/CategoryTabs';
 import { EmptyState } from '@/ui/EmptyState';
 import { JourneyCard } from '@/ui/JourneyCard';
 import { Ring } from '@/ui/Ring';
+import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
 const FOR_YOU = 'for-you';
@@ -98,9 +99,10 @@ export default function Home() {
         ) : null}
 
         {feed.isPending ? (
-          <View style={{ height: 240 }}>
-            <Loading />
-          </View>
+          <>
+            <RailSkeleton />
+            <RailSkeleton size={158} count={3} />
+          </>
         ) : feed.isError ? (
           <View style={{ height: 300 }}>
             <Problem error={feed.error} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />

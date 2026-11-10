@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGetDiscover } from '@/api/generated/journey';
 import { useCatalog } from '@/journey/catalog';
 import { useTheme } from '@/theme';
-import { Loading, Problem, Rail, SectionHeader } from '@/ui/Bits';
+import { Problem, Rail, SectionHeader } from '@/ui/Bits';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { JourneyCard } from '@/ui/JourneyCard';
+import { RailSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
 /** 4.1 Discover: search, category chips, then Trending now and Recently completed. */
@@ -57,7 +58,10 @@ export default function Discover() {
         </ScrollView>
 
         {discover.isPending ? (
-          <Loading />
+          <>
+            <RailSkeleton />
+            <RailSkeleton size={158} count={3} />
+          </>
         ) : discover.isError ? (
           <Problem error={discover.error} onRetry={() => void discover.refetch()} retrying={discover.isRefetching} />
         ) : nothing ? (

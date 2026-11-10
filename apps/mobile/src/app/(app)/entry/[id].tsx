@@ -14,6 +14,7 @@ import { darkTheme, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Eyebrow, Loading, Problem } from '@/ui/Bits';
 import { Frost } from '@/ui/Frost';
+import { PhotoViewer } from '@/ui/PhotoViewer';
 import { Button } from '@/ui/Button';
 import { CommentsSheet } from '@/ui/CommentsSheet';
 import { entryEyebrow, MilestonePill } from '@/ui/EntryBits';
@@ -145,25 +146,24 @@ export default function EntryView() {
 function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; maxHeight: number; onComments: () => void }) {
   const router = useRouter();
   const { colors } = useTheme();
-  const [photo, setPhoto] = useState(0);
-  const shown = entry.media[Math.min(photo, entry.media.length - 1)];
+  const [viewing, setViewing] = useState<number | null>(null);
+  const shown = entry.media[0];
   const many = entry.media.length > 1;
   return (
     <View style={{ maxHeight, borderRadius: 28, overflow: 'hidden', backgroundColor: colors.surface, boxShadow: '0 30px 60px -20px rgba(0, 0, 0, 0.6)' }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {shown ? (
           <Pressable
-            accessibilityRole={many ? 'button' : 'image'}
-            accessibilityLabel={many ? `Photo ${photo + 1} of ${entry.media.length}. Tap for the next one.` : 'Photo'}
-            disabled={!many}
-            onPress={() => setPhoto((now) => (now + 1) % entry.media.length)}
+            accessibilityRole="button"
+            accessibilityLabel={many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
+            onPress={() => setViewing(0)}
             style={{ height: 268, backgroundColor: colors.fill }}>
             <Image source={{ uri: shown.url }} style={{ flex: 1 }} contentFit="cover" transition={120} />
             {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
             {many ? (
               <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
                 {entry.media.map((m, i) => (
-                  <View key={m.id} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: darkTheme.colors.onPhoto, opacity: i === photo ? 1 : 0.5 }} />
+                  <View key={m.id} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: darkTheme.colors.onPhoto, opacity: i === 0 ? 1 : 0.5 }} />
                 ))}
               </View>
             ) : null}
@@ -196,6 +196,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           </Pressable>
         </View>
       </ScrollView>
+      <PhotoViewer photos={entry.media} startAt={viewing} onClose={() => setViewing(null)} eyebrow={entryEyebrow(entry)} title={entry.title || undefined} />
     </View>
   );
 }

@@ -11,13 +11,14 @@ import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
-import { Card, JourneyRow, Loading, Problem } from '@/ui/Bits';
+import { Card, JourneyRow, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { EntryPost, EntryRow } from '@/ui/EntryBits';
 import { GroupLabel } from '@/ui/Heading';
 import { Rise } from '@/ui/Motion';
+import { CardSkeleton } from '@/ui/Skeleton';
 import { Txt } from '@/ui/Txt';
 
 /** 3.2 and 3.3 The Following feed: newest first, grouped per journey, and it ends with "You're all caught up". */
@@ -46,7 +47,7 @@ export default function Following() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <AppBar title="Following" trailing={<View style={{ width: 40 }} />} />
       {feed.isPending ? (
-        <Loading />
+        <CardSkeleton />
       ) : feed.isError ? (
         <Problem error={feed.error} onRetry={() => void feed.refetch()} retrying={feed.isRefetching} />
       ) : count === 0 ? (

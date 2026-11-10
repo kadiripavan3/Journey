@@ -26,7 +26,7 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 | Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass (16–24 px blur). |
 | Shape | Cards 20 px, panels 24 px, sheets 30 px. Buttons, chips and pills fully round. |
 | Icons | 24 px line icons with 2 px rounded strokes. Categories, interests, templates and empty states use 3D icons: Microsoft's Fluent Emoji (free, MIT licence) for now. Custom art can replace them file by file in `design/hub/icons3d`. |
-| Motion | Small and quick, never in the way. Things you press shrink a touch and spring back. A like makes the heart pop. Progress rings fill. Lists arrive one item after another, rising a little. Nothing loops, and nothing moves when the phone's Reduce Motion is on. The numbers are in the tokens. |
+| Motion | Small and quick, never in the way. Things you press shrink a touch and spring back. A like makes the heart pop. Progress rings fill. Lists arrive one item after another, rising a little. The only thing that repeats is the soft breathing of the grey shapes while something loads. Nothing moves when the phone's Reduce Motion is on. The numbers are in the tokens. |
 | Depth | Soft shadows in light mode. Hairline borders instead of shadows in dark mode. |
 
 ## Interaction cues

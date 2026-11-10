@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { type LayoutChangeEvent, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { motion } from '@/theme/tokens';
@@ -42,9 +42,9 @@ export function Tap({ children, style, scaleTo = motion.pressScale, onPressIn, o
 }
 
 /** A list item arriving: it fades in and rises a little, each one just after the one before. Only the first few are staggered. */
-export function Rise({ index = 0, children, style }: { index?: number; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function Rise({ index = 0, children, style, onLayout }: { index?: number; children: ReactNode; style?: StyleProp<ViewStyle>; onLayout?: (event: LayoutChangeEvent) => void }) {
   return (
-    <Animated.View entering={FadeInDown.duration(motion.base + 80).delay(Math.min(index, 6) * motion.stagger)} style={style}>
+    <Animated.View entering={FadeInDown.duration(motion.base + 80).delay(Math.min(index, 6) * motion.stagger)} style={style} onLayout={onLayout}>
       {children}
     </Animated.View>
   );

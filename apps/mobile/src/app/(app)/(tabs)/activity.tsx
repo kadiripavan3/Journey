@@ -9,11 +9,12 @@ import { timeAgo } from '@/lib/dates';
 import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
-import { Loading, Photo, Problem } from '@/ui/Bits';
+import { Photo, Problem } from '@/ui/Bits';
 import { Emoji } from '@/ui/Emoji';
 import { EmptyState } from '@/ui/EmptyState';
 import { GroupLabel } from '@/ui/Heading';
 import { Rise } from '@/ui/Motion';
+import { ListSkeleton } from '@/ui/Skeleton';
 import { PersonFollowButton } from '@/ui/PersonFollowButton';
 import { Txt } from '@/ui/Txt';
 
@@ -81,7 +82,7 @@ export default function Activity() {
       </View>
 
       {activity.isPending ? (
-        <Loading />
+        <ListSkeleton />
       ) : activity.isError ? (
         <Problem error={activity.error} onRetry={() => void activity.refetch()} retrying={activity.isRefetching} />
       ) : (

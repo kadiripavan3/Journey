@@ -67,6 +67,12 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await T('New from journeys you follow').waitFor();
     await T('1 new').first().waitFor();
     await shot('home');
+    // Losing the connection shows a calm banner; it goes when the connection is back.
+    await page.context().setOffline(true);
+    await T("You're offline").waitFor();
+    await shot('offline');
+    await page.context().setOffline(false);
+    await T("You're offline").waitFor({ state: 'detached' });
     await R('tab', { name: 'Travel' }).click();
     await shot('home-travel');
     await R('tab', { name: 'For you' }).click();
@@ -79,6 +85,10 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await T('Seven lagoons in one day').click();
     await T(/Entry \d+ of \d+/).waitFor();
     await shot('entry');
+    await R('button', { name: 'Open the photo full screen' }).click();
+    await R('button', { name: 'Close photos' }).waitFor();
+    await shot('photo-viewer');
+    await R('button', { name: 'Close photos' }).click();
     await R('button', { name: 'Close' }).click();
     await T("You're all caught up").waitFor();
     await R('button', { name: 'Back' }).click();
@@ -259,6 +269,20 @@ const IMG = path.join(__dirname, '../../design/hub/img');
     await R('tab', { name: 'You' }).click();
     await R('button', { name: /1 Followers/ }).waitFor();
     await shot('you-with-followers');
+  });
+
+  await step('jump-to', async () => {
+    await R('tab', { name: 'Discover' }).click();
+    await T('Southeast Asia by motorbike').click();
+    await T(/^Read all 5 entries/).click();
+    await R('button', { name: 'Jump to' }).click();
+    await T('Start from the beginning').waitFor();
+    await shot('jump-to');
+    await T('Newest entry').click();
+    await T('Sunrise over Mount Bromo').waitFor();
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Back' }).click();
+    await R('tab', { name: 'You' }).click();
   });
 
   await step('shared', async () => {

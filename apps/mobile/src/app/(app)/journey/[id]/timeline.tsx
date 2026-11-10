@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowDown, Plus, Star } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowDown, List, Plus, Star } from 'lucide-react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,10 +11,12 @@ import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
 import { Avatar } from '@/ui/Avatar';
-import { Card, Loading, Photo, Pill, Problem } from '@/ui/Bits';
+import { Card, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { entryHeadline } from '@/ui/EntryBits';
 import { Rise, Tap } from '@/ui/Motion';
+import { Sheet, SheetRow } from '@/ui/Sheet';
+import { CardSkeleton } from '@/ui/Skeleton';
 import { ReactionCounts } from '@/ui/Reactions';
 import { Txt } from '@/ui/Txt';
 
@@ -46,6 +48,15 @@ export default function Timeline() {
     }
   }, [entries, following, id, markRead]);
 
+  // Where each entry sits on the page, so "Jump to" can scroll straight to it.
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
+  const positions = useRef(new Map<string, number>());
+  const [jumping, setJumping] = useState(false);
+  const jumpTo = (entryId: string) => {
+    setJumping(false);
+    scroller.current?.scrollTo({ y: Math.max((positions.current.get(entryId) ?? 0) - 8, 0), animated: true });
+  };
+
   const j = journey.data;
   const failed = journey.error ?? timeline.error;
   const newCount = (entries ?? []).filter(isNew).length;
@@ -59,7 +70,7 @@ export default function Timeline() {
       {failed ? (
         <Problem error={failed} onRetry={() => void Promise.all([journey.refetch(), timeline.refetch()])} retrying={journey.isRefetching || timeline.isRefetching} />
       ) : !j || !entries ? (
-        <Loading />
+        <CardSkeleton />
       ) : entries.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 40 }}>
           <Txt color="muted" center style={{ fontSize: 15, lineHeight: 22 }}>
@@ -68,14 +79,14 @@ export default function Timeline() {
           {j.viewer.canAddEntry ? <Button label="Add the first entry" onPress={() => router.push(`/journey/${j.id}/add` as never)} style={{ alignSelf: 'center' }} /> : null}
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 110 + insets.bottom }} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scroller} contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16, paddingBottom: 110 + insets.bottom }} showsVerticalScrollIndicator={false}>
           <View style={{ position: 'absolute', top: 26, bottom: 0, left: 27, width: 2, backgroundColor: colors.fill2 }} />
           {entries.map((entry, index) => {
             const previous = entries[index - 1];
             const newDay = !previous || previous.number !== entry.number;
             const quiet = previous && j.labelStyle === 'day' ? entry.number - previous.number - 1 : 0;
             return (
-              <Rise key={entry.id} index={index}>
+              <Rise key={entry.id} index={index} onLayout={(event) => positions.current.set(entry.id, event.nativeEvent.layout.y)}>
                 {quiet > 0 ? (
                   <Txt color="muted" weight={600} style={{ fontSize: 12.5, lineHeight: 17, fontStyle: 'italic', marginLeft: 34, marginBottom: 12 }}>
                     {plural(quiet, 'quiet day')}
@@ -101,6 +112,36 @@ export default function Timeline() {
           ) : null}
         </ScrollView>
       )}
+      {entries && entries.length > 3 ? (
+        <View style={{ position: 'absolute', left: 16, bottom: Math.max(insets.bottom, 12) + 12 }}>
+          <Button label="Jump to" size="lg" variant="ink" icon={(c) => <List size={19} color={c} />} onPress={() => setJumping(true)} />
+        </View>
+      ) : null}
+      {entries && entries.length > 0 ? (
+        <Sheet visible={jumping} onClose={() => setJumping(false)} title="Jump to">
+          {firstNew ? (
+            <SheetRow
+              first
+              icon={(c) => <ArrowDown size={22} color={c} />}
+              label="Continue where you left off"
+              note={`${newCount} new since your last visit`}
+              onPress={() => jumpTo(firstNew)}
+            />
+          ) : null}
+          <SheetRow first={!firstNew} label="Start from the beginning" note={dayLine(entries[0]!)} onPress={() => jumpTo(entries[0]!.id)} />
+          <SheetRow label="Newest entry" note={dayLine(entries[entries.length - 1]!)} onPress={() => jumpTo(entries[entries.length - 1]!.id)} />
+          {entries.some((entry) => entry.isMilestone) ? (
+            <Txt variant="label" color="muted" style={{ marginTop: 16, marginBottom: 4, marginHorizontal: 22 }}>
+              Milestones
+            </Txt>
+          ) : null}
+          {entries
+            .filter((entry) => entry.isMilestone)
+            .map((entry, index) => (
+              <SheetRow key={entry.id} first={index === 0} icon={(c) => <Star size={20} color={c} />} label={entryHeadline(entry)} note={dayLine(entry)} onPress={() => jumpTo(entry.id)} />
+            ))}
+        </Sheet>
+      ) : null}
       {j?.viewer.canAddEntry && entries && entries.length > 0 ? (
         <View style={{ position: 'absolute', right: 16, bottom: Math.max(insets.bottom, 12) + 12 }}>
           <Button label="Entry" size="lg" icon={(c) => <Plus size={20} color={c} strokeWidth={2.4} />} onPress={() => router.push(`/journey/${j.id}/add` as never)} />
@@ -108,6 +149,11 @@ export default function Timeline() {
       ) : null}
     </SafeAreaView>
   );
+}
+
+/** "Day 12 · Ha Giang loop": where and when an entry is, for a list. */
+function dayLine(entry: EntryResponse): string {
+  return `${entry.label}${entry.placeName ? ` · ${entry.placeName}` : ''} · ${formatDay(entry.happenedOn)}`;
 }
 
 /** The dot on the line where a day starts: "Day 12", its place and date. A milestone gets a star. */

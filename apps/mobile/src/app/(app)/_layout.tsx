@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { useOnboarding } from '@/auth/onboarding';
 import { NewJourneyProvider } from '@/journey/draft';
+import { OfflineBanner } from '@/ui/OfflineBanner';
 
 /** Everything a signed-in person sees: the four tabs, and the screens that open on top of them. */
 export default function AppLayout() {
@@ -24,6 +25,7 @@ export default function AppLayout() {
         <Stack.Screen name="journey/[id]/live" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
       </Stack>
+      <OfflineBanner />
     </NewJourneyProvider>
   );
 }

@@ -19,6 +19,7 @@ The app opens with **ten sample creators and their journeys**, so there is somet
 - **Together:** shared journeys. Invite people who follow you to add their own entries, accept an invitation, see who writes in a journey, leave or remove someone
 - **You:** your profile with your journeys, editing it (photo, name, username, bio, link, interests), and Settings: notifications, privacy, appearance, your account, and deleting it
 - **Safety:** report a journey, an entry, a comment or a person; block and unblock people
+- **Look and feel:** 3D icons, frosted glass over photos, and small motions (they stop when your iPhone's Reduce Motion is on). Photos open full screen; Jump to moves around a long story; a banner tells you when you're offline
 - Light and dark mode, following your phone or your own choice
 
 **Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. Invite that follower to one of your journeys (the ⋯ menu, then People on this journey) and they accept and add an entry. That is only so you can see likes, comments, Activity and shared journeys work with one phone.
