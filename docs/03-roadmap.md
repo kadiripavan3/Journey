@@ -33,7 +33,9 @@ Progress:
 - [x] **M1 Foundations** (10 Nov 2026): the app and the Java API side by side, sign-in with a test code, the sign-up flow (how it works, profile, interests, journeys to follow, all set), profiles with a photo, the tab bar, automatic checks
 - [x] **The core loop** (10 Nov 2026; from M2, M4 and M5): start a journey from a template, add and edit entries with photos, the journey page and story line, follow journeys, the Home feed that ends with "You're all caught up", Discover with categories
 - [x] **Likes, comments, following people and Activity** (10 Nov 2026; from M4), with creator profiles and the lists of followers
-- [ ] Still to build, in this order: search and tags; settings, privacy and deleting your account; report and block; challenge progress, completing a journey and its recap; changing a journey's details; shared journeys; the map; the weekly digest; share pages; short clips; offline drafts and the upload queue; asking for notifications (with push)
+- [x] **Search, settings and safety** (10 Nov 2026; from M5 and M6): search for journeys and people, settings (notifications, privacy, appearance, account), deleting your account, report and block
+- [x] **Finishing a journey** (10 Nov 2026; from M6): challenge progress, completing a journey with a closing note, its recap, and changing a journey's details
+- [ ] Still to build, in this order: shared journeys; the map; the weekly digest; share pages; short clips; offline drafts and the upload queue; asking for notifications (with push); a place for a reviewer to handle reports; the loading and offline states from the designs; then connecting the real services (M7)
 
 | Milestone | Scope | Weeks (approx.) |
 |---|---|---|

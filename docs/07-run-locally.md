@@ -12,12 +12,15 @@ The app opens with **ten sample creators and their journeys**, so there is somet
 - **Reading:** Home with what's new from the journeys you follow, the Following feed that ends with "You're all caught up", Discover with category filters, a journey's page and its story line (with quiet days and "new since your last visit"), and entries you swipe through
 - **Creating:** the + button, starting a journey in three steps (template, details with a cover, who can see it), adding an entry with photos, a place and a milestone, editing and deleting entries, pausing and deleting a journey
 - **People:** like and comment on entries (with replies), creator profiles, following people, followers and following, and Activity with a dot on its tab
-- **You:** your profile with your journeys, and editing it (photo, name, username, bio, link, interests)
-- Light and dark mode, following your phone
+- **Finishing:** challenge journeys show their progress and a grid of days; complete a journey with a closing note and get its recap; change a journey's details later
+- **Finding:** search for journeys and people, with popular tags
+- **You:** your profile with your journeys, editing it (photo, name, username, bio, link, interests), and Settings: notifications, privacy, appearance, your account, and deleting it
+- **Safety:** report a journey, an entry, a comment or a person; block and unblock people
+- Light and dark mode, following your phone or your own choice
 
 **Testing alone:** when you post an entry to a public journey, two of the sample creators like it, one comments and one starts following you. That is only so you can see likes, comments and Activity work with one phone.
 
-Not built yet: search, settings, report and block, completing a journey, shared journeys, the map, clips, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
+Not built yet: shared journeys, the map, the weekly digest, share links, clips, working offline, push notifications, and Apple and Google sign-in. [The roadmap](03-roadmap.md) has the order.
 
 ## One-time setup
 
