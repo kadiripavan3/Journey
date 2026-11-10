@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
@@ -12,15 +12,21 @@ type Props = {
   title?: string;
   subtitle?: string;
   children: ReactNode;
+  /** Pinned under the scrolling content and above the keyboard, such as a box to type in. */
+  footer?: ReactNode;
+  /** Shown at the right of the title, such as a close button. */
+  action?: ReactNode;
+  /** Always take most of the screen, however little is inside. */
+  tall?: boolean;
 };
 
 /** A sheet that slides up from the bottom over a dimmed page. Tapping outside closes it. */
-export function Sheet({ visible, onClose, title, subtitle, children }: Props) {
+export function Sheet({ visible, onClose, title, subtitle, children, footer, action, tall }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -31,8 +37,9 @@ export function Sheet({ visible, onClose, title, subtitle, children }: Props) {
           accessibilityViewIsModal
           style={{
             maxHeight: '88%',
+            height: tall ? '82%' : undefined,
             paddingTop: 10,
-            paddingBottom: Math.max(insets.bottom, 16) + 8,
+            paddingBottom: footer ? 0 : Math.max(insets.bottom, 16) + 8,
             borderTopLeftRadius: 30,
             borderTopRightRadius: 30,
             backgroundColor: colors.surface,
@@ -40,20 +47,24 @@ export function Sheet({ visible, onClose, title, subtitle, children }: Props) {
           }}>
           <View style={{ alignSelf: 'center', width: 38, height: 5, borderRadius: 3, marginBottom: 8, backgroundColor: colors.fill2 }} />
           {title ? (
-            <Txt accessibilityRole="header" weight={800} style={{ fontSize: 20, lineHeight: 26, letterSpacing: -0.5, paddingHorizontal: 22, paddingTop: 8, paddingBottom: 4 }}>
-              {title}
-            </Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 22, paddingRight: 16, paddingTop: 8, paddingBottom: 4 }}>
+              <Txt accessibilityRole="header" weight={800} style={{ flex: 1, fontSize: 20, lineHeight: 26, letterSpacing: -0.5 }}>
+                {title}
+              </Txt>
+              {action}
+            </View>
           ) : null}
           {subtitle ? (
             <Txt color="muted" style={{ fontSize: 14, lineHeight: 20, paddingHorizontal: 22, paddingBottom: 10 }}>
               {subtitle}
             </Txt>
           ) : null}
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView style={tall ? { flex: 1 } : undefined} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
+          {footer ? <View style={{ paddingBottom: Math.max(insets.bottom, 12), borderTopWidth: 1, borderTopColor: colors.line }}>{footer}</View> : null}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

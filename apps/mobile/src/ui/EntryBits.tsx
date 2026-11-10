@@ -5,6 +5,7 @@ import type { EntryResponse } from '@/api/generated/journey';
 import { useTheme } from '@/theme';
 
 import { Eyebrow, Photo, Pill } from './Bits';
+import { ReactionCounts } from './Reactions';
 import { Txt } from './Txt';
 
 /** "Day 14 · Hoi An": the entry's label and, when it has one, its place. */
@@ -62,6 +63,7 @@ export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryRespon
           {entry.body}
         </Txt>
       ) : null}
+      <ReactionCounts entry={entry} />
     </Pressable>
   );
 }

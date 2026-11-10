@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type JourneyResponse, useGetFollowedJourneys, useGetMe, useGetMyJourneys } from '@/api/generated/journey';
+import { type JourneyResponse, useGetMe, useGetMyJourneys, useGetProfile } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
@@ -24,16 +24,16 @@ export default function You() {
   const session = useSession();
   const me = useGetMe();
   const mine = useGetMyJourneys();
-  const followed = useGetFollowedJourneys();
   const [shelf, setShelf] = useState<Shelf>('active');
   const [pulling, setPulling] = useState(false);
   const reload = async () => {
     setPulling(true);
-    await Promise.all([me.refetch(), mine.refetch(), followed.refetch()]);
+    await Promise.all([me.refetch(), mine.refetch(), counts.refetch()]);
     setPulling(false);
   };
 
   const profile = me.data?.profile;
+  const counts = useGetProfile(profile?.username ?? '', { query: { enabled: !!profile } });
   if (!profile) return null;
 
   const journeys = mine.data ?? [];
@@ -43,7 +43,7 @@ export default function You() {
     private: journeys.filter((j) => j.visibility === 'private'),
   };
   const shown = shelves[shelf];
-  const entries = journeys.reduce((sum, j) => sum + j.entryCount, 0);
+  const openPeople = (tab: 'followers' | 'following') => router.push(`/profile/${profile.username}/people?tab=${tab}` as never);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -63,8 +63,8 @@ export default function You() {
           </View>
           <View style={{ flex: 1 }}>
             <Stat value={journeys.length} label="Journeys" />
-            <Stat value={entries} label="Entries" divider />
-            <Stat value={followed.data?.length ?? 0} label="Following" divider />
+            <Stat value={counts.data?.followerCount ?? 0} label="Followers" divider onPress={() => openPeople('followers')} />
+            <Stat value={counts.data?.followingCount ?? 0} label="Following" divider onPress={() => openPeople('following')} />
           </View>
         </View>
 
@@ -138,17 +138,22 @@ function visibilityNote(journey: JourneyResponse): string {
   return journey.visibility === 'public' ? 'Public' : journey.visibility === 'unlisted' ? 'Unlisted' : 'Only you';
 }
 
-function Stat({ value, label, divider }: { value: number; label: string; divider?: boolean }) {
+function Stat({ value, label, divider, onPress }: { value: number; label: string; divider?: boolean; onPress?: () => void }) {
   const { colors } = useTheme();
   return (
-    <View accessible accessibilityLabel={`${value} ${label}`} style={{ paddingVertical: 8, borderTopWidth: divider ? 1 : 0, borderTopColor: colors.line }}>
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${value} ${label}`}
+      disabled={!onPress}
+      onPress={onPress}
+      style={{ paddingVertical: 8, borderTopWidth: divider ? 1 : 0, borderTopColor: colors.line }}>
       <Txt weight={800} style={{ fontSize: 20, lineHeight: 25, letterSpacing: -0.4 }}>
         {compact(value)}
       </Txt>
       <Txt color="muted" weight={700} style={{ fontSize: 11.5, lineHeight: 15 }}>
         {label}
       </Txt>
-    </View>
+    </Pressable>
   );
 }
 

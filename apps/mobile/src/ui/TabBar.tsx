@@ -4,6 +4,7 @@ import { Bell, Compass, House, Plus, User } from 'lucide-react-native';
 import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { useGetActivity } from '@/api/generated/journey';
 import { fontFor, useTheme } from '@/theme';
 
 import { AddSheet } from './AddSheet';
@@ -20,6 +21,8 @@ const ICONS: Record<string, (color: string) => ReactNode> = {
 export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabBarProps) {
   const { colors, scheme, shadow } = useTheme();
   const [adding, setAdding] = useState(false);
+  // Checked again every minute, so the dot appears without leaving the app.
+  const hasNews = (useGetActivity({ query: { refetchInterval: 60_000 } }).data?.newCount ?? 0) > 0;
 
   const tab = (routeIndex: number) => {
     const route = state.routes[routeIndex];
@@ -32,12 +35,15 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
         key={route.key}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
-        accessibilityLabel={label}
+        accessibilityLabel={route.name === 'activity' && hasNews ? `${label}, new` : label}
         onPress={() => {
           if (!focused) navigateToTab(route.key);
         }}
         style={{ width: 62, height: 56, alignItems: 'center', justifyContent: 'center', gap: 3 }}>
         {ICONS[route.name]?.(color)}
+        {route.name === 'activity' && hasNews ? (
+          <View style={{ position: 'absolute', top: 7, right: 17, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.like, borderWidth: 1.5, borderColor: colors.bg }} />
+        ) : null}
         <Txt style={{ fontFamily: fontFor[700], fontSize: 10.5, lineHeight: 13, color }}>{label}</Txt>
       </Pressable>
     );

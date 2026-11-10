@@ -60,6 +60,7 @@ export default function JourneyPage() {
   const firstName = j.owner.displayName.trim().split(/\s+/)[0];
   const category = catalog.category(j.category);
   const openStory = () => router.push(`/journey/${j.id}/timeline` as never);
+  const openOwner = () => router.push(`/profile/${j.owner.username}` as never);
   const statusColor = j.status === 'active' ? colors.ok : j.status === 'completed' ? colors.done : colors.warn;
 
   return (
@@ -70,9 +71,13 @@ export default function JourneyPage() {
           <LinearGradient colors={['rgba(0,0,0,0.38)', 'rgba(0,0,0,0)']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130 }} />
         </Photo>
         <View style={{ marginTop: -30, paddingTop: 52, paddingHorizontal: 22, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: colors.bg, alignItems: 'center' }}>
-          <View style={{ position: 'absolute', top: -38, borderRadius: 42, borderWidth: 4, borderColor: colors.bg, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.16)' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${j.owner.displayName}'s profile`}
+            onPress={openOwner}
+            style={{ position: 'absolute', top: -38, borderRadius: 42, borderWidth: 4, borderColor: colors.bg, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.16)' }}>
             <Avatar uri={j.owner.avatarUrl} name={j.owner.displayName} size={76} />
-          </View>
+          </Pressable>
           <Txt accessibilityRole="header" weight={800} center style={{ fontSize: 27, lineHeight: 30, letterSpacing: -0.95 }}>
             {j.title}
           </Txt>
@@ -81,7 +86,7 @@ export default function JourneyPage() {
               {j.description}
             </Txt>
           ) : null}
-          <Txt center weight={700} style={{ fontSize: 13, lineHeight: 18, marginTop: 10 }}>
+          <Txt center weight={700} onPress={openOwner} style={{ fontSize: 13, lineHeight: 18, marginTop: 10 }}>
             {j.owner.displayName}
             {category ? <Txt color="muted" weight={500} style={{ fontSize: 13, lineHeight: 18 }}>{` · ${category.label}`}</Txt> : null}
           </Txt>

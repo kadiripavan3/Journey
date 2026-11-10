@@ -13,6 +13,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Card, Loading, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { entryHeadline } from '@/ui/EntryBits';
+import { ReactionCounts } from '@/ui/Reactions';
 import { Txt } from '@/ui/Txt';
 
 /** 5.2 Story line: the journey in the order things happened, grouped by day, with quiet days and what's new since your last visit. */
@@ -152,6 +153,9 @@ function EntryCard({ entry, fresh, onPress }: { entry: EntryResponse; fresh: boo
             {entry.body}
           </Txt>
         ) : null}
+        <View style={{ marginHorizontal: 4, marginBottom: 2 }}>
+          <ReactionCounts entry={entry} />
+        </View>
       </Card>
     </Pressable>
   );

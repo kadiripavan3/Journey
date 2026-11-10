@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Ellipsis, Pencil, Trash2, X } from 'lucide-react-native';
+import { Ellipsis, Pencil, Send, Trash2, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,9 @@ import { darkTheme, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Eyebrow, Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { CommentsSheet } from '@/ui/CommentsSheet';
 import { entryEyebrow, MilestonePill } from '@/ui/EntryBits';
+import { Reactions } from '@/ui/Reactions';
 import { RoundButton } from '@/ui/RoundButton';
 import { Sheet, SheetRow } from '@/ui/Sheet';
 import { Txt } from '@/ui/Txt';
@@ -22,13 +24,16 @@ import { Txt } from '@/ui/Txt';
 const GAP = 14;
 const SIDE = 22;
 const STAGE = '#08080A';
+const REPLY_BAR = 66;
 
 /** 6.1 Entry: each entry is a card you swipe through like a story, with the next one peeking in. Milestones get a badge. */
 export default function EntryView() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, comments: openComments } = useLocalSearchParams<{ id: string; comments?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  // Coming from Activity, a comment's line opens the entry with its comments showing.
+  const [commenting, setCommenting] = useState(openComments === '1');
   const opened = useGetEntry(id);
   const journeyId = opened.data?.journeyId ?? '';
   const timeline = useGetTimeline(journeyId, { query: { enabled: !!journeyId } });
@@ -48,7 +53,7 @@ export default function EntryView() {
   };
 
   // What is left for a card under the top bar and above the bottom edge.
-  const room = height - insets.top - 8 - 42 - 14 - Math.max(insets.bottom, 12) - 14;
+  const room = height - insets.top - 8 - 42 - 14 - Math.max(insets.bottom, 12) - 14 - REPLY_BAR;
   const failed = opened.error ?? timeline.error;
   const backdrop = current?.media[0]?.url;
 
@@ -87,21 +92,53 @@ export default function EntryView() {
           getItemLayout={(_, i) => ({ length: step, offset: step * i, index: i })}
           onScroll={onScroll}
           scrollEventThrottle={32}
-          contentContainerStyle={{ paddingHorizontal: SIDE, paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) + 14 }}
+          contentContainerStyle={{ paddingHorizontal: SIDE, paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12) + 14 + REPLY_BAR }}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth, marginRight: GAP }}>
-              <EntryCard entry={item} maxHeight={room} />
+              <EntryCard entry={item} maxHeight={room} onComments={() => setCommenting(true)} />
             </View>
           )}
         />
       )}
 
+      {current && !failed ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Comment on this entry by ${current.author.displayName}`}
+          onPress={() => setCommenting(true)}
+          style={{
+            position: 'absolute',
+            left: 20,
+            right: 20,
+            bottom: Math.max(insets.bottom, 12) + 8,
+            height: 54,
+            paddingLeft: 20,
+            paddingRight: 8,
+            borderRadius: 27,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: darkTheme.colors.photoGlass,
+            borderWidth: 1,
+            borderColor: darkTheme.colors.photoGlassLine,
+          }}>
+          <Txt numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 19, color: darkTheme.colors.onPhoto }}>
+            Say something nice to {current.author.displayName.trim().split(/\s+/)[0]}…
+          </Txt>
+          <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: darkTheme.colors.accent }}>
+            <Send size={18} color={darkTheme.colors.onAccent} />
+          </View>
+        </Pressable>
+      ) : null}
+
+      {current ? <CommentsSheet entry={current} visible={commenting} onClose={() => setCommenting(false)} /> : null}
       {current ? <EntryMenu entry={current} visible={menu} onClose={() => setMenu(false)} /> : null}
     </View>
   );
 }
 
-function EntryCard({ entry, maxHeight }: { entry: EntryResponse; maxHeight: number }) {
+function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; maxHeight: number; onComments: () => void }) {
+  const router = useRouter();
   const { colors } = useTheme();
   const [photo, setPhoto] = useState(0);
   const shown = entry.media[Math.min(photo, entry.media.length - 1)];
@@ -140,16 +177,18 @@ function EntryCard({ entry, maxHeight }: { entry: EntryResponse; maxHeight: numb
               {entry.body}
             </Txt>
           ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 }}>
+          <Reactions entry={entry} onComments={onComments} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${entry.author.displayName}'s profile`}
+            onPress={() => router.push(`/profile/${entry.author.username}` as never)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 }}>
             <Avatar uri={entry.author.avatarUrl} name={entry.author.displayName} size={28} />
             <Txt numberOfLines={1} color="muted" style={{ flex: 1, fontSize: 12.5, lineHeight: 17 }}>
               {entry.author.displayName} · {formatDay(entry.happenedOn)}
               {entry.edited ? ' · Edited' : ''}
             </Txt>
-          </View>
-          <Txt numberOfLines={1} color="muted" weight={700} style={{ fontSize: 12.5, lineHeight: 17, marginTop: 10 }}>
-            {entry.journeyTitle}
-          </Txt>
+          </Pressable>
         </View>
       </ScrollView>
     </View>

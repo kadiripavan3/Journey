@@ -60,6 +60,15 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Token change:** run `npm run theme` in `apps/mobile` and rebuild the hub.
 - **Screens:** build each one from its design in `design/hub/src/screens/`, using the components in `apps/mobile/src/ui` and only theme values. Check it in the web build with Playwright (`npx expo export -p web`, serve `dist`, run the API with the `local` profile), in light and dark.
 - **In this cloud environment** `npx expo install`, `expo lint` and `expo export` need `EXPO_OFFLINE=1`, because Expo's version service is not on the network allowlist.
+- **Check the app in a browser** after changing screens. With the API running (`cd apps/api && ./mvnw -q spring-boot:run -Dspring-boot.run.profiles=local`):
+
+  ```sh
+  cd apps/mobile && EXPO_OFFLINE=1 CI=1 npx expo export -p web
+  node ../../scripts/e2e/serve.js "$PWD/dist" 8081 &
+  node ../../scripts/e2e/walkthrough.js /tmp/shots light     # and again with dark
+  ```
+
+  The walk-through signs up a new person and uses every built screen; it stops at the first thing that fails and leaves a screenshot of it. Add to it when you add a screen. Screens underneath the current one stay in the page on the web, so it always takes the last match.
 - **Messages people read** come from the API in plain English (`ApiProblem`); the app shows them as they are.
 
 ## Working rules
