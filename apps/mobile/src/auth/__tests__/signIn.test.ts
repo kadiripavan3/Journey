@@ -7,6 +7,7 @@ const mockAuth = {
   verifyOtp: jest.fn(),
   signInWithIdToken: jest.fn(),
   getSession: jest.fn(),
+  updateUser: jest.fn(),
   refreshSession: jest.fn(),
   signOut: jest.fn(),
   startAutoRefresh: jest.fn(),
@@ -28,6 +29,15 @@ jest.mock('@supabase/auth-js', () => ({
   isAuthRetryableFetchError: (error: { name?: string } | null) => error?.name === 'AuthRetryableFetchError',
 }));
 
+const mockKept = new Map<string, string>();
+jest.mock('@/lib/keep', () => ({
+  keep: {
+    get: (key: string) => Promise.resolve(mockKept.get(key) ?? null),
+    set: (key: string, value: string) => Promise.resolve(void mockKept.set(key, value)),
+    remove: (key: string) => Promise.resolve(void mockKept.delete(key)),
+  },
+}));
+
 const mockNetwork = { isConnected: true };
 jest.mock('expo-network', () => ({ getNetworkStateAsync: () => Promise.resolve(mockNetwork) }));
 
@@ -37,6 +47,10 @@ jest.mock('expo-secure-store', () => ({
   setItemAsync: (key: string, value: string) => Promise.resolve(void mockSecure.set(key, value)),
   deleteItemAsync: (key: string) => Promise.resolve(void mockSecure.delete(key)),
 }));
+
+const mockApple = { signInAsync: jest.fn(), AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 } };
+jest.mock('expo-apple-authentication', () => mockApple);
+jest.mock('expo-crypto', () => ({ randomUUID: () => 'a-random-value', digestStringAsync: async () => 'its-fingerprint', CryptoDigestAlgorithm: { SHA256: 'SHA-256' } }));
 
 const notAsked = { name: 'AuthRetryableFetchError', status: 0, message: 'Network request failed' };
 const refused = { name: 'AuthApiError', status: 400, message: 'Invalid Refresh Token' };
@@ -53,6 +67,7 @@ describe('real sign-in (Supabase)', () => {
     jest.clearAllMocks();
     mockMade.length = 0;
     mockSecure.clear();
+    mockKept.clear();
     mockNetwork.isConnected = true;
   });
 
@@ -164,6 +179,59 @@ describe('real sign-in (Supabase)', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('keeps what Apple hands over only once: the name is offered at once and kept with the sign-in, and the API gets the code', async () => {
+    const service = load();
+    const sent = jest.fn((_url: string, _init?: RequestInit) => Promise.resolve(new Response(null, { status: 204 })));
+    globalThis.fetch = sent as unknown as typeof fetch;
+    process.env.EXPO_PUBLIC_API_URL = 'http://api.test';
+    connectSession({ getToken: () => 'apple-token', onSignedOut: () => {} });
+    mockApple.signInAsync.mockResolvedValue({ identityToken: 'apple-id-token', authorizationCode: 'code-from-apple', fullName: { givenName: 'Maya', familyName: 'Okafor' } });
+    mockAuth.signInWithIdToken.mockResolvedValue({ data: { session: { access_token: 'apple-token' } }, error: null });
+    mockAuth.updateUser.mockResolvedValue({ data: {}, error: null });
+
+    await service.apple?.();
+
+    // Apple got the fingerprint of the random value, Supabase the value itself.
+    expect(mockApple.signInAsync).toHaveBeenCalledWith(expect.objectContaining({ nonce: 'its-fingerprint' }));
+    expect(mockAuth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'apple', token: 'apple-id-token', nonce: 'a-random-value' });
+    await expect(service.suggestedName()).resolves.toBe('Maya Okafor');
+    expect(mockAuth.updateUser).toHaveBeenCalledWith({ data: { full_name: 'Maya Okafor' } });
+    await expect(service.signedInWith()).resolves.toBe('apple');
+    // With the code the API can end the link at Apple when the account is deleted.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const [url, init] = sent.mock.calls[0]!;
+    expect(url).toBe('http://api.test/v1/me/apple-sign-in');
+    expect(init).toMatchObject({ method: 'PUT', body: JSON.stringify({ authorizationCode: 'code-from-apple' }) });
+
+    // The next time Apple gives no name: what was kept is not wiped.
+    mockAuth.updateUser.mockClear();
+    mockApple.signInAsync.mockResolvedValue({ identityToken: 'apple-id-token', authorizationCode: null, fullName: null });
+    await service.apple?.();
+    expect(mockAuth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('says which way the person signed in, and offers the name the sign-in already knows', async () => {
+    const service = load();
+    mockAuth.verifyOtp.mockResolvedValue({ data: { session: { access_token: 'token-1' } }, error: null });
+    await service.verifyCode('maya@example.com', '123456');
+    await expect(service.signedInWith()).resolves.toBe('email');
+
+    // Not remembered on this phone (installed again): what the sign-in itself was made with.
+    mockKept.clear();
+    mockAuth.getSession.mockResolvedValue({ data: { session: { access_token: 't', user: { app_metadata: { provider: 'apple' }, user_metadata: { full_name: ' Maya Okafor ' } } } }, error: null });
+    await expect(service.signedInWith()).resolves.toBe('apple');
+    // Apple's name was kept with the sign-in the one time Apple gave it; Google's is there each time.
+    await expect(service.suggestedName()).resolves.toBe('Maya Okafor');
+    mockAuth.getSession.mockResolvedValue({ data: { session: { access_token: 't', user: { app_metadata: { provider: 'email' }, user_metadata: {} } } }, error: null });
+    await expect(service.suggestedName()).resolves.toBeNull();
+
+    // Signing out forgets the way.
+    mockAuth.signOut.mockResolvedValue({ error: null });
+    await service.verifyCode('maya@example.com', '123456');
+    await service.signOut();
+    expect(mockKept.size).toBe(0);
   });
 
   it('does nothing, and breaks nothing, in a build without the project settings', async () => {

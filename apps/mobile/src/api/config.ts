@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 const API_PORT = 8080;
 
@@ -19,4 +19,12 @@ export function apiBaseUrl(): string {
   }
   const devServerHost = Constants.expoConfig?.hostUri?.split(':')[0];
   return `http://${devServerHost ?? 'localhost'}:${API_PORT}`;
+}
+
+/**
+ * Opens one of the web pages the API serves (the terms, the privacy policy, help) in the phone's browser.
+ * `path` is the page's own address, such as "/terms".
+ */
+export function openPage(path: string): void {
+  void Linking.openURL(apiBaseUrl() + path).catch(() => undefined);
 }

@@ -5,12 +5,16 @@ import { connectSession } from '@/api/fetcher';
 import { forgetKept, keepWriting, restoreKept } from '@/api/kept';
 
 import { runBeforeSignOut } from './beforeSignOut';
-import { signInService } from './signIn';
+import { signInService, type SignInWay } from './signIn';
 import { accountOf } from './token';
 
 type SessionState = { status: 'loading' } | { status: 'signedOut' } | { status: 'signedIn' };
 
-type Session = SessionState & { signOut: () => Promise<void> };
+type Session = SessionState & {
+  signOut: () => Promise<void>;
+  /** How the signed-in person signed in on this phone: by email code, with Apple or with Google. Null until that is known, and while nobody is signed in. */
+  provider: SignInWay | null;
+};
 
 const SessionContext = createContext<Session | null>(null);
 
@@ -24,6 +28,7 @@ const SessionContext = createContext<Session | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<SessionState>({ status: 'loading' });
+  const [provider, setProvider] = useState<SignInWay | null>(null);
   const token = useRef<string | null>(null);
   /** True once last time's sign-in has been looked up. Until then the start-up decides what is shown. */
   const started = useRef(false);
@@ -46,6 +51,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (how === 'asked') await signInService.signOut().catch(() => undefined);
         queryClient.clear();
         await forgetKept();
+        setProvider(null);
         setState({ status: 'signedOut' });
       } finally {
         ending.current = false;
@@ -97,7 +103,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient, end]);
 
-  const value = useMemo(() => ({ ...state, signOut }), [state, signOut]);
+  const signedIn = state.status === 'signedIn';
+  useEffect(() => {
+    if (!signedIn) return;
+    let current = true;
+    void signInService
+      .signedInWith()
+      .catch(() => null)
+      .then((way) => {
+        if (current) setProvider(way);
+      });
+    return () => {
+      current = false;
+    };
+  }, [signedIn]);
+
+  const value = useMemo(() => ({ ...state, signOut, provider }), [state, signOut, provider]);
   return <SessionContext value={value}>{children}</SessionContext>;
 }
 

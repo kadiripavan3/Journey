@@ -25,6 +25,7 @@ jest.mock('../signIn', () => ({
   signInService: {
     restore: () => Promise.resolve(mockService.saved),
     renew: () => Promise.resolve(null),
+    signedInWith: () => Promise.resolve('apple'),
     onToken: (listener: Hear) => {
       mockService.hear = listener;
       return () => {};
@@ -40,7 +41,12 @@ const keptFor = (owner: string, name: string) => JSON.stringify({ owner, queries
 
 function Status() {
   const session = useSession();
-  return <Text onPress={() => void session.signOut()}>{session.status}</Text>;
+  return (
+    <>
+      <Text onPress={() => void session.signOut()}>{session.status}</Text>
+      <Text>{`with ${session.provider ?? 'nothing yet'}`}</Text>
+    </>
+  );
 }
 
 async function start() {
@@ -78,6 +84,8 @@ describe('the sign-in and what the phone keeps for it', () => {
 
     expect(screen.getByText('signedIn')).toBeTruthy();
     expect(client.getQueryData(['/v1/me'])).toMatchObject({ profile: { displayName: 'Maya' } });
+    // The Account screen can say how this person signed in.
+    expect(screen.getByText('with apple')).toBeTruthy();
   });
 
   it('never shows one person what the phone kept for another', async () => {
@@ -103,6 +111,7 @@ describe('the sign-in and what the phone keeps for it', () => {
     });
 
     expect(screen.getByText('signedOut')).toBeTruthy();
+    expect(screen.getByText('with nothing yet')).toBeTruthy();
     expect(goodbye).toHaveBeenCalledTimes(1);
     expect(mockService.signOut).toHaveBeenCalledTimes(1);
     expect(client.getQueryData(['/v1/me'])).toBeUndefined();

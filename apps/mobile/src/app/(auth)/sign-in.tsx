@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { openPage } from '@/api/config';
 import { ApiError, messageFor } from '@/api/fetcher';
 import { authMode } from '@/auth/mode';
 import { signInService } from '@/auth/signIn';
@@ -73,7 +74,15 @@ export default function SignIn() {
             ) : null}
           </View>
           <Txt variant="small" color="muted" center weight={500} style={{ marginTop: 18, marginHorizontal: 34 }}>
-            By continuing you agree to the Terms and Privacy Policy, and confirm you&apos;re 13 or older.
+            By continuing you agree to the{' '}
+            <Txt variant="small" weight={700} accessibilityRole="link" onPress={() => openPage('/terms')} style={{ color: colors.accentText }}>
+              Terms
+            </Txt>{' '}
+            and{' '}
+            <Txt variant="small" weight={700} accessibilityRole="link" onPress={() => openPage('/privacy')} style={{ color: colors.accentText }}>
+              Privacy Policy
+            </Txt>
+            , and confirm you&apos;re 13 or older.
           </Txt>
         </View>
       </ScrollView>

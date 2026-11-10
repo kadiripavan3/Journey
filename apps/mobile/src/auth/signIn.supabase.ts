@@ -3,12 +3,16 @@ import * as Crypto from 'expo-crypto';
 import * as Network from 'expo-network';
 import { AppState, Platform } from 'react-native';
 
-import { ApiError, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
+import { ApiError, apiFetch, TIME_LIMIT_MS, unreachable } from '@/api/fetcher';
 
-import type { SignInService } from './signIn';
+import { keep } from '@/lib/keep';
+
+import type { SignInService, SignInWay } from './signIn';
 import { sessionStore } from './storage';
 
 const STORAGE_KEY = 'journey.supabase';
+/** Which way the person on this phone signed in, remembered so the Account screen can say so. */
+const WAY_KEY = 'journey.signin.way';
 /** When the app starts with a token that has run out: how long it waits for a fresh one before opening anyway. */
 const START_PATIENCE_MS = 4000;
 
@@ -73,29 +77,50 @@ export function supabaseSignIn(): SignInService {
     return made;
   };
 
-  const signedIn = (result: { data: { session: Session | null }; error: AuthError | null }) => {
+  /** The name Apple handed over in this run of the app, before it has reached the sign-in service. */
+  let justGiven: string | null = null;
+
+  const signedIn = async (result: { data: { session: Session | null }; error: AuthError | null }, way: SignInWay) => {
     if (result.error) throw problem(result.error);
     if (!result.data.session) throw new ApiError(0, 'sign_in_failed', "That didn't sign you in. Try again.");
+    await keep.set(WAY_KEY, way);
   };
 
   const withApple = async () => {
-    const Apple = await import('expo-apple-authentication');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- on purpose: loaded here and nowhere else, only when someone taps "Continue with Apple"
+    const Apple = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
     // Apple gets a fingerprint of a random value and Supabase the value itself, so the answer can't be replayed.
     const nonce = Crypto.randomUUID();
     const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce);
     let token: string | null;
+    let name = '';
+    let code: string | null = null;
     try {
       const credential = await Apple.signInAsync({
         requestedScopes: [Apple.AppleAuthenticationScope.FULL_NAME, Apple.AppleAuthenticationScope.EMAIL],
         nonce: hashed,
       });
       token = credential.identityToken;
+      code = credential.authorizationCode;
+      name = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
     } catch (error) {
       if (isCode(error, 'ERR_REQUEST_CANCELED')) throw new ApiError(0, 'cancelled', '');
       throw new ApiError(0, 'sign_in_failed', "Apple didn't sign you in. Try again, or use your email.");
     }
     if (!token) throw new ApiError(0, 'sign_in_failed', "Apple didn't sign you in. Try again, or use your email.");
-    signedIn(await client().signInWithIdToken({ provider: 'apple', token, nonce }));
+    // Apple hands the name over this once and never again. It is offered on "Create your profile" instead
+    // of being asked for a second time, and kept with the sign-in (where Google's goes by itself) for the
+    // case that the profile is made later, or on another phone.
+    justGiven = name || null;
+    await signedIn(await client().signInWithIdToken({ provider: 'apple', token, nonce }), 'apple');
+    if (name) await client().updateUser({ data: { full_name: name } }).catch(() => undefined);
+    // The code Apple returns with the sign-in goes to the API, once: with it the API can end the person's
+    // link to the app at Apple when they delete their account, as Apple asks.
+    // TO DO for the integrator: the generated client has this call once it is made again from the API's
+    // description (`PUT /v1/me/apple-sign-in`); until then it is called by its address.
+    if (code) {
+      void apiFetch('/v1/me/apple-sign-in', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ authorizationCode: code }) }).catch(() => undefined);
+    }
   };
 
   const withGoogle = async () => {
@@ -126,7 +151,7 @@ export function supabaseSignIn(): SignInService {
       throw new ApiError(0, 'sign_in_failed', "Google didn't sign you in. Try again, or use your email.");
     }
     if (!token) throw new ApiError(0, 'sign_in_failed', "Google didn't sign you in. Try again, or use your email.");
-    signedIn(await client().signInWithIdToken({ provider: 'google', token }));
+    await signedIn(await client().signInWithIdToken({ provider: 'google', token }), 'google');
   };
 
   return {
@@ -135,7 +160,7 @@ export function supabaseSignIn(): SignInService {
       if (error) throw problem(error);
     },
     async verifyCode(email, code) {
-      signedIn(await client().verifyOtp({ email, token: code, type: 'email' }));
+      await signedIn(await client().verifyOtp({ email, token: code, type: 'email' }), 'email');
     },
     apple: Platform.OS === 'ios' ? withApple : null,
     google: googleWebClientId && Platform.OS !== 'web' ? withGoogle : null,
@@ -175,6 +200,23 @@ export function supabaseSignIn(): SignInService {
       if (error && isAuthRetryableFetchError(error)) throw unreachable();
       return null;
     },
+    async suggestedName() {
+      if (justGiven) return justGiven;
+      if (!url || !key) return null;
+      const { data } = await client().getSession();
+      const known: Record<string, unknown> = data.session?.user?.user_metadata ?? {};
+      const name = [known.full_name, known.name].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      return name?.trim() ?? null;
+    },
+    async signedInWith() {
+      const remembered = await keep.get(WAY_KEY);
+      if (remembered === 'apple' || remembered === 'google' || remembered === 'email') return remembered;
+      // Not remembered on this phone (the app was installed again): what the sign-in itself says it was made with.
+      if (!url || !key) return 'email';
+      const { data } = await client().getSession();
+      const made: unknown = data.session?.user?.app_metadata?.provider;
+      return made === 'apple' || made === 'google' ? made : 'email';
+    },
     onToken(listener) {
       if (!url || !key) return () => {};
       const { data } = client().onAuthStateChange((event, session) => {
@@ -184,6 +226,8 @@ export function supabaseSignIn(): SignInService {
       return () => data.subscription.unsubscribe();
     },
     async signOut() {
+      justGiven = null;
+      await keep.remove(WAY_KEY);
       if (!url || !key) return;
       await client().signOut({ scope: 'local' });
     },

@@ -20,6 +20,7 @@ import { useOnline, watchConnection, watchFocus } from '@/api/online';
 import { OnboardingProvider, useOnboarding } from '@/auth/onboarding';
 import { SessionProvider, useSession } from '@/auth/session';
 import { useTelemetry } from '@/features/analytics/useTelemetry';
+import { linksKnowSession } from '@/lib/links';
 import { useTheme } from '@/theme';
 import { loadAppearance } from '@/theme/appearance';
 import { Button } from '@/ui/Button';
@@ -58,6 +59,8 @@ function App() {
   const signedIn = session.status === 'signedIn';
   const online = useOnline();
   const me = useGetMe({ query: { enabled: signedIn } });
+  // A link is only remembered for later while nobody is signed in; the router opens the others itself.
+  useEffect(() => linksKnowSession(signedIn), [signedIn]);
   // Counting and crash reports, in builds that have the keys for them. Elsewhere this does nothing.
   useTelemetry(signedIn ? me.data?.profile?.id : undefined);
   const [fontsLoaded] = useFonts({

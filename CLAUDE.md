@@ -164,6 +164,14 @@ The walk-through reads `API_URL` and `WEB_URL` when the API and the web build ar
 - **Every request has a time limit** (`TIME_LIMIT_MS` in `api/fetcher.ts`); "nothing answered" is an `ApiError` with status 0 (`isUnreachable`). A token the API refuses is renewed once for all the requests waiting on it, and only a renewal the sign-in service really refused signs the person out.
 - **The web preview** searches places in the API's short local list (`journey.places.mode=local`), shows the map as a list of stops, and keeps drafts in the browser's storage.
 
+## Build settings and sign-in
+
+- **`app.json` holds what is always true; `app.config.ts` adds what depends on a build setting** (an environment variable of the build): the address shared links come from (`EXPO_PUBLIC_LINK_HOST`: associated domains, Android's verified links), Android's map key (`GOOGLE_MAPS_ANDROID_KEY`), Android's notifications file (`GOOGLE_SERVICES_JSON`), and Sentry's upload of source maps (`SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`: all three or nothing; `metro.config.js` switches with them). Without a setting its part is left out, so Expo Go, the browser and a plain build get exactly `app.json`. No key is kept in the repository. What the app needs to know about its build is in `src/lib/build.ts` (`mapsAvailable`, `linkHost`).
+- **The `development` profile is a development build** (`expo-dev-client`): the way to try what Expo Go can't (notifications, Google sign-in, smaller clips, Android's map) from `expo start`.
+- **Which sign-in a build uses** is `EXPO_PUBLIC_AUTH_MODE`. Without it: the test sign-in while developing and in the browser preview, real sign-in in any built app (`auth/mode.ts`); a phone build never falls back to the test code.
+- **A sign-in service says more than "signed in"** (`auth/signIn.ts`): the name it already knows (Apple gives it once; it is kept with the sign-in and offered on "Create your profile"), and which way the person signed in (`useSession().provider`). After "Continue with Apple" the code Apple returns goes to the API once (`PUT /v1/me/apple-sign-in`).
+- **A link is remembered for after sign-in only while nobody is signed in** (`lib/links.ts`); a web address is taken as a shared link only from the build's own link address, when it has one.
+
 ## Working rules
 
 - Work on the branch the session names. Don't push to `main` or open a pull request unless the owner asks.
