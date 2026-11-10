@@ -17,6 +17,12 @@ primary_region = "fra"
   JOURNEY_MEDIA_MODE = "r2"
   # Fly's proxy tells the API it is reached over https.
   JOURNEY_FORWARD_HEADERS = "framework"
+  # Not connected yet. Remove each line when its step in docs/08-connect-services.md is done
+  # (6: clips, 7: push notifications, 8: email, 9: the automatic photo check).
+  JOURNEY_VIDEO_MODE = "off"
+  JOURNEY_PUSH_MODE = "off"
+  JOURNEY_EMAIL_MODE = "off"
+  JOURNEY_MODERATION_MODE = "off"
 
 [http_service]
   internal_port = 8080
