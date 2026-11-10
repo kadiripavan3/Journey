@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { Platform, Share } from 'react-native';
 
 /**
@@ -25,4 +26,29 @@ export async function shareLink(title: string, url: string): Promise<'shared' | 
   } catch {
     return 'cancelled';
   }
+}
+
+/** Copies a link or a line of text. False when the phone or the browser didn't allow it. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    return await Clipboard.setStringAsync(text);
+  } catch {
+    return false;
+  }
+}
+
+/** The address that opens the phone's Messages with the text already written. */
+export function messageLink(text: string): string {
+  // iPhones want "&" before the body where every other phone wants "?".
+  return `sms:${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(text)}`;
+}
+
+/** The address that opens the phone's Mail with a subject and the text already written. */
+export function mailLink(subject: string, text: string): string {
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+}
+
+/** A web address as people read it: without "https://" and without a slash at the end. */
+export function shortLink(url: string): string {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }

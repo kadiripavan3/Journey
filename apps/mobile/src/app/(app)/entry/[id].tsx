@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Ellipsis, Flag, Pencil, Send, Trash2, X } from 'lucide-react-native';
+import { Ellipsis, Flag, Pencil, Send, Share2, Trash2, X } from 'lucide-react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,9 @@ import { entryEyebrow } from '@/features/entries/labels';
 import { MilestonePill } from '@/features/entries/MilestonePill';
 import { Reactions } from '@/features/entries/Reactions';
 import { PhotoViewer } from '@/features/media/PhotoViewer';
+import { HeldNote, HeldVeil } from '@/features/safety/Held';
 import { ReportSheet } from '@/features/safety/SafetySheets';
+import { EntryShareSheet } from '@/features/sharing/ShareSheet';
 import { formatDay } from '@/lib/dates';
 import { firstName } from '@/lib/names';
 import { darkTheme, layout, radius, useTheme, withAlpha } from '@/theme';
@@ -64,6 +66,7 @@ export default function EntryView() {
   const index = found >= 0 ? found : start;
   const current = entries[index];
   const [menu, setMenu] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const list = useRef<FlatList<EntryResponse>>(null);
 
   const cardWidth = Math.min(width - SIDE * 2 - 20, 460);
@@ -172,7 +175,8 @@ export default function EntryView() {
       ) : null}
 
       {current ? <CommentsSheet entry={current} visible={commenting} onClose={() => setCommenting(false)} /> : null}
-      {current ? <EntryMenu entry={current} visible={menu} onClose={() => setMenu(false)} /> : null}
+      {current ? <EntryMenu entry={current} visible={menu} onClose={() => setMenu(false)} onShare={() => setSharing(true)} /> : null}
+      {current ? <EntryShareSheet entry={current} visible={sharing} onClose={() => setSharing(false)} /> : null}
     </View>
   );
 }
@@ -190,9 +194,11 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={many ? `${entry.media.length} photos. Open them full screen.` : 'Open the photo full screen'}
+            disabled={shown.held}
             onPress={() => setViewing(0)}
             style={{ height: 268, backgroundColor: colors.fill }}>
             <Image source={{ uri: shown.url }} style={{ flex: 1 }} contentFit="cover" transition={120} />
+            {shown.held ? <HeldVeil /> : null}
             {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
             {many ? (
               <View style={{ position: 'absolute', bottom: 10, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
@@ -216,6 +222,7 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
               {entry.body}
             </Txt>
           ) : null}
+          <HeldNote entry={entry} />
           <Reactions entry={entry} onComments={onComments} />
           <Pressable
             accessibilityRole="button"
@@ -230,13 +237,13 @@ function EntryCard({ entry, maxHeight, onComments }: { entry: EntryResponse; max
           </Pressable>
         </View>
       </ScrollView>
-      <PhotoViewer photos={entry.media} startAt={viewing} onClose={() => setViewing(null)} eyebrow={entryEyebrow(entry)} title={entry.title || undefined} />
+      <PhotoViewer photos={entry.media.filter((m) => !m.held)} startAt={viewing} onClose={() => setViewing(null)} eyebrow={entryEyebrow(entry)} title={entry.title || undefined} />
     </View>
   );
 }
 
-/** What you can do with your own entry: change it or delete it (after confirming). */
-function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible: boolean; onClose: () => void }) {
+/** What you can do with an entry: share it, and change or delete your own (after confirming). */
+function EntryMenu({ entry, visible, onClose, onShare }: { entry: EntryResponse; visible: boolean; onClose: () => void; onShare: () => void }) {
   const router = useRouter();
   const cache = useCache();
   const [confirming, setConfirming] = useState(false);
@@ -245,6 +252,17 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
     setConfirming(false);
     onClose();
   };
+  const share = (first: boolean) => (
+    <SheetRow
+      first={first}
+      icon={(c) => <Share2 size={22} color={c} />}
+      label="Share entry"
+      onPress={() => {
+        close();
+        onShare();
+      }}
+    />
+  );
   const remove = useDeleteEntry({
     mutation: {
       onSuccess: async () => {
@@ -258,8 +276,8 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
     return (
       <>
         <Sheet visible={visible} onClose={close}>
+          {share(true)}
           <SheetRow
-            first
             icon={(c) => <Flag size={22} color={c} />}
             label="Report this entry"
             onPress={() => {
@@ -297,7 +315,8 @@ function EntryMenu({ entry, visible, onClose }: { entry: EntryResponse; visible:
               }}
             />
           ) : null}
-          <SheetRow first={!entry.viewer.canEdit} danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete entry" onPress={() => setConfirming(true)} />
+          {share(!entry.viewer.canEdit)}
+          <SheetRow danger icon={(c) => <Trash2 size={22} color={c} />} label="Delete entry" onPress={() => setConfirming(true)} />
         </>
       )}
     </Sheet>

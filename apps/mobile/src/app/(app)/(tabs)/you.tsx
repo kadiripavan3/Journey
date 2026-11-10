@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Link as LinkIcon, Lock, Settings as Gear } from 'lucide-react-native';
+import { Link as LinkIcon, Lock, Settings as Gear, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { messageFor } from '@/api/fetcher';
 import { type JourneyResponse, useGetMe, useGetProfile } from '@/api/generated/journey';
 import { JourneyCard } from '@/features/journeys/JourneyCard';
 import { useMyJourneys } from '@/features/journeys/useMyJourneys';
+import { ProfileShareSheet } from '@/features/sharing/ShareSheet';
 import { visibility } from '@/features/journeys/visibility';
 import { compact } from '@/lib/plural';
 import { layout, radius, useTheme } from '@/theme';
@@ -31,6 +32,7 @@ export default function You() {
   const mine = useMyJourneys();
   const [shelf, setShelf] = useState<Shelf>('active');
   const [pulling, setPulling] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const reload = async () => {
     setPulling(true);
     await Promise.all([me.refetch(), mine.refetch(), counts.refetch()]);
@@ -56,7 +58,8 @@ export default function You() {
         contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={pulling} onRefresh={() => void reload()} tintColor={colors.muted} />}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: layout.barGutter, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingHorizontal: layout.barGutter, paddingBottom: 8 }}>
+          <RoundButton label="Share your profile" onPress={() => setSharing(true)} icon={(c) => <Share2 size={19} color={c} />} />
           <RoundButton label="Settings" onPress={() => router.push('/settings')} icon={(c) => <Gear size={20} color={c} />} />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, paddingVertical: 22, paddingHorizontal: 18, borderRadius: radius.panel, backgroundColor: colors.surface, boxShadow: shadow.md }}>
@@ -138,6 +141,7 @@ export default function You() {
         )}
 
       </ScrollView>
+      <ProfileShareSheet visible={sharing} onClose={() => setSharing(false)} />
     </SafeAreaView>
   );
 }

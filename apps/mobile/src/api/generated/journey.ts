@@ -115,6 +115,8 @@ export interface SaveProfileRequest {
   avatarMediaId?: string;
   /** True to go back to no picture */
   removeAvatar?: boolean;
+  /** The person confirms they are 13 or older. Needed, and must be true, when the profile is first created. */
+  ageConfirmed?: boolean;
 }
 
 export interface ProfileResponse {
@@ -261,6 +263,8 @@ export interface MediaResponse {
   height: number | null;
   /** @nullable */
   durationSeconds: number | null;
+  /** True while the automatic check has this photo held for a reviewer. Only its owner ever sees a held photo. */
+  held: boolean;
 }
 
 export interface EntryViewerResponse {
@@ -411,6 +415,12 @@ export interface MembersResponse {
   viewerRole: ViewerRole;
 }
 
+export interface InviteLinkResponse {
+  /** The link to send. It is shown once: only a hash of it is kept. */
+  url: string;
+  expiresAt: string;
+}
+
 export interface CompleteJourneyRequest {
   /**
      * @minLength 0
@@ -448,6 +458,8 @@ export interface CommentResponse {
   createdAt: string;
   /** True when the journey's creator wrote it */
   byCreator: boolean;
+  /** True while the comment waits for a reviewer. Only its author ever sees a held comment. */
+  held: boolean;
   viewer: CommentViewerResponse;
 }
 
@@ -558,6 +570,13 @@ export interface MeResponse {
   profile: ProfileResponse | null;
 }
 
+export interface ShareLinkResponse {
+  /** A web page anyone can open, with or without the app */
+  url: string;
+  /** A line to send along with the link */
+  text: string;
+}
+
 export interface InvitationResponse {
   journey: JourneyResponse;
   invitedBy: PersonResponse;
@@ -658,6 +677,12 @@ export interface PagePersonResponse {
      * @nullable
      */
   nextCursor: string | null;
+}
+
+export interface LinkInvitationResponse {
+  journey: JourneyResponse;
+  invitedBy: PersonResponse;
+  expiresAt: string;
 }
 
 export interface FeedGroupResponse {
@@ -2083,6 +2108,78 @@ export const useReport = <TError = unknown,
       return useMutation(getReportMutationOptions(options), queryClient);
     }
 
+export const getAskSecondLookUrl = (id: string,) => {
+
+
+
+
+  return `/v1/media/${id}/second-look`
+}
+
+/**
+ * @summary Ask a reviewer to look again at a photo of yours that the automatic check is holding
+ */
+export const askSecondLook = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getAskSecondLookUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAskSecondLookMutationKey = () => ['askSecondLook'] as const;
+
+export const getAskSecondLookMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askSecondLook>>, TError,AskSecondLookMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof askSecondLook>>, TError,AskSecondLookMutationVariables, TContext> => {
+
+const mutationKey = getAskSecondLookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof askSecondLook>>, AskSecondLookMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  askSecondLook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AskSecondLookMutationResult = NonNullable<Awaited<ReturnType<typeof askSecondLook>>>
+
+    export type AskSecondLookMutationError = unknown
+    export type AskSecondLookMutationVariables = {id: string}
+
+    /** @summary Ask a reviewer to look again at a photo of yours that the automatic check is holding */
+export const useAskSecondLook = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askSecondLook>>, TError,AskSecondLookMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof askSecondLook>>,
+        TError,
+        AskSecondLookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAskSecondLookMutationOptions(options), queryClient);
+    }
+
 export const getStartUploadUrl = () => {
 
 
@@ -2869,6 +2966,78 @@ export const useInviteMember = <TError = unknown,
       return useMutation(getInviteMemberMutationOptions(options), queryClient);
     }
 
+export const getCreateInviteLinkUrl = (id: string,) => {
+
+
+
+
+  return `/v1/journeys/${id}/invite-link`
+}
+
+/**
+ * @summary Make a one-time link for a friend who isn't on Journey yet. It works once, for one person, for 7 days; making a new one stops the old one.
+ */
+export const createInviteLink = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<InviteLinkResponse> => {
+
+  return apiFetch<InviteLinkResponse>(getCreateInviteLinkUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateInviteLinkMutationKey = () => ['createInviteLink'] as const;
+
+export const getCreateInviteLinkMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInviteLink>>, TError,CreateInviteLinkMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createInviteLink>>, TError,CreateInviteLinkMutationVariables, TContext> => {
+
+const mutationKey = getCreateInviteLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createInviteLink>>, CreateInviteLinkMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  createInviteLink(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateInviteLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createInviteLink>>>
+
+    export type CreateInviteLinkMutationError = unknown
+    export type CreateInviteLinkMutationVariables = {id: string}
+
+    /** @summary Make a one-time link for a friend who isn't on Journey yet. It works once, for one person, for 7 days; making a new one stops the old one. */
+export const useCreateInviteLink = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInviteLink>>, TError,CreateInviteLinkMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createInviteLink>>,
+        TError,
+        CreateInviteLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateInviteLinkMutationOptions(options), queryClient);
+    }
+
 export const getAcceptInvitationUrl = (id: string,) => {
 
 
@@ -3026,6 +3195,78 @@ export const useCompleteJourney = <TError = unknown,
         TContext
       > => {
       return useMutation(getCompleteJourneyMutationOptions(options), queryClient);
+    }
+
+export const getAcceptInviteLinkUrl = (token: string,) => {
+
+
+
+
+  return `/v1/invites/${token}/accept`
+}
+
+/**
+ * @summary Join the journey an invite link is for. The link is used up.
+ */
+export const acceptInviteLink = async (token: string, options?: Parameters<typeof apiFetch>[1]): Promise<JourneyResponse> => {
+
+  return apiFetch<JourneyResponse>(getAcceptInviteLinkUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptInviteLinkMutationKey = () => ['acceptInviteLink'] as const;
+
+export const getAcceptInviteLinkMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInviteLink>>, TError,AcceptInviteLinkMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptInviteLink>>, TError,AcceptInviteLinkMutationVariables, TContext> => {
+
+const mutationKey = getAcceptInviteLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptInviteLink>>, AcceptInviteLinkMutationVariables> = (props) => {
+          const {token} = props ?? {};
+
+          return  acceptInviteLink(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptInviteLinkMutationResult = NonNullable<Awaited<ReturnType<typeof acceptInviteLink>>>
+
+    export type AcceptInviteLinkMutationError = unknown
+    export type AcceptInviteLinkMutationVariables = {token: string}
+
+    /** @summary Join the journey an invite link is for. The link is used up. */
+export const useAcceptInviteLink = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptInviteLink>>, TError,AcceptInviteLinkMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof acceptInviteLink>>,
+        TError,
+        AcceptInviteLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcceptInviteLinkMutationOptions(options), queryClient);
     }
 
 export const getGetCommentsUrl = (entryId: string,
@@ -4882,6 +5123,107 @@ export const useDeleteAccount = <TError = unknown,
       return useMutation(getDeleteAccountMutationOptions(options), queryClient);
     }
 
+export const getGetMyShareLinkUrl = () => {
+
+
+
+
+  return `/v1/me/share-link`
+}
+
+/**
+ * @summary Your 'Follow my journey' link: a page with your public journeys, for a social bio
+ */
+export const getMyShareLink = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ShareLinkResponse> => {
+
+  return apiFetch<ShareLinkResponse>(getGetMyShareLinkUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyShareLinkQueryKey = () => {
+    return [
+    `/v1/me/share-link`
+    ] as const;
+    }
+
+
+export const getGetMyShareLinkQueryOptions = <TData = Awaited<ReturnType<typeof getMyShareLink>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyShareLinkQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyShareLink>>> = ({ signal }) => getMyShareLink({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMyShareLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getMyShareLink>>>
+export type GetMyShareLinkQueryError = unknown
+
+
+/** @summary Your 'Follow my journey' link: a page with your public journeys, for a social bio */
+export function useGetMyShareLink<TData = Awaited<ReturnType<typeof getMyShareLink>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyShareLink>>,
+          TError,
+          Awaited<ReturnType<typeof getMyShareLink>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your 'Follow my journey' link: a page with your public journeys, for a social bio */
+export function useGetMyShareLink<TData = Awaited<ReturnType<typeof getMyShareLink>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyShareLink>>,
+          TError,
+          Awaited<ReturnType<typeof getMyShareLink>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your 'Follow my journey' link: a page with your public journeys, for a social bio */
+export function useGetMyShareLink<TData = Awaited<ReturnType<typeof getMyShareLink>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Your 'Follow my journey' link: a page with your public journeys, for a social bio */
+export function useGetMyShareLink<TData = Awaited<ReturnType<typeof getMyShareLink>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMyShareLinkQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetMyJourneysUrl = (params?: GetMyJourneysParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -6111,6 +6453,107 @@ export function useGetSuggestedJourneys<TData = Awaited<ReturnType<typeof getSug
 
 
 
+export const getGetLinkInvitationUrl = (token: string,) => {
+
+
+
+
+  return `/v1/invites/${token}`
+}
+
+/**
+ * @summary What an invite link invites you to
+ */
+export const getLinkInvitation = async (token: string, options?: Parameters<typeof apiFetch>[1]): Promise<LinkInvitationResponse> => {
+
+  return apiFetch<LinkInvitationResponse>(getGetLinkInvitationUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLinkInvitationQueryKey = (token: string,) => {
+    return [
+    `/v1/invites/${token}`
+    ] as const;
+    }
+
+
+export const getGetLinkInvitationQueryOptions = <TData = Awaited<ReturnType<typeof getLinkInvitation>>, TError = unknown>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLinkInvitationQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLinkInvitation>>> = ({ signal }) => getLinkInvitation(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetLinkInvitationQueryResult = NonNullable<Awaited<ReturnType<typeof getLinkInvitation>>>
+export type GetLinkInvitationQueryError = unknown
+
+
+/** @summary What an invite link invites you to */
+export function useGetLinkInvitation<TData = Awaited<ReturnType<typeof getLinkInvitation>>, TError = unknown>(
+ token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLinkInvitation>>,
+          TError,
+          Awaited<ReturnType<typeof getLinkInvitation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What an invite link invites you to */
+export function useGetLinkInvitation<TData = Awaited<ReturnType<typeof getLinkInvitation>>, TError = unknown>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getLinkInvitation>>,
+          TError,
+          Awaited<ReturnType<typeof getLinkInvitation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What an invite link invites you to */
+export function useGetLinkInvitation<TData = Awaited<ReturnType<typeof getLinkInvitation>>, TError = unknown>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary What an invite link invites you to */
+export function useGetLinkInvitation<TData = Awaited<ReturnType<typeof getLinkInvitation>>, TError = unknown>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getLinkInvitation>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetLinkInvitationQueryOptions(token,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetFeedUrl = (params?: GetFeedParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -6280,6 +6723,107 @@ export function useGetFeed<TData = Awaited<ReturnType<typeof getFeed>>, TError =
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetFeedQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEntryShareLinkUrl = (id: string,) => {
+
+
+
+
+  return `/v1/entries/${id}/share-link`
+}
+
+/**
+ * @summary The link to share one entry. A private journey's entries have none.
+ */
+export const getEntryShareLink = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<ShareLinkResponse> => {
+
+  return apiFetch<ShareLinkResponse>(getGetEntryShareLinkUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEntryShareLinkQueryKey = (id: string,) => {
+    return [
+    `/v1/entries/${id}/share-link`
+    ] as const;
+    }
+
+
+export const getGetEntryShareLinkQueryOptions = <TData = Awaited<ReturnType<typeof getEntryShareLink>>, TError = unknown>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEntryShareLinkQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEntryShareLink>>> = ({ signal }) => getEntryShareLink(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEntryShareLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getEntryShareLink>>>
+export type GetEntryShareLinkQueryError = unknown
+
+
+/** @summary The link to share one entry. A private journey's entries have none. */
+export function useGetEntryShareLink<TData = Awaited<ReturnType<typeof getEntryShareLink>>, TError = unknown>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEntryShareLink>>,
+          TError,
+          Awaited<ReturnType<typeof getEntryShareLink>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The link to share one entry. A private journey's entries have none. */
+export function useGetEntryShareLink<TData = Awaited<ReturnType<typeof getEntryShareLink>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEntryShareLink>>,
+          TError,
+          Awaited<ReturnType<typeof getEntryShareLink>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The link to share one entry. A private journey's entries have none. */
+export function useGetEntryShareLink<TData = Awaited<ReturnType<typeof getEntryShareLink>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary The link to share one entry. A private journey's entries have none. */
+export function useGetEntryShareLink<TData = Awaited<ReturnType<typeof getEntryShareLink>>, TError = unknown>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEntryShareLink>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEntryShareLinkQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

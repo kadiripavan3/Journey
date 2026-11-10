@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { Bell, LogOut, Palette, ShieldCheck, UserRound } from 'lucide-react-native';
-import { ScrollView, View } from 'react-native';
+import { Bell, CircleHelp, FileText, Flag, Lock, LogOut, Palette, ShieldCheck, UserRound } from 'lucide-react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { apiBaseUrl } from '@/api/config';
 import { useGetMe, useGetSettings } from '@/api/generated/journey';
 import { useSession } from '@/auth/session';
 import { layout, useTheme } from '@/theme';
@@ -24,6 +25,8 @@ export default function Settings() {
   const settings = useGetSettings().data;
   const appearance = useAppearance();
   const profile = me?.profile;
+  // These are web pages, so they can also be read without the app; the stores ask for exactly that.
+  const openPage = (path: string) => void Linking.openURL(apiBaseUrl() + path).catch(() => undefined);
   const switches = settings
     ? [settings.notifyNewEntries, settings.notifyCompleted, settings.notifyComments, settings.notifyFollowers, settings.notifyLikes, settings.weeklyDigest, settings.digestEmail, settings.reminders]
     : null;
@@ -59,6 +62,14 @@ export default function Settings() {
           />
           <Row icon={(c) => <ShieldCheck size={18} color={c} />} label="Privacy and safety" onPress={() => router.push('/settings/privacy')} />
           <Row icon={(c) => <Palette size={18} color={c} />} label="Appearance" value={APPEARANCE[appearance]} onPress={() => router.push('/settings/appearance')} />
+        </RowGroup>
+
+        <GroupLabel style={{ marginHorizontal: layout.gutter }}>Help</GroupLabel>
+        <RowGroup>
+          <Row first icon={(c) => <CircleHelp size={18} color={c} />} label="Help and contact" onPress={() => openPage('/contact')} />
+          <Row icon={(c) => <Flag size={18} color={c} />} label="Community guidelines" onPress={() => openPage('/guidelines')} />
+          <Row icon={(c) => <FileText size={18} color={c} />} label="Terms of use" onPress={() => openPage('/terms')} />
+          <Row icon={(c) => <Lock size={18} color={c} />} label="Privacy policy" onPress={() => openPage('/privacy')} />
         </RowGroup>
 
         <GroupLabel style={{ marginHorizontal: layout.gutter }}> </GroupLabel>

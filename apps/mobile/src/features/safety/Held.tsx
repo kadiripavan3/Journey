@@ -1,0 +1,76 @@
+import { useRouter } from 'expo-router';
+import { ChevronRight, ShieldAlert } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+
+import type { EntryResponse } from '@/api/generated/journey';
+import { plural } from '@/lib/plural';
+import { darkTheme, radius, useTheme, withAlpha } from '@/theme';
+import { Frost } from '@/ui/Frost';
+import { Txt } from '@/ui/Txt';
+
+/** How many of an entry's photos are waiting for a reviewer. Only the person who posted them ever gets more than none. */
+export function heldCount(entry: EntryResponse): number {
+  return entry.media.filter((m) => m.held).length;
+}
+
+/**
+ * What lies over a photo that is being reviewed: the photo is blurred, with a shield and "Hidden for now".
+ * Put it last inside the photo's box. Small photos get the shield only.
+ */
+export function HeldVeil({ small }: { small?: boolean }) {
+  const on = darkTheme.colors.onPhoto;
+  return (
+    <View
+      accessible
+      accessibilityLabel="This photo is hidden while a person reviews it"
+      style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 6, overflow: 'hidden', backgroundColor: withAlpha(darkTheme.colors.stage, 0.35) }]}>
+      <Frost tone="dark" intensity={70} />
+      <ShieldAlert size={small ? 20 : 24} color={on} />
+      {small ? null : (
+        <Txt variant="footnote" weight={800} style={{ color: on }}>
+          Hidden for now
+        </Txt>
+      )}
+    </View>
+  );
+}
+
+/** On your own entry: a line saying a photo is being reviewed, which opens the page that explains it. */
+export function HeldNote({ entry }: { entry: EntryResponse }) {
+  const router = useRouter();
+  const { colors } = useTheme();
+  const held = heldCount(entry);
+  if (held === 0) return null;
+  const what = held === 1 ? 'One photo is being reviewed' : `${plural(held, 'photo')} are being reviewed`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${what}. See what this means`}
+      onPress={() => router.push(`/review/${entry.id}`)}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.field, backgroundColor: pressed ? colors.fill2 : colors.fill })}>
+      <ShieldAlert size={18} color={colors.warn} />
+      <View style={{ flex: 1 }}>
+        <Txt variant="caption" weight={800}>
+          {what}
+        </Txt>
+        <Txt variant="small" color="muted">
+          Only you can see it for now
+        </Txt>
+      </View>
+      <ChevronRight size={16} color={colors.muted} />
+    </Pressable>
+  );
+}
+
+/** Under your own comment while the word filter has it waiting for a reviewer. */
+export function HeldCommentNote() {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+      <ShieldAlert size={14} color={colors.warn} />
+      <Txt variant="footnote" weight={600} style={{ flex: 1, color: colors.warn }}>
+        Only you can see this for now. A person will read it soon.
+      </Txt>
+    </View>
+  );
+}
