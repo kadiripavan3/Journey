@@ -77,6 +77,40 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 - **Authors follow their own journeys:** the owner and friends who joined have a `journey_follows` row marked `author`. It gives them "new since your last visit"; they are not counted as followers.
 - **A rule that once went wrong gets a test** in `RulesTest`.
 
+## App structure and standards
+
+Where things live in `apps/mobile/src`:
+
+| Folder | What goes there |
+|---|---|
+| `app/` | Screens, one file per route (Expo Router). A screen fetches its data and lays out components. Each group's `_layout.tsx` exports the `ErrorBoundary`. |
+| `ui/` | The design system: `Txt`, `Button`, `Sheet`, `Field`, `Photo`, `Pill`, `Stat`, `WordTabs`, `Frost` and so on. Nothing here knows about journeys, people or the API. |
+| `features/<name>/` | Everything that does: `journeys`, `entries`, `people`, `safety`, `settings`, `media`, `search`, `navigation`. Components, hooks and words shared by more than one screen. |
+| `api/` | The generated client, the fetcher, uploads, and when to fetch again. |
+| `auth/`, `theme/`, `lib/` | The session and sign-up state; the generated tokens and `useTheme`; small pure helpers (dates, plurals, names). |
+| `test/` | Helpers for tests. Tests sit next to what they test, in `__tests__`. |
+
+The linter (`npm run lint`) refuses, outside `src/theme`:
+
+- **A text size written by hand** (`fontSize`, `lineHeight`, `letterSpacing`, `fontWeight`, `fontFamily`). Use a `Txt` variant from the type scale (`docs/04-design-brief.md`), and `textStyle('item', 600, { oneLine: true })` for a box you type in.
+- **A corner written as a number.** Use `radius.card`, `radius.sheet`, … and `radius.pill` for anything fully round. `Photo`, `Sk` and `GlassBar` take the name: `<Photo radius="field">`.
+- **A colour or shadow written by hand** (`#…`, `rgba(…)`). Use `colors.…` and `shadow.…` from `useTheme()`, and `withAlpha(colors.stage, 0.45)` for a see-through shade.
+- **An emoji inside text or a label.** Pass it to `Emoji`, or to a prop named `emoji` (`EmptyState`, `Chip`, `Ring`, `JourneyCard`'s `pillEmoji`).
+- **`src/ui` importing from `features`, `api` or `auth`**, and features importing from `app`.
+
+Also true, by habit rather than by the linter:
+
+- Gutters are `layout.gutter` (22), `layout.rowGutter` (20) and `layout.barGutter` (16); a section's title has `layout.section` above it. Gaps inside a component are plain even numbers.
+- Routes are typed. `npm run typecheck` generates the route types first (`npm run routes`), so `router.push('/journey/' + id)` must be a real route. Type a route kept in a variable as `Href`. No `as never`.
+- Labels on photos that repeat down a list are tinted (`Pill` does this by default); pass `frost="blur"` only for the one label on a full-photo screen.
+- One of each: `WordTabs` for word tabs, `Stat` for a number over a word, `VISIBILITY` (`features/journeys/visibility`) for what Public, Unlisted and Private are called, `firstName()` (`lib/names`) for what to call someone.
+
+To add a screen: build it in `src/app` from its design, with components from `src/ui` and `src/features`. A piece used by one screen stays in that screen's file; the second screen that needs it moves it to `features/<name>/` (or to `ui/` if it knows nothing about the domain). Add the screen to the walk-through.
+
+Component tests use React Native Testing Library (`render` and presses are awaited). `npm run check` runs them. In this cloud environment run it as `EXPO_OFFLINE=1 npm run check`.
+
+The walk-through reads `API_URL` and `WEB_URL` when the API and the web build are not on 8080 and 8081; build the web app with `EXPO_PUBLIC_API_URL` set to the same API address.
+
 ## Working rules
 
 - Work on the branch the session names. Don't push to `main` or open a pull request unless the owner asks.

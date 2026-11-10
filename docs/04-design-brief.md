@@ -21,13 +21,54 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 | Cue | Rule |
 |---|---|
 | Photos | Full-bleed covers. 20 px rounded corners inside cards. A dark gradient under any text that sits on a photo. |
-| Type | Plus Jakarta Sans only. Titles in ExtraBold (800) with tight letter-spacing; body text in Medium (500). |
+| Type | Plus Jakarta Sans only. Titles in ExtraBold (800) with tight letter-spacing; body text in Medium (500). Every size is one of the 24 styles in the [type scale](#type-scale); nothing is sized by hand. |
 | Colour | Neutral surfaces with a faint cool tint. The accent only for primary actions, progress and milestones. Pink-red only for likes. |
-| Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass (16–24 px blur). |
-| Shape | Cards 20 px, panels 24 px, sheets 30 px. Buttons, chips and pills fully round. |
+| Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass. The one bar, sheet or button a screen has on a photo is blurred (16–24 px). Labels that repeat down a list ("3 new", "1 / 4") are tinted, not blurred: it looks the same at that size and keeps lists smooth. |
+| Shape | Corners come in eleven steps (chip 8 · tile 12 · thumb 14 · field 16 · photo 18 · card 20 · cardLarge 22 · panel 24 · stage 28 · sheet 30 · pill full). Cards 20–22 px, panels 24 px, sheets 30 px. Buttons, chips, pills, avatars and thin bars are fully round. |
 | Icons | 24 px line icons with 2 px rounded strokes. Categories, interests, templates and empty states use 3D icons: Microsoft's Fluent Emoji (free, MIT licence) for now. Custom art can replace them file by file in `design/hub/icons3d`. |
 | Motion | Small and quick, never in the way. Things you press shrink a touch and spring back. A like makes the heart pop. Progress rings fill. Lists arrive one item after another, rising a little. The only thing that repeats is the soft breathing of the grey shapes while something loads. Nothing moves when the phone's Reduce Motion is on. The numbers are in the tokens. |
 | Depth | Soft shadows in light mode. Hairline borders instead of shadows in dark mode. |
+| Space | Content starts 22 px from the edge, full-width rows 20 px, bars and sideways rails 16 px. A section's title has 24 px above it. See [Spacing](#spacing). |
+
+## Type scale
+
+Every piece of text in the app is one of these styles. They live in `design/tokens.json` (`type`); the hub shows them, and in the app each is a `Txt` variant. A style sets the size, line height, weight and letter spacing together. The weight can be changed where a design calls for it (`<Txt variant="caption" weight={700}>`); the size and line height cannot.
+
+| Style | In the app | Size / line | Weight | Used for |
+|---|---|---|---|---|
+| Hero | `hero` | 41 / 42 | 800 | The one line on the welcome screen |
+| Display large | `displayLarge` | 36 / 38 | 800 | The big number on a full-photo screen |
+| Display | `display` | 34 / 36 | 800 | A big number or initials |
+| Heading | `heading` | 31 / 35 | 800 | The title at the top of a screen |
+| Title large | `titleLarge` | 27 / 30 | 800 | A journey's or a person's name on their own page |
+| Title | `title` | 23 / 27 | 800 | An entry's title when it is open |
+| Title small | `titleSmall` | 20 / 25 | 800 | Titles of sheets, sections and empty states |
+| Subtitle | `subtitle` | 19 / 24 | 800 | The headline of a card or a group |
+| Subheading | `subheading` | 17 / 22 | 800 | Bar titles and titles in a list of entries |
+| Headline | `headline` | 16 / 21 | 700 | The title of a row or a small card |
+| Body large | `bodyLarge` | 16 / 24 | 500 | Text being read or typed on its own |
+| Lead | `lead` | 15.5 / 23 | 500 | The sentence under a screen's title |
+| Body | `body` | 15 / 22 | 500 | Ordinary text |
+| Item | `item` | 15 / 20 | 700 | Labels of rows, links and names |
+| Body small | `bodySmall` | 14.5 / 22 | 500 | Longer text in a tight place |
+| Control | `control` | 14.5 / 20 | 700 | Chips, small buttons and card titles |
+| Callout | `callout` | 14 / 20 | 500 | A sentence that explains a choice |
+| Note | `note` | 13.5 / 19 | 500 | The start of an entry under its title |
+| Caption | `caption` | 13 / 18 | 600 | A line of detail under a title |
+| Footnote | `footnote` | 12.5 / 17 | 500 | Detail under a row's label |
+| Small | `small` | 12 / 16 | 600 | Pills, tab labels and timestamps |
+| Tiny | `tiny` | 11.5 / 14 | 700 | Numbers in a grid and fine print |
+| Label | `label` | 11.5 / 14 | 800, capitals | The small capital line above a title |
+| Micro | `micro` | 10.5 / 13 | 800 | Tab bar labels and tiny badges |
+
+When a design needs a size that isn't here, add a style to the tokens (with what it is for) rather than a number in a screen.
+
+## Spacing
+
+- **Gutters come from the tokens** (`layout`): `gutter` 22 for text and cards, `rowGutter` 20 for full-width rows and section titles, `barGutter` 16 for bars and sideways rails. A screen's content never sits at another distance from the edge.
+- **A section's title has `section` (24) above it.** `SectionHeader` does this by itself.
+- **Gaps inside a component are plain numbers on a 2-point grid** (4, 6, 8, 10, 12, 14, 16 …): the space between an icon and its label, a card's padding, the gap between two lines. They belong to the component, not to the page, so they are not tokens. The `space` scale in the tokens is the set to pick from when in doubt.
+- A few odd values (9, 11, 13) are left from matching the first designs pixel for pixel. Don't add new ones.
 
 ## Interaction cues
 
@@ -92,3 +133,4 @@ The people in the screens are made up. Nora Lind is the person using the app fro
 - **Design 2.0, 7 Nov 2026:** real photos, bold sans-serif type, glass controls, light and dark, three accent options.
 - **Design 2.1, 8 Nov 2026:** Sun chosen as the accent; the eight key screens grew to 59 end-to-end screens in 12 groups, built from one set of shared components.
 - **9 Nov 2026:** shared journeys (six screens) and the weekly digest added, after the decisions in the [engagement plan](06-engagement.md).
+- **10 Nov 2026:** the type scale grew from six named styles to the 24 the screens use, corners to eleven steps, and gutters became tokens, so the app takes every size from `design/tokens.json`.
