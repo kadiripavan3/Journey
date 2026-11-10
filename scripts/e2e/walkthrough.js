@@ -1,7 +1,9 @@
 // Walks through the app the way a new person would, in the web build, against the local API:
 // sign-up, following, Home, Discover, a journey and its story, starting a journey, posting and
-// editing an entry with photos, the profile, Activity, likes, comments, following a creator, search,
-// the weekly digest, sharing a link, shared journeys (inviting a friend, and being invited), settings, completing a journey, reporting,
+// editing an entry with photos and a place, the map (a list of stops in a browser), a draft and an entry
+// written offline that posts by itself when the connection is back, a short clip, the profile, Activity,
+// likes, comments, following a creator, search,
+// the weekly digest, sharing a link, shared journeys (inviting a friend, one person's part of the story, and being invited), settings, completing a journey, reporting,
 // blocking, and at the end deleting the account.
 // It takes a screenshot of every screen and fails on the first thing that doesn't work.
 //
@@ -170,7 +172,16 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await L('Title, optional').fill('Skógafoss before breakfast');
     await T('What surprised you?').click();
     await L('What happened').fill('Nobody else on the path. The spray soaks you from fifty metres away.');
-    await L('Place, optional').fill('Skógafoss, Iceland');
+    await R('button', { name: 'Add a place' }).click();
+    await T('Where was this?').waitFor();
+    await L('Search for a place').fill('skoga');
+    await R('button', { name: /^Skógafoss, Iceland/ }).waitFor();
+    await shot('place-sheet');
+    await R('button', { name: /^Skógafoss, Iceland/ }).click();
+    await R('button', { name: /^Place: Skógafoss, Iceland/ }).waitFor();
+    // Readers see the area unless the author asks for the exact spot.
+    await R('switch', { name: 'Show the exact spot', checked: false }).waitFor();
+    await T('2 of 10 photos · 0 of 3 clips').waitFor();
     await R('switch', { name: 'Mark as milestone' }).click();
     await shot('composer');
     await R('button', { name: 'Post' }).click();
@@ -190,6 +201,14 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T('Skógafoss at sunrise').first().waitFor({ timeout: 20000 });
     await R('button', { name: 'Close' }).click();
     await T('Skógafoss at sunrise').first().waitFor();
+    await R('button', { name: 'Map of this journey' }).click();
+    await R('button', { name: /^Stop 1\. .*Skógafoss, Iceland, milestone\. Skógafoss at sunrise/ }).waitFor();
+    await T('1 entry · 1 place').waitFor();
+    await shot('own-map');
+    await R('button', { name: /^Stop 1\./ }).click();
+    await T('Entry 1 of 1').waitFor();
+    await R('button', { name: 'Close' }).click();
+    await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
   });
 
@@ -283,6 +302,11 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await shot('jump-to');
     await T('Newest entry').click();
     await T('Sunrise over Mount Bromo').waitFor();
+    await R('button', { name: 'Map of this journey' }).click();
+    await T(/^5 entries · \d places?$/).waitFor();
+    await R('button', { name: /^Stop 5\..*Mount Bromo/ }).waitFor();
+    await shot('map');
+    await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
     await R('tab', { name: 'You' }).click();
@@ -305,8 +329,102 @@ const WEB_URL = (process.env.WEB_URL || 'http://localhost:8081').replace(/\/+$/,
     await T(/^Read (the story|all)/).click();
     await T('Along for the ride').waitFor();
     await shot('shared-timeline');
+    // The story can be narrowed to what one person wrote, and widened again.
+    const mine = page.getByRole('button', { name: /^Skógafoss at sunrise$/ });
+    const theirs = page.getByRole('button', { name: /^Along for the ride(\. New)?$/ });
+    await R('button', { name: 'Everyone', exact: true }).waitFor();
+    await page.getByRole('button', { name: /^(?!Nora|Everyone)[^,.]+, 1$/ }).last().click();
+    await theirs.last().waitFor();
+    await mine.last().waitFor({ state: 'detached' });
+    await shot('shared-timeline-one-person');
+    await R('button', { name: 'Nora, 1', exact: true }).click();
+    await mine.last().waitFor();
+    await theirs.last().waitFor({ state: 'detached' });
+    await R('button', { name: 'Everyone', exact: true }).click();
+    await theirs.last().waitFor();
     await R('button', { name: 'Back' }).click();
     await R('button', { name: 'Back' }).click();
+  });
+
+  await step('drafts', async () => {
+    // A draft: written, put away, and found again under Drafts and uploads on your own profile.
+    await T('Iceland ring road').click();
+    await R('button', { name: 'Entry', exact: true }).click();
+    await T('New entry').waitFor();
+    await L('Title, optional').fill('Notes from the hot spring');
+    await R('button', { name: 'Close' }).click();
+    await T('Save this for later?').waitFor();
+    await shot('save-draft');
+    await R('button', { name: 'Save as a draft' }).click();
+    await T('Shared journey').waitFor();
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: /^Drafts and uploads\. 1 draft/ }).click();
+    await T(/^Text only · saved/).waitFor();
+    await shot('drafts');
+    await R('button', { name: /^Notes from the hot spring/ }).click();
+    await T('Draft', { exact: true }).waitFor();
+    await L('What happened').fill('Forty degrees in the water, four outside.');
+    // Without a connection the entry is kept on the phone. It goes up by itself, once, when the connection is back.
+    await page.context().setOffline(true);
+    await T(/^You.re offline\. Post it anyway/).waitFor();
+    await shot('composer-offline');
+    await R('button', { name: 'Post' }).click();
+    await T(/^Saved: "Notes from the hot spring"/).waitFor();
+    await shot('story-entry-waiting');
+    await R('button', { name: /Open drafts and uploads/ }).click();
+    await T('Waiting to upload').waitFor();
+    await T('Waiting for a connection').waitFor();
+    await shot('uploads-offline');
+    await page.context().setOffline(false);
+    await T('Nothing waiting').waitFor({ timeout: 30000 });
+    await R('button', { name: 'Back' }).click();
+    await page.getByRole('button', { name: /^Notes from the hot spring$/ }).last().waitFor({ timeout: 20000 });
+    await T(/^(Saved|Posting): "Notes/).waitFor({ state: 'detached' });
+    await shot('story-after-offline');
+    // Posted once: the story has the entry a single time.
+    if ((await page.getByRole('button', { name: /^Notes from the hot spring$/ }).count()) !== 1) throw new Error('the offline entry is in the story more than once');
+    await R('button', { name: 'Back' }).click();
+    await T('Nothing waiting').waitFor();
+    await R('button', { name: 'Back' }).click();
+    await T('Edit profile').waitFor();
+  });
+
+  await step('clip', async () => {
+    // A short clip to attach. The browser records one of a plain page: Chromium plays WebM, and has no camera roll.
+    const recorder = await browser.newContext({ recordVideo: { dir: path.join(out, 'clip'), size: { width: 320, height: 240 } } });
+    const stage = await recorder.newPage();
+    await stage.setContent('<body style="margin:0;background:#FFC21A"><h1 style="font:700 40px sans-serif;padding:80px 40px">Journey</h1></body>');
+    await stage.waitForTimeout(1600);
+    const recording = stage.video();
+    await recorder.close();
+    const clip = await recording.path();
+    await T('Iceland ring road').click();
+    await R('button', { name: 'Entry', exact: true }).click();
+    await T('New entry').waitFor();
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), R('button', { name: 'Add photos or clips' }).click()]);
+    await chooser.setFiles(clip);
+    await R('button', { name: 'Remove clip 1' }).waitFor();
+    await T('0 of 10 photos · 1 of 3 clips').waitFor();
+    await L('Title, optional').fill('Steam off the river');
+    await shot('composer-clip');
+    await R('button', { name: 'Post' }).click();
+    await page.getByRole('button', { name: /^Steam off the river$/ }).last().waitFor({ timeout: 30000 });
+    await shot('story-with-clip');
+    await page.getByRole('button', { name: /^Steam off the river$/ }).last().click();
+    await R('button', { name: 'Open the clip full screen' }).click();
+    // A clip never plays by itself: its still and a play button, until it is tapped.
+    await T(/^Tap to play/).waitFor();
+    if (await page.locator('video').count()) throw new Error('a clip was loaded before anyone tapped play');
+    await shot('clip');
+    await R('button', { name: /^Play the clip/ }).click();
+    await page.locator('video').last().waitFor();
+    await page.waitForFunction(() => { const all = document.querySelectorAll('video'); const v = all[all.length - 1]; return !!v && v.currentTime > 0; }, null, { timeout: 15000 });
+    await shot('clip-playing');
+    await R('button', { name: 'Close photos' }).click();
+    await R('button', { name: 'Close', exact: true }).click();
+    await R('button', { name: 'Back' }).click();
+    await R('button', { name: 'Back' }).click();
+    await T('Edit profile').waitFor();
   });
 
   // A second person, made through the API, invites the new person to their journey.
