@@ -953,6 +953,11 @@ export interface ActivityResponse {
   newCount: number;
 }
 
+export interface ActivityUnseenResponse {
+  /** True when something happened since the person last opened Activity */
+  unseen: boolean;
+}
+
 export type ForgetDeviceParams = {
   token: string;
 };
@@ -7833,6 +7838,107 @@ export function useGetActivity<TData = Awaited<ReturnType<typeof getActivity>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetActivityUnseenUrl = () => {
+
+
+
+
+  return `/v1/activity/unseen`
+}
+
+/**
+ * @summary Whether anything happened since you last opened Activity: the dot on the tab bar
+ */
+export const getActivityUnseen = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ActivityUnseenResponse> => {
+
+  return apiFetch<ActivityUnseenResponse>(getGetActivityUnseenUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActivityUnseenQueryKey = () => {
+    return [
+    `/v1/activity/unseen`
+    ] as const;
+    }
+
+
+export const getGetActivityUnseenQueryOptions = <TData = Awaited<ReturnType<typeof getActivityUnseen>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActivityUnseenQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivityUnseen>>> = ({ signal }) => getActivityUnseen({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetActivityUnseenQueryResult = NonNullable<Awaited<ReturnType<typeof getActivityUnseen>>>
+export type GetActivityUnseenQueryError = unknown
+
+
+/** @summary Whether anything happened since you last opened Activity: the dot on the tab bar */
+export function useGetActivityUnseen<TData = Awaited<ReturnType<typeof getActivityUnseen>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActivityUnseen>>,
+          TError,
+          Awaited<ReturnType<typeof getActivityUnseen>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Whether anything happened since you last opened Activity: the dot on the tab bar */
+export function useGetActivityUnseen<TData = Awaited<ReturnType<typeof getActivityUnseen>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActivityUnseen>>,
+          TError,
+          Awaited<ReturnType<typeof getActivityUnseen>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Whether anything happened since you last opened Activity: the dot on the tab bar */
+export function useGetActivityUnseen<TData = Awaited<ReturnType<typeof getActivityUnseen>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/** @summary Whether anything happened since you last opened Activity: the dot on the tab bar */
+export function useGetActivityUnseen<TData = Awaited<ReturnType<typeof getActivityUnseen>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActivityUnseen>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetActivityUnseenQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

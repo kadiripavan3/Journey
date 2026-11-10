@@ -35,12 +35,12 @@ public class AutoPause {
 
     @Scheduled(cron = "${journey.autopause.cron:0 15 4 * * *}", zone = "UTC")
     void nightly() {
-        if (jobs.claim("auto_pause", LocalDate.now(ZoneOffset.UTC).toString())) {
+        jobs.run("auto_pause", LocalDate.now(ZoneOffset.UTC).toString(), () -> {
             int paused = pauseQuietJourneys();
             if (paused > 0) {
                 log.info("Paused {} journeys after {} quiet days.", paused, QUIET_DAYS);
             }
-        }
+        });
     }
 
     /** Pauses the quiet journeys and tells their owners, all or nothing. Returns how many were paused. */

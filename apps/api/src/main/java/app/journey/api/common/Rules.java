@@ -11,12 +11,15 @@ public final class Rules {
     /**
      * True when neither person has blocked the other. Blocking works both ways.
      *
+     * <p>Written as two separate "not exists", one for each direction, so the database can answer each from
+     * the index on {@code blocks} instead of trying both directions row by row.
+     *
      * @param person the column or parameter holding the other person's id, such as {@code "e.author_id"}
      * @param viewer the parameter holding the viewer's id, such as {@code ":viewer"}
      */
     public static String notBlocked(String person, String viewer) {
-        return ("not exists (select 1 from blocks bk where (bk.blocker_id = %2$s and bk.blocked_id = %1$s)"
-                        + " or (bk.blocker_id = %1$s and bk.blocked_id = %2$s))")
+        return ("(not exists (select 1 from blocks bk where bk.blocker_id = %2$s and bk.blocked_id = %1$s)"
+                        + " and not exists (select 1 from blocks bk where bk.blocker_id = %1$s and bk.blocked_id = %2$s))")
                 .formatted(person, viewer);
     }
 
@@ -49,6 +52,26 @@ public final class Rules {
     }
 
     /**
+     * True when the viewer may read a comment as far as its author goes: the two haven't blocked each other,
+     * or the comment is under the viewer's own entry or in the viewer's own journey. Someone who commented and
+     * then blocked the person they wrote to can't leave words behind that everyone sees except that person:
+     * the owner of the journey still sees them, and is the one who can remove them.
+     *
+     * @param comment the alias of the comments table in the query, such as {@code "c"}
+     * @param viewer the parameter or column holding the viewer's id
+     */
+    public static String commentBy(String comment, String viewer) {
+        // "Under my entry" and "in my journey" are asked separately on purpose. Each then starts from rows that
+        // are the viewer's own (their entries, their journeys); asked as one question with an "or" inside,
+        // the database may decide to go through every entry there is to answer it.
+        return ("(" + notBlocked("%1$s.author_id", viewer)
+                        + " or exists (select 1 from entries ce where ce.id = %1$s.entry_id and ce.author_id = %2$s)"
+                        + " or exists (select 1 from journeys cj join entries cje on cje.journey_id = cj.id"
+                        + " where cje.id = %1$s.entry_id and cj.owner_id = %2$s))")
+                .formatted(comment, viewer);
+    }
+
+    /**
      * True when the viewer may see a photo as far as review goes: it isn't being held, or it is their own.
      * A photo the automatic check flagged is hidden from everyone but its owner until a reviewer releases it.
      *
@@ -70,6 +93,19 @@ public final class Rules {
     }
 
     /**
+     * The join that brings in the photo someone chose to stand for them or for a journey: a profile picture or
+     * a cover. A photo can be held after it was chosen (a reviewer's decision, or the nightly check catching
+     * up); from that moment the join finds nothing, exactly as if no photo had been chosen. Every query that
+     * reads a profile picture or a cover joins it this way.
+     *
+     * @param media the alias to give the media table, such as {@code "pa"}
+     * @param chosen the column holding the chosen photo's id, such as {@code "p.avatar_media_id"}
+     */
+    public static String chosenPhoto(String media, String chosen) {
+        return " left join media %1$s on %1$s.id = %2$s and %3$s ".formatted(media, chosen, publicMedia(media));
+    }
+
+    /**
      * True when the viewer may see a comment as far as review goes: it isn't being held, or they wrote it.
      *
      * @param comment the alias of the comments table in the query, such as {@code "c"}
@@ -84,12 +120,16 @@ public final class Rules {
      * against one of its entries. Discover, search and suggestions leave a reported journey out until then;
      * it still opens for anyone who has the link or follows it.
      *
+     * <p>The two kinds of report are asked about separately. Open reports are few, so the database reads them
+     * once and checks each journey against them, instead of going through the reports again for every journey.
+     *
      * @param journey the alias of the journeys table in the query, such as {@code "j"}
      */
     public static String notUnderReview(String journey) {
-        return ("not exists (select 1 from reports rp where rp.status = 'open' and ((rp.target_type = 'journey'"
-                        + " and rp.target_id = %1$s.id) or (rp.target_type = 'entry' and exists"
-                        + " (select 1 from entries re where re.id = rp.target_id and re.journey_id = %1$s.id))))")
+        return ("(not exists (select 1 from reports rp where rp.status = 'open' and rp.target_type = 'journey'"
+                        + " and rp.target_id = %1$s.id)"
+                        + " and not exists (select 1 from reports rp join entries re on re.id = rp.target_id"
+                        + " where rp.status = 'open' and rp.target_type = 'entry' and re.journey_id = %1$s.id))")
                 .formatted(journey);
     }
 }

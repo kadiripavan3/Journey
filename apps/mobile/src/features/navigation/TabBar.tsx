@@ -4,7 +4,7 @@ import { Bell, Compass, House, Plus, User } from 'lucide-react-native';
 import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { useGetActivity } from '@/api/generated/journey';
+import { useGetActivityUnseen } from '@/api/generated/journey';
 import { AddSheet } from '@/features/journeys/AddSheet';
 import { radius, useTheme } from '@/theme';
 import { Tap } from '@/ui/Motion';
@@ -22,7 +22,8 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
   const { colors, scheme, shadow } = useTheme();
   const [adding, setAdding] = useState(false);
   // Checked again every minute, so the dot appears without leaving the app.
-  const hasNews = (useGetActivity({ query: { refetchInterval: 60_000 } }).data?.newCount ?? 0) > 0;
+  // One small question a minute while the app is in front: is there anything new? It never builds the inbox.
+  const hasNews = useGetActivityUnseen({ query: { refetchInterval: 60_000 } }).data?.unseen ?? false;
 
   const tab = (routeIndex: number) => {
     const route = state.routes[routeIndex];

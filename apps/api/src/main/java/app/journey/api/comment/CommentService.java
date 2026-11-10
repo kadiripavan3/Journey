@@ -2,8 +2,8 @@ package app.journey.api.comment;
 
 import app.journey.api.comment.CommentStore.CommentRow;
 import app.journey.api.common.ApiProblem;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.entry.EntryService;
 import app.journey.api.entry.EntryStore.EntryRow;
 import app.journey.api.media.MediaService;
@@ -61,7 +61,7 @@ public class CommentService {
     }
 
     /** A page of an entry's comments: threads oldest first, each followed by its replies. */
-    public Page<CommentResponse> list(UUID entryId, UUID viewer, PageRequest page) {
+    public Page<CommentResponse> list(UUID entryId, UUID viewer, Keyset page) {
         EntryRow entry = entries.require(entryId, viewer);
         return comments.page(entryId, viewer, page)
                 .map(rows -> rows.stream().map(row -> view(row, entry, viewer)).toList());
@@ -126,6 +126,17 @@ public class CommentService {
                     "Only the person who wrote a comment, or the journey's creator, can delete it.");
         }
         comments.delete(id);
+    }
+
+    /**
+     * A reviewer removes a comment that broke the guidelines: the same removal as its author's own, replies
+     * included. Returns what it said, for the record; empty when it was already gone.
+     */
+    @Transactional
+    public Optional<String> removeForReviewer(UUID id) {
+        Optional<String> said = comments.find(id).map(CommentRow::body);
+        said.ifPresent(body -> comments.delete(id));
+        return said;
     }
 
     private static ApiProblem notFound() {

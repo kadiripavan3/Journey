@@ -1,8 +1,8 @@
 package app.journey.api.journey;
 
 import app.journey.api.auth.Me;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.journey.JourneyService.DiscoverResponse;
 import app.journey.api.journey.JourneyService.JourneyResponse;
 import app.journey.api.profile.Profile;
@@ -165,14 +165,14 @@ class JourneyController {
     @Operation(operationId = "getMyJourneys", summary = "Your own journeys, of every visibility")
     Page<JourneyResponse> mine(
             @Me UUID me, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-        return journeys.mine(me, PageRequest.of(cursor, limit, 30));
+        return journeys.mine(me, Keyset.of(cursor, limit, 30));
     }
 
     @GetMapping("/me/following")
     @Operation(operationId = "getFollowedJourneys", summary = "The journeys you follow")
     Page<JourneyResponse> following(
             @Me UUID me, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit) {
-        return journeys.following(me, PageRequest.of(cursor, limit, 30));
+        return journeys.following(me, Keyset.of(cursor, limit, 30));
     }
 
     @GetMapping("/profiles/{username}/journeys")
@@ -182,7 +182,7 @@ class JourneyController {
             @PathVariable String username,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return journeys.publicBy(username.toLowerCase(), me, PageRequest.of(cursor, limit, 30));
+        return journeys.byProfile(username, me, Keyset.of(cursor, limit, 30));
     }
 
     @GetMapping("/journeys/{id}/recap")

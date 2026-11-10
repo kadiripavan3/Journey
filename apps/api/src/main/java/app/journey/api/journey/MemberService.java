@@ -92,7 +92,8 @@ public class MemberService {
                 entryCounts.getOrDefault(journey.ownerId(), 0),
                 journey.createdAt()));
         ViewerRole viewerRole = isOwner ? ViewerRole.OWNER : ViewerRole.NONE;
-        for (MemberRow row : asked) {
+        // The list a person sees leaves out anyone they blocked or who blocked them; the owner sees everyone.
+        for (MemberRow row : members.membersShownTo(journeyId, viewer)) {
             boolean joined = row.status() == MemberStatus.JOINED;
             if (row.userId().equals(viewer)) {
                 viewerRole = joined ? ViewerRole.FRIEND : ViewerRole.INVITED;

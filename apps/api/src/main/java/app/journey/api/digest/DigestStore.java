@@ -1,10 +1,12 @@
 package app.journey.api.digest;
 
 import app.journey.api.common.Rules;
+import app.journey.api.common.Sql;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** The questions the weekly digest asks of the last seven days. */
 @Repository
@@ -19,9 +21,11 @@ public class DigestStore {
     private static final String WEEK = "now() - interval '7 days'";
 
     private final JdbcClient jdbc;
+    private final TransactionTemplate transaction;
 
-    DigestStore(JdbcClient jdbc) {
+    DigestStore(JdbcClient jdbc, TransactionTemplate transaction) {
         this.jdbc = jdbc;
+        this.transaction = transaction;
     }
 
     /** The journeys a person follows or writes in that got entries from others this week, the most recently moved first. */
@@ -60,22 +64,31 @@ public class DigestStore {
                 .list();
     }
 
-    /** Everyone with something to catch up on who hasn't switched the digest off. */
+    /**
+     * Everyone with something to catch up on who hasn't switched the digest off. It starts from the week's
+     * entries (found by when they were posted, V36) and goes from each to the people who follow its journey.
+     * This is the one question of the weekly job that looks at the whole week for everyone, so it gives itself
+     * more time than a request gets (see "Limits on the database" in docs/02-tech-stack.md).
+     */
     public List<Due> due() {
-        return jdbc.sql("""
-            select f.user_id, coalesce(s.digest_email, false) as by_email, count(*) as entries, count(distinct e.journey_id) as journeys
-            from journey_follows f
-            join entries e on e.journey_id = f.journey_id and e.author_id <> f.user_id and e.created_at > %s
-            join journeys j on j.id = f.journey_id and %s
-            left join settings s on s.user_id = f.user_id
-            where coalesce(s.weekly_digest, true) and %s
-            group by f.user_id, s.digest_email
-            """.formatted(WEEK, Rules.visibleJourney("j", "f.user_id"), Rules.entryBy("e", "f.user_id")))
-                .query((rs, n) -> new Due(
-                        rs.getObject("user_id", UUID.class),
-                        rs.getInt("entries"),
-                        rs.getInt("journeys"),
-                        rs.getBoolean("by_email")))
-                .list();
+        return transaction.execute(status -> {
+            jdbc.sql(Sql.ROOM_FOR_A_JOB).update();
+            return jdbc.sql("""
+                select f.user_id, coalesce(s.digest_email, false) as by_email, count(*) as entries, count(distinct e.journey_id) as journeys
+                from entries e
+                join journey_follows f on f.journey_id = e.journey_id and f.user_id <> e.author_id
+                join journeys j on j.id = e.journey_id and %s
+                left join settings s on s.user_id = f.user_id
+                where e.created_at > %s and coalesce(s.weekly_digest, true) and %s
+                group by f.user_id, s.digest_email
+                """.formatted(
+                                    Rules.visibleJourney("j", "f.user_id"), WEEK, Rules.entryBy("e", "f.user_id")))
+                    .query((rs, n) -> new Due(
+                            rs.getObject("user_id", UUID.class),
+                            rs.getInt("entries"),
+                            rs.getInt("journeys"),
+                            rs.getBoolean("by_email")))
+                    .list();
+        });
     }
 }

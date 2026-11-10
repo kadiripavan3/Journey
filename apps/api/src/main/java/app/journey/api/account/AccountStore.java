@@ -72,9 +72,9 @@ public class AccountStore {
     public Page<BlockedRow> blocked(UUID userId, PageRequest page) {
         List<BlockedRow> rows = jdbc.sql("""
             select p.id, p.username, p.display_name, a.storage_key as avatar_key, b.created_at
-            from blocks b join profiles p on p.id = b.blocked_id left join media a on a.id = p.avatar_media_id
+            from blocks b join profiles p on p.id = b.blocked_id %s
             where b.blocker_id = :me order by b.created_at desc, p.id limit :limit offset :offset
-            """)
+            """.formatted(Rules.chosenPhoto("a", "p.avatar_media_id")))
                 .param("me", userId)
                 .param("limit", page.fetch())
                 .param("offset", page.offset())
@@ -194,6 +194,14 @@ public class AccountStore {
                         .param("target", targetId)
                         .query(UUID.class)
                         .single());
+    }
+
+    /**
+     * Deleting an account takes everything the person made with it, which can be a lot: the transaction that
+     * does it runs this first.
+     */
+    public void roomToDeleteAnAccount() {
+        jdbc.sql(Sql.ROOM_FOR_A_JOB).update();
     }
 
     /** Removes the profile. The database removes everything that hangs off it and corrects every count. */

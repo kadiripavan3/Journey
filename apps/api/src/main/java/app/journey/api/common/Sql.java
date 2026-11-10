@@ -11,6 +11,13 @@ public final class Sql {
 
     private Sql() {}
 
+    /**
+     * The database stops a statement after five seconds. Work that is allowed to take longer (a nightly job, a
+     * delete that takes a whole journey or account with it) runs this first, inside its own transaction: it
+     * lifts the limit to two minutes until that transaction ends.
+     */
+    public static final String ROOM_FOR_A_JOB = "set local statement_timeout = '120s'";
+
     public static Instant instant(ResultSet rs, String column) throws SQLException {
         Timestamp value = rs.getTimestamp(column);
         return value == null ? null : value.toInstant();

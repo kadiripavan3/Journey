@@ -2,8 +2,8 @@ package app.journey.api.comment;
 
 import app.journey.api.auth.Me;
 import app.journey.api.comment.CommentService.CommentResponse;
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,7 +53,7 @@ class CommentController {
             @PathVariable UUID entryId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
-        return comments.list(entryId, me, PageRequest.of(cursor, limit, 50));
+        return comments.list(entryId, me, Keyset.of(cursor, limit, 50));
     }
 
     @PostMapping("/entries/{entryId}/comments")

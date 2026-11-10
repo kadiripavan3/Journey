@@ -114,12 +114,14 @@ public class ActivityService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
-        Map<UUID, String> journeyThumbs = activity.journeyThumbs(shown.stream()
-                .filter(l -> l.entryId() == null)
-                .map(Line::journeyId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList());
+        Map<UUID, String> journeyThumbs = activity.journeyThumbs(
+                shown.stream()
+                        .filter(l -> l.entryId() == null)
+                        .map(Line::journeyId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList(),
+                me);
 
         List<ActivityItemResponse> items = shown.stream()
                 .map(l -> new ActivityItemResponse(
@@ -145,6 +147,19 @@ public class ActivityService {
                 .toList();
         return new ActivityResponse(
                 items, (int) items.stream().filter(ActivityItemResponse::isNew).count());
+    }
+
+    public record ActivityUnseenResponse(
+            @Schema(description = "True when something happened since the person last opened Activity")
+            boolean unseen) {}
+
+    /**
+     * Whether there is anything new, for the dot on the tab bar. It is asked every minute by every open app,
+     * so it is one small statement that never builds the inbox; it is true exactly when the inbox would show
+     * at least one new line.
+     */
+    public ActivityUnseenResponse unseen(UUID me) {
+        return new ActivityUnseenResponse(activity.unseen(me));
     }
 
     @Transactional

@@ -1,5 +1,6 @@
 package app.journey.api.profile;
 
+import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.util.List;
 import java.util.Optional;
@@ -18,11 +19,11 @@ public class ProfileStore {
     }
 
     public Optional<Profile> find(UUID id) {
-        return jdbc.sql("""
-            select p.id, p.username, p.display_name, p.bio, p.link, p.avatar_media_id, a.storage_key as avatar_key, p.interests
-            from profiles p left join media a on a.id = p.avatar_media_id
-            where p.id = :id
-            """)
+        return jdbc.sql(
+                        "select p.id, p.username, p.display_name, p.bio, p.link, p.avatar_media_id, a.storage_key as avatar_key,"
+                                + " p.interests from profiles p"
+                                + Rules.chosenPhoto("a", "p.avatar_media_id")
+                                + " where p.id = :id")
                 .param("id", id)
                 .query((rs, n) -> new Profile(
                         rs.getObject("id", UUID.class),

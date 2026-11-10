@@ -11,7 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
 /**
@@ -489,5 +491,240 @@ class RulesTest extends ApiTest {
                         .content("{\"title\":\"   \"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("invalid_title"));
+    }
+
+    @Test
+    void whoeverCanRemoveACommentStillSeesItWhenItsAuthorBlocksThem() throws Exception {
+        String nora = person("nora");
+        String alex = person("alex");
+        String ray = person("ray");
+        String kai = person("kai");
+        String journey = journey(nora, "Iceland ring road", "public", 5);
+        joins(journey, nora, alex, "alex");
+        String norasEntry = entry(nora, journey, "Reykjavik", 1);
+        String alexsEntry = entry(alex, journey, "The lake before breakfast", 0);
+        String underNora = comment(ray, norasEntry, "Buy now");
+        comment(ray, alexsEntry, "Deals here");
+        comment(kai, norasEntry, "Lovely");
+
+        // Ray writes under their entries and then blocks them both, and Kai as well.
+        for (String blocked : new String[] {"nora", "alex", "kai"}) {
+            mvc.perform(put("/v1/profiles/" + blocked + "/block").header("Authorization", ray))
+                    .andExpect(status().isNoContent());
+        }
+
+        // Nora owns the journey: she still sees what he left in it, also under Alex's entry, and can take it out.
+        mvc.perform(get("/v1/entries/" + norasEntry + "/comments").header("Authorization", nora))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Buy now", "Lovely")))
+                .andExpect(jsonPath("$.items[0].viewer.canDelete").value(true));
+        mvc.perform(get("/v1/entries/" + alexsEntry + "/comments").header("Authorization", nora))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Deals here")));
+        mvc.perform(get("/v1/activity").header("Authorization", nora))
+                .andExpect(jsonPath("$.items[?(@.kind=='comment')].text", org.hamcrest.Matchers.hasItem("Buy now")));
+        // Alex wrote the entry: he sees the comment under it, but not the one under Nora's entry.
+        mvc.perform(get("/v1/entries/" + alexsEntry + "/comments").header("Authorization", alex))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Deals here")));
+        mvc.perform(get("/v1/entries/" + norasEntry + "/comments").header("Authorization", alex))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Lovely")));
+        mvc.perform(get("/v1/activity").header("Authorization", alex))
+                .andExpect(
+                        jsonPath("$.items[?(@.kind=='comment')].text", org.hamcrest.Matchers.contains("Deals here")));
+        // For Kai, who has nothing to do with the entry, blocking hides Ray's words as it always did.
+        mvc.perform(get("/v1/entries/" + norasEntry + "/comments").header("Authorization", kai))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Lovely")));
+
+        mvc.perform(delete("/v1/comments/" + underNora).header("Authorization", nora))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/v1/entries/" + norasEntry + "/comments").header("Authorization", nora))
+                .andExpect(jsonPath("$.items[*].body", org.hamcrest.Matchers.contains("Lovely")));
+    }
+
+    @Test
+    void aBlockedFriendOnASharedJourneyDoesNotShowThroughItsCoverRecapOrListOfAuthors() throws Exception {
+        String nora = person("nora");
+        String alex = person("alex");
+        String kai = person("kai");
+        String reader = person("reader");
+        String journey = journey(nora, "Iceland ring road", "public", 5);
+        joins(journey, nora, alex, "alex");
+        joins(journey, nora, kai, "kai");
+        mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", reader))
+                .andExpect(status().isOk());
+        // The story's first photo, and so its cover, is Alex's.
+        String alexsPhoto = JsonPath.read(
+                mvc.perform(post("/v1/journeys/" + journey + "/entries")
+                                .header("Authorization", alex)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"The lake\",\"isMilestone\":true,\"mediaIds\":[\"%s\"]}"
+                                        .formatted(uploadPhoto(alex))))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.media[0].url");
+        entry(nora, journey, "Reykjavik", 0);
+        entry(kai, journey, "Geysir", 0);
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", kai))
+                .andExpect(jsonPath("$.coverUrl").value(alexsPhoto))
+                .andExpect(jsonPath("$.authors[*].username", org.hamcrest.Matchers.contains("nora", "alex", "kai")));
+
+        mvc.perform(put("/v1/profiles/alex/block").header("Authorization", kai)).andExpect(status().isNoContent());
+        mvc.perform(post("/v1/journeys/" + journey + "/complete")
+                        .header("Authorization", nora)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+
+        // Kai blocked Alex: nothing of Alex's stands for the journey any more, and he isn't among its authors.
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", kai))
+                .andExpect(jsonPath("$.coverUrl").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.authors[*].username", org.hamcrest.Matchers.contains("nora", "kai")));
+        mvc.perform(get("/v1/journeys/" + journey + "/recap").header("Authorization", kai))
+                .andExpect(jsonPath("$.entryCount").value(2))
+                .andExpect(jsonPath("$.photoCount").value(0))
+                .andExpect(jsonPath("$.momentUrls", hasSize(0)));
+        mvc.perform(get("/v1/activity").header("Authorization", kai))
+                .andExpect(jsonPath("$.items[?(@.kind=='journey_completed')]", hasSize(1)))
+                .andExpect(jsonPath("$.items[?(@.kind=='journey_completed')].thumbUrl")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())));
+        assertThat(members.membersShownTo(java.util.UUID.fromString(journey), idOf("kai")))
+                .extracting(app.journey.api.journey.MemberStore.MemberRow::username)
+                .containsExactly("kai");
+        // It works the same the other way round.
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", alex))
+                .andExpect(jsonPath("$.authors[*].username", org.hamcrest.Matchers.contains("nora", "alex")));
+        assertThat(members.membersShownTo(java.util.UUID.fromString(journey), idOf("alex")))
+                .extracting(app.journey.api.journey.MemberStore.MemberRow::username)
+                .containsExactly("alex");
+        // Everyone else, and Nora whose journey it is, still see all of it.
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", reader))
+                .andExpect(jsonPath("$.coverUrl").value(alexsPhoto))
+                .andExpect(jsonPath("$.authors", hasSize(3)));
+        mvc.perform(get("/v1/journeys/" + journey + "/recap").header("Authorization", reader))
+                .andExpect(jsonPath("$.entryCount").value(3))
+                .andExpect(jsonPath("$.photoCount").value(1))
+                .andExpect(jsonPath("$.momentUrls", hasSize(1)));
+        mvc.perform(get("/v1/activity").header("Authorization", reader))
+                .andExpect(jsonPath("$.items[?(@.kind=='journey_completed')].thumbUrl")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.notNullValue())));
+        assertThat(members.membersShownTo(java.util.UUID.fromString(journey), idOf("nora")))
+                .hasSize(2);
+
+        // A profile's journeys follow the profile: gone for the person who was blocked, empty for the one who blocked.
+        mvc.perform(get("/v1/profiles/kai/journeys").header("Authorization", alex))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("profile_not_found"));
+        mvc.perform(get("/v1/profiles/alex/journeys").header("Authorization", kai))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(0)));
+        mvc.perform(get("/v1/profiles/alex/journeys").header("Authorization", reader))
+                .andExpect(jsonPath("$.items", hasSize(1)));
+        mvc.perform(get("/v1/profiles/nobody/journeys").header("Authorization", reader))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aPhotoHeldAfterItBecameACoverOrAProfilePictureStopsBeingShown() throws Exception {
+        String maya = signIn("maya@example.com");
+        String nora = person("nora");
+        String face = uploadPhoto(maya);
+        String cover = uploadPhoto(maya);
+        mvc.perform(put("/v1/me/profile")
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"ageConfirmed\":true,\"displayName\":\"Maya\",\"username\":\"maya\",\"avatarMediaId\":\"%s\"}"
+                                        .formatted(face)))
+                .andExpect(status().isOk());
+        String journey = journey(maya, "Southeast Asia", "public", 3);
+        mvc.perform(patch("/v1/journeys/" + journey)
+                        .header("Authorization", maya)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"coverMediaId\":\"%s\"}".formatted(cover)))
+                .andExpect(status().isOk());
+        String entry = entry(maya, journey, "Hoi An", 0);
+        comment(maya, entry, "More soon");
+        mvc.perform(put("/v1/profiles/maya/follow").header("Authorization", nora))
+                .andExpect(status().isOk());
+        mvc.perform(put("/v1/profiles/nora/follow").header("Authorization", maya))
+                .andExpect(status().isOk());
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", nora))
+                .andExpect(jsonPath("$.coverUrl").isNotEmpty())
+                .andExpect(jsonPath("$.owner.avatarUrl").isNotEmpty());
+
+        // The nightly check, or a reviewer, holds both photos after they were put to use.
+        jdbc.sql("update media set held = true").update();
+
+        for (String viewer : new String[] {nora, maya}) {
+            mvc.perform(get("/v1/journeys/" + journey).header("Authorization", viewer))
+                    .andExpect(jsonPath("$.coverUrl").value(org.hamcrest.Matchers.nullValue()))
+                    .andExpect(jsonPath("$.coverThumbUrl").value(org.hamcrest.Matchers.nullValue()))
+                    .andExpect(jsonPath("$.owner.avatarUrl").value(org.hamcrest.Matchers.nullValue()))
+                    .andExpect(jsonPath("$.authors[0].avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+            mvc.perform(get("/v1/entries/" + entry).header("Authorization", viewer))
+                    .andExpect(jsonPath("$.author.avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+            mvc.perform(get("/v1/entries/" + entry + "/comments").header("Authorization", viewer))
+                    .andExpect(jsonPath("$.items[0].author.avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+            mvc.perform(get("/v1/profiles/maya").header("Authorization", viewer))
+                    .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+            mvc.perform(get("/v1/profiles/nora/followers").header("Authorization", viewer))
+                    .andExpect(jsonPath("$.items[0].username").value("maya"))
+                    .andExpect(jsonPath("$.items[0].avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+            mvc.perform(get("/v1/search").param("q", "maya").header("Authorization", viewer))
+                    .andExpect(jsonPath("$.people[0].avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+        }
+        mvc.perform(get("/v1/me").header("Authorization", maya))
+                .andExpect(jsonPath("$.profile.avatarUrl").value(org.hamcrest.Matchers.nullValue()));
+        mvc.perform(get("/v1/activity").header("Authorization", nora))
+                .andExpect(jsonPath("$.items[?(@.kind=='profile_follow')].actors[0].avatarUrl")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())));
+
+        // Released again, they are back.
+        jdbc.sql("update media set held = false").update();
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", nora))
+                .andExpect(jsonPath("$.coverUrl").isNotEmpty())
+                .andExpect(jsonPath("$.owner.avatarUrl").isNotEmpty());
+    }
+
+    @Autowired
+    app.journey.api.journey.MemberStore members;
+
+    private java.util.UUID idOf(String username) {
+        return jdbc.sql("select id from profiles where username = :username")
+                .param("username", username)
+                .query(java.util.UUID.class)
+                .single();
+    }
+
+    /** The owner invites a follower onto the journey and they say yes. */
+    private void joins(String journey, String owner, String friend, String friendName) throws Exception {
+        String ownerName = jdbc.sql(
+                        "select p.username from profiles p join journeys j on j.owner_id = p.id where j.id = cast(:id as uuid)")
+                .param("id", journey)
+                .query(String.class)
+                .single();
+        mvc.perform(put("/v1/profiles/" + ownerName + "/follow").header("Authorization", friend))
+                .andExpect(status().isOk());
+        mvc.perform(post("/v1/journeys/" + journey + "/members")
+                        .header("Authorization", owner)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"%s\"}".formatted(friendName)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/v1/journeys/" + journey + "/invitation/accept").header("Authorization", friend))
+                .andExpect(status().isOk());
+    }
+
+    /** Writes a comment under an entry. Returns its id. */
+    private String comment(String token, String entry, String body) throws Exception {
+        return JsonPath.read(
+                mvc.perform(post("/v1/entries/" + entry + "/comments")
+                                .header("Authorization", token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"body\":\"%s\"}".formatted(body)))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.id");
     }
 }

@@ -1,9 +1,12 @@
 package app.journey.api.entry;
 
 import app.journey.api.common.ApiProblem;
-import app.journey.api.common.PageRequest;
+import app.journey.api.common.Keyset;
+import app.journey.api.entry.EntryStore.Around;
+import app.journey.api.entry.EntryStore.Edge;
 import app.journey.api.entry.EntryStore.EntryMediaRow;
 import app.journey.api.entry.EntryStore.EntryRow;
+import app.journey.api.entry.EntryStore.PinRow;
 import app.journey.api.journey.JourneyService;
 import app.journey.api.journey.JourneyStatus;
 import app.journey.api.journey.JourneyStore;
@@ -193,47 +196,109 @@ public class EntryService {
     /**
      * A page of a journey's story, in the order things happened. With {@code around}, the page that holds that
      * entry; pages are cut at fixed places, so the ones before and after never overlap it.
+     *
+     * <p>A cursor names a place in the story (an entry's time and id) and a direction, never a count: the page
+     * is read from that place through the index, however far into the story it is, and an entry added or
+     * removed in between is neither repeated nor skipped. The cursor says which way it reads: "a" after the
+     * place, "f" from it on, "b" before it, "u" up to and including it.
      */
     public TimelinePageResponse timeline(
             UUID journeyId, UUID viewer, String cursor, Integer limit, UUID around, String authorUsername) {
-        journeys.require(journeyId, viewer);
+        JourneyRow journey = journeys.require(journeyId, viewer);
         // On a shared journey a reader can ask for one person's part of the story.
         UUID author = authorUsername == null || authorUsername.isBlank() ? null : people.idOf(authorUsername, viewer);
-        PageRequest page = PageRequest.of(cursor, limit, PAGE);
-        int offset = page.offset();
-        if (around != null && (cursor == null || cursor.isBlank())) {
-            require(around, viewer);
-            offset = entries.countBefore(journeyId, around, viewer, author) / page.limit() * page.limit();
+        Keyset page = Keyset.of(cursor, limit, PAGE);
+        int size = page.limit();
+        // Each side is asked for one entry more than the page takes, to learn whether the story goes on that way.
+        Edge edge = null;
+        boolean edgeGoesAfter = true;
+        int before = 0;
+        int after = size + 1;
+        if (!page.first()) {
+            edge = new Edge(page.instant(1), page.instant(2), page.uuid(3));
+            switch (page.text(0)) {
+                case "a" -> {
+                    edgeGoesAfter = false;
+                    before = 1;
+                }
+                case "f" -> before = 1;
+                case "b" -> {
+                    before = size + 1;
+                    after = 1;
+                }
+                case "u" -> {
+                    edgeGoesAfter = false;
+                    before = size + 1;
+                    after = 1;
+                }
+                default -> throw Keyset.badCursor();
+            }
+        } else if (around != null) {
+            EntryRow opened = entries.find(around, viewer)
+                    .filter(entry -> entry.journeyId().equals(journeyId))
+                    .orElseThrow(EntryService::notFound);
+            edge = Edge.of(opened);
+            int ahead = (opened.position() - 1) % size; // how many entries of its page come before it
+            before = ahead + 1;
+            after = size - ahead + 1;
         }
-        int total = entries.count(journeyId, viewer, author);
-        List<EntryResponse> items = views(entries.timeline(journeyId, viewer, author, page.limit(), offset), viewer);
-        return new TimelinePageResponse(
-                items,
-                offset + page.limit() < total ? PageRequest.cursor(offset + page.limit()) : null,
-                offset > 0 ? PageRequest.cursor(Math.max(offset - page.limit(), 0)) : null,
-                total);
+        Around found = entries.around(journeyId, viewer, author, edge, edgeGoesAfter, before, after);
+        boolean earlier = before > 0 && found.before().size() == before;
+        boolean later = found.after().size() == after;
+        List<EntryRow> rows = new java.util.ArrayList<>(
+                found.before().subList(earlier ? 1 : 0, found.before().size()));
+        rows.addAll(found.after().subList(0, later ? after - 1 : found.after().size()));
+
+        String prev = null;
+        String next = null;
+        if (earlier) {
+            prev = rows.isEmpty() ? cursor(edgeGoesAfter ? "b" : "u", edge) : cursor("b", Edge.of(rows.get(0)));
+        }
+        if (later) {
+            next = rows.isEmpty()
+                    ? cursor(edgeGoesAfter ? "f" : "a", edge)
+                    : cursor("a", Edge.of(rows.get(rows.size() - 1)));
+        }
+        // The whole story's size is the count the database keeps; one person's part is counted.
+        int total = author == null ? journey.entryCount() : entries.count(journeyId, viewer, author);
+        return new TimelinePageResponse(views(rows, viewer), next, prev, total);
     }
 
-    /** The journey on a map: its entries that have a place, in story order, each where its reader may see it. */
+    private static String cursor(String direction, Edge edge) {
+        return Keyset.cursor(direction, edge.happenedAt(), edge.createdAt(), edge.id());
+    }
+
+    /**
+     * The journey on a map: its entries that have a place, in story order, each where its reader may see it.
+     * A pin needs little of an entry, so only that is read (no authors, no likes, no text beyond a line).
+     */
     public JourneyMapResponse map(UUID journeyId, UUID viewer) {
         journeys.require(journeyId, viewer);
-        List<EntryResponse> shown = views(entries.onMap(journeyId, viewer, MAP_PINS), viewer);
+        List<PinRow> rows = entries.pins(journeyId, viewer, MAP_PINS);
+        Map<UUID, List<EntryMediaRow>> mediaByEntry =
+                entries.mediaFor(rows.stream().map(PinRow::id).toList(), viewer);
         EntryStore.MapTotals totals = entries.mapTotals(journeyId, viewer);
-        List<MapPinResponse> pins = shown.stream()
-                .map(e -> new MapPinResponse(
-                        e.id(),
-                        e.label(),
-                        e.title().isEmpty() ? firstWords(e.body()) : e.title(),
-                        e.placeName(),
-                        e.lat(),
-                        e.lng(),
-                        e.isMilestone(),
-                        e.happenedOn(),
-                        e.media().stream()
-                                .map(MediaResponse::thumbUrl)
-                                .filter(java.util.Objects::nonNull)
-                                .findFirst()
-                                .orElse(null)))
+        List<MapPinResponse> pins = rows.stream()
+                .map(pin -> {
+                    boolean own = pin.authorId().equals(viewer);
+                    Place place = new Place(pin.placeName(), pin.lat(), pin.lng(), pin.precision()).shownTo(own);
+                    return new MapPinResponse(
+                            pin.id(),
+                            pin.labelStyle() == LabelStyle.DAY ? "Day " + pin.dayNumber() : "Part " + pin.position(),
+                            pin.title().isEmpty() ? firstWords(pin.bodyStart()) : pin.title(),
+                            place.name(),
+                            place.lat(),
+                            place.lng(),
+                            pin.milestone(),
+                            pin.happenedOn(),
+                            // A clip that isn't ready is shown only to its author, on a pin as in the entry.
+                            mediaByEntry.getOrDefault(pin.id(), List.of()).stream()
+                                    .filter(m -> own || m.status() == MediaStatus.READY)
+                                    .map(m -> view(m).thumbUrl())
+                                    .filter(java.util.Objects::nonNull)
+                                    .findFirst()
+                                    .orElse(null));
+                })
                 .toList();
         return new JourneyMapResponse(pins, totals.pins(), totals.places(), totals.pins() > pins.size());
     }
@@ -242,23 +307,26 @@ public class EntryService {
         return text.length() <= 60 ? text : text.substring(0, 60).trim() + "…";
     }
 
+    /** How many of a story's newest entries a journey's page shows. */
+    static final int SUMMARY_LATEST = 3;
+
     public JourneySummaryResponse summary(UUID journeyId, UUID viewer) {
         JourneyRow journey = journeys.require(journeyId, viewer);
-        List<EntryRow> rows = new java.util.ArrayList<>(entries.latest(journeyId, viewer, 3));
-        int latestCount = rows.size();
-        rows.addAll(entries.timeline(journeyId, viewer, null, 1, 0));
-        List<EntryResponse> shown = views(rows, viewer);
+        // The story's first entry and its newest few, in story order; in a short story they are the same entries.
+        List<EntryResponse> ends = views(entries.ends(journeyId, viewer, SUMMARY_LATEST), viewer);
+        List<EntryResponse> latest =
+                new java.util.ArrayList<>(ends.subList(Math.max(ends.size() - SUMMARY_LATEST, 0), ends.size()));
+        java.util.Collections.reverse(latest);
         boolean day = journey.labelStyle() == LabelStyle.DAY;
         EntryStore.NewEntries fresh = journey.lastReadAt() == null
                 ? new EntryStore.NewEntries(0, null)
                 : entries.newSince(journeyId, viewer, journey.lastReadAt());
+        EntryStore.Photos photos = entries.photos(journeyId, viewer, SUMMARY_PHOTOS);
         return new JourneySummaryResponse(
-                shown.size() > latestCount ? shown.get(latestCount) : null,
-                shown.subList(0, latestCount),
-                entries.photos(journeyId, viewer, SUMMARY_PHOTOS).stream()
-                        .map(this::view)
-                        .toList(),
-                entries.photoCount(journeyId, viewer),
+                ends.isEmpty() ? null : ends.get(0),
+                latest,
+                photos.first().stream().map(this::view).toList(),
+                photos.total(),
                 journey.targetDays() != null ? entries.days(journeyId, SUMMARY_DAYS) : List.of(),
                 entries.milestones(journeyId, viewer, SUMMARY_MILESTONES).stream()
                         .map(m -> new MilestoneResponse(
@@ -384,6 +452,12 @@ public class EntryService {
                         "Only the author or the journey's owner can delete an entry.");
             }
         }
+        entries.delete(id);
+    }
+
+    /** A reviewer removes an entry that broke the guidelines: the same removal as its author's own. */
+    @Transactional
+    public void removeForReviewer(UUID id) {
         entries.delete(id);
     }
 

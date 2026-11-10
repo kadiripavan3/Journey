@@ -15,8 +15,6 @@ import org.springframework.stereotype.Repository;
 public class DeviceStore {
 
     /** A person whose newest device is in this time zone, with the hour they want reminders at. */
-    public record Reminded(UUID userId, String timeZone, int reminderHour) {}
-
     private final JdbcClient jdbc;
 
     DeviceStore(JdbcClient jdbc) {
@@ -120,18 +118,5 @@ public class DeviceStore {
         return jdbc.sql("delete from push_tickets where created_at < now() - make_interval(secs => :age)")
                 .param("age", age.toSeconds())
                 .update();
-    }
-
-    /** Everyone who can get a push and asked for reminders, with where they are and when they want them. */
-    public List<Reminded> wantingReminders() {
-        return jdbc.sql("""
-            select distinct on (d.user_id) d.user_id, d.time_zone, coalesce(s.reminder_hour, 19) as reminder_hour
-            from devices d left join settings s on s.user_id = d.user_id
-            where coalesce(s.reminders, false)
-            order by d.user_id, d.seen_at desc
-            """)
-                .query((rs, n) -> new Reminded(
-                        rs.getObject("user_id", UUID.class), rs.getString("time_zone"), rs.getInt("reminder_hour")))
-                .list();
     }
 }

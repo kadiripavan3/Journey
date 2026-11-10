@@ -3,7 +3,10 @@ package app.journey.api.moderation;
 import app.journey.api.account.AccountService;
 import app.journey.api.account.ReportTarget;
 import app.journey.api.comment.CommentAdded;
+import app.journey.api.comment.CommentService;
 import app.journey.api.common.ApiProblem;
+import app.journey.api.entry.EntryService;
+import app.journey.api.journey.JourneyService;
 import app.journey.api.media.MediaService;
 import app.journey.api.media.MediaStatus;
 import app.journey.api.moderation.ModerationStore.DeletionRequestRow;
@@ -51,6 +54,9 @@ public class ModerationService {
     private final ModerationStore store;
     private final MediaService media;
     private final AccountService accounts;
+    private final JourneyService journeys;
+    private final EntryService entries;
+    private final CommentService comments;
     private final EmailAddresses emails;
     private final ApplicationEventPublisher events;
 
@@ -58,11 +64,17 @@ public class ModerationService {
             ModerationStore store,
             MediaService media,
             AccountService accounts,
+            JourneyService journeys,
+            EntryService entries,
+            CommentService comments,
             EmailAddresses emails,
             ApplicationEventPublisher events) {
         this.store = store;
         this.media = media;
         this.accounts = accounts;
+        this.journeys = journeys;
+        this.entries = entries;
+        this.comments = comments;
         this.emails = emails;
         this.events = events;
     }
@@ -129,7 +141,13 @@ public class ModerationService {
         if (report.targetType() == ReportTarget.PROFILE) {
             throw ApiProblem.badRequest("cannot_remove_person", "A person is removed with their whole account.");
         }
-        store.removeTarget(report.targetType(), report.targetId());
+        // Each thing is removed by the code that owns it, exactly as when its author deletes it.
+        switch (report.targetType()) {
+            case JOURNEY -> journeys.removeForReviewer(report.targetId());
+            case ENTRY -> entries.removeForReviewer(report.targetId());
+            case COMMENT -> comments.removeForReviewer(report.targetId());
+            case PROFILE -> throw new IllegalStateException("A person is removed with removePerson");
+        }
         store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, ReportOutcome.REMOVED);
         store.log(
                 reviewer,
@@ -189,7 +207,7 @@ public class ModerationService {
 
     @Transactional
     public void removeComment(UUID commentId, String reviewer) {
-        store.deleteComment(commentId)
+        comments.removeForReviewer(commentId)
                 .ifPresent(said ->
                         store.log(reviewer, ReviewAction.REMOVED_COMMENT, "comment", commentId.toString(), said));
     }

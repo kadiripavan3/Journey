@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -29,21 +30,45 @@ public class MemberStore {
         this.jdbc = jdbc;
     }
 
-    /** Everyone asked onto a journey, in the order they were asked: those who joined and those still deciding. */
+    private static final String MEMBERS =
+            "select p.id, p.username, p.display_name, a.storage_key as avatar_key, m.status,"
+                    + " coalesce(m.joined_at, m.created_at) as since"
+                    + " from journey_members m join profiles p on p.id = m.user_id"
+                    + Rules.chosenPhoto("a", "p.avatar_media_id")
+                    + " where m.journey_id = :journey";
+
+    private static final RowMapper<MemberRow> MEMBER = (rs, n) -> new MemberRow(
+            rs.getObject("id", UUID.class),
+            rs.getString("username"),
+            rs.getString("display_name"),
+            rs.getString("avatar_key"),
+            MemberStatus.read(rs.getString("status")),
+            Sql.instant(rs, "since"));
+
+    /**
+     * Everyone asked onto a journey, in the order they were asked: those who joined and those still deciding.
+     * This is the whole list, for the rules (is there room, were they asked already). To show the list to
+     * someone, use {@link #membersShownTo}.
+     */
     public List<MemberRow> members(UUID journeyId) {
-        return jdbc.sql("""
-            select p.id, p.username, p.display_name, a.storage_key as avatar_key, m.status, coalesce(m.joined_at, m.created_at) as since
-            from journey_members m join profiles p on p.id = m.user_id left join media a on a.id = p.avatar_media_id
-            where m.journey_id = :journey order by m.created_at
-            """)
+        return jdbc.sql(MEMBERS + " order by m.created_at")
                 .param("journey", journeyId)
-                .query((rs, n) -> new MemberRow(
-                        rs.getObject("id", UUID.class),
-                        rs.getString("username"),
-                        rs.getString("display_name"),
-                        rs.getString("avatar_key"),
-                        MemberStatus.read(rs.getString("status")),
-                        Sql.instant(rs, "since")))
+                .query(MEMBER)
+                .list();
+    }
+
+    /**
+     * The same list as one viewer may see it: a friend the viewer has blocked, or who has blocked the viewer,
+     * is left out. The journey's owner always gets the whole list, because they are the one who can remove
+     * someone from it.
+     */
+    public List<MemberRow> membersShownTo(UUID journeyId, UUID viewer) {
+        return jdbc.sql(MEMBERS
+                        + " and (exists (select 1 from journeys oj where oj.id = m.journey_id and oj.owner_id = :viewer) or "
+                        + Rules.notBlocked("p.id", ":viewer") + ") order by m.created_at")
+                .param("journey", journeyId)
+                .param("viewer", viewer)
+                .query(MEMBER)
                 .list();
     }
 
@@ -70,14 +95,15 @@ public class MemberStore {
 
     /** The owner's followers who could be invited, most recent followers first. People only get invitations from someone they follow. */
     public Page<PersonRow> invitable(UUID journeyId, UUID owner, PageRequest page) {
-        List<PersonRow> rows = jdbc.sql("""
+        List<PersonRow> rows = jdbc.sql(
+                        """
             select p.id, p.username, p.display_name, a.storage_key as avatar_key
-            from profile_follows f join profiles p on p.id = f.follower_id left join media a on a.id = p.avatar_media_id
+            from profile_follows f join profiles p on p.id = f.follower_id %s
             where f.followee_id = :me
               and not exists (select 1 from journey_members m where m.journey_id = :journey and m.user_id = p.id)
               and %s
             order by f.created_at desc, p.id limit :limit offset :offset
-            """.formatted(Rules.notBlocked("p.id", ":me")))
+            """.formatted(Rules.chosenPhoto("a", "p.avatar_media_id"), Rules.notBlocked("p.id", ":me")))
                 .param("me", owner)
                 .param("journey", journeyId)
                 .param("limit", page.fetch())

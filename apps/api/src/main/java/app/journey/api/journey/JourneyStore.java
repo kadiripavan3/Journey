@@ -1,7 +1,7 @@
 package app.journey.api.journey;
 
+import app.journey.api.common.Keyset;
 import app.journey.api.common.Page;
-import app.journey.api.common.PageRequest;
 import app.journey.api.common.Rules;
 import app.journey.api.common.Sql;
 import java.time.Instant;
@@ -46,9 +46,14 @@ public class JourneyStore {
             Instant lastReadAt,
             boolean member,
             int memberCount,
-            Instant autoPausedAt) {}
+            Instant autoPausedAt,
+            double trendingScore) {}
 
-    /** Every journey with its owner, its cover (the chosen one, or else the first photo), and whether and since when the viewer follows it. */
+    /**
+     * Every journey with its owner, its cover (the chosen one, or else the first photo the viewer may see), and
+     * whether and since when the viewer follows it. A photo by someone the viewer has blocked never stands in
+     * as the cover, and a chosen cover or a profile picture that is being held is left out (see {@link Rules}).
+     */
     private static final String SELECT = """
       select j.id, j.owner_id, j.title, j.description, j.category, j.template, j.label_style, j.visibility, j.status, j.tags,
              j.start_date, j.target_days, j.completed_at, j.closing_note, j.last_entry_at, j.entry_count, j.follower_count, j.created_at,
@@ -57,19 +62,19 @@ public class JourneyStore {
                select m.storage_key from entries e
                join entry_media em on em.entry_id = e.id
                join media m on m.id = em.media_id
-               where e.journey_id = j.id and m.kind = 'photo' and %s
-               order by e.happened_at, em.position limit 1)) as cover_key,
+               where e.journey_id = j.id and m.kind = 'photo' and %s and %s
+               order by e.happened_at, e.created_at, e.id, em.position limit 1)) as cover_key,
              (select max(e.happened_on) from entries e where e.journey_id = j.id) as latest_on,
              (vf.user_id is not null and not vf.author) as following, vf.last_read_at,
              exists (select 1 from journey_members vm where vm.journey_id = j.id and vm.user_id = :viewer and vm.status = 'joined') as member,
              (select count(*) from journey_members jm where jm.journey_id = j.id and jm.status = 'joined') as member_count,
-             j.auto_paused_at
+             j.auto_paused_at, j.trending_score
       from journeys j
       join profiles p on p.id = j.owner_id
       left join journey_follows vf on vf.journey_id = j.id and vf.user_id = :viewer
-      left join media pa on pa.id = p.avatar_media_id
-      left join media cm on cm.id = j.cover_media_id
-      """.formatted(Rules.publicMedia("m"));
+      """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":viewer"))
+            + Rules.chosenPhoto("pa", "p.avatar_media_id")
+            + Rules.chosenPhoto("cm", "j.cover_media_id");
 
     private static final RowMapper<JourneyRow> ROW = (rs, n) -> new JourneyRow(
             rs.getObject("id", UUID.class),
@@ -99,7 +104,8 @@ public class JourneyStore {
             Sql.instant(rs, "last_read_at"),
             rs.getBoolean("member"),
             rs.getInt("member_count"),
-            Sql.instant(rs, "auto_paused_at"));
+            Sql.instant(rs, "auto_paused_at"),
+            rs.getDouble("trending_score"));
 
     private final JdbcClient jdbc;
 
@@ -110,19 +116,22 @@ public class JourneyStore {
     /** A person who writes in a journey: its owner, or a friend who joined. */
     public record AuthorRow(UUID journeyId, UUID id, String username, String displayName, String avatarKey) {}
 
-    /** The friends who joined each of these journeys, in the order they joined. */
-    public Map<UUID, List<AuthorRow>> membersOf(List<UUID> journeyIds) {
+    /**
+     * The friends who joined each of these journeys, in the order they joined, as this viewer may see them:
+     * a friend the viewer has blocked, or who has blocked the viewer, is left out of the list of authors.
+     */
+    public Map<UUID, List<AuthorRow>> membersOf(List<UUID> journeyIds, UUID viewer) {
         if (journeyIds.isEmpty()) {
             return Map.of();
         }
         return jdbc
-                .sql("""
-            select m.journey_id, p.id, p.username, p.display_name, a.storage_key as avatar_key
-            from journey_members m join profiles p on p.id = m.user_id left join media a on a.id = p.avatar_media_id
-            where m.journey_id in (:ids) and m.status = 'joined'
-            order by m.joined_at
-            """)
+                .sql("select m.journey_id, p.id, p.username, p.display_name, a.storage_key as avatar_key"
+                        + " from journey_members m join profiles p on p.id = m.user_id"
+                        + Rules.chosenPhoto("a", "p.avatar_media_id")
+                        + " where m.journey_id in (:ids) and m.status = 'joined' and "
+                        + Rules.notBlocked("p.id", ":viewer") + " order by m.joined_at")
                 .param("ids", journeyIds)
+                .param("viewer", viewer)
                 .query((rs, n) -> new AuthorRow(
                         rs.getObject("journey_id", UUID.class),
                         rs.getObject("id", UUID.class),
@@ -183,26 +192,201 @@ public class JourneyStore {
                 .list();
     }
 
-    /** The first journeys matching a condition, written against the aliases j (journey) and p (owner). */
-    public List<JourneyRow> list(String where, Map<String, ?> params, String orderBy, int limit, UUID viewer) {
-        return query(where, params, orderBy, limit, 0, viewer);
+    /** Places that recommend journeys leave out one with an open report, until a reviewer has looked at it. */
+    private static final String NOT_UNDER_REVIEW = " and " + Rules.notUnderReview("j");
+
+    /** One of Discover's three lists. Each is read in its own order from its own index (V15, V33). */
+    public enum Shelf {
+        /** What is going on now, by the score worked out every hour; journeys that ended a while ago have left. */
+        TRENDING(
+                "(j.status <> 'completed' or j.completed_at > now() - interval '14 days')",
+                "j.trending_score desc, j.follower_count desc, j.last_entry_at desc nulls last, j.id"),
+        /** Journeys that started recently and are still going. */
+        FRESH("j.status <> 'completed'", "j.created_at desc, j.id"),
+        /** Journeys that were completed, the latest first. */
+        COMPLETED("j.status = 'completed'", "j.completed_at desc nulls last, j.id");
+
+        private final String where;
+        private final String order;
+
+        Shelf(String where, String order) {
+            this.where = where;
+            this.order = order;
+        }
     }
 
-    /** One page of the journeys matching a condition. */
-    public Page<JourneyRow> page(String where, Map<String, ?> params, String orderBy, PageRequest page, UUID viewer) {
-        return Page.of(query(where, params, orderBy, page.fetch(), page.offset(), viewer), page);
-    }
-
-    private List<JourneyRow> query(
-            String where, Map<String, ?> params, String orderBy, int limit, int offset, UUID viewer) {
-        return jdbc.sql(SELECT + " where (" + where + ")" + VISIBLE + " order by " + orderBy
-                        + ", j.id limit :limit offset :offset")
-                .params(params)
+    /**
+     * The top of one of Discover's lists: public journeys with at least {@code minEntries} entries, in the
+     * list's own order. With {@code category}, only that category. With {@code leaning} (the categories the
+     * reader picked), the answer holds the top {@code limit} inside those categories and the top {@code limit}
+     * outside them, each read in order from the index; how much the reader's interests count is the
+     * service's rule, so it does the merging.
+     */
+    public List<JourneyRow> discover(
+            Shelf shelf, UUID viewer, String category, List<String> leaning, int minEntries, int limit) {
+        String top = "select j.id from journeys j where j.visibility = 'public' and j.entry_count >= :minEntries and "
+                + shelf.where + "%s" + VISIBLE + NOT_UNDER_REVIEW + " order by " + shelf.order + " limit :limit";
+        String pick;
+        if (category != null) {
+            pick = top.formatted(" and j.category = :category");
+        } else if (leaning.isEmpty()) {
+            pick = top.formatted("");
+        } else {
+            pick = "(" + top.formatted(" and j.category in (:leaning)") + ") union all ("
+                    + top.formatted(" and j.category not in (:leaning)") + ")";
+        }
+        var query = picked(pick)
                 .param("viewer", viewer)
+                .param("minEntries", minEntries)
+                .param("limit", limit);
+        if (category != null) {
+            query = query.param("category", category);
+        } else if (!leaning.isEmpty()) {
+            query = query.param("leaning", leaning);
+        }
+        return query.query(ROW).list();
+    }
+
+    /** How many entries a search looks at for their place, at most. A place name can match a great many entries. */
+    static final int SEARCH_PLACES = 3000;
+
+    /**
+     * Public journeys that match the words typed, the most followed first. Each way of matching is asked on
+     * its own, so each can use its own index: the title, the description, the creator's name or username,
+     * a tag (the whole tag), and the places its entries happened in. Each gives its most followed matches (ten
+     * times what the answer shows); their answers are put together, and only then are the journeys read and
+     * ranked. However common the word, the work stays about the same.
+     *
+     * @param pattern the words as an "anywhere in the text" pattern, already escaped
+     * @param tag the words as a tag would be saved, or null when they can't be a tag
+     * @param everywhere false for very short words, which no index can help with: titles, names and tags give
+     *     the first matches they find instead of their most followed, and descriptions and places (the two
+     *     big texts) are left out
+     */
+    public List<JourneyRow> search(String pattern, String tag, boolean everywhere, UUID viewer, int limit) {
+        String best = everywhere ? " order by c.follower_count desc, c.id" : "";
+        String from = "(select c.id from journeys c where c.visibility = 'public' and %s" + best + " limit :most)";
+        StringBuilder matches = new StringBuilder(from.formatted("c.title ilike :q"))
+                .append(" union ")
+                .append(
+                        from.formatted(
+                                "c.owner_id in (select op.id from profiles op where op.username ilike :q or op.display_name ilike :q)"));
+        if (tag != null) {
+            matches.append(" union ").append(from.formatted("c.tags @> cast(:tags as text[])"));
+        }
+        if (everywhere) {
+            matches.append(" union ")
+                    .append(from.formatted("c.description ilike :q"))
+                    .append(" union (select pe.journey_id from entries pe where pe.place_name ilike :q limit ")
+                    .append(SEARCH_PLACES)
+                    .append(")");
+        }
+        var query = picked("select j.id from journeys j where j.id in (" + matches + ") and j.visibility = 'public'"
+                        + VISIBLE + NOT_UNDER_REVIEW
+                        + " order by j.follower_count desc, j.last_entry_at desc nulls last, j.id limit :limit")
+                .param("q", pattern)
+                .param("viewer", viewer)
+                .param("most", limit * 10)
+                .param("limit", limit);
+        if (tag != null) {
+            query = query.param("tags", Sql.arrayLiteral(List.of(tag)));
+        }
+        return query.query(ROW).list();
+    }
+
+    /**
+     * A few public, active journeys to follow, the most followed first and those in the given categories before
+     * the rest. Never the viewer's own or ones they already follow. It is asked once, when someone signs up, and
+     * looks at every public active journey to find the most followed: there is deliberately no index on the
+     * follower count, because one would have to be rewritten every time anyone follows anything.
+     */
+    public List<JourneyRow> suggested(UUID viewer, List<String> categories, int limit) {
+        return picked("select j.id from journeys j"
+                        + " where j.visibility = 'public' and j.status = 'active' and j.entry_count >= 1 and j.owner_id <> :viewer"
+                        + " and not exists (select 1 from journey_follows sf where sf.journey_id = j.id and sf.user_id = :viewer)"
+                        + VISIBLE + NOT_UNDER_REVIEW
+                        + " order by (j.category in (:categories)) desc, j.follower_count desc, j.last_entry_at desc nulls last, j.id"
+                        + " limit :limit")
+                .param("viewer", viewer)
+                .param("categories", categories.isEmpty() ? List.of("-") : categories)
                 .param("limit", limit)
-                .param("offset", offset)
                 .query(ROW)
                 .list();
+    }
+
+    /** When a journey last moved: its newest entry, or its start while it has none. Lists of journeys are ordered by it. */
+    private static final String ACTIVITY = "coalesce(j.last_entry_at, j.created_at)";
+
+    private static final String NEWEST_ACTIVITY_FIRST = " order by " + ACTIVITY + " desc, j.id desc limit :limit";
+
+    /**
+     * The journeys a person writes in, of every visibility: their own and the shared ones they joined, newest
+     * activity first. Authors have a follow row marked "author" (V6), so the list starts from those few rows
+     * (the index is in V32) and never looks at anyone else's journeys.
+     */
+    public Page<JourneyRow> mine(UUID me, Keyset page) {
+        return page(
+                "select j.id from journey_follows af join journeys j on j.id = af.journey_id"
+                        + " where af.user_id = :viewer and af.author",
+                Map.of(),
+                me,
+                page);
+    }
+
+    /** The journeys a person follows, newest activity first. */
+    public Page<JourneyRow> following(UUID me, Keyset page) {
+        return page(
+                "select j.id from journey_follows f join journeys j on j.id = f.journey_id"
+                        + " where f.user_id = :viewer and not f.author",
+                Map.of(),
+                me,
+                page);
+    }
+
+    /**
+     * Someone's public journeys, for their profile: the ones they own and the shared ones they write in.
+     * Nothing when the viewer and that person have blocked each other, whoever owns the journey.
+     */
+    public Page<JourneyRow> byProfile(UUID person, UUID viewer, Keyset page) {
+        return page(
+                "select j.id from journey_follows af join journeys j on j.id = af.journey_id"
+                        + " where af.user_id = :person and af.author and j.visibility = 'public' and "
+                        + Rules.notBlocked(":person", ":viewer"),
+                Map.of("person", person),
+                viewer,
+                page);
+    }
+
+    /**
+     * One page of a list of journeys ordered by newest activity. {@code pick} chooses the journeys (ids only);
+     * the rule about who may see them, the place the page starts and its size are added here. A page starts
+     * after the last journey of the page before, so a journey that moves or appears in between is neither
+     * repeated nor skipped.
+     */
+    private Page<JourneyRow> page(String pick, Map<String, ?> params, UUID viewer, Keyset page) {
+        String after = page.first() ? "" : " and (" + ACTIVITY + ", j.id) < (:at, :after)";
+        var query = picked(pick + VISIBLE + after + NEWEST_ACTIVITY_FIRST)
+                .params(params)
+                .param("viewer", viewer)
+                .param("limit", page.fetch());
+        if (!page.first()) {
+            query = query.param("at", Sql.timestamp(page.instant(0))).param("after", page.uuid(1));
+        }
+        return page.page(query.query(ROW).list(), row -> Keyset.cursor(activityOf(row), row.id()));
+    }
+
+    private static Instant activityOf(JourneyRow row) {
+        return row.lastEntryAt() != null ? row.lastEntryAt() : row.createdAt();
+    }
+
+    /**
+     * Reads a list of journeys in two steps inside one statement. {@code pick} chooses which journeys, in what
+     * order and how many, looking only at what that takes. Then each chosen journey is read in full, so its
+     * cover, counts and owner are worked out for the journeys on the page and for no others.
+     */
+    private JdbcClient.StatementSpec picked(String pick) {
+        return jdbc.sql("with picked as materialized (select s.id, row_number() over () as n from (" + pick + ") s) "
+                + SELECT + " join picked on picked.id = j.id order by picked.n");
     }
 
     /** The journey this person already made from the same draft, if the app is sending it a second time. */
@@ -316,7 +500,9 @@ public class JourneyStore {
                 .update();
     }
 
+    /** Deletes a journey with everything in it. A long story takes a while, so it is given room (call it in a transaction). */
     public void delete(UUID id) {
+        jdbc.sql(Sql.ROOM_FOR_A_JOB).update();
         jdbc.sql("delete from journeys where id = :id").param("id", id).update();
     }
 
@@ -378,15 +564,18 @@ public class JourneyStore {
     /** What a finished (or unfinished) journey adds up to. */
     public record Totals(int entries, int places, int photos, int likes, LocalDate firstDay, LocalDate lastDay) {}
 
-    public Totals totals(UUID journeyId) {
+    /** The journey added up as this viewer reads it: what someone they have blocked wrote in it is not counted. */
+    public Totals totals(UUID journeyId, UUID viewer) {
         return jdbc.sql("""
             select count(*) as entries, count(distinct nullif(e.place_name, '')) as places, coalesce(sum(e.like_count), 0) as likes,
                    min(e.happened_on) as first_day, max(e.happened_on) as last_day,
                    (select count(*) from entry_media em join entries x on x.id = em.entry_id join media m on m.id = em.media_id
-                     where x.journey_id = :id and m.kind = 'photo' and %s) as photos
-            from entries e where e.journey_id = :id
-            """.formatted(Rules.publicMedia("m")))
+                     where x.journey_id = :id and m.kind = 'photo' and %s and %s) as photos
+            from entries e where e.journey_id = :id and %s
+            """.formatted(
+                                Rules.publicMedia("m"), Rules.entryBy("x", ":viewer"), Rules.entryBy("e", ":viewer")))
                 .param("id", journeyId)
+                .param("viewer", viewer)
                 .query((rs, n) -> new Totals(
                         rs.getInt("entries"),
                         rs.getInt("places"),
@@ -397,17 +586,18 @@ public class JourneyStore {
                 .single();
     }
 
-    /** The photos of a journey's best moments: milestones first, then the most liked. */
-    public List<String> momentKeys(UUID journeyId, int limit) {
+    /** The photos of a journey's best moments as this viewer may see them: milestones first, then the most liked. */
+    public List<String> momentKeys(UUID journeyId, UUID viewer, int limit) {
         return jdbc.sql("""
             select m.storage_key from entries e
             join entry_media em on em.entry_id = e.id and em.position = 0
             join media m on m.id = em.media_id and m.kind = 'photo' and %s
-            where e.journey_id = :id
+            where e.journey_id = :id and %s
             order by e.is_milestone desc, e.like_count desc, e.happened_at
             limit :limit
-            """.formatted(Rules.publicMedia("m")))
+            """.formatted(Rules.publicMedia("m"), Rules.entryBy("e", ":viewer")))
                 .param("id", journeyId)
+                .param("viewer", viewer)
                 .param("limit", limit)
                 .query(String.class)
                 .list();
@@ -434,26 +624,43 @@ public class JourneyStore {
                 .single();
     }
 
-    public record NewInJourney(UUID journeyId, int newCount) {}
+    /** A journey with news for one reader: how many entries are new to them, and when the newest was posted. */
+    public record NewInJourney(UUID journeyId, int newCount, Instant latest) {}
 
-    /** Journeys the reader follows or writes in, with entries posted by others since their last visit, most recent first. */
-    public Page<NewInJourney> journeysWithNewEntries(UUID userId, PageRequest page) {
-        List<NewInJourney> rows = jdbc.sql(
-                        """
-            select f.journey_id, count(*) as new_count, max(e.created_at) as latest
-            from journey_follows f
-            join journeys j on j.id = f.journey_id
-            join entries e on e.journey_id = f.journey_id and e.created_at > f.last_read_at and e.author_id <> :user
-            where f.user_id = :user and %s and %s
-            group by f.journey_id
-            order by latest desc, f.journey_id
-            limit :limit offset :offset
-            """.formatted(Rules.visibleJourney("j", ":user"), Rules.entryBy("e", ":user")))
+    /** The entries of the journey {@code f.journey_id} that are new to the reader: by others, since their last visit. */
+    private static final String NEW_TO_READER =
+            " from entries e where e.journey_id = %s and e.created_at > %s and e.author_id <> :user and "
+                    + Rules.entryBy("e", ":user");
+
+    /**
+     * Journeys the reader follows or writes in that have entries posted by others since their last visit, the
+     * one with the newest entry first.
+     *
+     * <p>For each followed journey only its newest unread entry is looked up (one step into the index that
+     * holds a journey's entries by when they were posted), which is enough to order them and cut the page. The
+     * entries are counted only for the journeys on the page. A page starts after the last journey of the page
+     * before.
+     */
+    public Page<NewInJourney> journeysWithNewEntries(UUID userId, Keyset page) {
+        String after = page.first() ? "" : " and (newest.latest, f.journey_id) < (:at, :after)";
+        var query = jdbc.sql("select page.journey_id, page.latest, (select count(*)"
+                        + NEW_TO_READER.formatted("page.journey_id", "page.last_read_at") + ") as new_count"
+                        + " from (select f.journey_id, f.last_read_at, newest.latest from journey_follows f"
+                        + " join journeys j on j.id = f.journey_id"
+                        + " cross join lateral (select e.created_at as latest"
+                        + NEW_TO_READER.formatted("f.journey_id", "f.last_read_at")
+                        + " order by e.created_at desc limit 1) newest"
+                        + " where f.user_id = :user and " + Rules.visibleJourney("j", ":user") + after
+                        + " order by newest.latest desc, f.journey_id desc limit :limit) page"
+                        + " order by page.latest desc, page.journey_id desc")
                 .param("user", userId)
-                .param("limit", page.fetch())
-                .param("offset", page.offset())
-                .query((rs, n) -> new NewInJourney(rs.getObject("journey_id", UUID.class), rs.getInt("new_count")))
+                .param("limit", page.fetch());
+        if (!page.first()) {
+            query = query.param("at", Sql.timestamp(page.instant(0))).param("after", page.uuid(1));
+        }
+        List<NewInJourney> rows = query.query((rs, n) -> new NewInJourney(
+                        rs.getObject("journey_id", UUID.class), rs.getInt("new_count"), Sql.instant(rs, "latest")))
                 .list();
-        return Page.of(rows, page);
+        return page.page(rows, row -> Keyset.cursor(row.latest(), row.journeyId()));
     }
 }

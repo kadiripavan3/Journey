@@ -208,6 +208,7 @@ public class AccountService {
      */
     public void delete(UUID me) {
         transaction.executeWithoutResult(status -> {
+            accounts.roomToDeleteAnAccount();
             media.deleteAllOwnedBy(me);
             accounts.deleteProfile(me);
             accounts.rememberDeleted(me);

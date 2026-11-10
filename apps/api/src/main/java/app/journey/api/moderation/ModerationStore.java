@@ -154,31 +154,6 @@ public class ModerationStore {
                 .update();
     }
 
-    /** Removes what a report points at. Returns false for a person: an account is never removed from the queue. */
-    public boolean removeTarget(ReportTarget type, UUID targetId) {
-        String table = switch (type) {
-            case JOURNEY -> "journeys";
-            case ENTRY -> "entries";
-            case COMMENT -> "comments";
-            case PROFILE -> null;
-        };
-        if (table == null) {
-            return false;
-        }
-        jdbc.sql("delete from " + table + " where id = :id")
-                .param("id", targetId)
-                .update();
-        return true;
-    }
-
-    /** Deletes a comment (its replies go with it) and returns what it said, for the record. Empty when it was already gone. */
-    public Optional<String> deleteComment(UUID commentId) {
-        return jdbc.sql("delete from comments where id = :id returning body")
-                .param("id", commentId)
-                .query(String.class)
-                .optional();
-    }
-
     // ---- requests to delete an account, made on the web ----
 
     /** Records a request. Asking twice with the same address while the first is open changes nothing. */

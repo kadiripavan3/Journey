@@ -200,15 +200,6 @@ public class OutboxStore {
                 .update();
     }
 
-    /** True when this person was reminded of something in the last 20 hours: at most one reminder a day. */
-    public boolean remindedLately(UUID userId) {
-        return jdbc.sql(
-                        "select exists (select 1 from notifications where user_id = :user and kind = 'reminder' and created_at > now() - interval '20 hours')")
-                .param("user", userId)
-                .query(Boolean.class)
-                .single();
-    }
-
     /**
      * The messages that are due, locked for this sender until the end of the (short) transaction it is called
      * in: another copy of the API skips them and takes the next ones. Each says whether it may still be sent:
@@ -358,10 +349,18 @@ public class OutboxStore {
 
     /** Messages that were sent or skipped long ago are of no use to anyone. Returns how many were removed. */
     public int forgetOlderThan(int days) {
-        return jdbc.sql(
-                        "delete from notifications where status <> 'pending' and created_at < now() - make_interval(days => :days)")
-                .param("days", days)
-                .update();
+        int gone = 0;
+        int step;
+        do {
+            // A few thousand at a time, so no single statement runs long however much has piled up.
+            step = jdbc.sql("""
+                delete from notifications where id in (
+                  select id from notifications
+                  where status <> 'pending' and created_at < now() - make_interval(days => :days) limit 5000)
+                """).param("days", days).update();
+            gone += step;
+        } while (step == 5000);
+        return gone;
     }
 
     private void mark(Collection<UUID> ids, String change) {

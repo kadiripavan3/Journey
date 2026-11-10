@@ -1,7 +1,7 @@
 package app.journey.api.share;
 
 import app.journey.api.common.ApiProblem;
-import app.journey.api.common.PageRequest;
+import app.journey.api.common.Keyset;
 import app.journey.api.entry.EntryService;
 import app.journey.api.journey.InviteLinkService;
 import app.journey.api.journey.JourneyService;
@@ -78,7 +78,7 @@ class SharePagesController {
         model.addAttribute("person", person);
         model.addAttribute(
                 "journeys",
-                journeys.publicBy(person.username(), ANYONE, new PageRequest(0, JOURNEYS))
+                journeys.byProfile(person.username(), ANYONE, Keyset.first(JOURNEYS))
                         .items());
         model.addAttribute("appLink", "journey://profile/" + person.username());
         return "share/person";
