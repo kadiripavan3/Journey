@@ -1,9 +1,9 @@
-import { Pressable } from 'react-native';
 
 import type { JourneyResponse } from '@/api/generated/journey';
 import { followersLabel } from '@/lib/plural';
 
 import { Photo, Pill } from './Bits';
+import { Tap } from './Motion';
 import { Txt } from './Txt';
 
 type Props = {
@@ -26,11 +26,11 @@ export function JourneyCard({ journey, onPress, size = 'lg', pill, detail, footn
   const line = detail ?? `${journey.progressLabel} · ${journey.owner.displayName}`;
   const second = size === 'lg' ? (footnote ?? followersLabel(journey.followerCount)) : null;
   return (
-    <Pressable
+    <Tap
       accessibilityRole="button"
       accessibilityLabel={`${journey.title}. ${line}.${label ? ` ${label}.` : ''}`}
       onPress={onPress}
-      style={({ pressed }) => ({ width: side, flex: side ? undefined : 1, gap: 2, opacity: pressed ? 0.85 : 1 })}>
+      style={{ width: side, flex: side ? undefined : 1, gap: 2 }}>
       <Photo uri={journey.coverUrl} style={{ height: side ?? 172, marginBottom: 8 }}>
         {label ? <Pill label={label} style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
       </Photo>
@@ -45,6 +45,6 @@ export function JourneyCard({ journey, onPress, size = 'lg', pill, detail, footn
           {second}
         </Txt>
       ) : null}
-    </Pressable>
+    </Tap>
   );
 }

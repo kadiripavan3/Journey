@@ -23,9 +23,10 @@ Real photography, bold Plus Jakarta Sans, glass controls that float over the con
 | Photos | Full-bleed covers. 20 px rounded corners inside cards. A dark gradient under any text that sits on a photo. |
 | Type | Plus Jakarta Sans only. Titles in ExtraBold (800) with tight letter-spacing; body text in Medium (500). |
 | Colour | Neutral surfaces with a faint cool tint. The accent only for primary actions, progress and milestones. Pink-red only for likes. |
-| Glass | The tab bar, the Follow bar and buttons over photos use frosted glass (16–24 px blur). |
+| Glass | The tab bar, the Follow bar, and the buttons and labels over photos use frosted glass (16–24 px blur). |
 | Shape | Cards 20 px, panels 24 px, sheets 30 px. Buttons, chips and pills fully round. |
-| Icons | 24 px line icons with 2 px rounded strokes. Category tabs use 3D-style icons (emoji for now). |
+| Icons | 24 px line icons with 2 px rounded strokes. Categories, interests, templates and empty states use 3D icons: Microsoft's Fluent Emoji (free, MIT licence) for now. Custom art can replace them file by file in `design/hub/icons3d`. |
+| Motion | Small and quick, never in the way. Things you press shrink a touch and spring back. A like makes the heart pop. Progress rings fill. Lists arrive one item after another, rising a little. Nothing loops, and nothing moves when the phone's Reduce Motion is on. The numbers are in the tokens. |
 | Depth | Soft shadows in light mode. Hairline borders instead of shadows in dark mode. |
 
 ## Interaction cues
@@ -81,7 +82,7 @@ The people in the screens are made up. Nora Lind is the person using the app fro
 ## Open design questions
 
 1. Accent colour: Sun is chosen. Final check once you've reviewed all the screens.
-2. Custom 3D category icons, or keep emoji.
+2. 3D icons: Fluent Emoji are in for now (10 Nov 2026). Keep them, or commission custom ones?
 3. Real photos for the store listing and marketing. The current ones are Unsplash stand-ins.
 4. Still to design, when we build them during the beta: the "Journey of the week" and themed collections in Discover.
 

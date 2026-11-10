@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowDown, Plus, Star } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type EntryResponse, useGetJourney, useGetMe, useGetTimeline, useMarkJourneyRead } from '@/api/generated/journey';
@@ -14,6 +14,7 @@ import { Avatar } from '@/ui/Avatar';
 import { Card, Loading, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
 import { entryHeadline } from '@/ui/EntryBits';
+import { Rise, Tap } from '@/ui/Motion';
 import { ReactionCounts } from '@/ui/Reactions';
 import { Txt } from '@/ui/Txt';
 
@@ -74,7 +75,7 @@ export default function Timeline() {
             const newDay = !previous || previous.number !== entry.number;
             const quiet = previous && j.labelStyle === 'day' ? entry.number - previous.number - 1 : 0;
             return (
-              <View key={entry.id}>
+              <Rise key={entry.id} index={index}>
                 {quiet > 0 ? (
                   <Txt color="muted" weight={600} style={{ fontSize: 12.5, lineHeight: 17, fontStyle: 'italic', marginLeft: 34, marginBottom: 12 }}>
                     {plural(quiet, 'quiet day')}
@@ -90,7 +91,7 @@ export default function Timeline() {
                 ) : null}
                 {newDay ? <DayMarker entry={entry} /> : null}
                 <EntryCard entry={entry} fresh={isNew(entry)} showAuthor={j.authors.length > 1} onPress={() => router.push(`/entry/${entry.id}` as never)} />
-              </View>
+              </Rise>
             );
           })}
           {j.status === 'completed' ? (
@@ -139,7 +140,7 @@ function EntryCard({ entry, fresh, showAuthor, onPress }: { entry: EntryResponse
   const { colors } = useTheme();
   const cover = entry.media[0];
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${entryHeadline(entry)}${fresh ? '. New' : ''}`} onPress={onPress} style={({ pressed }) => ({ marginLeft: 34, marginBottom: 14, opacity: pressed ? 0.88 : 1 })}>
+    <Tap accessibilityRole="button" accessibilityLabel={`${entryHeadline(entry)}${fresh ? '. New' : ''}`} onPress={onPress} scaleTo={0.985} style={{ marginLeft: 34, marginBottom: 14 }}>
       <Card style={{ padding: fresh ? 8 : 10, borderWidth: fresh ? 2 : 0, borderColor: colors.accent }}>
         {showAuthor ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 4, marginBottom: 8, marginTop: 2 }}>
@@ -166,6 +167,6 @@ function EntryCard({ entry, fresh, showAuthor, onPress }: { entry: EntryResponse
           <ReactionCounts entry={entry} />
         </View>
       </Card>
-    </Pressable>
+    </Tap>
   );
 }

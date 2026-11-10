@@ -17,6 +17,7 @@ import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { EntryPost, EntryRow } from '@/ui/EntryBits';
 import { GroupLabel } from '@/ui/Heading';
+import { Rise } from '@/ui/Motion';
 import { Txt } from '@/ui/Txt';
 
 /** 3.2 and 3.3 The Following feed: newest first, grouped per journey, and it ends with "You're all caught up". */
@@ -72,7 +73,9 @@ export default function Following() {
           ) : null}
 
           {groups.map((group, index) => (
-            <FeedGroup key={group.journey.id} group={group} lead={index === 0} />
+            <Rise key={group.journey.id} index={index}>
+              <FeedGroup group={group} lead={index === 0} />
+            </Rise>
           ))}
 
           <View style={{ alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 18, marginHorizontal: 30 }}>

@@ -37,7 +37,7 @@ public final class Catalog {
           new Interest("surfing", "Surfing", "🏄", "fitness"),
           new Interest("learning", "Learning", "📚", "learning"),
           new Interest("music", "Music", "🎸", "learning"),
-          new Interest("languages", "Languages", "🗣️", "learning"),
+          new Interest("languages", "Languages", "💬", "learning"),
           new Interest("food", "Food", "🍜", "food"),
           new Interest("art", "Art", "🎨", "creative"),
           new Interest("building", "Building", "🛠️", "projects"),

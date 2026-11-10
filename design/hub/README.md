@@ -7,7 +7,7 @@ One page with everything about Journey: the screens, design system, design cues,
 | Hub page | Source |
 |---|---|
 | Overview | [`status.json`](status.json) (phase, next steps, open questions, updates) and §9 Decisions of [`docs/01-requirements.md`](../../docs/01-requirements.md) |
-| Screens | [`src/screens/`](src/screens/): one file per group, in the order of [`src/screens/index.json`](src/screens/index.json); styles in [`src/phone.css`](src/phone.css); photos in [`img/`](img/) |
+| Screens | [`src/screens/`](src/screens/): one file per group, in the order of [`src/screens/index.json`](src/screens/index.json); styles in [`src/phone.css`](src/phone.css); photos in [`img/`](img/); 3D icons in [`icons3d/`](icons3d/) |
 | Design system | [`design/tokens.json`](../tokens.json) |
 | Cues | [`docs/04-design-brief.md`](../../docs/04-design-brief.md) |
 | Inspiration | [`docs/05-inspiration.md`](../../docs/05-inspiration.md) and [`inspiration/`](inspiration/) |
@@ -56,4 +56,5 @@ Claude publishes `design/hub/index.html` with the Artifact tool to the same URL,
 - Change the sources, never the built page.
 - Colours, type and shapes live only in `design/tokens.json`.
 - Links between views are plain `#names` (letters, digits, hyphens). claude.ai reserves `settings`, `sidebar`, `customize`, `upgrade`, `downloads` and `comment-*`.
+- 3D icons live in `icons3d/`, one WebP per emoji, named by its code points (`2708-fe0f.webp` is ✈️). The build draws them wherever a screen has `<span class="em">` or `<span class="blob">` with that emoji. They are Microsoft's Fluent Emoji (MIT licence), taken from the `@lobehub/fluent-emoji-3d` package. After adding one, run `npm run icons` in `apps/mobile` so the app has it too, and publish the new file with the page.
 - Photos are from Unsplash via Lorem Picsum and are credited in the footer of `src/page.html`. The images in `inspiration/` are Airbnb's: keep the hub private, or remove them before sharing it publicly.

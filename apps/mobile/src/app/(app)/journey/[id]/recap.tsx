@@ -11,6 +11,7 @@ import { formatDay } from '@/lib/dates';
 import { darkTheme } from '@/theme';
 import { Loading, Photo, Pill, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { Emoji } from '@/ui/Emoji';
 import { RoundButton } from '@/ui/RoundButton';
 import { Txt } from '@/ui/Txt';
 
@@ -33,9 +34,7 @@ export default function Recap() {
       <SafeAreaView style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: 20 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginHorizontal: -4 }}>
           <RoundButton tone="photo" label="Close" onPress={leave} icon={(c) => <X size={20} color={c} />} />
-          <Txt accessible={false} style={{ fontSize: 30, lineHeight: 38 }}>
-            🎉
-          </Txt>
+          <Emoji char="🎉" size={40} />
           <View style={{ width: 40 }} />
         </View>
         {recap.isError ? (

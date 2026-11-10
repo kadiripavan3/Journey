@@ -53,11 +53,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/mobile/package-lock.json
       - run: npm ci
-      - name: Generated files are current (theme and API client)
+      - name: Generated files are current (theme, icons and API client)
         run: |
           npm run theme
+          npm run icons
           npm run api:generate
-          git diff --exit-code -- src/theme/tokens.ts src/api/generated ../api/src/main/resources/static/share/tokens.css
+          git diff --exit-code -- src/theme/tokens.ts src/ui/icons3d.ts assets/icons3d src/api/generated ../api/src/main/resources/static/share/tokens.css
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test

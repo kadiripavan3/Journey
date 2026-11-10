@@ -7,6 +7,7 @@ import { useOnboarding } from '@/auth/onboarding';
 import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Button } from '@/ui/Button';
+import { Emoji } from '@/ui/Emoji';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { TemplateCard } from '@/ui/TemplateCard';
@@ -31,9 +32,7 @@ export default function Ready() {
     <Screen footer={<Button label="Maybe later, take me Home" size="lg" variant="line" block onPress={() => leave()} />}>
       <View style={{ alignItems: 'center', marginTop: 40, marginBottom: 12 }}>
         <View style={{ width: 140, height: 140, borderRadius: 70, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft }}>
-          <Txt accessible={false} style={{ fontSize: 66, lineHeight: 80 }}>
-            🎉
-          </Txt>
+          <Emoji char="🎉" size={78} />
         </View>
       </View>
       <Heading center>{firstName ? `You're all set, ${firstName}` : "You're all set"}</Heading>

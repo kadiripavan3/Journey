@@ -57,6 +57,9 @@ export const radius = ${JSON.stringify(tokens.radius, null, 2)} as const;
 export const space = ${JSON.stringify(tokens.space)} as const;
 
 export const type = ${JSON.stringify(type, null, 2)} as const;
+
+/** Motion: how far a pressed thing shrinks, and durations in milliseconds. "stagger" is the gap between list items entering. */
+export const motion = ${JSON.stringify(tokens.motion, null, 2)} as const;
 `;
 
 writeFileSync(join(here, '../src/theme/tokens.ts'), out);

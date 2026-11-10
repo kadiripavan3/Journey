@@ -13,6 +13,7 @@ import { formatDay } from '@/lib/dates';
 import { darkTheme, useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Eyebrow, Loading, Problem } from '@/ui/Bits';
+import { Frost } from '@/ui/Frost';
 import { Button } from '@/ui/Button';
 import { CommentsSheet } from '@/ui/CommentsSheet';
 import { entryEyebrow, MilestonePill } from '@/ui/EntryBits';
@@ -65,7 +66,8 @@ export default function EntryView() {
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.52)' }]} />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: insets.top + 8, paddingHorizontal: 20 }}>
-        <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: 18, backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
+        <View style={{ paddingVertical: 9, paddingHorizontal: 14, borderRadius: 18, overflow: 'hidden', backgroundColor: darkTheme.colors.photoGlass, borderWidth: 1, borderColor: darkTheme.colors.photoGlassLine }}>
+          <Frost tone="dark" />
           <Txt accessibilityLiveRegion="polite" weight={700} style={{ fontSize: 13, lineHeight: 17, color: darkTheme.colors.onPhoto }}>
             {current ? `Entry ${index + 1} of ${entries.length}` : ' '}
           </Txt>
@@ -116,6 +118,7 @@ export default function EntryView() {
             paddingLeft: 20,
             paddingRight: 8,
             borderRadius: 27,
+            overflow: 'hidden',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -123,6 +126,7 @@ export default function EntryView() {
             borderWidth: 1,
             borderColor: darkTheme.colors.photoGlassLine,
           }}>
+          <Frost tone="dark" />
           <Txt numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 19, color: darkTheme.colors.onPhoto }}>
             Say something nice to {current.author.displayName.trim().split(/\s+/)[0]}…
           </Txt>

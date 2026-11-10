@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
+import { Emoji } from './Emoji';
 import { Txt } from './Txt';
 
 type Props = { emoji: string; title: string; body: string; action?: ReactNode };
@@ -13,9 +14,7 @@ export function EmptyState({ emoji, title, body, action }: Props) {
   return (
     <View style={{ alignItems: 'center', gap: 10, paddingHorizontal: 34 }}>
       <View style={{ width: 116, height: 116, borderRadius: 58, marginBottom: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft }}>
-        <Txt style={{ fontSize: 54, lineHeight: 66 }} accessible={false}>
-          {emoji}
-        </Txt>
+        <Emoji char={emoji} size={64} />
       </View>
       <Txt accessibilityRole="header" weight={800} center style={{ fontSize: 21, lineHeight: 26, letterSpacing: -0.5 }}>
         {title}

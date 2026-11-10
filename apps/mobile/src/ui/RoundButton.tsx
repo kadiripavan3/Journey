@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable } from 'react-native';
 
 import { useTheme } from '@/theme';
+
+import { Frost } from './Frost';
+import { Tap } from './Motion';
 
 type Props = {
   /** What the button does, for screen readers. */
@@ -17,23 +19,25 @@ export function RoundButton({ label, onPress, icon, tone = 'soft' }: Props) {
   const { colors } = useTheme();
   const onPhoto = tone === 'photo';
   return (
-    <Pressable
+    <Tap
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={4}
       onPress={onPress}
-      style={({ pressed }) => ({
+      scaleTo={0.9}
+      style={{
         width: 40,
         height: 40,
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
         backgroundColor: onPhoto ? colors.photoGlass : colors.fill,
         borderWidth: onPhoto ? 1 : 0,
         borderColor: colors.photoGlassLine,
-        opacity: pressed ? 0.7 : 1,
-      })}>
+      }}>
+      {onPhoto ? <Frost tone="dark" /> : null}
       {icon(onPhoto ? colors.onPhoto : colors.text)}
-    </Pressable>
+    </Tap>
   );
 }

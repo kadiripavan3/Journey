@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useTheme } from '@/theme';
 import { AppBar } from '@/ui/AppBar';
@@ -23,9 +24,10 @@ export default function HowItWorks() {
   return (
     <Screen header={<AppBar />} footer={<Button label="Next" size="lg" block onPress={() => router.push('/sign-in')} />}>
       <View accessible accessibilityLabel="Three photos stacked like cards: Day 1 in Hanoi, Day 14 in Hoi An and Day 22 at Mount Bromo." style={{ height: 430, alignItems: 'center' }}>
-        {CARDS.map((card) => (
-          <View
+        {CARDS.map((card, index) => (
+          <Animated.View
             key={card.label}
+            entering={FadeInDown.duration(420).delay(120 + index * 140)}
             style={{
               position: 'absolute',
               top: card.top,
@@ -39,7 +41,7 @@ export default function HowItWorks() {
             }}>
             <Image source={card.photo} style={{ flex: 1 }} contentFit="cover" />
             <Pill label={card.label} style={{ position: 'absolute', left: 12, bottom: 12 }} />
-          </View>
+          </Animated.View>
         ))}
         <View
           style={{

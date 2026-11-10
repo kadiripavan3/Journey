@@ -53,6 +53,7 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "theme": "node scripts/build-theme.mjs",
+    "icons": "node scripts/build-icons.mjs",
     "api:generate": "orval --config orval.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",

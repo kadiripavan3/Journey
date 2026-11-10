@@ -22,11 +22,15 @@
       "a": "\"Journey\" is taken in the app stores. Needed before the beta ends."
     },
     {
-      "q": "Category icons",
-      "a": "Emoji for now; custom 3D icons can replace them later."
+      "q": "3D icons",
+      "a": "Microsoft's Fluent Emoji (free) are in for now. Keep them, or commission custom ones later? They can be swapped file by file."
     }
   ],
   "updates": [
+    {
+      "date": "2026-11-10",
+      "text": "**3D icons, glass and motion.** Categories, interests, templates and empty states now use 3D icons, in the screens here and in the app. Buttons and labels on photos are frosted glass. Things you press spring back, a like makes the heart pop, progress rings fill and lists arrive one item after another; none of it moves with Reduce Motion on."
+    },
     {
       "date": "2026-11-10",
       "text": "**The weekly digest and share links.** \"This week in the journeys you follow\" opens from Activity, and every public or unlisted journey has a web page anyone can open, with a preview in chats. 48 API tests; the browser walk-through covers 61 screens and states."

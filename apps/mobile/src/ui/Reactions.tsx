@@ -1,11 +1,13 @@
 import { Heart, MessageCircle } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring } from 'react-native-reanimated';
 
 import { type EntryResponse, useLikeEntry, useUnlikeEntry } from '@/api/generated/journey';
 import { useRefreshAll } from '@/api/refresh';
 import { compact } from '@/lib/plural';
 import { useTheme } from '@/theme';
 
+import { SPRING } from './Motion';
 import { Txt } from './Txt';
 
 /** The heart and the comment count under an entry. The heart fills straight away when tapped. */
@@ -18,6 +20,8 @@ export function Reactions({ entry, onComments }: { entry: EntryResponse; onComme
   // While a request is on its way, show where it is heading.
   const liked = like.isPending ? true : unlike.isPending ? false : entry.viewer.hasLiked;
   const count = entry.likeCount + (liked === entry.viewer.hasLiked ? 0 : liked ? 1 : -1);
+  const beat = useSharedValue(1);
+  const heart = useAnimatedStyle(() => ({ transform: [{ scale: beat.get() }] }));
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 16 }}>
@@ -28,11 +32,17 @@ export function Reactions({ entry, onComments }: { entry: EntryResponse; onComme
         hitSlop={10}
         onPress={() => {
           if (busy) return;
-          if (liked) unlike.mutate({ id: entry.id });
-          else like.mutate({ id: entry.id });
+          if (liked) {
+            unlike.mutate({ id: entry.id });
+          } else {
+            beat.set(withSequence(withSpring(1.35, SPRING), withSpring(1, SPRING)));
+            like.mutate({ id: entry.id });
+          }
         }}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Heart size={22} color={liked ? colors.like : colors.text} fill={liked ? colors.like : 'transparent'} />
+        <Animated.View style={heart}>
+          <Heart size={22} color={liked ? colors.like : colors.text} fill={liked ? colors.like : 'transparent'} />
+        </Animated.View>
         <Txt weight={700} style={{ fontSize: 14, lineHeight: 19, color: liked ? colors.like : colors.text }}>
           {compact(Math.max(count, 0))}
         </Txt>

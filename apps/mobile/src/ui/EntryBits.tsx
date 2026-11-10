@@ -1,10 +1,11 @@
 import { Star } from 'lucide-react-native';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import type { EntryResponse } from '@/api/generated/journey';
 import { useTheme } from '@/theme';
 
 import { Eyebrow, Photo, Pill } from './Bits';
+import { Tap } from './Motion';
 import { ReactionCounts } from './Reactions';
 import { Txt } from './Txt';
 
@@ -22,11 +23,7 @@ export function entryHeadline(entry: EntryResponse): string {
 export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse; onPress?: () => void; photo?: number }) {
   const cover = entry.media[0];
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`}
-      onPress={onPress}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 14, opacity: pressed ? 0.8 : 1 })}>
+    <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       {cover ? <Photo uri={cover.url} radius={16} style={{ width: photo, height: photo }} /> : null}
       <View style={{ flex: 1 }}>
         <Eyebrow>{entryEyebrow(entry)}</Eyebrow>
@@ -39,7 +36,7 @@ export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse;
           </Txt>
         ) : null}
       </View>
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -47,7 +44,7 @@ export function EntryRow({ entry, onPress, photo = 76 }: { entry: EntryResponse;
 export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryResponse; onPress?: () => void; height?: number }) {
   const cover = entry.media[0];
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+    <Tap accessibilityRole="button" accessibilityLabel={`${entryEyebrow(entry)}. ${entryHeadline(entry)}`} onPress={onPress} scaleTo={0.985}>
       {cover ? (
         <Photo uri={cover.url} style={{ height, marginBottom: 12 }}>
           {entry.isMilestone ? <MilestonePill style={{ position: 'absolute', top: 12, left: 12 }} /> : null}
@@ -64,7 +61,7 @@ export function EntryPost({ entry, onPress, height = 214 }: { entry: EntryRespon
         </Txt>
       ) : null}
       <ReactionCounts entry={entry} />
-    </Pressable>
+    </Tap>
   );
 }
 

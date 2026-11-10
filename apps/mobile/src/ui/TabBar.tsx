@@ -8,6 +8,7 @@ import { useGetActivity } from '@/api/generated/journey';
 import { fontFor, useTheme } from '@/theme';
 
 import { AddSheet } from './AddSheet';
+import { Tap } from './Motion';
 import { Txt } from './Txt';
 
 const ICONS: Record<string, (color: string) => ReactNode> = {
@@ -64,21 +65,14 @@ export function TabBar({ state, descriptors, navigateToTab, insets }: BottomTabB
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 6, backgroundColor: colors.glass }}>
           {tab(0)}
           {tab(1)}
-          <Pressable
+          <Tap
             accessibilityRole="button"
             accessibilityLabel="Add an entry or start a journey"
             onPress={() => setAdding(true)}
-            style={({ pressed }) => ({
-              width: 54,
-              height: 54,
-              borderRadius: 27,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.accent,
-              opacity: pressed ? 0.85 : 1,
-            })}>
+            scaleTo={0.9}
+            style={{ width: 54, height: 54, borderRadius: 27, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}>
             <Plus size={26} color={colors.onAccent} strokeWidth={2.4} />
-          </Pressable>
+          </Tap>
           {tab(2)}
           {tab(3)}
         </View>

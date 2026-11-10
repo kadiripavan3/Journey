@@ -2,11 +2,14 @@ import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, type StyleProp, View, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 import { messageFor } from '@/api/fetcher';
 import { useTheme } from '@/theme';
 
 import { Button } from './Button';
+import { Frost } from './Frost';
+import { SPRING } from './Motion';
 import { Txt } from './Txt';
 
 /** A small label on a photo, such as "3 new" or "Milestone". */
@@ -15,7 +18,8 @@ export function Pill({ label, icon, tone = 'glass', style }: { label: string; ic
   const bg = tone === 'accent' ? colors.accent : tone === 'photo' ? colors.photoGlass : colors.glassStrong;
   const fg = tone === 'accent' ? colors.onAccent : tone === 'photo' ? colors.onPhoto : colors.text;
   return (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 14, backgroundColor: bg, alignSelf: 'flex-start' }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 14, overflow: 'hidden', backgroundColor: bg, alignSelf: 'flex-start' }, style]}>
+      {tone === 'accent' ? null : <Frost tone={tone === 'photo' ? 'dark' : 'theme'} intensity={20} />}
       {icon?.(fg)}
       <Txt weight={700} style={{ fontSize: 12, lineHeight: 15, color: fg }}>
         {label}
@@ -136,6 +140,7 @@ export function Problem({ error, onRetry, retrying }: { error: unknown; onRetry?
 /** An on/off switch drawn with the app's colours. */
 export function Toggle({ value, onChange, label }: { value: boolean; onChange: (next: boolean) => void; label: string }) {
   const { colors } = useTheme();
+  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: withSpring(value ? 20 : 0, SPRING) }] }), [value]);
   return (
     <Pressable
       accessibilityRole="switch"
@@ -143,8 +148,8 @@ export function Toggle({ value, onChange, label }: { value: boolean; onChange: (
       accessibilityState={{ checked: value }}
       hitSlop={8}
       onPress={() => onChange(!value)}
-      style={{ width: 50, height: 30, borderRadius: 15, padding: 3, backgroundColor: value ? colors.accent : colors.fill2, alignItems: value ? 'flex-end' : 'flex-start' }}>
-      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFFFF', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)' }} />
+      style={{ width: 50, height: 30, borderRadius: 15, padding: 3, backgroundColor: value ? colors.accent : colors.fill2 }}>
+      <Animated.View style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFFFFF', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)' }, knob]} />
     </Pressable>
   );
 }

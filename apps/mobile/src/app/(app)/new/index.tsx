@@ -10,6 +10,7 @@ import { useTheme } from '@/theme';
 import { AppBar, StepProgress } from '@/ui/AppBar';
 import { Loading, Problem } from '@/ui/Bits';
 import { Button } from '@/ui/Button';
+import { Emoji } from '@/ui/Emoji';
 import { Heading, Lead } from '@/ui/Heading';
 import { Screen } from '@/ui/Screen';
 import { TemplateCard } from '@/ui/TemplateCard';
@@ -90,9 +91,7 @@ export default function ChooseTemplate() {
                 borderWidth: 2,
                 borderColor: draft.template === journal.id ? colors.text : colors.fill,
               }}>
-              <Txt accessible={false} style={{ fontSize: 22, lineHeight: 28 }}>
-                {journal.emoji}
-              </Txt>
+              <Emoji char={journal.emoji} size={28} />
               <Txt style={{ flex: 1, fontSize: 14, lineHeight: 20 }}>
                 <Txt weight={800} style={{ fontSize: 14, lineHeight: 20 }}>
                   {journal.name}

@@ -18,7 +18,7 @@ const src = (name) => readFileSync(join(HUB, 'src', name), 'utf8').trimEnd();
 const tokens = JSON.parse(read('design/tokens.json'));
 const status = JSON.parse(read('design/hub/status.json'));
 
-const ASSET_DIRS = ['img', 'inspiration'];
+const ASSET_DIRS = ['img', 'inspiration', 'icons3d'];
 if (process.argv.includes('--files')) {
   const files = ASSET_DIRS.flatMap((d) => readdirSync(join(HUB, d)).filter((f) => !f.startsWith('.')).sort().map((f) => ({ path: `${d}/${f}` })));
   console.log(JSON.stringify(files));
@@ -265,7 +265,7 @@ const vars = {
 };
 
 const used = new Set();
-const out = src('page.html').replace(/\{\{([A-Z0-9_]+)\}\}/g, (m, key) => {
+let out = src('page.html').replace(/\{\{([A-Z0-9_]+)\}\}/g, (m, key) => {
   if (!(key in vars)) throw new Error(`page.html uses ${m}, which build.mjs doesn't define`);
   used.add(key);
   return vars[key];
@@ -273,8 +273,20 @@ const out = src('page.html').replace(/\{\{([A-Z0-9_]+)\}\}/g, (m, key) => {
 const unused = Object.keys(vars).filter((k) => !used.has(k));
 if (unused.length) throw new Error(`build.mjs defines ${unused.join(', ')}, which page.html doesn't use`);
 
+// Emoji in the screens are drawn as 3D icons (design/hub/icons3d, named by the emoji's code points) where one exists.
+const icon3d = (emoji) => {
+  const points = [...emoji.trim()].map((c) => c.codePointAt(0).toString(16).padStart(4, '0'));
+  for (const name of [points.join('-'), points.filter((p) => p !== 'fe0f').join('-')]) {
+    if (existsSync(join(HUB, 'icons3d', `${name}.webp`))) return `icons3d/${name}.webp`;
+  }
+  return null;
+};
+out = out
+  .replace(/<span class="em">([^<]+)<\/span>/g, (all, emoji) => { const src = icon3d(emoji); return src ? `<img class="em em3d" src="${src}" alt="">` : all; })
+  .replace(/<span class="blob">([^<]+)<\/span>/g, (all, emoji) => { const src = icon3d(emoji); return src ? `<span class="blob"><img class="em3d" src="${src}" alt=""></span>` : all; });
+
 // Every image the page shows must exist; images nobody shows are reported.
-const refs = new Set([...out.matchAll(/(?:src="|url\()((?:img|inspiration)\/[^")\s]+)/g)].map((m) => m[1]));
+const refs = new Set([...out.matchAll(/(?:src="|url\()((?:img|inspiration|icons3d)\/[^")\s]+)/g)].map((m) => m[1]));
 const missing = [...refs].filter((r) => !existsSync(join(HUB, r)));
 if (missing.length) throw new Error(`Missing images: ${missing.join(', ')}`);
 const unshown = ASSET_DIRS.flatMap((d) => readdirSync(join(HUB, d)).map((f) => `${d}/${f}`)).filter((f) => !refs.has(f));

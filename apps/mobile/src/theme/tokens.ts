@@ -136,3 +136,12 @@ export const type = {
     "uppercase": true
   }
 } as const;
+
+/** Motion: how far a pressed thing shrinks, and durations in milliseconds. "stagger" is the gap between list items entering. */
+export const motion = {
+  "pressScale": 0.97,
+  "quick": 160,
+  "base": 240,
+  "slow": 600,
+  "stagger": 45
+} as const;

@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable } from 'react-native';
 
 import { fontFor, useTheme } from '@/theme';
 
+import { Emoji } from './Emoji';
+import { Tap } from './Motion';
 import { Txt } from './Txt';
 
 type Props = {
@@ -22,12 +23,13 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
   const bg = selected ? (filter ? colors.text : colors.fill) : colors.bg;
   const fg = selected && filter ? colors.bg : colors.text;
   return (
-    <Pressable
+    <Tap
+      scaleTo={0.94}
       accessibilityRole={filter ? 'button' : 'checkbox'}
       accessibilityState={filter ? { selected: !!selected } : { checked: !!selected }}
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: filter ? 6 : 8,
@@ -38,11 +40,10 @@ export function Chip({ label, emoji, selected, onPress, tone = 'choice', icon }:
         borderWidth: selected && !filter ? 2 : 1.5,
         borderColor: selected ? colors.text : colors.line,
         margin: selected && !filter ? 0 : filter ? 0 : 0.5,
-        opacity: pressed ? 0.8 : 1,
-      })}>
+      }}>
       {icon}
-      {emoji ? <Txt style={{ fontSize: filter ? 16 : 19, lineHeight: filter ? 20 : 23 }}>{emoji}</Txt> : null}
+      {emoji ? <Emoji char={emoji} size={filter ? 20 : 24} /> : null}
       <Txt style={{ fontFamily: fontFor[700], fontSize: filter ? 13.5 : 14.5, lineHeight: 20, color: fg }}>{label}</Txt>
-    </Pressable>
+    </Tap>
   );
 }

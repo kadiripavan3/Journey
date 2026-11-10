@@ -43,7 +43,7 @@ node design/hub/build.mjs --files    # the image list for the publish call
 
 1. Look at the built page with Playwright before publishing: light and dark, 1440 px and 390 px wide, no sideways scrolling, no console errors.
 2. In a new session, read the hub first (Artifact, action `read`), as the tool requires before updating it.
-3. Publish with the Artifact tool: `file_path` `design/hub/index.html`, `url` the hub URL above, `root` `design/hub`, `files` the `--files` list, `capabilities` `{"comments": {"composer_only": true}}`.
+3. Publish with the Artifact tool: `file_path` `design/hub/index.html`, `url` the hub URL above, `root` `design/hub`, `files` the `--files` list, `capabilities` `{"comments": {"composer_only": true}}`. Files already published are kept, so `files` only needs the ones that are new or changed.
 
 ## Build and test the code
 
@@ -57,6 +57,8 @@ cd apps/mobile && npm ci && npm run check      # types, lint, tests
 
 - **Local first:** every outside service has a stand-in behind a switch in the API (`journey.auth.mode` and friends). Build features against the stand-ins; the real services are connected in the last milestone. The app must work with any email and the code 123456.
 - **API change:** write the test, then run `UPDATE_OPENAPI=1 ./mvnw test` in `apps/api` and `npm run api:generate` in `apps/mobile`. Commit `openapi.json` and the generated client with the change.
+- **3D icons** live in `design/hub/icons3d`, named by the emoji's code points (Fluent Emoji, MIT). After adding or removing one, run `npm run icons` in `apps/mobile` and rebuild the hub. In the app, draw emoji with the `Emoji` component.
+- **Motion and glass:** press feedback is `Tap`, list items arrive with `Rise` (both in `src/ui/Motion.tsx`), and anything on a photo gets `Frost` behind it. The numbers are in the tokens (`motion`).
 - **Token change:** run `npm run theme` in `apps/mobile` (it writes the app's theme and the share page's `tokens.css` in the API) and rebuild the hub.
 - **Screens:** build each one from its design in `design/hub/src/screens/`, using the components in `apps/mobile/src/ui` and only theme values. Check it in the web build with Playwright (`npx expo export -p web`, serve `dist`, run the API with the `local` profile), in light and dark.
 - **In this cloud environment** `npx expo install`, `expo lint` and `expo export` need `EXPO_OFFLINE=1`, because Expo's version service is not on the network allowlist.

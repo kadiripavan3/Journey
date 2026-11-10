@@ -10,8 +10,10 @@ import { plural } from '@/lib/plural';
 import { useTheme } from '@/theme';
 import { Avatar } from '@/ui/Avatar';
 import { Loading, Photo, Problem } from '@/ui/Bits';
+import { Emoji } from '@/ui/Emoji';
 import { EmptyState } from '@/ui/EmptyState';
 import { GroupLabel } from '@/ui/Heading';
+import { Rise } from '@/ui/Motion';
 import { PersonFollowButton } from '@/ui/PersonFollowButton';
 import { Txt } from '@/ui/Txt';
 
@@ -93,9 +95,7 @@ export default function Activity() {
               accessibilityLabel={`This week: ${plural(week.entryCount, 'new entry', 'new entries')} in ${plural(week.journeys.length, 'journey')}. Open the weekly digest.`}
               onPress={() => router.push('/digest' as never)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14, marginHorizontal: 16, padding: 14, borderRadius: 20, backgroundColor: colors.fill }}>
-              <Txt accessible={false} style={{ fontSize: 26, lineHeight: 32 }}>
-                🗞️
-              </Txt>
+              <Emoji char="🗞️" size={34} />
               <View style={{ flex: 1 }}>
                 <Txt weight={800} style={{ fontSize: 15, lineHeight: 20 }}>
                   This week in the journeys you follow
@@ -117,12 +117,16 @@ export default function Activity() {
           ) : (
             <>
               {recent.length > 0 ? <GroupLabel style={{ marginHorizontal: 22 }}>New</GroupLabel> : null}
-              {recent.map((item) => (
-                <Line key={item.id} item={item} fresh />
+              {recent.map((item, index) => (
+                <Rise key={item.id} index={index}>
+                  <Line item={item} fresh />
+                </Rise>
               ))}
               {earlier.length > 0 ? <GroupLabel style={{ marginHorizontal: 22 }}>{recent.length > 0 ? 'Earlier' : 'This month'}</GroupLabel> : null}
-              {earlier.map((item) => (
-                <Line key={item.id} item={item} />
+              {earlier.map((item, index) => (
+                <Rise key={item.id} index={index}>
+                  <Line item={item} />
+                </Rise>
               ))}
             </>
           )}

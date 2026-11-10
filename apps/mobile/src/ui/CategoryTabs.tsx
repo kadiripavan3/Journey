@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 
 import { useTheme } from '@/theme';
 
+import { Emoji } from './Emoji';
 import { Txt } from './Txt';
 
 type Tab = { id: string; label: string; emoji: string };
@@ -21,9 +22,7 @@ export function CategoryTabs({ tabs, value, onChange }: { tabs: Tab[]; value: st
             accessibilityState={{ selected: on }}
             onPress={() => onChange(tab.id)}
             style={{ flex: 1, alignItems: 'center', gap: 3, paddingBottom: 11 }}>
-            <Txt accessible={false} style={{ fontSize: 28, lineHeight: 36 }}>
-              {tab.emoji}
-            </Txt>
+            <Emoji char={tab.emoji} size={36} />
             <Txt numberOfLines={1} weight={on ? 700 : 600} style={{ fontSize: 12, lineHeight: 16, color: on ? colors.text : colors.muted }}>
               {tab.label}
             </Txt>

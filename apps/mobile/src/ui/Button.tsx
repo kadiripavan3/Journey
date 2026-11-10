@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, type StyleProp, Text, type ViewStyle } from 'react-native';
+import { ActivityIndicator, type StyleProp, Text, type ViewStyle } from 'react-native';
 
 import { fontFor, useTheme } from '@/theme';
+
+import { Frost } from './Frost';
+import { Tap } from './Motion';
 
 type Variant = 'primary' | 'ink' | 'line' | 'soft' | 'glass' | 'quiet' | 'danger';
 type Size = 'lg' | 'md' | 'sm';
@@ -41,13 +44,13 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
   const inactive = disabled || loading;
 
   return (
-    <Pressable
+    <Tap
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}
       disabled={inactive}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         {
           height: HEIGHT[size],
           paddingHorizontal: PADDING[size],
@@ -60,10 +63,12 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
           justifyContent: 'center',
           gap: 8,
           alignSelf: block ? 'stretch' : inline ? 'center' : 'flex-start',
-          opacity: disabled ? 0.38 : pressed ? 0.85 : 1,
+          opacity: disabled ? 0.38 : 1,
+          overflow: variant === 'glass' ? 'hidden' : undefined,
         },
         style,
       ]}>
+      {variant === 'glass' ? <Frost tone="dark" /> : null}
       {loading ? <ActivityIndicator color={fg} /> : icon?.(fg)}
       <Text
         numberOfLines={1}
@@ -76,6 +81,6 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
         }}>
         {label}
       </Text>
-    </Pressable>
+    </Tap>
   );
 }
