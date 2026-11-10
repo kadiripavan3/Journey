@@ -113,10 +113,10 @@ public class ModerationService {
     @Transactional
     public void dismissReport(UUID reportId, String reviewer) {
         ReportRow report = requireOpen(reportId);
-        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, "dismissed");
+        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, ReportOutcome.DISMISSED);
         store.log(
                 reviewer,
-                "dismissed a report",
+                ReviewAction.DISMISSED_REPORT,
                 report.targetType().code(),
                 report.targetId().toString(),
                 report.reason());
@@ -130,10 +130,10 @@ public class ModerationService {
             throw ApiProblem.badRequest("cannot_remove_person", "A person is removed with their whole account.");
         }
         store.removeTarget(report.targetType(), report.targetId());
-        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, "removed");
+        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, ReportOutcome.REMOVED);
         store.log(
                 reviewer,
-                "removed reported content",
+                ReviewAction.REMOVED_REPORTED,
                 report.targetType().code(),
                 report.targetId().toString(),
                 "%s: %s".formatted(report.reason(), report.what() == null ? "already gone" : report.what()));
@@ -149,10 +149,10 @@ public class ModerationService {
             throw ApiProblem.badRequest("not_a_person", "This report is not about a person.");
         }
         accounts.removeForGood(report.targetId(), reviewer);
-        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, "removed");
+        store.closeReportsAbout(report.targetType(), report.targetId(), reviewer, ReportOutcome.REMOVED);
         store.log(
                 reviewer,
-                "removed a person's account",
+                ReviewAction.REMOVED_PERSON,
                 report.targetType().code(),
                 report.targetId().toString(),
                 "%s: %s".formatted(report.reason(), report.what() == null ? "already gone" : report.what()));
@@ -167,15 +167,14 @@ public class ModerationService {
     @Transactional
     public void releasePhoto(UUID mediaId, String reviewer) {
         if (media.letThrough(mediaId)) {
-            store.log(reviewer, "released a photo", "photo", mediaId.toString(), "");
+            store.log(reviewer, ReviewAction.RELEASED_PHOTO, "photo", mediaId.toString(), "");
         }
     }
 
     @Transactional
     public void removePhoto(UUID mediaId, String reviewer) {
-        if (store.isHeld(mediaId)) {
-            media.remove(mediaId);
-            store.log(reviewer, "removed a photo", "photo", mediaId.toString(), "");
+        if (media.removeHeld(mediaId)) {
+            store.log(reviewer, ReviewAction.REMOVED_PHOTO, "photo", mediaId.toString(), "");
         }
     }
 
@@ -183,7 +182,7 @@ public class ModerationService {
     @Transactional
     public void releaseComment(UUID commentId, String reviewer) {
         if (store.releaseComment(commentId)) {
-            store.log(reviewer, "released a comment", "comment", commentId.toString(), "");
+            store.log(reviewer, ReviewAction.RELEASED_COMMENT, "comment", commentId.toString(), "");
             events.publishEvent(new CommentAdded(commentId));
         }
     }
@@ -191,7 +190,8 @@ public class ModerationService {
     @Transactional
     public void removeComment(UUID commentId, String reviewer) {
         store.deleteComment(commentId)
-                .ifPresent(said -> store.log(reviewer, "removed a comment", "comment", commentId.toString(), said));
+                .ifPresent(said ->
+                        store.log(reviewer, ReviewAction.REMOVED_COMMENT, "comment", commentId.toString(), said));
     }
 
     // ---- "please delete my account", asked on the web ----
@@ -216,12 +216,11 @@ public class ModerationService {
                         HttpStatus.NOT_FOUND, "request_closed", "That request has already been handled."));
         Optional<UUID> who = emails.whose(request.email());
         who.ifPresent(accounts::delete);
-        if (store.closeDeletionRequest(requestId, reviewer, who.isPresent() ? "deleted" : "no_account")) {
+        if (store.closeDeletionRequest(
+                requestId, reviewer, who.isPresent() ? DeletionOutcome.DELETED : DeletionOutcome.NO_ACCOUNT)) {
             store.log(
                     reviewer,
-                    who.isPresent()
-                            ? "deleted an account at its owner's request"
-                            : "closed a deletion request: nobody signs in with that address",
+                    who.isPresent() ? ReviewAction.DELETED_ACCOUNT : ReviewAction.FOUND_NO_ACCOUNT,
                     "deletion_request",
                     requestId.toString(),
                     "");
@@ -231,13 +230,8 @@ public class ModerationService {
     /** Closed without deleting anything: the person didn't answer, or it wasn't them. */
     @Transactional
     public void closeDeletionRequest(UUID requestId, String reviewer) {
-        if (store.closeDeletionRequest(requestId, reviewer, "closed")) {
-            store.log(
-                    reviewer,
-                    "closed a deletion request without deleting",
-                    "deletion_request",
-                    requestId.toString(),
-                    "");
+        if (store.closeDeletionRequest(requestId, reviewer, DeletionOutcome.CLOSED)) {
+            store.log(reviewer, ReviewAction.CLOSED_REQUEST, "deletion_request", requestId.toString(), "");
         }
     }
 

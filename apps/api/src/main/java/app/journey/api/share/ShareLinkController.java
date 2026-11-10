@@ -1,12 +1,6 @@
 package app.journey.api.share;
 
 import app.journey.api.auth.Me;
-import app.journey.api.common.ApiProblem;
-import app.journey.api.common.PublicUrls;
-import app.journey.api.entry.EntryService;
-import app.journey.api.journey.JourneyService;
-import app.journey.api.journey.Visibility;
-import app.journey.api.profile.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,16 +26,10 @@ class ShareLinkController {
             @Schema(description = "A line to send along with the link")
             String text) {}
 
-    private final EntryService entries;
-    private final JourneyService journeys;
-    private final ProfileService profiles;
-    private final PublicUrls urls;
+    private final ShareLinks links;
 
-    ShareLinkController(EntryService entries, JourneyService journeys, ProfileService profiles, PublicUrls urls) {
-        this.entries = entries;
-        this.journeys = journeys;
-        this.profiles = profiles;
-        this.urls = urls;
+    ShareLinkController(ShareLinks links) {
+        this.links = links;
     }
 
     @GetMapping("/entries/{id}/share-link")
@@ -49,14 +37,7 @@ class ShareLinkController {
             operationId = "getEntryShareLink",
             summary = "The link to share one entry. A private journey's entries have none.")
     ShareLinkResponse entry(@Me UUID me, @PathVariable UUID id) {
-        var entry = entries.get(id, me);
-        var journey = journeys.require(entry.journeyId(), me);
-        if (journey.visibility() == Visibility.PRIVATE) {
-            throw ApiProblem.badRequest(
-                    "not_shareable", "This entry is in a private journey, so there is no link to share.");
-        }
-        String headline = entry.title().isEmpty() ? entry.label() : entry.title();
-        return new ShareLinkResponse(urls.to("/e/" + id), "%s · %s".formatted(headline, journey.title()));
+        return answer(links.toEntry(id, me));
     }
 
     @GetMapping("/me/share-link")
@@ -64,9 +45,10 @@ class ShareLinkController {
             operationId = "getMyShareLink",
             summary = "Your 'Follow my journey' link: a page with your public journeys, for a social bio")
     ShareLinkResponse mine(@Me UUID me) {
-        var profile = profiles.find(me)
-                .orElseThrow(() -> ApiProblem.conflict("profile_required", "Finish setting up your profile first."));
-        return new ShareLinkResponse(
-                urls.to("/u/" + profile.username()), "Follow %s on Journey".formatted(profile.displayName()));
+        return answer(links.toMe(me));
+    }
+
+    private static ShareLinkResponse answer(ShareLinks.Link link) {
+        return new ShareLinkResponse(link.url(), link.text());
     }
 }

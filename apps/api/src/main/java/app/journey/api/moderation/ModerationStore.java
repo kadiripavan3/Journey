@@ -52,14 +52,6 @@ public class ModerationStore {
 
     // ---- photos ----
 
-    public boolean isHeld(UUID mediaId) {
-        return jdbc.sql("select held from media where id = :id")
-                .param("id", mediaId)
-                .query(Boolean.class)
-                .optional()
-                .orElse(false);
-    }
-
     public List<HeldPhotoRow> heldPhotos(int limit) {
         return jdbc.sql("""
             select m.id, m.kind, m.storage_key, m.playback_id, m.held_reason, p.username, m.created_at, m.appeal_at
@@ -150,13 +142,13 @@ public class ModerationStore {
     }
 
     /** Closes every open report about the same thing: once a reviewer has decided, the others are answered too. */
-    public int closeReportsAbout(ReportTarget type, UUID targetId, String reviewer, String outcome) {
+    public int closeReportsAbout(ReportTarget type, UUID targetId, String reviewer, ReportOutcome outcome) {
         return jdbc.sql("""
             update reports set status = 'reviewed', reviewed_by = :reviewer, reviewed_at = now(), outcome = :outcome
             where status = 'open' and target_type = :type and target_id = :target
             """)
                 .param("reviewer", reviewer)
-                .param("outcome", outcome)
+                .param("outcome", outcome.code())
                 .param("type", type.code())
                 .param("target", targetId)
                 .update();
@@ -232,14 +224,14 @@ public class ModerationStore {
      * Closes a request, noting what became of it. The address and the note are not kept past this point: a
      * closed request says that something was asked and what was done, not by whom.
      */
-    public boolean closeDeletionRequest(UUID id, String reviewer, String outcome) {
+    public boolean closeDeletionRequest(UUID id, String reviewer, DeletionOutcome outcome) {
         return jdbc.sql("""
             update deletion_requests set status = 'done', done_by = :reviewer, done_at = now(), outcome = :outcome,
               email = '', username = '', note = ''
             where id = :id and status = 'open'
             """)
                         .param("reviewer", reviewer)
-                        .param("outcome", outcome)
+                        .param("outcome", outcome.code())
                         .param("id", id)
                         .update()
                 > 0;
@@ -263,11 +255,11 @@ public class ModerationStore {
 
     // ---- the record of what reviewers did ----
 
-    public void log(String reviewer, String action, String targetType, String targetId, String note) {
+    public void log(String reviewer, ReviewAction action, String targetType, String targetId, String note) {
         jdbc.sql(
                         "insert into review_log (reviewer, action, target_type, target_id, note) values (:reviewer, :action, :type, :target, :note)")
                 .param("reviewer", reviewer)
-                .param("action", action)
+                .param("action", action.words())
                 .param("type", targetType)
                 .param("target", targetId)
                 .param("note", note == null ? "" : note)

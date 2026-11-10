@@ -379,6 +379,15 @@ public class MediaService {
         return store.letThrough(id);
     }
 
+    /** A reviewer has looked at a held photo or clip and removes it. True when it was held. */
+    public boolean removeHeld(UUID id) {
+        if (!store.held(id)) {
+            return false;
+        }
+        remove(id);
+        return true;
+    }
+
     /** The owner of a held photo asks for a second look. True when it is theirs and held. */
     public boolean askForSecondLook(UUID id, UUID ownerId) {
         return store.askAgain(id, ownerId);

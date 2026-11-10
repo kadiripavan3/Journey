@@ -1,5 +1,6 @@
 package app.journey.api.notify;
 
+import app.journey.api.common.Names;
 import app.journey.api.notify.OutboxStore.Due;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -22,7 +23,7 @@ class PushWording {
     }
 
     Wording of(Due due) {
-        String who = due.actorName() == null ? "Someone" : firstName(due.actorName());
+        String who = due.actorName() == null ? "Someone" : Names.first(due.actorName());
         String journey = due.journeyTitle() == null ? APP : due.journeyTitle();
         String entry = due.entryTitle() == null || due.entryTitle().isBlank() ? "an entry" : quote(due.entryTitle());
         String journeyPath = "/journey/" + due.journeyId();
@@ -101,11 +102,5 @@ class PushWording {
         }
         String oneLine = text.replaceAll("\\s+", " ").trim();
         return quote(oneLine.length() > 100 ? oneLine.substring(0, 99).trim() + "…" : oneLine);
-    }
-
-    private static String firstName(String displayName) {
-        String trimmed = displayName.trim();
-        int space = trimmed.indexOf(' ');
-        return space > 0 ? trimmed.substring(0, space) : trimmed;
     }
 }

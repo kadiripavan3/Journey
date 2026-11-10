@@ -1,5 +1,6 @@
 package app.journey.api.digest;
 
+import app.journey.api.common.Names;
 import app.journey.api.common.PublicUrls;
 import app.journey.api.digest.DigestService.DigestJourneyResponse;
 import app.journey.api.digest.DigestService.DigestResponse;
@@ -47,7 +48,7 @@ class DigestMailer {
         }
         String name = profiles.find(userId)
                 .map(Profile::displayName)
-                .map(DigestMailer::firstName)
+                .map(Names::first)
                 .orElse("there");
         String subject = words(week.entryCount(), week.journeys().size());
 
@@ -91,11 +92,5 @@ class DigestMailer {
                         week.to().get(IsoFields.WEEK_BASED_YEAR),
                         week.to().get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
         return Optional.of(new Letter("This week: " + subject, html, text.toString(), sendOnce));
-    }
-
-    private static String firstName(String displayName) {
-        String trimmed = displayName.trim();
-        int space = trimmed.indexOf(' ');
-        return space > 0 ? trimmed.substring(0, space) : trimmed;
     }
 }
