@@ -137,6 +137,84 @@ class DatabaseShapeTest extends ApiTest {
                 .isZero();
     }
 
+    /**
+     * A row whose numbers change all the time (a journey with every entry and follow, an entry with every like,
+     * a follow with every visit) is changed in place as long as no index names the column that changed. An
+     * index that does has to be rewritten on every one of those changes, together with all the table's others.
+     */
+    @Test
+    void noIndexNamesAColumnThatChangesWithEveryEntryLikeFollowOrVisit() {
+        List<String> costly = jdbc.sql("""
+            select i.indexrelid::regclass || ' names ' || a.attname
+            from pg_index i
+            join pg_class t on t.oid = i.indrelid and t.relnamespace = current_schema()::regnamespace
+            join pg_attribute a on a.attrelid = t.oid and a.attnum > 0
+            where (t.relname, a.attname) in (
+                    ('journeys', 'entry_count'), ('journeys', 'follower_count'), ('journeys', 'last_entry_at'),
+                    ('entries', 'like_count'), ('entries', 'comment_count'),
+                    ('journey_follows', 'last_read_at'),
+                    ('profiles', 'follower_count'), ('profiles', 'following_count'), ('profiles', 'activity_seen_at'))
+              and pg_get_indexdef(i.indexrelid) ~ ('\\m' || a.attname || '\\M')
+            order by 1
+            """).query(String.class).list();
+        assertThat(costly).isEmpty();
+    }
+
+    @Test
+    void followerCountsMoveOncePerStatementAndStillMatchTheirRows() throws Exception {
+        String maya = person("maya");
+        String nora = person("nora");
+        String kai = person("kai");
+        for (String follower : new String[] {nora, kai}) {
+            mvc.perform(put("/v1/profiles/maya/follow").header("Authorization", follower))
+                    .andExpect(status().isOk());
+        }
+        // A new public journey is followed for everyone who follows its creator, in one statement.
+        String journey = journey(maya, "Southeast Asia", "public", 3);
+        mvc.perform(get("/v1/journeys/" + journey).header("Authorization", maya))
+                .andExpect(jsonPath("$.followerCount").value(2));
+        // Unfollowing, following again, becoming an author and going private all keep the count true.
+        mvc.perform(delete("/v1/journeys/" + journey + "/follow").header("Authorization", kai))
+                .andExpect(jsonPath("$.followerCount").value(1));
+        mvc.perform(put("/v1/journeys/" + journey + "/follow").header("Authorization", kai))
+                .andExpect(jsonPath("$.followerCount").value(2));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                                "/v1/journeys/" + journey + "/members")
+                        .header("Authorization", maya)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"kai\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                                "/v1/journeys/" + journey + "/invitation/accept")
+                        .header("Authorization", kai))
+                .andExpect(jsonPath("$.followerCount").value(1));
+        journeyCountsMatchRows();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/v1/journeys/" + journey)
+                        .header("Authorization", maya)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":\"private\"}"))
+                .andExpect(jsonPath("$.followerCount").value(0));
+        journeyCountsMatchRows();
+
+        // The triggers that count rows coming and going run once for a statement, not once for each row.
+        assertThat(jdbc.sql("""
+            select t.tgname from pg_trigger t
+            where t.tgrelid in ('journey_follows'::regclass, 'profile_follows'::regclass) and not t.tgisinternal
+              and (t.tgtype & 1) = 1 and (t.tgtype & (4 | 8)) <> 0
+            """).query(String.class).list())
+                .as("row-by-row triggers on rows being added or removed")
+                .isEmpty();
+    }
+
+    private void journeyCountsMatchRows() {
+        assertThat(jdbc.sql("""
+            select count(*) from journeys j
+            where j.follower_count <> (select count(*) from journey_follows f where f.journey_id = j.id and not f.author)
+            """).query(Integer.class).single())
+                .as("journeys whose follower count differs from their rows")
+                .isZero();
+    }
+
     private void countsMatchRows() {
         assertThat(jdbc.sql("""
             select count(*) from profiles p

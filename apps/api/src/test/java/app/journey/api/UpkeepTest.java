@@ -60,26 +60,23 @@ class UpkeepTest extends ApiTest {
 
     @Test
     void aChallengeIsNudgedOnceADayAtThePersonsOwnEveningAndOnlyIfTheyAskedForIt() throws Exception {
+        // Everything is counted on the person's own calendar, read once: Tokyo's date is a day ahead of UTC's
+        // for nine hours of every day, and a test that mixed the two failed every afternoon.
+        ZoneId tokyo = ZoneId.of("Asia/Tokyo");
+        LocalDate today = LocalDate.now(tokyo);
         String nora = person("nora");
         device(nora, "ExponentPushToken[nora]", "Asia/Tokyo");
-        String challenge = challenge(nora, "30 days of guitar", 3);
-        Instant tokyoEveningBefore = LocalDate.now(ZoneId.of("Asia/Tokyo"))
-                .atTime(19, 5)
-                .atZone(ZoneId.of("Asia/Tokyo"))
-                .toInstant();
-        // Reminders are off until someone asks for them.
-        assertThat(reminders.remindAt(tokyoEveningBefore)).isZero();
-        wantsReminders(nora);
-        entry(nora, challenge, "First chord", 2);
+        String challenge = challenge(nora, "30 days of guitar", today.minusDays(3));
         // Seven in the evening in Tokyo is ten in the morning in UTC.
-        Instant tokyoEvening = LocalDate.now(ZoneId.of("Asia/Tokyo"))
-                .atTime(19, 5)
-                .atZone(ZoneId.of("Asia/Tokyo"))
-                .toInstant();
+        Instant evening = today.atTime(19, 5).atZone(tokyo).toInstant();
+        // Reminders are off until someone asks for them.
+        assertThat(reminders.remindAt(evening)).isZero();
+        wantsReminders(nora);
+        entryOn(nora, challenge, "First chord", today.minusDays(2));
 
-        assertThat(reminders.remindAt(tokyoEvening.minusSeconds(2 * 3600))).isZero(); // five o'clock: not yet
-        assertThat(reminders.remindAt(tokyoEvening)).isEqualTo(1);
-        assertThat(reminders.remindAt(tokyoEvening)).isZero(); // never twice in a day
+        assertThat(reminders.remindAt(evening.minusSeconds(2 * 3600))).isZero(); // five o'clock: not yet
+        assertThat(reminders.remindAt(evening)).isEqualTo(1);
+        assertThat(reminders.remindAt(evening)).isZero(); // never twice in a day
 
         delivery.deliverDue();
         assertThat(phone.sent()).hasSize(1);
@@ -91,6 +88,7 @@ class UpkeepTest extends ApiTest {
 
     @Test
     void remindersLeaveAloneWhoeverCheckedInSwitchedThemOffOrPaused() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         String done = person("done");
         String off = person("off");
         String paused = person("paused");
@@ -99,9 +97,9 @@ class UpkeepTest extends ApiTest {
             device(token, "ExponentPushToken[" + token.substring(token.length() - 6) + "]", "UTC");
             wantsReminders(token);
         }
-        Instant evening = LocalDate.now(ZoneOffset.UTC).atTime(19, 0).toInstant(ZoneOffset.UTC);
-        entry(done, challenge(done, "Checked in today", 3), "Today's check-in", 0);
-        challenge(off, "Reminders off", 3);
+        Instant evening = today.atTime(19, 0).toInstant(ZoneOffset.UTC);
+        entryOn(done, challenge(done, "Checked in today", today.minusDays(3)), "Today's check-in", today);
+        challenge(off, "Reminders off", today.minusDays(3));
         String settings = mvc.perform(get("/v1/me/settings").header("Authorization", off))
                 .andReturn()
                 .getResponse()
@@ -111,14 +109,14 @@ class UpkeepTest extends ApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(settings.replace("\"reminders\":true", "\"reminders\":false")))
                 .andExpect(status().isOk());
-        String quiet = challenge(paused, "Paused", 3);
+        String quiet = challenge(paused, "Paused", today.minusDays(3));
         mvc.perform(patch("/v1/journeys/" + quiet)
                         .header("Authorization", paused)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"paused\"}"))
                 .andExpect(status().isOk());
         // Someone who asked for their reminders at nine in the evening is not reminded at seven.
-        challenge(later, "At nine", 3);
+        challenge(later, "At nine", today.minusDays(3));
         mvc.perform(put("/v1/me/settings")
                         .header("Authorization", later)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,12 +136,23 @@ class UpkeepTest extends ApiTest {
 
     @Test
     void aJourneyWithoutADayCountIsNudgedAfterThreeQuietDaysAndThenLeftAlone() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         String nora = person("nora");
         device(nora, "ExponentPushToken[nora]", "UTC");
         wantsReminders(nora);
         String trip = journey(nora, "Iceland ring road", "public", 9);
-        entry(nora, trip, "Reykjavik", 3);
-        Instant evening = LocalDate.now(ZoneOffset.UTC).atTime(19, 0).toInstant(ZoneOffset.UTC);
+        Instant evening = today.atTime(19, 0).toInstant(ZoneOffset.UTC);
+        // Quiet days are counted from when she last posted, not from the day the entry is dated: writing up
+        // something from three days ago, today, is not three quiet days.
+        entryOn(nora, trip, "Reykjavik", today.minusDays(3));
+        assertThat(reminders.remindAt(evening)).isZero();
+        // The same entry, posted three days ago.
+        jdbc.sql("update entries set created_at = :at")
+                .param("at", posted(today.minusDays(3)))
+                .update();
+        jdbc.sql("update journeys set last_entry_at = :at")
+                .param("at", posted(today.minusDays(3)))
+                .update();
 
         assertThat(reminders.remindAt(evening)).isEqualTo(1);
         delivery.deliverDue();
@@ -152,6 +161,28 @@ class UpkeepTest extends ApiTest {
         // The day after (four quiet days) there is nothing to say.
         jdbc.sql("delete from notifications").update();
         assertThat(reminders.remindAt(evening.plusSeconds(24 * 3600))).isZero();
+    }
+
+    @Test
+    void everyoneWhoseEveningItIsIsChosenTogetherAndRemindedAboutOneJourney() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        Instant evening = today.atTime(19, 0).toInstant(ZoneOffset.UTC);
+        for (int i = 1; i <= 6; i++) {
+            String token = person("pal" + i);
+            // Half of them are somewhere it isn't evening.
+            device(token, "ExponentPushToken[pal" + i + "]", i % 2 == 0 ? "UTC" : "Asia/Tokyo");
+            wantsReminders(token);
+            challenge(token, "Challenge " + i, today.minusDays(3));
+            journey(token, "Trip " + i, "public", 9);
+        }
+
+        // The three in UTC are due, each about one journey (the challenge comes first).
+        assertThat(reminders.remindAt(evening)).isEqualTo(3);
+        assertThat(jdbc.sql("""
+            select count(*) from notifications n join journeys j on j.id = n.journey_id
+            where n.kind = 'reminder' and j.title like 'Challenge %'
+            """).query(Integer.class).single()).isEqualTo(3);
+        assertThat(reminders.remindAt(evening)).isZero();
     }
 
     @Test
@@ -356,6 +387,86 @@ class UpkeepTest extends ApiTest {
         assertThat(inbox.sent().get(0).html()).startsWith("<!doctype html>").doesNotContain("<script>");
     }
 
+    @Test
+    void trendingCountsPeopleNotClicksAndNeverWhatTheAuthorsDoThemselves() throws Exception {
+        String maya = person("maya");
+        String lea = person("lea");
+        String fan = person("fan");
+        String honest = journey(maya, "Honest", "public", 9);
+        String gamed = journey(lea, "Gamed", "public", 9);
+        String first = null;
+        for (int day = 3; day >= 1; day--) {
+            first = entry(maya, honest, "Entry " + day, day);
+            String hers = entry(lea, gamed, "Entry " + day, day);
+            // Lea likes and praises every entry of her own, and one fan likes them all and comments five times.
+            mvc.perform(put("/v1/entries/" + hers + "/like").header("Authorization", lea))
+                    .andExpect(status().isOk());
+            comment(lea, hers, "My best yet");
+            mvc.perform(put("/v1/entries/" + hers + "/like").header("Authorization", fan))
+                    .andExpect(status().isOk());
+            for (int i = 0; i < 5; i++) {
+                comment(fan, hers, "So good " + i);
+            }
+            comment(fan, hers, "go die"); // held by the word filter: seen by nobody, counted nowhere
+        }
+
+        trending.rescore();
+
+        // Three entries each: 9 points. On top, the gamed one gets 1 for the one person who liked something in
+        // it and 2 for the one person who commented. Not 3 likes and 15 comments, and nothing for Lea's own.
+        assertThat(score("Honest")).isCloseTo(9.0, org.assertj.core.data.Offset.offset(0.001));
+        assertThat(score("Gamed")).isCloseTo(12.0, org.assertj.core.data.Offset.offset(0.001));
+
+        // A crowd can only add so much: forty people liking and commenting are 30 points each, not 40 and 80.
+        jdbc.sql("""
+            insert into profiles (id, username, display_name)
+            select gen_random_uuid(), 'crowd' || g, 'Crowd' from generate_series(1, 40) g
+            """).update();
+        jdbc.sql("""
+            insert into entry_likes (entry_id, user_id)
+            select cast(:entry as uuid), p.id from profiles p where p.username like 'crowd%'
+            """).param("entry", first).update();
+        jdbc.sql("""
+            insert into comments (entry_id, author_id, body)
+            select cast(:entry as uuid), p.id, 'Nice' from profiles p where p.username like 'crowd%'
+            """).param("entry", first).update();
+        trending.rescore();
+        assertThat(score("Honest")).isCloseTo(9.0 + 30 + 30, org.assertj.core.data.Offset.offset(0.001));
+    }
+
+    @Test
+    void trendingOnlyLooksAtJourneysWhereSomethingHappenedLately() throws Exception {
+        String maya = person("maya");
+        journey(maya, "Long quiet", "public", 60);
+        String cooling = journey(maya, "Just went quiet", "public", 60);
+        entry(maya, cooling, "The last one", 9);
+        // Both were last touched weeks ago and carry a score from back then. One had its last entry posted
+        // seven and a half days ago: outside the week that counts, inside the day after it.
+        jdbc.sql("update journeys set updated_at = now() - interval '20 days', trending_score = 5")
+                .update();
+        jdbc.sql("update entries set created_at = now() - interval '7 days 12 hours'")
+                .update();
+
+        // The one whose busy week has just passed is scored one last time (nothing counts any more); the one
+        // nothing has happened to isn't looked at, and keeps what it had.
+        assertThat(trending.rescore()).isEqualTo(1);
+        assertThat(score("Just went quiet")).isZero();
+        assertThat(score("Long quiet")).isEqualTo(5.0);
+        // A day later that one is left alone too.
+        jdbc.sql("update entries set created_at = now() - interval '9 days'").update();
+        jdbc.sql("update journeys set trending_score = 5 where title = 'Just went quiet'")
+                .update();
+        assertThat(trending.rescore()).isZero();
+    }
+
+    private void comment(String token, String entry, String body) throws Exception {
+        mvc.perform(post("/v1/entries/" + entry + "/comments")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"body\":\"%s\"}".formatted(body)))
+                .andExpect(status().isCreated());
+    }
+
     private void wantsReminders(String token) throws Exception {
         String settings = mvc.perform(get("/v1/me/settings").header("Authorization", token))
                 .andReturn()
@@ -377,6 +488,40 @@ class UpkeepTest extends ApiTest {
                         .content("{\"token\":\"%s\",\"platform\":\"android\",\"timeZone\":\"%s\"}"
                                 .formatted(pushToken, zone)))
                 .andExpect(status().isNoContent());
+    }
+
+    /** Noon (UTC) on a day: a moment that is on that day wherever the test runs. */
+    private static java.sql.Timestamp posted(LocalDate day) {
+        return java.sql.Timestamp.from(day.atTime(12, 0).toInstant(ZoneOffset.UTC));
+    }
+
+    /** Adds a text entry dated on a given day, whatever the time is now. Returns its id. */
+    private String entryOn(String token, String journeyId, String title, LocalDate day) throws Exception {
+        String body = mvc.perform(post("/v1/journeys/" + journeyId + "/entries")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"%s\",\"happenedAt\":\"%s\",\"happenedOn\":\"%s\"}"
+                                .formatted(title, day.atTime(12, 0).toInstant(ZoneOffset.UTC), day)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
+    /** A 30-day challenge that started on a given day. Returns its id. */
+    private String challenge(String token, String title, LocalDate start) throws Exception {
+        String body = mvc.perform(post("/v1/journeys")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"title\":\"%s\",\"template\":\"challenge30\",\"startDate\":\"%s\",\"visibility\":\"public\"}"
+                                        .formatted(title, start)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(body, "$.id");
     }
 
     /** A 30-day challenge that started `daysAgo` days ago. Returns its id. */
